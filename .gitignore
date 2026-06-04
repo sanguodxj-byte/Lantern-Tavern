@@ -1,0 +1,19 @@
+# Godot 4+ specific
+.godot/
+
+# Godot 3.x specific
+.import/
+
+# Exported binaries
+export/
+build/
+bin/
+
+# Local editor settings (optional)
+# Some prefer to keep these, others ignore them to avoid personal setting conflicts
+.vscode/
+.idea/
+*.swp
+
+# Sensitive credentials (especially for Android exports)
+export_credentials.cfg
