@@ -20,7 +20,6 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	input_dir = Input.get_vector("strafe_left", "strafe_right", "backward", "forward")
-	print(is_on_floor())
 
 func _physics_process(delta: float) -> void:
 	check_jump_input()
