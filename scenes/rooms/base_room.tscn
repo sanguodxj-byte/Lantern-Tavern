@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://dvre4shd8agg2"]
+
+[ext_resource type="MeshLibrary" uid="uid://5befjqaqells" path="res://assets/meshlibs/walls-tiles.meshlib" id="1_43ixu"]
+
+[node name="BaseRoom" type="Node3D" unique_id=1869601789]
+
+[node name="Floors" type="GridMap" parent="." unique_id=1733117505]
+mesh_library = ExtResource("1_43ixu")
+cell_size = Vector3(1, 1, 1)
+cell_center_y = false
