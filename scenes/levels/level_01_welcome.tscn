@@ -8,7 +8,7 @@
 
 [node name="Entrance" parent="Rooms" parent_id_path=PackedInt32Array(540883177) index="0" unique_id=1869601789 instance=ExtResource("2_iemd2")]
 
-[node name="Foyer" parent="Rooms" parent_id_path=PackedInt32Array(540883177) index="1" unique_id=711739552 instance=ExtResource("3_xicp7")]
+[node name="Foyer" parent="Rooms" parent_id_path=PackedInt32Array(540883177) index="1" unique_id=1928138106 instance=ExtResource("3_xicp7")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -11)
 
 [node name="PlayerSpawn" parent="." index="1" unique_id=588236999]
