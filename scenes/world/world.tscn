@@ -2,6 +2,7 @@
 
 [ext_resource type="PackedScene" uid="uid://csjgov3pqdkoj" path="res://scenes/levels/level_01_welcome.tscn" id="2_1fp7r"]
 [ext_resource type="PackedScene" uid="uid://37tccejpw454" path="res://scenes/ui/ui.tscn" id="2_sl2e5"]
+[ext_resource type="PackedScene" uid="uid://b3gi3yqvwb45o" path="res://scenes/characters/player/player.tscn" id="3_1fp7r"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_4rhad"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -27,3 +28,6 @@ shadow_enabled = true
 [node name="UI" parent="." unique_id=123153430 instance=ExtResource("2_sl2e5")]
 
 [node name="Level-01-Welcome" parent="." unique_id=113800226 instance=ExtResource("2_1fp7r")]
+
+[node name="Player" parent="." unique_id=1329737805 instance=ExtResource("3_1fp7r")]
+transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999999, 0, 0, -9)
