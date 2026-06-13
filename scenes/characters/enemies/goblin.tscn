@@ -2,6 +2,7 @@
 
 [ext_resource type="PackedScene" uid="uid://801uvv41lf28" path="res://assets/meshes/characters/character.glb" id="1_jcgx1"]
 [ext_resource type="Texture2D" uid="uid://di0hf168tep0u" path="res://assets/textures/skin-goblin.png" id="2_ik1ic"]
+[ext_resource type="PackedScene" uid="uid://cx6sejxqnakyo" path="res://assets/meshes/weapons/shortsword.glb" id="3_1ffe6"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ik1ic"]
 height = 1.7
@@ -18,21 +19,32 @@ shape = SubResource("CapsuleShape3D_ik1ic")
 
 [node name="character" parent="." unique_id=213930241 instance=ExtResource("1_jcgx1")]
 
-[node name="Skeleton3D" parent="character/Armature" parent_id_path=PackedInt32Array(213930241, 437451560) index="0" unique_id=684695530]
-bones/1/rotation = Quaternion(-0.2608185, 1.1508321e-07, -3.1091986e-08, 0.9653878)
-bones/3/rotation = Quaternion(-0.1781106, 0.006952127, -0.8447039, 0.50468165)
-bones/4/rotation = Quaternion(-0.5197056, -0.03146447, -0.02226875, 0.85347533)
-bones/6/rotation = Quaternion(-0.014208643, -0.046359096, 0.9871597, -0.15219927)
-bones/7/rotation = Quaternion(0.38037166, -0.0077449004, -0.06930007, 0.92220116)
-bones/9/rotation = Quaternion(-0.36561823, -0.18045183, 0.73759365, 0.53825283)
-bones/10/rotation = Quaternion(-0.56524074, 0.0012397004, -0.040283673, 0.823941)
-bones/12/rotation = Quaternion(0.014208632, -0.0463591, 0.9871597, 0.15219925)
-bones/13/rotation = Quaternion(0.38037163, 0.0077449, 0.06930008, 0.92220116)
+[node name="Skeleton3D" parent="character/Armature" parent_id_path=PackedInt32Array(213930241, 1756846952) index="0" unique_id=1773980357]
+bones/0/position = Vector3(0, 0.63719213, -0.058584828)
+bones/1/rotation = Quaternion(-0.26081848, 1.1508321e-07, -3.109199e-08, 0.96538794)
+bones/3/rotation = Quaternion(-0.17811054, 0.0069522588, -0.84470385, 0.50468177)
+bones/4/rotation = Quaternion(-0.51970553, -0.03146463, -0.022268824, 0.85347545)
+bones/6/rotation = Quaternion(-0.01420721, -0.04635846, 0.9871597, -0.15219975)
+bones/7/rotation = Quaternion(0.38037068, -0.0077450327, -0.06930005, 0.9222016)
+bones/9/rotation = Quaternion(-0.36561814, -0.1804519, 0.7375937, 0.5382529)
+bones/10/rotation = Quaternion(-0.5652407, 0.0012398548, -0.040283598, 0.823941)
+bones/12/rotation = Quaternion(0.014207192, -0.046358455, 0.9871597, 0.15219972)
+bones/13/rotation = Quaternion(0.38037068, 0.00774503, 0.06930006, 0.9222016)
 
-[node name="Character" parent="character/Armature/Skeleton3D" index="0" unique_id=2031251032]
+[node name="Character" parent="character/Armature/Skeleton3D" index="0" unique_id=1668324923]
 surface_material_override/0 = SubResource("StandardMaterial3D_1ffe6")
 
-[node name="AnimationPlayer" parent="character" index="1" unique_id=1194066002]
+[node name="BoneAttachment3D" type="BoneAttachment3D" parent="character/Armature/Skeleton3D" index="1" unique_id=439533458]
+transform = Transform3D(-0.40672272, -0.81307, 0.41652495, -0.89202154, 0.2550549, -0.37315392, 0.1971637, -0.52331954, -0.8290129, 0.58210635, 0.8479673, -0.3637258)
+bone_name = "Hand.R"
+bone_idx = 5
+
+[node name="WeaponPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/BoneAttachment3D" unique_id=896581106]
+transform = Transform3D(0.46113777, -0.7594847, 0.4588408, -0.5137062, -0.6501375, -0.5598458, 0.72350395, 0.022456616, -0.689955, 0.07149134, -0.037720405, -0.06646673)
+
+[node name="shortsword" parent="character/Armature/Skeleton3D/BoneAttachment3D/WeaponPlaceholder" unique_id=302382264 instance=ExtResource("3_1ffe6")]
+
+[node name="AnimationPlayer" parent="character" index="1" unique_id=796360186]
 autoplay = &"idle"
 
 [editable path="character"]
