@@ -18,7 +18,7 @@ shape = SubResource("CapsuleShape3D_ik1ic")
 
 [node name="character" parent="." unique_id=213930241 instance=ExtResource("1_jcgx1")]
 
-[node name="Skeleton3D" parent="character/Armature" parent_id_path=PackedInt32Array(213930241, 1899558881) index="0" unique_id=117580968]
+[node name="Skeleton3D" parent="character/Armature" parent_id_path=PackedInt32Array(213930241, 437451560) index="0" unique_id=684695530]
 bones/1/rotation = Quaternion(-0.2608185, 1.1508321e-07, -3.1091986e-08, 0.9653878)
 bones/3/rotation = Quaternion(-0.1781106, 0.006952127, -0.8447039, 0.50468165)
 bones/4/rotation = Quaternion(-0.5197056, -0.03146447, -0.02226875, 0.85347533)
@@ -29,7 +29,10 @@ bones/10/rotation = Quaternion(-0.56524074, 0.0012397004, -0.040283673, 0.823941
 bones/12/rotation = Quaternion(0.014208632, -0.0463591, 0.9871597, 0.15219925)
 bones/13/rotation = Quaternion(0.38037163, 0.0077449, 0.06930008, 0.92220116)
 
-[node name="Character" parent="character/Armature/Skeleton3D" index="0" unique_id=89492839]
+[node name="Character" parent="character/Armature/Skeleton3D" index="0" unique_id=2031251032]
 surface_material_override/0 = SubResource("StandardMaterial3D_1ffe6")
+
+[node name="AnimationPlayer" parent="character" index="1" unique_id=1194066002]
+autoplay = &"idle"
 
 [editable path="character"]
