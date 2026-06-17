@@ -2,20 +2,20 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dnq7x6uh8p6er"
-path.s3tc="res://.godot/imported/shortsword_dungeon-texture.png-4777f8b4970cc8df31a8ebff46b8379c.s3tc.ctex"
+uid="uid://rqfrkjluf0dd"
+path.s3tc="res://.godot/imported/axe_dungeon-texture.png-87ccf1830001717fd216cefa76368411.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
 generator_parameters={
-"md5": "741e39d3e4c9e119b1a5fff9db9a5545"
+"md5": "20a887cd0b325f84051d28884516cc47"
 }
 
 [deps]
 
-source_file="res://assets/meshes/weapons/shortsword_dungeon-texture.png"
-dest_files=["res://.godot/imported/shortsword_dungeon-texture.png-4777f8b4970cc8df31a8ebff46b8379c.s3tc.ctex"]
+source_file="res://assets/meshes/weapons/axe_dungeon-texture.png"
+dest_files=["res://.godot/imported/axe_dungeon-texture.png-87ccf1830001717fd216cefa76368411.s3tc.ctex"]
 
 [params]
 

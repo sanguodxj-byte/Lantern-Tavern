@@ -3,10 +3,18 @@
 [ext_resource type="Script" uid="uid://drny54fswnguj" path="res://scenes/characters/player/player.gd" id="1_7uws0"]
 [ext_resource type="PackedScene" uid="uid://801uvv41lf28" path="res://assets/meshes/characters/character.glb" id="2_t61fv"]
 [ext_resource type="PackedScene" uid="uid://cx6sejxqnakyo" path="res://assets/meshes/weapons/shortsword.glb" id="3_686vu"]
+[ext_resource type="Texture2D" uid="uid://dnq7x6uh8p6er" path="res://assets/meshes/weapons/shortsword_dungeon-texture.png" id="4_hss88"]
+[ext_resource type="PackedScene" uid="uid://cpnnn5ypdnt0y" path="res://assets/meshes/weapons/axe.glb" id="5_qd3e3"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_bcx1r"]
 margin = 0.3
 height = 1.7
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_qd3e3"]
+albedo_texture = ExtResource("4_hss88")
+texture_filter = 0
+use_z_clip_scale = true
+z_clip_scale = 0.5
 
 [node name="Player" type="CharacterBody3D" unique_id=1329737805]
 transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999999, 0, 0, 0)
@@ -30,30 +38,25 @@ near = 0.001
 
 [node name="character" parent="." unique_id=1982335508 instance=ExtResource("2_t61fv")]
 
-[node name="Skeleton3D" parent="character/Armature" parent_id_path=PackedInt32Array(1982335508, 1341583853) index="0" unique_id=51470140]
-bones/0/position = Vector3(0, 0.6148735, -0.058584835)
-bones/1/rotation = Quaternion(-0.26081848, 1.1508321e-07, -3.109199e-08, 0.96538794)
-bones/3/rotation = Quaternion(-0.17811054, 0.0069522588, -0.84470385, 0.50468177)
-bones/4/rotation = Quaternion(-0.50185764, -0.043086845, -0.024498131, 0.863529)
-bones/6/rotation = Quaternion(-0.011745686, -0.074107796, 0.9839439, -0.16194032)
-bones/7/rotation = Quaternion(0.44301426, -0.007498456, -0.08071311, 0.8928425)
-bones/9/rotation = Quaternion(-0.36561814, -0.1804519, 0.7375937, 0.5382529)
-bones/10/rotation = Quaternion(-0.5470023, 0.0018386608, -0.033827968, 0.8364454)
-bones/12/rotation = Quaternion(0.011745671, -0.074107796, 0.9839439, 0.16194029)
-bones/13/rotation = Quaternion(0.44301426, 0.007498456, 0.08071311, 0.8928425)
-
-[node name="BoneAttachment3D" type="BoneAttachment3D" parent="character/Armature/Skeleton3D" index="1" unique_id=1090486696]
-transform = Transform3D(-0.39376524, -0.8036894, 0.44612938, -0.8934168, 0.22045109, -0.39141628, 0.21622764, -0.5527059, -0.8048361, 0.5913243, 0.8167982, -0.36026564)
+[node name="BoneAttachment3D" type="BoneAttachment3D" parent="character/Armature/Skeleton3D" parent_id_path=PackedInt32Array(1982335508, 51470140) index="1" unique_id=1090486696]
+transform = Transform3D(-0.4472139, 2.682209e-07, 0.8944266, -0.8944265, -1.937151e-07, -0.44721383, 7.2153114e-08, -0.99999964, 4.172325e-07, 0.8096086, 0.8068743, 0.02890563)
 bone_name = "Hand.R"
 bone_idx = 5
 
 [node name="WeaponPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/BoneAttachment3D" unique_id=1260400768]
-transform = Transform3D(-0.14235646, 0.85955465, 0.49081612, 0.47577396, 0.4942475, -0.7275702, -0.86797106, 0.12994316, -0.479313, 0.03993016, -0.059191193, -0.03899432)
+transform = Transform3D(0.7084582, -0.50713557, 0.49081618, 0.013062805, -0.68590885, -0.7275702, 0.7056319, 0.5218644, -0.47931296, 0.03993016, -0.059191193, -0.03899432)
 
 [node name="shortsword" parent="character/Armature/Skeleton3D/BoneAttachment3D/WeaponPlaceholder" unique_id=861980410 instance=ExtResource("3_686vu")]
 transform = Transform3D(1.0000001, 0, 0, -1.4901161e-08, 1.0000001, 5.9604645e-08, -2.9802322e-08, -2.9802322e-08, 1.0000001, 0, 0, 0)
+visible = false
+
+[node name="Sword" parent="character/Armature/Skeleton3D/BoneAttachment3D/WeaponPlaceholder/shortsword" index="0" unique_id=906131405]
+surface_material_override/0 = SubResource("StandardMaterial3D_qd3e3")
+
+[node name="axe" parent="character/Armature/Skeleton3D/BoneAttachment3D/WeaponPlaceholder" unique_id=1931505079 instance=ExtResource("5_qd3e3")]
 
 [node name="AnimationPlayer" parent="character" index="1" unique_id=985907127]
 autoplay = &"idle"
 
 [editable path="character"]
+[editable path="character/Armature/Skeleton3D/BoneAttachment3D/WeaponPlaceholder/shortsword"]
