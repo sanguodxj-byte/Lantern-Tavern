@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://drny54fswnguj" path="res://scenes/characters/player/player.gd" id="1_7uws0"]
 [ext_resource type="PackedScene" uid="uid://801uvv41lf28" path="res://assets/meshes/characters/character.glb" id="2_t61fv"]
 [ext_resource type="PackedScene" uid="uid://dmfg86jn8qjol" path="res://scenes/characters/component/equipment_component.tscn" id="3_hss88"]
-[ext_resource type="Resource" uid="uid://bmre07o38bl3s" path="res://data/weapons/shortsword.tres" id="4_qd3e3"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_bcx1r"]
 margin = 0.3
@@ -11,6 +10,7 @@ height = 1.7
 
 [node name="Player" type="CharacterBody3D" unique_id=1329737805]
 transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999999, 0, 0, 0)
+collision_layer = 2
 script = ExtResource("1_7uws0")
 acceleration = 30.0
 jump_force = 12.0
@@ -28,6 +28,13 @@ unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1.0000002, 0, 0, 0, 1.0000001, 0, 1.5000001, -0.40999246)
 current = true
 near = 0.001
+
+[node name="SelectRaycast" type="RayCast3D" parent="Camera3D" unique_id=1304238975]
+unique_name_in_owner = true
+target_position = Vector3(0, 0, -2)
+collision_mask = 8
+collide_with_areas = true
+collide_with_bodies = false
 
 [node name="character" parent="." unique_id=1982335508 instance=ExtResource("2_t61fv")]
 
@@ -56,8 +63,8 @@ transform = Transform3D(0.7084582, -0.50713557, 0.49081618, 0.013062805, -0.6859
 autoplay = &"idle"
 
 [node name="EquipmentComponent" parent="." unique_id=2139399618 node_paths=PackedStringArray("weapon_placeholder") instance=ExtResource("3_hss88")]
+unique_name_in_owner = true
 is_always_in_front = true
-weapon_data = ExtResource("4_qd3e3")
 weapon_placeholder = NodePath("../character/Armature/Skeleton3D/BoneAttachment3D/WeaponPlaceholder")
 
 [editable path="character"]

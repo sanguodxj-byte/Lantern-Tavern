@@ -13,8 +13,10 @@ const MAX_ANGLE_LOOK_DOWN := deg_to_rad(-70)
 
 @onready var animation_player: AnimationPlayer = $character/AnimationPlayer
 @onready var camera: Camera3D = %Camera3D
+@onready var equipment: EquipmentComponent = %EquipmentComponent
+@onready var select_raycast: RayCast3D = %SelectRaycast
 
-
+var current_pickable_focused_item : PickableItem = null
 var input_dir := Vector2.ZERO
 
 func _ready() -> void:
@@ -22,6 +24,9 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	input_dir = Input.get_vector("strafe_left", "strafe_right", "backward", "forward")
+
+	if Input.is_action_just_pressed("use") and can_pickup_object():
+		pickup_object()
 
 func _physics_process(delta: float) -> void:
 	check_jump_input()
@@ -44,6 +49,7 @@ func _physics_process(delta: float) -> void:
 		animation_player.play("idle")
 	
 	move_and_slide()
+	check_for_selection()
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
@@ -58,3 +64,25 @@ func check_jump_input() -> void:
 func process_gravity() -> void:
 	if not is_on_floor():
 		velocity.y -= gravity
+
+func check_for_selection() -> void:
+	var target_node: Node = null
+	if select_raycast.is_colliding():
+		var collider := select_raycast.get_collider()
+		if collider is PickableItem:
+			target_node = collider
+	if target_node != current_pickable_focused_item:
+		if current_pickable_focused_item:
+			current_pickable_focused_item.unhighlight()
+		current_pickable_focused_item = target_node
+		if current_pickable_focused_item is PickableItem:
+			current_pickable_focused_item.highlight()
+			
+func can_pickup_object() -> bool:
+	return current_pickable_focused_item != null
+
+func pickup_object() -> void:
+	var pickable_object := current_pickable_focused_item
+	if pickable_object.weapon_data != null:
+		equipment.equip_weapon(pickable_object.weapon_data)
+		pickable_object.queue_free()

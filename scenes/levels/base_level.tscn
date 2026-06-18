@@ -17,3 +17,4 @@ unique_name_in_owner = true
 mesh_library = ExtResource("2_uk53i")
 cell_size = Vector3(1, 1, 1)
 cell_center_y = false
+collision_mask = 0
