@@ -19,7 +19,7 @@ shape = SubResource("CapsuleShape3D_ik1ic")
 
 [node name="character" parent="." unique_id=213930241 instance=ExtResource("1_jcgx1")]
 
-[node name="Skeleton3D" parent="character/Armature" parent_id_path=PackedInt32Array(213930241, 1756846952) index="0" unique_id=1773980357]
+[node name="Skeleton3D" parent="character/Armature" parent_id_path=PackedInt32Array(213930241, 1341583853) index="0" unique_id=51470140]
 bones/0/position = Vector3(0, 0.63719213, -0.058584828)
 bones/1/rotation = Quaternion(-0.26081848, 1.1508321e-07, -3.109199e-08, 0.96538794)
 bones/3/rotation = Quaternion(-0.17811054, 0.0069522588, -0.84470385, 0.50468177)
@@ -31,7 +31,7 @@ bones/10/rotation = Quaternion(-0.5652407, 0.0012398548, -0.040283598, 0.823941)
 bones/12/rotation = Quaternion(0.014207192, -0.046358455, 0.9871597, 0.15219972)
 bones/13/rotation = Quaternion(0.38037068, 0.00774503, 0.06930006, 0.9222016)
 
-[node name="Character" parent="character/Armature/Skeleton3D" index="0" unique_id=1668324923]
+[node name="Character" parent="character/Armature/Skeleton3D" index="0" unique_id=1893235835]
 surface_material_override/0 = SubResource("StandardMaterial3D_1ffe6")
 
 [node name="BoneAttachment3D" type="BoneAttachment3D" parent="character/Armature/Skeleton3D" index="1" unique_id=439533458]
@@ -44,7 +44,7 @@ transform = Transform3D(0.46113777, -0.7594847, 0.4588408, -0.5137062, -0.650137
 
 [node name="shortsword" parent="character/Armature/Skeleton3D/BoneAttachment3D/WeaponPlaceholder" unique_id=302382264 instance=ExtResource("3_1ffe6")]
 
-[node name="AnimationPlayer" parent="character" index="1" unique_id=796360186]
+[node name="AnimationPlayer" parent="character" index="1" unique_id=985907127]
 autoplay = &"idle"
 
 [editable path="character"]

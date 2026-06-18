@@ -2,19 +2,12 @@
 
 [ext_resource type="Script" uid="uid://drny54fswnguj" path="res://scenes/characters/player/player.gd" id="1_7uws0"]
 [ext_resource type="PackedScene" uid="uid://801uvv41lf28" path="res://assets/meshes/characters/character.glb" id="2_t61fv"]
-[ext_resource type="PackedScene" uid="uid://cx6sejxqnakyo" path="res://assets/meshes/weapons/shortsword.glb" id="3_686vu"]
-[ext_resource type="Texture2D" uid="uid://dnq7x6uh8p6er" path="res://assets/meshes/weapons/shortsword_dungeon-texture.png" id="4_hss88"]
-[ext_resource type="PackedScene" uid="uid://cpnnn5ypdnt0y" path="res://assets/meshes/weapons/axe.glb" id="5_qd3e3"]
+[ext_resource type="PackedScene" uid="uid://dmfg86jn8qjol" path="res://scenes/characters/component/equipment_component.tscn" id="3_hss88"]
+[ext_resource type="Resource" uid="uid://bmre07o38bl3s" path="res://data/weapons/shortsword.tres" id="4_qd3e3"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_bcx1r"]
 margin = 0.3
 height = 1.7
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_qd3e3"]
-albedo_texture = ExtResource("4_hss88")
-texture_filter = 0
-use_z_clip_scale = true
-z_clip_scale = 0.5
 
 [node name="Player" type="CharacterBody3D" unique_id=1329737805]
 transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999999, 0, 0, 0)
@@ -44,20 +37,14 @@ bone_name = "Hand.R"
 bone_idx = 5
 
 [node name="WeaponPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/BoneAttachment3D" unique_id=1260400768]
+unique_name_in_owner = true
 transform = Transform3D(0.7084582, -0.50713557, 0.49081618, 0.013062805, -0.68590885, -0.7275702, 0.7056319, 0.5218644, -0.47931296, 0.03993016, -0.059191193, -0.03899432)
-
-[node name="shortsword" parent="character/Armature/Skeleton3D/BoneAttachment3D/WeaponPlaceholder" unique_id=861980410 instance=ExtResource("3_686vu")]
-transform = Transform3D(1.0000001, 0, 0, -1.4901161e-08, 1.0000001, 5.9604645e-08, -2.9802322e-08, -2.9802322e-08, 1.0000001, 0, 0, 0)
-visible = false
-
-[node name="Sword" parent="character/Armature/Skeleton3D/BoneAttachment3D/WeaponPlaceholder/shortsword" index="0" unique_id=906131405]
-visible = false
-surface_material_override/0 = SubResource("StandardMaterial3D_qd3e3")
-
-[node name="axe" parent="character/Armature/Skeleton3D/BoneAttachment3D/WeaponPlaceholder" unique_id=1931505079 instance=ExtResource("5_qd3e3")]
 
 [node name="AnimationPlayer" parent="character" index="1" unique_id=985907127]
 autoplay = &"idle"
 
+[node name="EquipmentComponent" parent="." unique_id=2139399618 node_paths=PackedStringArray("weapon_placeholder") instance=ExtResource("3_hss88")]
+weapon_data = ExtResource("4_qd3e3")
+weapon_placeholder = NodePath("../character/Armature/Skeleton3D/BoneAttachment3D/WeaponPlaceholder")
+
 [editable path="character"]
-[editable path="character/Armature/Skeleton3D/BoneAttachment3D/WeaponPlaceholder/shortsword"]
