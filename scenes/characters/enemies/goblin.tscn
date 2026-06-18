@@ -2,7 +2,8 @@
 
 [ext_resource type="PackedScene" uid="uid://801uvv41lf28" path="res://assets/meshes/characters/character.glb" id="1_jcgx1"]
 [ext_resource type="Texture2D" uid="uid://di0hf168tep0u" path="res://assets/textures/skin-goblin.png" id="2_ik1ic"]
-[ext_resource type="PackedScene" uid="uid://cx6sejxqnakyo" path="res://assets/meshes/weapons/shortsword.glb" id="3_1ffe6"]
+[ext_resource type="PackedScene" uid="uid://dmfg86jn8qjol" path="res://scenes/characters/component/equipment_component.tscn" id="3_ewb0t"]
+[ext_resource type="Resource" uid="uid://b85xdn0cdw6p1" path="res://data/weapons/axe.tres" id="4_lahws"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ik1ic"]
 height = 1.7
@@ -42,9 +43,11 @@ bone_idx = 5
 [node name="WeaponPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/BoneAttachment3D" unique_id=896581106]
 transform = Transform3D(0.46113777, -0.7594847, 0.4588408, -0.5137062, -0.6501375, -0.5598458, 0.72350395, 0.022456616, -0.689955, 0.07149134, -0.037720405, -0.06646673)
 
-[node name="shortsword" parent="character/Armature/Skeleton3D/BoneAttachment3D/WeaponPlaceholder" unique_id=302382264 instance=ExtResource("3_1ffe6")]
-
 [node name="AnimationPlayer" parent="character" index="1" unique_id=985907127]
 autoplay = &"idle"
+
+[node name="EquipmentComponent" parent="." unique_id=2139399618 node_paths=PackedStringArray("weapon_placeholder") instance=ExtResource("3_ewb0t")]
+weapon_data = ExtResource("4_lahws")
+weapon_placeholder = NodePath("../character/Armature/Skeleton3D/BoneAttachment3D/WeaponPlaceholder")
 
 [editable path="character"]
