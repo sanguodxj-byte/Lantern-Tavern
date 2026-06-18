@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="WeaponData" format=3 uid="uid://b85xdn0cdw6p1"]
+
+[ext_resource type="Script" uid="uid://duyj4lg5yvlvc" path="res://data/weapon_data.gd" id="1_ccd1n"]
+[ext_resource type="PackedScene" uid="uid://cpnnn5ypdnt0y" path="res://assets/meshes/weapons/axe.glb" id="1_ev13c"]
+
+[resource]
+script = ExtResource("1_ccd1n")
+name = "Axe"
+condition = 25
+max_condition = 25
+damage_min = 4
+damage_max = 5
+reach = 6.0
+throw_rotation_speed = 50.0
+throw_movement_speed = 12.0
+glb_mesh = ExtResource("1_ev13c")
+metadata/_custom_type_script = "uid://duyj4lg5yvlvc"
