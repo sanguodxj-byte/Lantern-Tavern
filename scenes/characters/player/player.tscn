@@ -38,11 +38,12 @@ collide_with_bodies = false
 
 [node name="character" parent="." unique_id=1982335508 instance=ExtResource("2_t61fv")]
 
-[node name="Skeleton3D" parent="character/Armature" parent_id_path=PackedInt32Array(1982335508, 1341583853) index="0" unique_id=51470140]
+[node name="Skeleton3D" parent="character/Armature" parent_id_path=PackedInt32Array(1982335508, 427888147) index="0" unique_id=1531272938]
 bones/0/position = Vector3(0, 0.63719213, -0.058584828)
 bones/1/rotation = Quaternion(-0.26081848, 1.1508321e-07, -3.109199e-08, 0.96538794)
 bones/3/rotation = Quaternion(-0.17811054, 0.0069522588, -0.84470385, 0.50468177)
 bones/4/rotation = Quaternion(-0.51970553, -0.03146463, -0.022268824, 0.85347545)
+bones/4/scale = Vector3(1, 0.9999999, 0.99999994)
 bones/6/rotation = Quaternion(-0.01420721, -0.04635846, 0.9871597, -0.15219975)
 bones/7/rotation = Quaternion(0.38037068, -0.0077450327, -0.06930005, 0.9222016)
 bones/9/rotation = Quaternion(-0.36561814, -0.1804519, 0.7375937, 0.5382529)
@@ -51,7 +52,7 @@ bones/12/rotation = Quaternion(0.014207192, -0.046358455, 0.9871597, 0.15219972)
 bones/13/rotation = Quaternion(0.38037068, 0.00774503, 0.06930006, 0.9222016)
 
 [node name="BoneAttachment3D" type="BoneAttachment3D" parent="character/Armature/Skeleton3D" index="1" unique_id=1090486696]
-transform = Transform3D(-0.40672272, -0.81307, 0.41652495, -0.89202154, 0.2550549, -0.37315392, 0.1971637, -0.52331954, -0.8290129, 0.58210635, 0.8479673, -0.3637258)
+transform = Transform3D(-0.40672272, -0.81307, 0.41652495, -0.89202154, 0.25505483, -0.37315392, 0.1971637, -0.52331954, -0.8290129, 0.58210635, 0.8479673, -0.3637258)
 bone_name = "Hand.R"
 bone_idx = 5
 
@@ -59,7 +60,7 @@ bone_idx = 5
 unique_name_in_owner = true
 transform = Transform3D(0.7084582, -0.50713557, 0.49081618, 0.013062805, -0.68590885, -0.7275702, 0.7056319, 0.5218644, -0.47931296, 0.03993016, -0.059191193, -0.03899432)
 
-[node name="AnimationPlayer" parent="character" index="1" unique_id=985907127]
+[node name="AnimationPlayer" parent="character" index="1" unique_id=1808166355]
 autoplay = &"idle"
 
 [node name="EquipmentComponent" parent="." unique_id=2139399618 node_paths=PackedStringArray("weapon_placeholder", "weapon_spawn_position") instance=ExtResource("3_hss88")]
