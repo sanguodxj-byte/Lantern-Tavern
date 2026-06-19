@@ -16,11 +16,15 @@ const MAX_ANGLE_LOOK_DOWN := deg_to_rad(-70)
 @onready var equipment: EquipmentComponent = %EquipmentComponent
 @onready var select_raycast: RayCast3D = %SelectRaycast
 
+enum State {MOVING, PICKING_UP, THROWING}
+
 var current_pickable_focused_item : PickableItem = null
 var input_dir := Vector2.ZERO
+var state: State
 
 func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	switch_state(State.MOVING)
 
 func _process(_delta: float) -> void:
 	input_dir = Input.get_vector("strafe_left", "strafe_right", "backward", "forward")
@@ -45,12 +49,6 @@ func _physics_process(delta: float) -> void:
 		velocity.x = move_toward(velocity.x, desired_velocity.x, acceleration * delta)
 		velocity.z = move_toward(velocity.z, desired_velocity.z, acceleration * delta)
 	
-	var horizontal_velocity := Vector3(velocity.x, 0, velocity.z)
-	if horizontal_velocity.length_squared() > 0.1 and is_on_floor():
-		animation_player.play("run")
-	else:
-		animation_player.play("idle")
-	
 	move_and_slide()
 	check_for_selection()
 
@@ -59,6 +57,10 @@ func _input(event: InputEvent) -> void:
 		rotate_y(-event.relative.x * mouse_sensitivity) # PI 3.14 => 180 degrees 
 		camera.rotate_x(-event.relative.y * mouse_sensitivity)
 		camera.rotation.x = clampf(camera.rotation.x, MAX_ANGLE_LOOK_DOWN, MAX_ANGLE_LOOK_UP)
+
+func switch_state(new_state: State) -> void:
+	var state_node := PlayerStateMoving.new(self)
+	add_child(state_node)
 
 func check_jump_input() -> void:
 	if is_on_floor() and Input.is_action_just_pressed("jump"):
