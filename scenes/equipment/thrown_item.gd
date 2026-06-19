@@ -15,9 +15,13 @@ func _ready() -> void:
 			add_child(thrown_object)
 			var mesh_node := thrown_object.get_child(0) as MeshInstance3D
 			collision_shape.shape = mesh_node.mesh.create_convex_shape()
+			gravity_scale = 0
+			linear_velocity = -global_basis.z * weapon_data.throw_movement_speed
+			angular_velocity = -global_basis.y * weapon_data.throw_rotation_speed
 			body_entered.connect(on_body_entered)
 			
 func on_body_entered(_body: Node) -> void:
+	gravity_scale = 1
 	if not sleeping_state_changed.is_connected(on_sleep):
 		sleeping_state_changed.connect(on_sleep)
 	

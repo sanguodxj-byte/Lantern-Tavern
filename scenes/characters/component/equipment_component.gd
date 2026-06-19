@@ -7,6 +7,7 @@ const THROWN_ITEM_PREFAB := preload("res://scenes/equipment/thrown_item.tscn")
 @export var is_always_in_front: bool
 @export var weapon_data: WeaponData
 @export var weapon_placeholder: Node3D
+@export var weapon_spawn_position: Node3D
 
 func _ready() -> void:
 	if weapon_data != null:
@@ -36,7 +37,7 @@ func throw_weapon() -> void:
 	if has_weapon():
 		var thrown_item := THROWN_ITEM_PREFAB.instantiate()
 		thrown_item.weapon_data = weapon_data
-		thrown_item.global_transform = weapon_placeholder.global_transform
+		thrown_item.global_transform = weapon_spawn_position.global_transform
 		GameState.current_level.add_child(thrown_item)
 		weapon_data = null
 		weapon_placeholder.get_child(0).queue_free()

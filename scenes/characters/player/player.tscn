@@ -62,9 +62,13 @@ transform = Transform3D(0.7084582, -0.50713557, 0.49081618, 0.013062805, -0.6859
 [node name="AnimationPlayer" parent="character" index="1" unique_id=985907127]
 autoplay = &"idle"
 
-[node name="EquipmentComponent" parent="." unique_id=2139399618 node_paths=PackedStringArray("weapon_placeholder") instance=ExtResource("3_hss88")]
+[node name="EquipmentComponent" parent="." unique_id=2139399618 node_paths=PackedStringArray("weapon_placeholder", "weapon_spawn_position") instance=ExtResource("3_hss88")]
 unique_name_in_owner = true
 is_always_in_front = true
 weapon_placeholder = NodePath("../character/Armature/Skeleton3D/BoneAttachment3D/WeaponPlaceholder")
+weapon_spawn_position = NodePath("../WeaponSpawnPosition")
+
+[node name="WeaponSpawnPosition" type="Node3D" parent="." unique_id=1508377189]
+transform = Transform3D(-4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 0, 0, 1, 0.35, 1.3, -0.588)
 
 [editable path="character"]
