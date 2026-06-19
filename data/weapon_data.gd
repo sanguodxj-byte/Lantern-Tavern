@@ -6,6 +6,8 @@ extends Resource
 @export var max_condition: int
 @export var damage_min: int
 @export var damage_max: int
+@export var impale_local_translation: Vector3
+@export var impale_local_rotation: float
 @export var reach: float
 @export var throw_rotation_speed: float
 @export var throw_movement_speed: float

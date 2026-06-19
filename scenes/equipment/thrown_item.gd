@@ -7,8 +7,11 @@ const PICKABLE_ITEM_PREFAB := preload("res://scenes/equipment/pickable_item.tscn
 
 @onready var collision_shape: CollisionShape3D = %CollisionShape
 
+var original_basis: Basis
+
 func _ready() -> void:
 	var thrown_object: Node3D = null
+	original_basis = global_transform.basis
 	if weapon_data != null:
 		thrown_object = weapon_data.glb_mesh.instantiate()
 		if thrown_object != null:
@@ -20,10 +23,13 @@ func _ready() -> void:
 			angular_velocity = -global_basis.y * weapon_data.throw_rotation_speed
 			body_entered.connect(on_body_entered)
 			
-func on_body_entered(_body: Node) -> void:
-	gravity_scale = 1
-	if not sleeping_state_changed.is_connected(on_sleep):
-		sleeping_state_changed.connect(on_sleep)
+func on_body_entered(body: Node) -> void:
+	if body is Enemy:
+		body.impale(self, original_basis)
+	else:
+		gravity_scale = 1
+		if not sleeping_state_changed.is_connected(on_sleep):
+			sleeping_state_changed.connect(on_sleep)
 	
 func on_sleep() -> void:
 	var pickable_item := PICKABLE_ITEM_PREFAB.instantiate()

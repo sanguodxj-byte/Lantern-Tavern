@@ -10,6 +10,7 @@ condition = 30
 max_condition = 30
 damage_min = 3
 damage_max = 5
+impale_local_translation = Vector3(0, 0, 0.7)
 reach = 5.0
 throw_rotation_speed = 40.0
 throw_movement_speed = 10.0

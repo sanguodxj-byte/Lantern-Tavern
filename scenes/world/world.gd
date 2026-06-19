@@ -6,7 +6,7 @@ const LEVELS := [preload("res://scenes/levels/level_01_welcome.tscn")]
 var current_level_index := 0
 var current_loaded_level : BaseLevel = null
 
-func _ready():
+func _ready() -> void:
 	load_level(current_level_index)
 
 func load_level(index: int) -> void:
