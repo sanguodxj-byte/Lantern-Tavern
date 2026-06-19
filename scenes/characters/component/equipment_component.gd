@@ -37,6 +37,6 @@ func throw_weapon() -> void:
 		var thrown_item := THROWN_ITEM_PREFAB.instantiate()
 		thrown_item.weapon_data = weapon_data
 		thrown_item.global_transform = weapon_placeholder.global_transform
-		get_tree().get_root().add_child(thrown_item)
+		GameState.current_level.add_child(thrown_item)
 		weapon_data = null
 		weapon_placeholder.get_child(0).queue_free()

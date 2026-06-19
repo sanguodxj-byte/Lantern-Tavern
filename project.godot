@@ -15,6 +15,10 @@ run/main_scene="uid://du4iytvqujxe7"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
 
+[autoload]
+
+GameState="*uid://cty2vqawfdqbw"
+
 [debug]
 
 gdscript/warnings/unused_signal=0
