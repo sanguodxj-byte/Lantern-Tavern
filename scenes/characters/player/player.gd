@@ -27,6 +27,9 @@ func _process(_delta: float) -> void:
 
 	if Input.is_action_just_pressed("use") and can_pickup_object():
 		pickup_object()
+	
+	if Input.is_action_just_pressed("throw") and equipment.has_weapon():
+		equipment.throw_weapon()
 
 func _physics_process(delta: float) -> void:
 	check_jump_input()

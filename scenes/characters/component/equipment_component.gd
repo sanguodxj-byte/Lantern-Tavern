@@ -2,6 +2,7 @@ class_name EquipmentComponent
 extends Node3D
 
 const EQUIPED_ITEM_PREFAB := preload("res://scenes/equipment/equiped_item.tscn")
+const THROWN_ITEM_PREFAB := preload("res://scenes/equipment/thrown_item.tscn")
 
 @export var is_always_in_front: bool
 @export var weapon_data: WeaponData
@@ -28,5 +29,14 @@ func animate_to_hand(equiped_item: Node3D) -> void:
 	tween.parallel().tween_property(equiped_item, "position", Vector3.ZERO, 0.4)
 	tween.parallel().tween_property(equiped_item, "rotation", Vector3.ZERO, 0.2)
 	
-	
-	
+func has_weapon() -> bool:
+	return weapon_data != null and weapon_placeholder.get_child_count() > 0
+
+func throw_weapon() -> void:
+	if has_weapon():
+		var thrown_item := THROWN_ITEM_PREFAB.instantiate()
+		thrown_item.weapon_data = weapon_data
+		thrown_item.global_transform = weapon_placeholder.global_transform
+		get_tree().get_root().add_child(thrown_item)
+		weapon_data = null
+		weapon_placeholder.get_child(0).queue_free()
