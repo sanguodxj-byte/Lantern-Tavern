@@ -84,5 +84,5 @@ func can_pickup_object() -> bool:
 func pickup_object() -> void:
 	var pickable_object := current_pickable_focused_item
 	if pickable_object.weapon_data != null:
-		equipment.equip_weapon(pickable_object.weapon_data)
+		equipment.equip_weapon(pickable_object.weapon_data, pickable_object.global_transform)
 		pickable_object.queue_free()
