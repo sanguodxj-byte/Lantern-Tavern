@@ -21,6 +21,7 @@ enum State {MOVING, PICKING_UP, THROWING}
 var current_pickable_focused_item : PickableItem = null
 var input_dir := Vector2.ZERO
 var state: State
+var state_node: PlayerState
 
 func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
@@ -29,16 +30,13 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	input_dir = Input.get_vector("strafe_left", "strafe_right", "backward", "forward")
 
-	if Input.is_action_just_pressed("use") and can_pickup_object():
-		pickup_object()
-	
-	if Input.is_action_just_pressed("throw") and equipment.has_weapon():
-		equipment.throw_weapon()
-
-func _physics_process(delta: float) -> void:
+func _physics_process(_delta: float) -> void:
 	check_jump_input()
-	process_gravity()
-	
+	process_gravity()	
+	move_and_slide()
+	check_for_selection()
+
+func process_movement(delta: float) -> void:
 	var input_3d_space := Vector3(input_dir.x, 0, -input_dir.y)
 	var target_speed := run_speed if Input.is_action_pressed("run") else walk_speed
 	var desired_velocity := transform.basis * input_3d_space * target_speed
@@ -48,9 +46,6 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity.x = move_toward(velocity.x, desired_velocity.x, acceleration * delta)
 		velocity.z = move_toward(velocity.z, desired_velocity.z, acceleration * delta)
-	
-	move_and_slide()
-	check_for_selection()
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
@@ -59,7 +54,17 @@ func _input(event: InputEvent) -> void:
 		camera.rotation.x = clampf(camera.rotation.x, MAX_ANGLE_LOOK_DOWN, MAX_ANGLE_LOOK_UP)
 
 func switch_state(new_state: State) -> void:
-	var state_node := PlayerStateMoving.new(self)
+	if state_node != null:
+		state_node.queue_free()
+	var state_map := {
+		State.MOVING: PlayerStateMoving,
+		State.PICKING_UP: PlayerStatePickingUp,
+		State.THROWING: PlayerStateThrowing,
+	}
+	state_node = state_map[new_state].new(self)
+	state_node.transition_requested.connect(switch_state)
+	state_node.name = "State: " + State.keys()[new_state]
+	state = new_state
 	add_child(state_node)
 
 func check_jump_input() -> void:
@@ -85,9 +90,3 @@ func check_for_selection() -> void:
 			
 func can_pickup_object() -> bool:
 	return current_pickable_focused_item != null
-
-func pickup_object() -> void:
-	var pickable_object := current_pickable_focused_item
-	if pickable_object.weapon_data != null:
-		equipment.equip_weapon(pickable_object.weapon_data, pickable_object.global_transform)
-		pickable_object.queue_free()
