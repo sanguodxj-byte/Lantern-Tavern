@@ -8,7 +8,9 @@ func _enter_tree() -> void:
 
 func _physics_process(delta: float) -> void:
 	if enemy.has_registered_player():
-		var target_transform = enemy.global_transform.looking_at(enemy.player.global_position)
+		var target_position := enemy.player.global_position
+		target_position.y = enemy.global_position.y
+		var target_transform := enemy.global_transform.looking_at(target_position)
 		enemy.global_basis = enemy.global_basis.slerp(target_transform.basis, delta * SPEED_ROTATION)
 		if enemy.is_player_within_reach():
 			enemy.animation_player.play("idle")
@@ -18,7 +20,9 @@ func _physics_process(delta: float) -> void:
 				transition_state(Enemy.State.SLASHING)
 		else:
 			enemy.animation_player.play("run")
-			enemy.velocity = -enemy.global_basis.z * enemy.speed
+			var target_velocity := -enemy.global_basis.z * enemy.speed
+			target_velocity.y = enemy.velocity.y
+			enemy.velocity = target_velocity
 	enemy.process_movement(delta)
 
 func can_attack() -> bool:
