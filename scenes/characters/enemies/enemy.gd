@@ -1,6 +1,8 @@
 class_name Enemy
 extends CharacterBody3D
 
+signal screamed
+
 const AIR_FRICTION := 20.0
 const DURATION_RAGDOLL_SIMULATION := 3.0
 const GRAVITY := 20.0
@@ -49,6 +51,7 @@ func switch_state(new_state: State, data: EnemyStateData = EnemyStateData.new())
 
 func impale(thrown_item: ThrownItem, item_basis: Basis) -> void:
 	var state_data := EnemyStateData.new().set_thrown_item(thrown_item).set_thrown_item_basis(item_basis)
+	screamed.emit()
 	switch_state(State.IMPALING, state_data)
 
 func has_registered_player() -> bool:
@@ -61,6 +64,7 @@ func is_player_within_reach() -> bool:
 
 func try_receive_hit(source_player: Player, damage: int) -> void:
 	player = source_player
+	screamed.emit()
 	var hit_direction := source_player.global_position.direction_to(global_position).normalized()
 	switch_state(State.HURT, EnemyStateData.new().set_damage(damage).set_impact_direction(hit_direction))
 

@@ -21,3 +21,6 @@ unique_name_in_owner = true
 mesh_library = ExtResource("1_43ixu")
 cell_size = Vector3(1, 1, 1)
 cell_center_y = false
+
+[node name="Enemies" type="Node3D" parent="." unique_id=2064123038]
+unique_name_in_owner = true
