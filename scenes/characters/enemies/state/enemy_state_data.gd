@@ -1,6 +1,7 @@
 class_name EnemyStateData
 
 var damage: int
+var impact_direction: Vector3
 var impulse: Vector3
 var thrown_item: ThrownItem
 var thrown_item_basis: Basis
@@ -19,4 +20,8 @@ func set_impulse(source: Vector3) -> EnemyStateData:
 
 func set_damage(dmg: int) -> EnemyStateData:
 	damage = dmg
+	return self
+
+func set_impact_direction(direction: Vector3) -> EnemyStateData:
+	impact_direction = direction
 	return self

@@ -1,7 +1,9 @@
 class_name Enemy
 extends CharacterBody3D
 
+const AIR_FRICTION := 20.0
 const DURATION_RAGDOLL_SIMULATION := 3.0
+const GRAVITY := 20.0
 
 @onready var animation_player: AnimationPlayer = $character/AnimationPlayer
 @onready var collision_shape: CollisionShape3D = %CollisionShape
@@ -17,6 +19,7 @@ const DURATION_RAGDOLL_SIMULATION := 3.0
 
 enum State {MOVING, IMPALING, DYING, DEAD, SLASHING, HURT}
 
+var pushback_force := Vector3.ZERO
 var state: State
 var state_node: EnemyState
 var time_since_last_attack: int
@@ -54,8 +57,22 @@ func is_player_within_reach() -> bool:
 		return weapon_reach_raycast.is_colliding()
 	return false
 
-func try_receive_hit(damage: int) -> void:
-	switch_state(State.HURT, EnemyStateData.new().set_damage(damage))
+func try_receive_hit(source_player: Player, damage: int) -> void:
+	var hit_direction := source_player.global_position.direction_to(global_position).normalized()
+	switch_state(State.HURT, EnemyStateData.new().set_damage(damage).set_impact_direction(hit_direction))
+
+func process_movement(delta: float) -> void:
+	process_gravity(delta)
+	process_pushback(delta)
+	move_and_slide()
+
+func process_gravity(delta: float) -> void:
+	if not is_on_floor():
+		velocity.y -= GRAVITY * delta
+
+func process_pushback(delta: float) -> void:
+	pushback_force = pushback_force.move_toward(Vector3.ZERO, delta * AIR_FRICTION)
+	velocity += pushback_force
 
 func on_player_detected(body: Player) -> void:
 	player = body
