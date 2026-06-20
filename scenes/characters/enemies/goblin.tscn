@@ -70,10 +70,10 @@ shape = SubResource("CapsuleShape3D_ik1ic")
 
 [node name="character" parent="." unique_id=213930241 instance=ExtResource("1_jcgx1")]
 
-[node name="Character" parent="character/Armature/Skeleton3D" parent_id_path=PackedInt32Array(213930241, 433669826) index="0" unique_id=53247646]
+[node name="Character" parent="character/Armature/Skeleton3D" parent_id_path=PackedInt32Array(213930241, 854138928) index="0" unique_id=1198831357]
 surface_material_override/0 = SubResource("StandardMaterial3D_1ffe6")
 
-[node name="BoneAttachment3D" type="BoneAttachment3D" parent="character/Armature/Skeleton3D" parent_id_path=PackedInt32Array(213930241, 433669826) index="1" unique_id=439533458]
+[node name="BoneAttachment3D" type="BoneAttachment3D" parent="character/Armature/Skeleton3D" parent_id_path=PackedInt32Array(213930241, 854138928) index="1" unique_id=439533458]
 transform = Transform3D(-0.4472139, 2.682209e-07, 0.8944266, -0.8944265, -1.937151e-07, -0.44721383, 7.2153114e-08, -0.99999964, 4.172325e-07, 0.8096086, 0.8068743, 0.02890563)
 bone_name = "Hand.R"
 bone_idx = 5
@@ -81,7 +81,7 @@ bone_idx = 5
 [node name="WeaponPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/BoneAttachment3D" unique_id=896581106]
 transform = Transform3D(0.46113777, -0.7594847, 0.4588408, -0.5137062, -0.6501375, -0.5598458, 0.72350395, 0.022456616, -0.689955, 0.07149134, -0.037720405, -0.06646673)
 
-[node name="PhysicalBoneSimulator3D" type="PhysicalBoneSimulator3D" parent="character/Armature/Skeleton3D" parent_id_path=PackedInt32Array(213930241, 433669826) index="2" unique_id=1194038126]
+[node name="PhysicalBoneSimulator3D" type="PhysicalBoneSimulator3D" parent="character/Armature/Skeleton3D" parent_id_path=PackedInt32Array(213930241, 854138928) index="2" unique_id=1194038126]
 unique_name_in_owner = true
 
 [node name="Physical Bone Torso" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D" unique_id=926438337]
@@ -112,8 +112,8 @@ joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.94563e-08, -5.0022453e-
 body_offset = Transform3D(1, 2.0535666e-07, 9.6159084e-08, 9.6159056e-08, 2.682209e-07, -1.0000002, -2.0535674e-07, 1.0000001, 2.9802322e-07, 2.2294401e-08, 0.17847514, 4.4703484e-07)
 mass = 4.0
 bone_name = "Head"
-joint_constraints/swing_span = 39.99999
-joint_constraints/twist_span = 19.999994
+joint_constraints/swing_span = 39.999985
+joint_constraints/twist_span = 19.999992
 joint_constraints/bias = 0.3
 joint_constraints/softness = 0.8
 joint_constraints/relaxation = 1.0
@@ -218,11 +218,11 @@ transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0)
 shape = SubResource("CapsuleShape3D_frauy")
 
 [node name="Physical Bone LowerArm_L" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D" unique_id=1459078601]
-transform = Transform3D(-0.13974777, -0.8887466, -0.43657765, 0.98688215, -0.16100603, 0.0118627, -0.08083458, -0.42919293, 0.89958835, -0.4170996, 1.0093255, -0.38159546)
+transform = Transform3D(-0.13974777, -0.88874656, -0.43657768, 0.98688215, -0.16100603, 0.011862708, -0.08083458, -0.4291929, 0.89958835, -0.4170996, 1.0093255, -0.38159546)
 collision_layer = 0
 joint_type = 3
-joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.09950471, -0.08164602, 0.53048253)
-body_offset = Transform3D(0.9451916, 0.25345144, 0.20585439, -0.264204, 0.9641148, 0.026072413, -0.19185907, -0.07903084, 0.9782355, 0.005542159, 0.038595635, -0.54448026)
+joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.09950471, -0.081645995, 0.5304826)
+body_offset = Transform3D(0.9451916, 0.25345144, 0.20585437, -0.264204, 0.9641147, 0.026072353, -0.19185907, -0.07903078, 0.9782355, 0.005542159, 0.038595635, -0.54448026)
 mass = 4.0
 bone_name = "LowerArm.L"
 joint_constraints/angular_limit_enabled = true
@@ -274,7 +274,7 @@ joint_constraints/angular_limit_relaxation = 1.0
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0)
 shape = SubResource("CapsuleShape3D_fw75e")
 
-[node name="AnimationPlayer" parent="character" index="1" unique_id=80660802]
+[node name="AnimationPlayer" parent="character" index="1" unique_id=1385501787]
 autoplay = &"idle"
 
 [node name="EquipmentComponent" parent="." unique_id=2139399618 node_paths=PackedStringArray("weapon_placeholder", "weapon_reach_raycast", "weapon_spawn_position") instance=ExtResource("3_ewb0t")]
@@ -305,5 +305,8 @@ collision_mask = 2
 unique_name_in_owner = true
 max_life = 8
 current_life = 8
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="." unique_id=298498021]
+unique_name_in_owner = true
 
 [editable path="character"]

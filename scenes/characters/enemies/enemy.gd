@@ -9,6 +9,7 @@ const GRAVITY := 20.0
 @onready var collision_shape: CollisionShape3D = %CollisionShape
 @onready var equipment: EquipmentComponent = %EquipmentComponent
 @onready var health: HealthComponent = %HealthComponent
+@onready var nav_agent: NavigationAgent3D = %NavigationAgent3D
 @onready var skeleton_simulator: PhysicalBoneSimulator3D = %PhysicalBoneSimulator3D
 @onready var physical_bone_torso: PhysicalBone3D = %"Physical Bone Torso"
 @onready var player_detection_area: Area3D = %PlayerDetectionArea
@@ -78,4 +79,3 @@ func process_pushback(delta: float) -> void:
 
 func on_player_detected(body: Player) -> void:
 	player = body
-	print("player detected!")

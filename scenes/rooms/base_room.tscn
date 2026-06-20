@@ -7,14 +7,17 @@
 [node name="BaseRoom" type="Node3D" unique_id=1869601789]
 script = ExtResource("1_oxyh5")
 
-[node name="Floors" type="GridMap" parent="." unique_id=1733117505]
-unique_name_in_owner = true
-mesh_library = ExtResource("1_43ixu")
-cell_size = Vector3(1, 1, 1)
-cell_center_y = false
-
 [node name="Ceilings" type="GridMap" parent="." unique_id=1924657198]
 unique_name_in_owner = true
 mesh_library = ExtResource("2_4x8xk")
+cell_size = Vector3(1, 1, 1)
+cell_center_y = false
+
+[node name="RoomNavigation" type="NavigationRegion3D" parent="." unique_id=434851523]
+use_edge_connections = false
+
+[node name="Floors" type="GridMap" parent="RoomNavigation" unique_id=1733117505]
+unique_name_in_owner = true
+mesh_library = ExtResource("1_43ixu")
 cell_size = Vector3(1, 1, 1)
 cell_center_y = false
