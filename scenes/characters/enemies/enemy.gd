@@ -6,6 +6,7 @@ const DURATION_RAGDOLL_SIMULATION := 3.0
 @onready var animation_player: AnimationPlayer = $character/AnimationPlayer
 @onready var collision_shape: CollisionShape3D = %CollisionShape
 @onready var equipment: EquipmentComponent = %EquipmentComponent
+@onready var health: HealthComponent = %HealthComponent
 @onready var skeleton_simulator: PhysicalBoneSimulator3D = %PhysicalBoneSimulator3D
 @onready var physical_bone_torso: PhysicalBone3D = %"Physical Bone Torso"
 @onready var player_detection_area: Area3D = %PlayerDetectionArea
@@ -53,8 +54,8 @@ func is_player_within_reach() -> bool:
 		return weapon_reach_raycast.is_colliding()
 	return false
 
-func try_receive_hit() -> void:
-	switch_state(State.HURT)
+func try_receive_hit(damage: int) -> void:
+	switch_state(State.HURT, EnemyStateData.new().set_damage(damage))
 
 func on_player_detected(body: Player) -> void:
 	player = body

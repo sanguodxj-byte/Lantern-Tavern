@@ -5,6 +5,7 @@
 [ext_resource type="Texture2D" uid="uid://di0hf168tep0u" path="res://assets/textures/skin-goblin.png" id="2_ik1ic"]
 [ext_resource type="PackedScene" uid="uid://dmfg86jn8qjol" path="res://scenes/characters/component/equipment_component.tscn" id="3_ewb0t"]
 [ext_resource type="Resource" uid="uid://b85xdn0cdw6p1" path="res://data/weapons/axe.tres" id="4_lahws"]
+[ext_resource type="PackedScene" uid="uid://d2mdkf8ja46kr" path="res://scenes/characters/component/health_component.tscn" id="6_yjp8u"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ik1ic"]
 height = 1.7
@@ -117,11 +118,11 @@ transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0)
 shape = SubResource("CapsuleShape3D_yjp8u")
 
 [node name="Physical Bone Head" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D" unique_id=2054418634]
-transform = Transform3D(1, 4.4377524e-07, 9.615919e-08, -5.421377e-08, 0.3269414, -0.9450446, -4.5082584e-07, 0.9450446, 0.3269414, 1.4306293e-09, 1.39159, -0.0014452524)
+transform = Transform3D(1, 4.4377524e-07, 9.615919e-08, -5.421377e-08, 0.3269414, -0.9450446, -4.5082584e-07, 0.9450446, 0.3269414, 1.7200475e-09, 1.39159, -0.0014452524)
 collision_layer = 0
 joint_type = 2
-joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.859238e-08, -5.619405e-07, 0.17847484)
-body_offset = Transform3D(1, 2.0535663e-07, 9.61591e-08, 9.615904e-08, 4.4703484e-07, -1.0000004, -2.0535676e-07, 1.0000001, 4.7683716e-07, 1.4305144e-09, 0.1784749, 4.7683716e-07)
+joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.8881797e-08, -5.619405e-07, 0.17847484)
+body_offset = Transform3D(1, 2.0535663e-07, 9.61591e-08, 9.615904e-08, 4.4703484e-07, -1.0000004, -2.0535676e-07, 1.0000001, 4.7683716e-07, 1.7199326e-09, 0.1784749, 4.7683716e-07)
 mass = 4.0
 bone_name = "Head"
 joint_constraints/swing_span = 39.999992
@@ -143,8 +144,8 @@ body_offset = Transform3D(1.0000002, -6.7055225e-07, 1.0058284e-07, 1.8626451e-0
 mass = 2.0
 bone_name = "UpperArm.R"
 joint_constraints/angular_limit_enabled = true
-joint_constraints/angular_limit_upper = 24.999996
-joint_constraints/angular_limit_lower = -24.999996
+joint_constraints/angular_limit_upper = 90.0
+joint_constraints/angular_limit_lower = -45.0
 joint_constraints/angular_limit_bias = 0.3
 joint_constraints/angular_limit_softness = 0.9
 joint_constraints/angular_limit_relaxation = 1.0
@@ -162,8 +163,8 @@ body_offset = Transform3D(1.0000001, -2.3171306e-06, 5.364418e-07, 5.9604645e-07
 mass = 2.0
 bone_name = "LowerArm.R"
 joint_constraints/angular_limit_enabled = true
-joint_constraints/angular_limit_upper = 24.999996
-joint_constraints/angular_limit_lower = -24.999996
+joint_constraints/angular_limit_upper = 90.0
+joint_constraints/angular_limit_lower = -45.0
 joint_constraints/angular_limit_bias = 0.3
 joint_constraints/angular_limit_softness = 0.9
 joint_constraints/angular_limit_relaxation = 1.0
@@ -219,8 +220,8 @@ body_offset = Transform3D(1.0000004, -1.1026859e-06, 2.9057264e-07, 2.9057264e-0
 mass = 4.0
 bone_name = "UpperArm.L"
 joint_constraints/angular_limit_enabled = true
-joint_constraints/angular_limit_upper = 24.999996
-joint_constraints/angular_limit_lower = -24.999996
+joint_constraints/angular_limit_upper = 90.0
+joint_constraints/angular_limit_lower = -45.0
 joint_constraints/angular_limit_bias = 0.3
 joint_constraints/angular_limit_softness = 0.9
 joint_constraints/angular_limit_relaxation = 1.0
@@ -238,8 +239,8 @@ body_offset = Transform3D(1.0000004, 4.6938658e-07, 1.3411045e-07, 7.4505806e-08
 mass = 4.0
 bone_name = "LowerArm.L"
 joint_constraints/angular_limit_enabled = true
-joint_constraints/angular_limit_upper = 24.999996
-joint_constraints/angular_limit_lower = -24.999996
+joint_constraints/angular_limit_upper = 90.0
+joint_constraints/angular_limit_lower = -45.0
 joint_constraints/angular_limit_bias = 0.3
 joint_constraints/angular_limit_softness = 0.9
 joint_constraints/angular_limit_relaxation = 1.0
@@ -312,5 +313,10 @@ unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 target_position = Vector3(0, 0, -2)
 collision_mask = 2
+
+[node name="HealthComponent" parent="." unique_id=1052761881 instance=ExtResource("6_yjp8u")]
+unique_name_in_owner = true
+max_life = 8
+current_life = 8
 
 [editable path="character"]

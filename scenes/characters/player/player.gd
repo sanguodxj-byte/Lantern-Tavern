@@ -14,6 +14,7 @@ const MAX_ANGLE_LOOK_DOWN := deg_to_rad(-70)
 @onready var animation_player: AnimationPlayer = $character/AnimationPlayer
 @onready var camera: Camera3D = %Camera3D
 @onready var equipment: EquipmentComponent = %EquipmentComponent
+@onready var health: HealthComponent = %HealthComponent
 @onready var select_raycast: RayCast3D = %SelectRaycast
 @onready var weapon_reach_raycast: RayCast3D = %WeaponReachRaycast
 

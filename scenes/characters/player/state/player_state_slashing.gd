@@ -17,7 +17,8 @@ func _process(delta: float) -> void:
 		if player.weapon_reach_raycast.is_colliding():
 			var enemy := player.weapon_reach_raycast.get_collider() as Enemy
 			if enemy != null:
-				enemy.try_receive_hit()
+				var damage := player.equipment.weapon_data.get_damage_dealt()
+				enemy.try_receive_hit(damage)
 
 func _physics_process(delta: float) -> void:
 	player.process_movement(delta)
