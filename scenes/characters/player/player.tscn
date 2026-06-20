@@ -39,21 +39,22 @@ collide_with_bodies = false
 [node name="character" parent="." unique_id=1982335508 instance=ExtResource("2_t61fv")]
 
 [node name="Skeleton3D" parent="character/Armature" parent_id_path=PackedInt32Array(1982335508, 149316159) index="0" unique_id=1069276356]
-bones/0/position = Vector3(0, 0.63719213, -0.058584828)
-bones/1/rotation = Quaternion(-0.26081848, 1.1508321e-07, -3.109199e-08, 0.96538794)
-bones/3/rotation = Quaternion(-0.17811054, 0.0069522588, -0.84470385, 0.50468177)
-bones/4/rotation = Quaternion(-0.51970553, -0.03146463, -0.022268824, 0.85347545)
+bones/0/position = Vector3(0, 0.6041883, -0.058584835)
+bones/0/rotation = Quaternion(0.04684497, 0.16128087, -0.03469824, 0.9851853)
+bones/1/rotation = Quaternion(-0.31689146, 0.043611865, -0.06327112, 0.9453437)
+bones/3/rotation = Quaternion(-0.24686003, 0.12380918, -0.7312614, 0.62368923)
+bones/4/rotation = Quaternion(-0.30908418, -0.21721965, 0.14045958, 0.91517967)
 bones/4/scale = Vector3(1, 0.9999999, 0.99999994)
-bones/5/rotation = Quaternion(-0.56170267, -5.859863e-09, -3.2048533e-07, 0.8273392)
-bones/6/rotation = Quaternion(-0.01420721, -0.04635846, 0.9871597, -0.15219975)
-bones/7/rotation = Quaternion(0.38037068, -0.0077450327, -0.06930005, 0.9222016)
+bones/5/rotation = Quaternion(-0.49439272, 0.011095688, -0.08019849, 0.86546)
+bones/6/rotation = Quaternion(-0.17964405, 0.05270213, 0.966089, -0.17782754)
+bones/7/rotation = Quaternion(0.38114962, -0.0077422424, -0.06944194, 0.92186916)
 bones/9/rotation = Quaternion(-0.36561814, -0.1804519, 0.7375937, 0.5382529)
 bones/10/rotation = Quaternion(-0.5652407, 0.0012398548, -0.040283598, 0.823941)
-bones/12/rotation = Quaternion(0.014207192, -0.046358455, 0.9871597, 0.15219972)
-bones/13/rotation = Quaternion(0.38037068, 0.00774503, 0.06930006, 0.9222016)
+bones/12/rotation = Quaternion(-0.14970078, -0.39871678, 0.8953617, 0.13016169)
+bones/13/rotation = Quaternion(0.6098044, 0.0065902267, 0.11110073, 0.78469855)
 
 [node name="BoneAttachment3D" type="BoneAttachment3D" parent="character/Armature/Skeleton3D" index="1" unique_id=1090486696]
-transform = Transform3D(-0.40672272, -0.81307, 0.41652495, -0.89202154, 0.25505483, -0.3731539, 0.1971637, -0.5233195, -0.8290129, 0.58210635, 0.8479673, -0.3637258)
+transform = Transform3D(0.43674, -0.7280754, 0.52835953, -0.88039017, -0.46661925, 0.08472928, 0.18485357, -0.5021673, -0.8447819, 0.5060985, 0.97807753, -0.6824492)
 bone_name = "Hand.R"
 bone_idx = 5
 
@@ -64,13 +65,20 @@ transform = Transform3D(0.7084582, -0.50713557, 0.49081618, 0.013062805, -0.6859
 [node name="AnimationPlayer" parent="character" index="1" unique_id=1431808768]
 autoplay = &"idle"
 
-[node name="EquipmentComponent" parent="." unique_id=2139399618 node_paths=PackedStringArray("weapon_placeholder", "weapon_spawn_position") instance=ExtResource("3_hss88")]
+[node name="EquipmentComponent" parent="." unique_id=2139399618 node_paths=PackedStringArray("weapon_placeholder", "weapon_reach_raycast", "weapon_spawn_position") instance=ExtResource("3_hss88")]
 unique_name_in_owner = true
 is_always_in_front = true
 weapon_placeholder = NodePath("../character/Armature/Skeleton3D/BoneAttachment3D/WeaponPlaceholder")
+weapon_reach_raycast = NodePath("../WeaponReachRaycast")
 weapon_spawn_position = NodePath("../WeaponSpawnPosition")
 
 [node name="WeaponSpawnPosition" type="Node3D" parent="." unique_id=1508377189]
 transform = Transform3D(-4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 0, 0, 1, 0.35, 1.3, -0.588)
+
+[node name="WeaponReachRaycast" type="RayCast3D" parent="." unique_id=1900351802]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+target_position = Vector3(0, 0, -2)
+collision_mask = 4
 
 [editable path="character"]

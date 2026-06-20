@@ -9,11 +9,12 @@ const DURATION_RAGDOLL_SIMULATION := 3.0
 @onready var skeleton_simulator: PhysicalBoneSimulator3D = %PhysicalBoneSimulator3D
 @onready var physical_bone_torso: PhysicalBone3D = %"Physical Bone Torso"
 @onready var player_detection_area: Area3D = %PlayerDetectionArea
+@onready var weapon_reach_raycast: RayCast3D = %WeaponReachRaycast
 
 @export var duration_between_attacks: int
 @export var player: Player
 
-enum State {MOVING, IMPALING, DYING, DEAD, SLASHING}
+enum State {MOVING, IMPALING, DYING, DEAD, SLASHING, HURT}
 
 var state: State
 var state_node: EnemyState
@@ -29,6 +30,7 @@ func switch_state(new_state: State, data: EnemyStateData = EnemyStateData.new())
 	var state_map := {
 		State.DEAD: EnemyStateDead,
 		State.DYING: EnemyStateDying,
+		State.HURT: EnemyStateHurt,
 		State.IMPALING: EnemyStateImpaling,
 		State.MOVING: EnemyStateMoving,
 		State.SLASHING: EnemyStateSlashing,
@@ -48,8 +50,11 @@ func has_registered_player() -> bool:
 
 func is_player_within_reach() -> bool:
 	if has_registered_player() and equipment.has_weapon():
-		return global_position.distance_squared_to(player.global_position) < equipment.weapon_data.reach
+		return weapon_reach_raycast.is_colliding()
 	return false
+
+func try_receive_hit() -> void:
+	switch_state(State.HURT)
 
 func on_player_detected(body: Player) -> void:
 	player = body
