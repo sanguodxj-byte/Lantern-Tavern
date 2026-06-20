@@ -16,7 +16,7 @@ const MAX_ANGLE_LOOK_DOWN := deg_to_rad(-70)
 @onready var equipment: EquipmentComponent = %EquipmentComponent
 @onready var select_raycast: RayCast3D = %SelectRaycast
 
-enum State {MOVING, PICKING_UP, THROWING}
+enum State {MOVING, PICKING_UP, THROWING, SLASHING}
 
 var current_pickable_focused_item : PickableItem = null
 var input_dir := Vector2.ZERO
@@ -59,6 +59,7 @@ func switch_state(new_state: State) -> void:
 	var state_map := {
 		State.MOVING: PlayerStateMoving,
 		State.PICKING_UP: PlayerStatePickingUp,
+		State.SLASHING: PlayerStateSlashing,
 		State.THROWING: PlayerStateThrowing,
 	}
 	state_node = state_map[new_state].new(self)
