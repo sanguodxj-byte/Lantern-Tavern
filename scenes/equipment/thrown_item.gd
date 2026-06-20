@@ -7,6 +7,7 @@ const PICKABLE_ITEM_PREFAB := preload("res://scenes/equipment/pickable_item.tscn
 
 @onready var collision_shape: CollisionShape3D = %CollisionShape
 
+var is_being_dropped: bool
 var original_basis: Basis
 
 func _ready() -> void:
@@ -18,13 +19,14 @@ func _ready() -> void:
 			add_child(thrown_object)
 			var mesh_node := thrown_object.get_child(0) as MeshInstance3D
 			collision_shape.shape = mesh_node.mesh.create_convex_shape()
-			gravity_scale = 0
-			linear_velocity = -global_basis.z * weapon_data.throw_movement_speed
-			angular_velocity = -global_basis.y * weapon_data.throw_rotation_speed
+			if not is_being_dropped:
+				gravity_scale = 0
+				linear_velocity = -global_basis.z * weapon_data.throw_movement_speed
+				angular_velocity = -global_basis.y * weapon_data.throw_rotation_speed
 			body_entered.connect(on_body_entered)
 			
 func on_body_entered(body: Node) -> void:
-	if body is Enemy:
+	if body is Enemy and not is_being_dropped:
 		body.impale(self, original_basis)
 	else:
 		gravity_scale = 1
