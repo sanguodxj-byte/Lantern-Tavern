@@ -10,7 +10,7 @@ func _enter_tree() -> void:
 	player.animation_player.play("slash")
 	player.animation_player.animation_finished.connect(on_animation_finished)
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	var time_elapsed := Time.get_ticks_msec() - time_start_slash
 	if not has_emitted_damage and time_elapsed > TIME_EMIT_DAMAGE:
 		has_emitted_damage = true

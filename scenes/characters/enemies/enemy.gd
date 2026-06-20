@@ -16,6 +16,7 @@ const GRAVITY := 20.0
 
 @export var duration_between_attacks: int
 @export var player: Player
+@export var speed: float
 
 enum State {MOVING, IMPALING, DYING, DEAD, SLASHING, HURT}
 
@@ -58,6 +59,7 @@ func is_player_within_reach() -> bool:
 	return false
 
 func try_receive_hit(source_player: Player, damage: int) -> void:
+	player = source_player
 	var hit_direction := source_player.global_position.direction_to(global_position).normalized()
 	switch_state(State.HURT, EnemyStateData.new().set_damage(damage).set_impact_direction(hit_direction))
 
