@@ -5,6 +5,7 @@ const EQUIPED_ITEM_PREFAB := preload("res://scenes/equipment/equiped_item.tscn")
 const IMPALE_INTENSITY := 100.0
 
 func _enter_tree() -> void:
+	GameEvents.impact_felt.emit(GameEvents.ImpactIntensity.MEDIUM)
 	var impaled_item := EQUIPED_ITEM_PREFAB.instantiate() as EquipedItem
 	impaled_item.weapon_data = state_data.thrown_item.weapon_data
 	enemy.physical_bone_torso.add_child(impaled_item)

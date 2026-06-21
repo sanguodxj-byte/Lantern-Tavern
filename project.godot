@@ -18,6 +18,8 @@ config/icon="res://icon.svg"
 [autoload]
 
 GameState="*uid://cty2vqawfdqbw"
+GameEvents="*uid://eiirh6kbcpec"
+HitStopServer="*uid://d00ngek5c8h4c"
 
 [debug]
 
