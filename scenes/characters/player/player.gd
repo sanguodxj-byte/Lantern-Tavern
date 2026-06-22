@@ -33,6 +33,9 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	input_dir = Input.get_vector("strafe_left", "strafe_right", "backward", "forward")
 
+	if Input.is_action_just_pressed("kick"):
+		GameEvents.player_hurt.emit(self)
+
 func _physics_process(_delta: float) -> void:
 	check_jump_input()
 	process_gravity()	

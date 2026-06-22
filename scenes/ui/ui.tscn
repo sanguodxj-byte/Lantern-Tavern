@@ -1,8 +1,19 @@
 [gd_scene format=3 uid="uid://37tccejpw454"]
 
+[ext_resource type="Script" uid="uid://rl37rveunhk2" path="res://scenes/ui/ui.gd" id="1_f5cxw"]
 [ext_resource type="Texture2D" uid="uid://bjp1lfkxpwqoj" path="res://assets/textures/cursor.png" id="1_u7n8c"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_u7n8c"]
+bg_color = Color(0.6, 0.6, 0.6, 0)
+border_width_left = 100
+border_width_top = 100
+border_width_right = 100
+border_width_bottom = 100
+border_color = Color(0.46229482, 0.09185638, 0.118849866, 1)
+border_blend = true
+
 [node name="UI" type="CanvasLayer" unique_id=123153430]
+script = ExtResource("1_f5cxw")
 
 [node name="Cursor" type="TextureRect" parent="." unique_id=1135798550]
 anchors_preset = 8
@@ -18,3 +29,14 @@ grow_horizontal = 2
 grow_vertical = 2
 texture = ExtResource("1_u7n8c")
 stretch_mode = 2
+metadata/_edit_use_anchors_ = true
+
+[node name="HurtVignette" type="Panel" parent="." unique_id=120424258]
+unique_name_in_owner = true
+modulate = Color(1, 1, 1, 0)
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_u7n8c")
