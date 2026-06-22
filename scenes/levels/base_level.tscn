@@ -18,3 +18,5 @@ mesh_library = ExtResource("2_uk53i")
 cell_size = Vector3(1, 1, 1)
 cell_center_y = false
 collision_mask = 0
+
+[node name="Doors" type="Node3D" parent="." unique_id=2141035982]
