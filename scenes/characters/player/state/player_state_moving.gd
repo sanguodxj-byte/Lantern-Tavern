@@ -8,6 +8,10 @@ func _process(_delta: float) -> void:
 		transition_state(Player.State.THROWING)
 	if Input.is_action_just_pressed("action") and player.equipment.has_weapon():
 		transition_state(Player.State.SLASHING)
+	if Input.is_action_just_pressed("kick"):
+		transition_state(Player.State.KICKING)
+		
+		
 func _physics_process(delta: float) -> void:
 	player.process_movement(delta)
 	var horizontal_velocity := Vector3(player.velocity.x, 0, player.velocity.z)

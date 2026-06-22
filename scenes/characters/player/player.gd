@@ -18,7 +18,7 @@ const MAX_ANGLE_LOOK_DOWN := deg_to_rad(-70)
 @onready var select_raycast: RayCast3D = %SelectRaycast
 @onready var weapon_reach_raycast: RayCast3D = %WeaponReachRaycast
 
-enum State {MOVING, PICKING_UP, THROWING, SLASHING}
+enum State {MOVING, PICKING_UP, THROWING, SLASHING, KICKING}
 
 var current_pickable_focused_item : PickableItem = null
 var input_dir := Vector2.ZERO
@@ -33,12 +33,12 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	input_dir = Input.get_vector("strafe_left", "strafe_right", "backward", "forward")
 
-	if Input.is_action_just_pressed("kick"):
-		GameEvents.player_hurt.emit(self)
+	#if Input.is_action_just_pressed("kick"):
+		#GameEvents.player_hurt.emit(self)
 
 func _physics_process(_delta: float) -> void:
 	check_jump_input()
-	process_gravity()	
+	process_gravity()
 	move_and_slide()
 	check_for_selection()
 
@@ -63,6 +63,7 @@ func switch_state(new_state: State) -> void:
 	if state_node != null:
 		state_node.queue_free()
 	var state_map := {
+		State.KICKING: PlayerStateKicking,
 		State.MOVING: PlayerStateMoving,
 		State.PICKING_UP: PlayerStatePickingUp,
 		State.SLASHING: PlayerStateSlashing,

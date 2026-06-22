@@ -27,7 +27,7 @@ shape = SubResource("CapsuleShape3D_bcx1r")
 
 [node name="MainCamera" type="Camera3D" parent="." unique_id=556309240]
 unique_name_in_owner = true
-transform = Transform3D(1, 0, 0, 0, 1.0000002, 0, 0, 0, 1.0000001, 0, 1.5, -0.6)
+transform = Transform3D(1, 0, 0, 0, 1.0000002, 0, 0, 0, 1.0000001, 0, 1.5, -0.4951762)
 current = true
 near = 0.001
 script = ExtResource("2_qd3e3")
@@ -41,15 +41,17 @@ collide_with_bodies = false
 
 [node name="character" parent="." unique_id=1982335508 instance=ExtResource("2_t61fv")]
 
-[node name="Skeleton3D" parent="character/Armature" parent_id_path=PackedInt32Array(1982335508, 1049138604) index="0" unique_id=854138928]
+[node name="Skeleton3D" parent="character/Armature" parent_id_path=PackedInt32Array(1982335508, 1684246552) index="0" unique_id=1074036699]
 bones/0/position = Vector3(0, 0.63719213, -0.058584828)
 bones/1/rotation = Quaternion(-0.26081848, 1.1508321e-07, -3.109199e-08, 0.96538794)
 bones/3/rotation = Quaternion(-0.17811054, 0.0069522588, -0.84470385, 0.50468177)
 bones/4/rotation = Quaternion(-0.51970553, -0.03146463, -0.022268824, 0.85347545)
 bones/4/scale = Vector3(1, 0.9999999, 0.99999994)
 bones/5/rotation = Quaternion(-0.56170267, -5.859863e-09, -3.2048533e-07, 0.8273392)
-bones/6/rotation = Quaternion(-0.01420721, -0.04635846, 0.9871597, -0.15219975)
-bones/7/rotation = Quaternion(0.38037068, -0.0077450327, -0.06930005, 0.9222016)
+bones/6/rotation = Quaternion(-0.04354277, -0.79482824, 0.604042, -0.03853966)
+bones/6/scale = Vector3(1.7201854, 1.7201893, 1.7201883)
+bones/7/rotation = Quaternion(0.3039468, -0.007987285, -0.055376314, 0.9510447)
+bones/7/scale = Vector3(1.5774522, 1.577452, 1.5774525)
 bones/9/rotation = Quaternion(-0.36561814, -0.1804519, 0.7375937, 0.5382529)
 bones/10/rotation = Quaternion(-0.5652407, 0.0012398548, -0.040283598, 0.823941)
 bones/12/rotation = Quaternion(0.014207192, -0.046358455, 0.9871597, 0.15219972)
@@ -64,7 +66,7 @@ bone_idx = 5
 unique_name_in_owner = true
 transform = Transform3D(0.7084582, -0.50713557, 0.49081618, 0.013062805, -0.68590885, -0.7275702, 0.7056319, 0.5218644, -0.47931296, 0.03993016, -0.059191193, -0.03899432)
 
-[node name="AnimationPlayer" parent="character" index="1" unique_id=1385501787]
+[node name="AnimationPlayer" parent="character" index="1" unique_id=1295934180]
 autoplay = &"idle"
 
 [node name="EquipmentComponent" parent="." unique_id=2139399618 node_paths=PackedStringArray("weapon_placeholder", "weapon_reach_raycast", "weapon_spawn_position") instance=ExtResource("3_hss88")]
