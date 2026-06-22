@@ -1,7 +1,6 @@
 class_name EnemyStateImpaling
 extends EnemyState
 
-const BLOOD_SPURT_PREFAB := preload("res://fx/blood_spurt.tscn")
 const EQUIPED_ITEM_PREFAB := preload("res://scenes/equipment/equiped_item.tscn")
 const IMPALE_INTENSITY := 100.0
 
@@ -15,7 +14,5 @@ func _enter_tree() -> void:
 	impaled_item.rotate_object_local(Vector3.UP, impaled_item.weapon_data.impale_local_rotation)
 	state_data.thrown_item.queue_free()
 	var impulse := state_data.thrown_item_basis * Vector3.FORWARD * IMPALE_INTENSITY + Vector3.UP * IMPALE_INTENSITY
-	var blood := BLOOD_SPURT_PREFAB.instantiate()
-	GameState.current_level.add_child(blood)
-	blood.global_transform = enemy.physical_bone_head.global_transform
+	FxHelper.create_blood_fx(enemy.physical_bone_head.global_transform)
 	transition_state(Enemy.State.DYING, EnemyStateData.new().set_impulse(impulse))

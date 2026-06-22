@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 GameState="*uid://cty2vqawfdqbw"
 GameEvents="*uid://eiirh6kbcpec"
 HitStopServer="*uid://d00ngek5c8h4c"
+FxHelper="*uid://c20hdi30em2yo"
 
 [debug]
 
