@@ -1,0 +1,113 @@
+[gd_scene format=3 uid="uid://drygpo4ji7l0e"]
+
+[ext_resource type="Script" uid="uid://dgg2l4q3ppyoj" path="res://fx/blood_spurt.gd" id="1_qas0q"]
+
+[sub_resource type="Curve" id="Curve_lxwn6"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_sk4k8"]
+curve = SubResource("Curve_lxwn6")
+
+[sub_resource type="Gradient" id="Gradient_k4ubh"]
+colors = PackedColorArray(0, 0.47843137, 0, 0.5254902, 0.4117647, 0.24313726, 0.078431375, 0.45490196)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_ai6mp"]
+gradient = SubResource("Gradient_k4ubh")
+
+[sub_resource type="Curve" id="Curve_xnc0i"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_rjqkw"]
+curve = SubResource("Curve_xnc0i")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_w1val"]
+particle_flag_align_y = true
+emission_shape = 1
+emission_sphere_radius = 0.3
+direction = Vector3(0, 1, 0)
+spread = 60.0
+initial_velocity_min = 2.0
+initial_velocity_max = 4.0
+gravity = Vector3(0, -7, 0)
+scale_min = 0.5
+scale_curve = SubResource("CurveTexture_rjqkw")
+color_ramp = SubResource("GradientTexture1D_ai6mp")
+alpha_curve = SubResource("CurveTexture_sk4k8")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_25pdf"]
+transparency = 1
+vertex_color_use_as_albedo = true
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_u8sly"]
+material = SubResource("StandardMaterial3D_25pdf")
+top_radius = 0.05
+bottom_radius = 0.0
+height = 0.3
+radial_segments = 6
+rings = 2
+
+[sub_resource type="Curve" id="Curve_mefaf"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_4a7u4"]
+curve = SubResource("Curve_mefaf")
+
+[sub_resource type="Curve" id="Curve_tcada"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_fvda6"]
+curve = SubResource("Curve_tcada")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_e15is"]
+lifetime_randomness = 0.5
+emission_shape = 1
+emission_sphere_radius = 0.1
+direction = Vector3(0, 1, 0)
+spread = 180.0
+initial_velocity_min = 3.0
+initial_velocity_max = 5.0
+gravity = Vector3(0, 0, 0)
+scale_curve = SubResource("CurveTexture_fvda6")
+alpha_curve = SubResource("CurveTexture_4a7u4")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5mvqb"]
+transparency = 1
+vertex_color_use_as_albedo = true
+albedo_color = Color(1, 1, 0.05882353, 1)
+emission_enabled = true
+emission = Color(0.7882353, 0.92156863, 0.3529412, 1)
+emission_energy_multiplier = 2.0
+
+[sub_resource type="BoxMesh" id="BoxMesh_thrqy"]
+material = SubResource("StandardMaterial3D_5mvqb")
+size = Vector3(0.05, 0.05, 0.05)
+
+[node name="BloodSpurt" type="Node3D" unique_id=1722576180]
+script = ExtResource("1_qas0q")
+
+[node name="Blood" type="GPUParticles3D" parent="." unique_id=1467278223]
+unique_name_in_owner = true
+emitting = false
+amount = 20
+lifetime = 1.5
+one_shot = true
+explosiveness = 0.8
+fixed_fps = 60
+process_material = SubResource("ParticleProcessMaterial_w1val")
+draw_pass_1 = SubResource("CylinderMesh_u8sly")
+
+[node name="Sparks" type="GPUParticles3D" parent="." unique_id=972979462]
+unique_name_in_owner = true
+emitting = false
+amount = 60
+lifetime = 0.5
+one_shot = true
+explosiveness = 1.0
+randomness = 0.5
+fixed_fps = 60
+process_material = SubResource("ParticleProcessMaterial_e15is")
+draw_pass_1 = SubResource("BoxMesh_thrqy")

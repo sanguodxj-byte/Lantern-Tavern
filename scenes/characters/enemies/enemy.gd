@@ -13,6 +13,7 @@ const GRAVITY := 20.0
 @onready var health: HealthComponent = %HealthComponent
 @onready var nav_agent: NavigationAgent3D = %NavigationAgent3D
 @onready var skeleton_simulator: PhysicalBoneSimulator3D = %PhysicalBoneSimulator3D
+@onready var physical_bone_head: PhysicalBone3D = %"Physical Bone Head"
 @onready var physical_bone_torso: PhysicalBone3D = %"Physical Bone Torso"
 @onready var player_detection_area: Area3D = %PlayerDetectionArea
 @onready var weapon_reach_raycast: RayCast3D = %WeaponReachRaycast
