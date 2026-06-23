@@ -64,14 +64,23 @@ bones/10/rotation = Quaternion(-0.5652407, 0.0012398548, -0.040283598, 0.823941)
 bones/12/rotation = Quaternion(0.014207192, -0.046358455, 0.9871597, 0.15219972)
 bones/13/rotation = Quaternion(0.38037068, 0.00774503, 0.06930006, 0.9222016)
 
-[node name="BoneAttachment3D" type="BoneAttachment3D" parent="character/Armature/Skeleton3D" index="1" unique_id=1090486696]
+[node name="WeaponBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D" index="1" unique_id=1090486696]
 transform = Transform3D(-0.40672272, -0.81307, 0.41652495, -0.89202154, 0.25505483, -0.3731539, 0.1971637, -0.5233195, -0.8290129, 0.58210635, 0.8479673, -0.3637258)
 bone_name = "Hand.R"
 bone_idx = 5
 
-[node name="WeaponPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/BoneAttachment3D" unique_id=1260400768]
+[node name="WeaponPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/WeaponBoneAttachment" unique_id=1260400768]
 unique_name_in_owner = true
 transform = Transform3D(0.7084582, -0.50713557, 0.49081618, 0.013062805, -0.68590885, -0.7275702, 0.7056319, 0.5218644, -0.47931296, 0.03993016, -0.059191193, -0.03899432)
+
+[node name="ShieldBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D" index="2" unique_id=1020906555]
+transform = Transform3D(-0.1397479, 0.9871222, 0.07784194, 0.9868816, 0.14526817, -0.07043447, -0.080835454, 0.06697762, -0.9944741, -0.35214734, 1.007557, -0.5154346)
+bone_name = "Hand.L"
+bone_idx = 11
+
+[node name="ShieldPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/ShieldBoneAttachment" unique_id=1952244974]
+unique_name_in_owner = true
+transform = Transform3D(0.9961947, -0.08715574, 0, 0.07547908, 0.8627299, 0.49999994, -0.04357787, -0.49809736, 0.86602527, 0, 0, 0)
 
 [node name="AnimationPlayer" parent="character" index="1" unique_id=1295934180]
 autoplay = &"idle"
@@ -79,7 +88,7 @@ autoplay = &"idle"
 [node name="EquipmentComponent" parent="." unique_id=2139399618 node_paths=PackedStringArray("weapon_placeholder", "weapon_reach_raycast", "weapon_spawn_position") instance=ExtResource("3_hss88")]
 unique_name_in_owner = true
 is_always_in_front = true
-weapon_placeholder = NodePath("../character/Armature/Skeleton3D/BoneAttachment3D/WeaponPlaceholder")
+weapon_placeholder = NodePath("../character/Armature/Skeleton3D/WeaponBoneAttachment/WeaponPlaceholder")
 weapon_reach_raycast = NodePath("../WeaponReachRaycast")
 weapon_spawn_position = NodePath("../WeaponSpawnPosition")
 
