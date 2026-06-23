@@ -4,7 +4,8 @@ extends EnemyState
 const DURATION_RAGDOLL_SIMULATION := 3.0
 
 func _enter_tree() -> void:
-	enemy.equipment.throw_weapon(true)
+	enemy.equipment.drop_weapon()
+	enemy.equipment.drop_shield()
 	enemy.collision_shape.disabled = true
 	enemy.skeleton_simulator.active = true
 	enemy.skeleton_simulator.physical_bones_start_simulation()
