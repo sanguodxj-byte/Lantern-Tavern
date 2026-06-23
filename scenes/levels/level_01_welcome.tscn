@@ -8,6 +8,7 @@
 [ext_resource type="Resource" uid="uid://bmre07o38bl3s" path="res://data/weapons/shortsword.tres" id="5_h8tnv"]
 [ext_resource type="Resource" uid="uid://b85xdn0cdw6p1" path="res://data/weapons/axe.tres" id="5_xicp7"]
 [ext_resource type="PackedScene" uid="uid://tktvvhry0jfp" path="res://scenes/door/door.tscn" id="8_3sqe8"]
+[ext_resource type="Resource" uid="uid://dwwgg8a4e5a5o" path="res://data/shields/buckler.tres" id="9_pw0xg"]
 
 [node name="Level-01-Welcome" unique_id=113800226 instance=ExtResource("1_0mf82")]
 
@@ -37,3 +38,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.5)
 
 [node name="Door2" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="1" unique_id=157612695 instance=ExtResource("8_3sqe8")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 0, -3.5)
+
+[node name="PickableItem3" parent="." index="6" unique_id=2100067603 instance=ExtResource("4_xicp7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.1004083, 0.5300405, -2.144401)
+shield_data = ExtResource("9_pw0xg")
