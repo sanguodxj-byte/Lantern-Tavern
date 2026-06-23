@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://tktvvhry0jfp"]
 
 [ext_resource type="PackedScene" uid="uid://c2qlyjbybc3i2" path="res://assets/meshes/doors/door.glb" id="1_bu3y2"]
+[ext_resource type="Script" uid="uid://btv7nsy7780mw" path="res://scenes/door/door.gd" id="1_odsy8"]
 
 [sub_resource type="Animation" id="Animation_odsy8"]
 length = 0.001
@@ -64,13 +65,16 @@ data = PackedVector3Array(-1.2638, 0, 0.16849999, -1.2638, 2.0219998, -0.1684999
 [node name="Door" type="StaticBody3D" unique_id=1915289721]
 collision_layer = 32
 collision_mask = 0
+script = ExtResource("1_odsy8")
 
 [node name="door" parent="." unique_id=948023046 instance=ExtResource("1_bu3y2")]
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1338554944]
+unique_name_in_owner = true
 libraries/ = SubResource("AnimationLibrary_iwle0")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=2080459608]
+unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.63187504, 0, 0)
 shape = SubResource("ConcavePolygonShape3D_bu3y2")
 

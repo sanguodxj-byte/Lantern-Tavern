@@ -19,9 +19,6 @@ transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -11,
 [node name="Kitchen" parent="Rooms" parent_id_path=PackedInt32Array(540883177) index="2" unique_id=553187685 instance=ExtResource("4_td8hj")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, -9)
 
-[node name="PlayerSpawn" parent="." index="1" unique_id=588236999]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1)
-
 [node name="Floors" parent="Hallways" parent_id_path=PackedInt32Array(715007728) index="0" unique_id=1456009944]
 data = {
 "cells": PackedInt32Array(65535, 65532, 1, 0, 65532, 655361, 65524, 65532, 1, 65525, 65532, 655361)
@@ -37,3 +34,6 @@ weapon_data = ExtResource("5_xicp7")
 
 [node name="Door" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="0" unique_id=1915289721 instance=ExtResource("8_3sqe8")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.5)
+
+[node name="Door2" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="1" unique_id=157612695 instance=ExtResource("8_3sqe8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 0, -3.5)
