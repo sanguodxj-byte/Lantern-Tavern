@@ -5,6 +5,8 @@ const EQUIPED_ITEM_PREFAB := preload("res://scenes/equipment/equiped_item.tscn")
 const THROWN_ITEM_PREFAB := preload("res://scenes/equipment/thrown_item.tscn")
 
 @export var is_always_in_front: bool
+@export var shield_data: ShieldData
+@export var shield_placeholder: Node3D
 @export var weapon_data: WeaponData
 @export var weapon_placeholder: Node3D
 @export var weapon_reach_raycast: RayCast3D
@@ -13,6 +15,8 @@ const THROWN_ITEM_PREFAB := preload("res://scenes/equipment/thrown_item.tscn")
 func _ready() -> void:
 	if weapon_data != null:
 		equip_weapon(weapon_data)
+	if shield_data != null:
+		equip_shield(shield_data)
 
 func equip_weapon(data: WeaponData, pickup_transform: Transform3D = Transform3D.IDENTITY) -> void:
 	weapon_data = data.duplicate()
@@ -24,6 +28,16 @@ func equip_weapon(data: WeaponData, pickup_transform: Transform3D = Transform3D.
 	if pickup_transform != Transform3D.IDENTITY:
 		weapon.global_transform = pickup_transform
 		animate_to_hand(weapon)
+		
+func equip_shield(data: ShieldData, pickup_transform: Transform3D = Transform3D.IDENTITY) -> void:
+	shield_data = data.duplicate()
+	var shield := EQUIPED_ITEM_PREFAB.instantiate() as EquipedItem
+	shield.shield_data = shield_data
+	shield.is_always_in_front = is_always_in_front
+	shield_placeholder.add_child(shield)
+	if pickup_transform != Transform3D.IDENTITY:
+		shield.global_transform = pickup_transform
+		animate_to_hand(shield)
 
 func animate_to_hand(equiped_item: Node3D) -> void:
 	var tween := equiped_item.create_tween()
