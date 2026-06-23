@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://801uvv41lf28" path="res://assets/meshes/characters/character.glb" id="2_t61fv"]
 [ext_resource type="PackedScene" uid="uid://dmfg86jn8qjol" path="res://scenes/characters/component/equipment_component.tscn" id="3_hss88"]
 [ext_resource type="PackedScene" uid="uid://d2mdkf8ja46kr" path="res://scenes/characters/component/health_component.tscn" id="4_hss88"]
+[ext_resource type="Resource" uid="uid://dwwgg8a4e5a5o" path="res://data/shields/buckler.tres" id="5_6avc5"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_bcx1r"]
 margin = 0.3
@@ -88,6 +89,7 @@ autoplay = &"idle"
 [node name="EquipmentComponent" parent="." unique_id=2139399618 node_paths=PackedStringArray("shield_placeholder", "weapon_placeholder", "weapon_reach_raycast", "weapon_spawn_position") instance=ExtResource("3_hss88")]
 unique_name_in_owner = true
 is_always_in_front = true
+shield_data = ExtResource("5_6avc5")
 shield_placeholder = NodePath("../character/Armature/Skeleton3D/ShieldBoneAttachment/ShieldPlaceholder")
 weapon_placeholder = NodePath("../character/Armature/Skeleton3D/WeaponBoneAttachment/WeaponPlaceholder")
 weapon_reach_raycast = NodePath("../WeaponReachRaycast")

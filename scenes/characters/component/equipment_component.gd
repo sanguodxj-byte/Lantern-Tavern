@@ -19,6 +19,8 @@ func _ready() -> void:
 		equip_shield(shield_data)
 
 func equip_weapon(data: WeaponData, pickup_transform: Transform3D = Transform3D.IDENTITY) -> void:
+	if has_weapon():
+		drop_weapon()
 	weapon_data = data.duplicate()
 	var weapon := EQUIPED_ITEM_PREFAB.instantiate() as EquipedItem
 	weapon.weapon_data = weapon_data
@@ -30,6 +32,8 @@ func equip_weapon(data: WeaponData, pickup_transform: Transform3D = Transform3D.
 		animate_to_hand(weapon)
 		
 func equip_shield(data: ShieldData, pickup_transform: Transform3D = Transform3D.IDENTITY) -> void:
+	if has_shield():
+		drop_shield()
 	shield_data = data.duplicate()
 	var shield := EQUIPED_ITEM_PREFAB.instantiate() as EquipedItem
 	shield.shield_data = shield_data
@@ -45,7 +49,10 @@ func animate_to_hand(equiped_item: Node3D) -> void:
 	tween.set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(equiped_item, "position", Vector3.ZERO, 0.4)
 	tween.parallel().tween_property(equiped_item, "rotation", Vector3.ZERO, 0.2)
-	
+
+func has_shield() -> bool:
+	return shield_data != null and shield_placeholder.get_child_count() > 0
+
 func has_weapon() -> bool:
 	return weapon_data != null and weapon_placeholder.get_child_count() > 0
 
@@ -61,3 +68,17 @@ func throw_weapon(is_being_dropped: bool = false) -> void:
 		GameState.current_level.add_child(thrown_item)
 		weapon_data = null
 		weapon_placeholder.get_child(0).queue_free()
+
+func drop_weapon() -> void:
+	throw_weapon(true)
+
+func drop_shield() -> void:
+	if has_shield():
+		var dropped_item := THROWN_ITEM_PREFAB.instantiate()
+		dropped_item.shield_data = shield_data
+		dropped_item.is_being_dropped = true
+		var spawn_transform := shield_placeholder.global_transform
+		dropped_item.global_transform = spawn_transform
+		GameState.current_level.add_child(dropped_item)
+		shield_data = null
+		shield_placeholder.get_child(0).queue_free()
