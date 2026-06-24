@@ -22,7 +22,7 @@ const GRAVITY := 20.0
 @export var player: Player
 @export var speed: float
 
-enum State {MOVING, IMPALING, DYING, DEAD, SLASHING, HURT}
+enum State {MOVING, IMPALING, DYING, DEAD, SLASHING, HURT, BLOCKING}
 
 var pushback_force := Vector3.ZERO
 var state: State
@@ -37,6 +37,7 @@ func switch_state(new_state: State, data: EnemyStateData = EnemyStateData.new())
 	if state_node != null:
 		state_node.queue_free()
 	var state_map := {
+		State.BLOCKING: EnemyStateBlocking,
 		State.DEAD: EnemyStateDead,
 		State.DYING: EnemyStateDying,
 		State.HURT: EnemyStateHurt,
@@ -67,7 +68,11 @@ func try_receive_hit(source_player: Player, damage: int) -> void:
 	player = source_player
 	screamed.emit()
 	var hit_direction := source_player.global_position.direction_to(global_position).normalized()
-	switch_state(State.HURT, EnemyStateData.new().set_damage(damage).set_impact_direction(hit_direction))
+	var data := EnemyStateData.new().set_damage(damage).set_impact_direction(hit_direction)
+	if player == null or not equipment.has_shield():
+		switch_state(State.HURT, data)
+	else:
+		switch_state(State.BLOCKING, data)
 
 func process_movement(delta: float) -> void:
 	process_gravity(delta)

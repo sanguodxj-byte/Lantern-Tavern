@@ -4,13 +4,14 @@ extends PlayerState
 func _process(_delta: float) -> void:
 	if Input.is_action_just_pressed("use") and player.can_pickup_object():
 		transition_state(Player.State.PICKING_UP)
-	if Input.is_action_just_pressed("throw") and player.equipment.has_weapon():
+	elif Input.is_action_just_pressed("throw") and player.equipment.has_weapon():
 		transition_state(Player.State.THROWING)
-	if Input.is_action_just_pressed("action") and player.equipment.has_weapon():
+	elif Input.is_action_just_pressed("action") and player.equipment.has_weapon():
 		transition_state(Player.State.SLASHING)
-	if Input.is_action_just_pressed("kick"):
+	elif Input.is_action_just_pressed("kick"):
 		transition_state(Player.State.KICKING)
-		
+	elif Input.is_action_just_pressed("block") and player.equipment.has_shield():
+		transition_state(Player.State.BLOCKING)
 		
 func _physics_process(delta: float) -> void:
 	player.process_movement(delta)
