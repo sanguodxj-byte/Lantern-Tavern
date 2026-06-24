@@ -15,3 +15,6 @@ func _enter_tree() -> void:
 
 func freeze_ragdoll() -> void:
 	transition_state(Enemy.State.DEAD)
+
+func can_die() -> bool:
+	return false

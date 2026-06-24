@@ -18,3 +18,6 @@ func can_get_stunned() -> bool:
 
 func can_get_hurt() -> bool:
 	return false
+
+func can_die() -> bool:
+	return true

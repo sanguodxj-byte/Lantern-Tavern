@@ -106,3 +106,9 @@ func process_pushback(delta: float) -> void:
 
 func on_player_detected(body: Player) -> void:
 	player = body
+
+func take_acid_damage() -> void:
+	if state_node.can_die():
+		switch_state(State.DYING)
+	
+	
