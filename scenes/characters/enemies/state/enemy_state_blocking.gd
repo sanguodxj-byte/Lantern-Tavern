@@ -6,6 +6,8 @@ const KNOCKBACK_FORCE := 2.5
 
 func _enter_tree() -> void:
 	enemy.animation_player.play("block")
+	#GameEvents.impact_felt.emit(GameEvents.ImpactIntensity.LOW)
+	FxHelper.create_metal_spark(enemy.equipment.shield_placeholder.global_position)
 	enemy.pushback_force += state_data.impact_direction * KNOCKBACK_FORCE
 	
 func _physics_process(delta: float) -> void:
