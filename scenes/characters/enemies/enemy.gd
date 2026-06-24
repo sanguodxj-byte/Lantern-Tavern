@@ -53,8 +53,13 @@ func switch_state(new_state: State, data: EnemyStateData = EnemyStateData.new())
 
 func impale(thrown_item: ThrownItem, item_basis: Basis) -> void:
 	var state_data := EnemyStateData.new().set_thrown_item(thrown_item).set_thrown_item_basis(item_basis)
+	if player == null or not equipment.has_shield():
+		switch_state(State.IMPALING, state_data)
+	else:
+		var hit_direction := thrown_item.global_position.direction_to(global_position)
+		state_data.set_impact_direction(hit_direction)
+		switch_state(State.BLOCKING, state_data)
 	screamed.emit()
-	switch_state(State.IMPALING, state_data)
 
 func has_registered_player() -> bool:
 	return player != null and is_instance_valid(player)
@@ -67,7 +72,7 @@ func is_player_within_reach() -> bool:
 func try_receive_hit(source_player: Player, damage: int) -> void:
 	player = source_player
 	screamed.emit()
-	var hit_direction := source_player.global_position.direction_to(global_position).normalized()
+	var hit_direction := source_player.global_position.direction_to(global_position)
 	var data := EnemyStateData.new().set_damage(damage).set_impact_direction(hit_direction)
 	if player == null or not equipment.has_shield():
 		switch_state(State.HURT, data)
