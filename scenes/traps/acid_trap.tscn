@@ -1,0 +1,34 @@
+[gd_scene format=3 uid="uid://cgacgosoajhu4"]
+
+[ext_resource type="Texture2D" uid="uid://0ea0xflmod0o" path="res://assets/textures/acid.png" id="1_dhc81"]
+[ext_resource type="Script" uid="uid://y8vrdn0hc8yp" path="res://scenes/traps/acid_trap.gd" id="1_eld0c"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dhc81"]
+albedo_texture = ExtResource("1_dhc81")
+texture_filter = 0
+
+[sub_resource type="QuadMesh" id="QuadMesh_1ulyj"]
+material = SubResource("StandardMaterial3D_dhc81")
+subdivide_width = 16
+subdivide_depth = 16
+orientation = 1
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_dhc81"]
+
+[node name="AcidTrap" type="Node3D" unique_id=1242214440]
+script = ExtResource("1_eld0c")
+
+[node name="Mesh" type="MeshInstance3D" parent="." unique_id=367200440]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, -0.2, 0.5)
+mesh = SubResource("QuadMesh_1ulyj")
+
+[node name="BodyDetectionArea" type="Area3D" parent="." unique_id=1692632351]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0, 0.5)
+collision_layer = 0
+collision_mask = 6
+monitorable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BodyDetectionArea" unique_id=747465431]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.8359643, 0)
+shape = SubResource("BoxShape3D_dhc81")

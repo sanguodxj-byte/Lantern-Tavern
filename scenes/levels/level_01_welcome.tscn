@@ -9,7 +9,7 @@
 [ext_resource type="Resource" uid="uid://b85xdn0cdw6p1" path="res://data/weapons/axe.tres" id="5_xicp7"]
 [ext_resource type="PackedScene" uid="uid://tktvvhry0jfp" path="res://scenes/door/door.tscn" id="8_3sqe8"]
 [ext_resource type="Resource" uid="uid://dwwgg8a4e5a5o" path="res://data/shields/buckler.tres" id="9_pw0xg"]
-[ext_resource type="PackedScene" uid="uid://c4r4xxykidew8" path="res://scenes/traps/acid.tscn" id="10_1omhj"]
+[ext_resource type="PackedScene" uid="uid://cgacgosoajhu4" path="res://scenes/traps/acid_trap.tscn" id="10_1omhj"]
 
 [node name="Level-01-Welcome" unique_id=113800226 instance=ExtResource("1_0mf82")]
 
@@ -44,20 +44,20 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 0, -3.5)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.1004083, 0.5300405, -2.144401)
 shield_data = ExtResource("9_pw0xg")
 
-[node name="Acid" parent="Traps" parent_id_path=PackedInt32Array(1619138226) index="0" unique_id=1100592909 instance=ExtResource("10_1omhj")]
+[node name="AcidTrap" parent="Traps" parent_id_path=PackedInt32Array(818966558) index="0" unique_id=1242214440 instance=ExtResource("10_1omhj")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 0, 5)
 
-[node name="Acid2" parent="Traps" parent_id_path=PackedInt32Array(1619138226) index="1" unique_id=919285435 instance=ExtResource("10_1omhj")]
+[node name="AcidTrap3" parent="Traps" parent_id_path=PackedInt32Array(818966558) index="1" unique_id=37374271 instance=ExtResource("10_1omhj")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, 5)
 
-[node name="Acid3" parent="Traps" parent_id_path=PackedInt32Array(1619138226) index="2" unique_id=686654127 instance=ExtResource("10_1omhj")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 0, 4)
-
-[node name="Acid4" parent="Traps" parent_id_path=PackedInt32Array(1619138226) index="3" unique_id=1827673243 instance=ExtResource("10_1omhj")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, 4)
-
-[node name="Acid5" parent="Traps" parent_id_path=PackedInt32Array(1619138226) index="4" unique_id=382208080 instance=ExtResource("10_1omhj")]
+[node name="AcidTrap5" parent="Traps" parent_id_path=PackedInt32Array(818966558) index="2" unique_id=530422910 instance=ExtResource("10_1omhj")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 0, 6)
 
-[node name="Acid6" parent="Traps" parent_id_path=PackedInt32Array(1619138226) index="5" unique_id=1100862140 instance=ExtResource("10_1omhj")]
+[node name="AcidTrap6" parent="Traps" parent_id_path=PackedInt32Array(818966558) index="3" unique_id=282191580 instance=ExtResource("10_1omhj")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, 6)
+
+[node name="AcidTrap4" parent="Traps" parent_id_path=PackedInt32Array(818966558) index="4" unique_id=2078030139 instance=ExtResource("10_1omhj")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, 4)
+
+[node name="AcidTrap2" parent="Traps" parent_id_path=PackedInt32Array(818966558) index="5" unique_id=1201473170 instance=ExtResource("10_1omhj")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 0, 4)

@@ -110,5 +110,3 @@ func on_player_detected(body: Player) -> void:
 func take_acid_damage() -> void:
 	if state_node.can_die():
 		switch_state(State.DYING)
-	
-	

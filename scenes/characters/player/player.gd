@@ -100,6 +100,6 @@ func check_for_selection() -> void:
 			
 func can_pickup_object() -> bool:
 	return current_pickable_focused_item != null
-
+	
 func take_acid_damage() -> void:
 	print("ouch")

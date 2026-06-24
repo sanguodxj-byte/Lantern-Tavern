@@ -1,4 +1,4 @@
-class_name Acid
+class_name AcidTrap
 extends Node3D
 
 @onready var body_detection_area: Area3D = %BodyDetectionArea
