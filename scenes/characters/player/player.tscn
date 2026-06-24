@@ -43,33 +43,16 @@ collision_mask = 8
 collide_with_areas = true
 collide_with_bodies = false
 
-[node name="DoorRaycast" type="RayCast3D" parent="MainCamera" unique_id=786304336]
+[node name="KickRaycast" type="RayCast3D" parent="MainCamera" unique_id=786304336]
 unique_name_in_owner = true
-target_position = Vector3(0, 0, -1)
-collision_mask = 32
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+target_position = Vector3(0, 0, -1.5)
+collision_mask = 36
 
 [node name="character" parent="." unique_id=1982335508 instance=ExtResource("2_t61fv")]
 
-[node name="Skeleton3D" parent="character/Armature" parent_id_path=PackedInt32Array(1982335508, 351826473) index="0" unique_id=1339848976]
-bones/0/position = Vector3(0, 0.63719213, -0.058584828)
-bones/0/rotation = Quaternion(0.097183876, 0, 0, 0.9952665)
-bones/1/rotation = Quaternion(-0.26081848, 1.1508321e-07, -3.109199e-08, 0.96538794)
-bones/3/rotation = Quaternion(-0.17811054, 0.0069522588, -0.84470385, 0.50468177)
-bones/4/rotation = Quaternion(-0.51970553, -0.03146463, -0.022268824, 0.85347545)
-bones/4/scale = Vector3(1, 0.9999999, 0.99999994)
-bones/5/rotation = Quaternion(-0.56170267, -5.859863e-09, -3.2048533e-07, 0.8273392)
-bones/6/rotation = Quaternion(-0.014207216, -0.04635846, 0.9871598, -0.15219976)
-bones/6/scale = Vector3(0.99999756, 0.9999997, 0.9999995)
-bones/7/rotation = Quaternion(0.38037068, -0.007745031, -0.06930004, 0.9222016)
-bones/7/scale = Vector3(0.99999976, 0.9999998, 0.9999999)
-bones/9/position = Vector3(-0.22114311, 0.47031987, 0.0021124508)
-bones/9/rotation = Quaternion(-0.36561814, -0.1804519, 0.7375937, 0.5382529)
-bones/10/rotation = Quaternion(-0.5652407, 0.0012398548, -0.040283598, 0.823941)
-bones/12/rotation = Quaternion(0.014207192, -0.046358455, 0.9871597, 0.15219972)
-bones/13/rotation = Quaternion(0.38037068, 0.00774503, 0.06930006, 0.9222016)
-
-[node name="WeaponBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D" index="0" unique_id=1090486696]
-transform = Transform3D(-0.40672272, -0.81307, 0.41652495, -0.89202154, 0.25505483, -0.3731539, 0.19716372, -0.5233195, -0.8290129, 0.58210635, 0.8479673, -0.3637258)
+[node name="WeaponBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D" parent_id_path=PackedInt32Array(1982335508, 1494499618) index="0" unique_id=1090486696]
+transform = Transform3D(-0.4472139, 2.682209e-07, 0.8944266, -0.8944265, -1.937151e-07, -0.44721383, 7.2153114e-08, -0.99999964, 4.172325e-07, 0.8096086, 0.8068743, 0.02890563)
 bone_name = "Hand.R"
 bone_idx = 5
 
@@ -77,8 +60,8 @@ bone_idx = 5
 unique_name_in_owner = true
 transform = Transform3D(0.7084582, -0.50713557, 0.49081618, 0.013062805, -0.68590885, -0.7275702, 0.7056319, 0.5218644, -0.47931296, 0.03993016, -0.059191193, -0.03899432)
 
-[node name="ShieldBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D" index="1" unique_id=1020906555]
-transform = Transform3D(-0.1397479, 0.9871222, 0.07784194, 0.9868816, 0.14526817, -0.07043449, -0.08083547, 0.06697762, -0.9944741, -0.35214734, 1.007557, -0.5154346)
+[node name="ShieldBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D" parent_id_path=PackedInt32Array(1982335508, 1494499618) index="1" unique_id=1020906555]
+transform = Transform3D(-0.4472139, -2.682209e-07, -0.8944266, 0.8944265, -1.937151e-07, -0.44721383, -7.2153114e-08, -0.99999964, 4.172325e-07, -0.8096086, 0.8068743, 0.02890563)
 bone_name = "Hand.L"
 bone_idx = 11
 
@@ -86,7 +69,7 @@ bone_idx = 11
 unique_name_in_owner = true
 transform = Transform3D(0.9961947, -0.08715574, 0, 0.07547908, 0.8627299, 0.49999994, -0.04357787, -0.49809736, 0.86602527, 0, 0, 0)
 
-[node name="AnimationPlayer" parent="character" index="1" unique_id=533804991]
+[node name="AnimationPlayer" parent="character" index="1" unique_id=1014050657]
 autoplay = &"idle"
 
 [node name="EquipmentComponent" parent="." unique_id=2139399618 node_paths=PackedStringArray("shield_placeholder", "weapon_placeholder", "weapon_reach_raycast", "weapon_spawn_position") instance=ExtResource("3_hss88")]

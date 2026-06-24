@@ -19,10 +19,11 @@ const GRAVITY := 20.0
 @onready var weapon_reach_raycast: RayCast3D = %WeaponReachRaycast
 
 @export var duration_between_attacks: int
+@export var duration_stun : int
 @export var player: Player
 @export var speed: float
 
-enum State {MOVING, IMPALING, DYING, DEAD, SLASHING, HURT, BLOCKING}
+enum State {MOVING, IMPALING, DYING, DEAD, SLASHING, HURT, BLOCKING, STUNNED}
 
 var pushback_force := Vector3.ZERO
 var state: State
@@ -44,6 +45,7 @@ func switch_state(new_state: State, data: EnemyStateData = EnemyStateData.new())
 		State.IMPALING: EnemyStateImpaling,
 		State.MOVING: EnemyStateMoving,
 		State.SLASHING: EnemyStateSlashing,
+		State.STUNNED: EnemyStateStunned,
 	}
 	state_node = state_map[new_state].new(self, data)
 	state_node.transition_requested.connect(switch_state)
@@ -53,7 +55,7 @@ func switch_state(new_state: State, data: EnemyStateData = EnemyStateData.new())
 
 func impale(thrown_item: ThrownItem, item_basis: Basis) -> void:
 	var state_data := EnemyStateData.new().set_thrown_item(thrown_item).set_thrown_item_basis(item_basis)
-	if player == null or not equipment.has_shield():
+	if player == null or not equipment.has_shield() or state_node.can_get_hurt():
 		switch_state(State.IMPALING, state_data)
 	else:
 		var hit_direction := thrown_item.global_position.direction_to(global_position)
@@ -74,8 +76,18 @@ func try_receive_hit(source_player: Player, damage: int) -> void:
 	screamed.emit()
 	var hit_direction := source_player.global_position.direction_to(global_position)
 	var data := EnemyStateData.new().set_damage(damage).set_impact_direction(hit_direction)
-	if player == null or not equipment.has_shield():
+	if player == null or not equipment.has_shield() or state_node.can_get_hurt():
 		switch_state(State.HURT, data)
+	else:
+		switch_state(State.BLOCKING, data)
+	
+func try_receive_kick(source_player: Player) -> void:
+	player = source_player
+	screamed.emit()
+	var hit_direction := source_player.global_position.direction_to(global_position)
+	var data := EnemyStateData.new().set_impact_direction(hit_direction)
+	if state_node.can_get_stunned() or not equipment.has_shield():
+		switch_state(State.STUNNED, data)
 	else:
 		switch_state(State.BLOCKING, data)
 

@@ -12,3 +12,9 @@ func _init(source_enemy: Enemy, source_data: EnemyStateData = EnemyStateData.new
 
 func transition_state(new_state: Enemy.State, source_data: EnemyStateData = EnemyStateData.new()) -> void:
 	transition_requested.emit(new_state, source_data)
+
+func can_get_stunned() -> bool:
+	return false
+
+func can_get_hurt() -> bool:
+	return false
