@@ -2,13 +2,19 @@
 
 [ext_resource type="Texture2D" uid="uid://0ea0xflmod0o" path="res://assets/textures/acid.png" id="1_dhc81"]
 [ext_resource type="Script" uid="uid://y8vrdn0hc8yp" path="res://scenes/traps/acid_trap.gd" id="1_eld0c"]
+[ext_resource type="Shader" uid="uid://bemqmwsi0ovyi" path="res://shaders/liquid.gdshader" id="2_eld0c"]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dhc81"]
-albedo_texture = ExtResource("1_dhc81")
-texture_filter = 0
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_qdvwo"]
+render_priority = 0
+shader = ExtResource("2_eld0c")
+shader_parameter/liquid_texture = ExtResource("1_dhc81")
+shader_parameter/texture_scroll_speed = Vector2(0.05, 0.03)
+shader_parameter/wave_amplitude = 0.05000000167648
+shader_parameter/wave_frequency = 2.0
+shader_parameter/wave_speed = 1.00000004424012
 
 [sub_resource type="QuadMesh" id="QuadMesh_1ulyj"]
-material = SubResource("StandardMaterial3D_dhc81")
+material = SubResource("ShaderMaterial_qdvwo")
 subdivide_width = 16
 subdivide_depth = 16
 orientation = 1
