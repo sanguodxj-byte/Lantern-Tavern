@@ -12,3 +12,6 @@ func _physics_process(delta: float) -> void:
 
 func on_animation_finished(_anim_name: String) -> void:
 	transition_state(Player.State.MOVING)
+
+func can_get_hurt() -> bool:
+	return false

@@ -34,9 +34,6 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	input_dir = Input.get_vector("strafe_left", "strafe_right", "backward", "forward")
 
-	#if Input.is_action_just_pressed("kick"):
-		#GameEvents.player_hurt.emit(self)
-
 func _physics_process(_delta: float) -> void:
 	check_jump_input()
 	process_gravity()
@@ -97,7 +94,13 @@ func check_for_selection() -> void:
 		current_pickable_focused_item = target_node
 		if current_pickable_focused_item is PickableItem:
 			current_pickable_focused_item.highlight()
-			
+
+func try_receive_hit(source_enemy: Enemy, _damage: int) -> void:
+	if state_node.can_get_hurt():
+		GameEvents.player_hurt.emit(self)
+	elif state == State.BLOCKING:
+		source_enemy.try_stun()
+
 func can_pickup_object() -> bool:
 	return current_pickable_focused_item != null
 	

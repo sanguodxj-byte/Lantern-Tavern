@@ -10,3 +10,6 @@ func _init(source_player: Player) -> void:
 
 func transition_state(new_state: Player.State) -> void:
 	transition_requested.emit(new_state)
+
+func can_get_hurt() -> bool:
+	return true

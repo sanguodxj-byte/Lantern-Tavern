@@ -91,6 +91,10 @@ func try_receive_kick(source_player: Player) -> void:
 	else:
 		switch_state(State.BLOCKING, data)
 
+func try_stun() -> void:
+	if state_node.can_get_stunned():
+		switch_state(State.STUNNED)
+
 func process_movement(delta: float) -> void:
 	process_gravity(delta)
 	process_pushback(delta)
