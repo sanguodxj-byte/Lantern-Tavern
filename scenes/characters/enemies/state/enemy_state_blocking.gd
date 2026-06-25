@@ -2,11 +2,11 @@ class_name EnemyStateBlocking
 extends EnemyState
 
 const GROUND_FRICTION := 10.0
-const KNOCKBACK_FORCE := 2.5
+const KNOCKBACK_FORCE := 2.0
 
 func _enter_tree() -> void:
 	enemy.animation_player.play("block")
-	#GameEvents.impact_felt.emit(GameEvents.ImpactIntensity.LOW)
+	GameEvents.impact_felt.emit(GameEvents.ImpactIntensity.LOW)
 	FxHelper.create_metal_spark(enemy.equipment.shield_placeholder.global_position)
 	enemy.pushback_force += state_data.impact_direction * KNOCKBACK_FORCE
 	

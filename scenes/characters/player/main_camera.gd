@@ -8,9 +8,9 @@ var duration_map : Dictionary[GameEvents.ImpactIntensity, int] = {
 }
 var current_intensity : GameEvents.ImpactIntensity
 var intensity_map : Dictionary[GameEvents.ImpactIntensity, float] = {
-	GameEvents.ImpactIntensity.LOW: 0.1,
-	GameEvents.ImpactIntensity.MEDIUM: 0.15,
-	GameEvents.ImpactIntensity.HIGH: 0.2,
+	GameEvents.ImpactIntensity.LOW: 0.05,
+	GameEvents.ImpactIntensity.MEDIUM: 0.1,
+	GameEvents.ImpactIntensity.HIGH: 0.15,
 }
 var initial_transform: Transform3D
 var is_shaking := false
