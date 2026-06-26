@@ -8,7 +8,10 @@ var time_start := Time.get_ticks_msec()
 
 func _enter_tree() -> void:
 	enemy.animation_player.play("stunned")
-	enemy.pushback_force += state_data.impact_direction * KNOCKBACK_FORCE
+	var knockback := KNOCKBACK_FORCE
+	if state_data.knockback_force != 0:
+		knockback = state_data.knockback_force
+	enemy.pushback_force += state_data.impact_direction * knockback
 
 func _physics_process(delta: float) -> void:
 	enemy.velocity = enemy.velocity.move_toward(Vector3.ZERO, delta * GROUND_FRICTION)
@@ -17,4 +20,7 @@ func _physics_process(delta: float) -> void:
 		transition_state(Enemy.State.MOVING)
 		
 func can_get_hurt() -> bool:
+	return true
+	
+func can_get_stunned() -> bool:
 	return true

@@ -80,13 +80,15 @@ func try_receive_hit(source_player: Player, damage: int) -> void:
 		switch_state(State.HURT, data)
 	else:
 		switch_state(State.BLOCKING, data)
-	
+
 func try_receive_kick(source_player: Player) -> void:
 	player = source_player
 	screamed.emit()
 	var hit_direction := source_player.global_position.direction_to(global_position)
 	var data := EnemyStateData.new().set_impact_direction(hit_direction)
 	if state_node.can_get_stunned() or not equipment.has_shield():
+		if state == State.STUNNED:
+			data.set_knockback_force(2.5)
 		switch_state(State.STUNNED, data)
 	else:
 		switch_state(State.BLOCKING, data)
@@ -112,5 +114,9 @@ func on_player_detected(body: Player) -> void:
 	player = body
 
 func take_acid_damage() -> void:
+	if state_node.can_die():
+		switch_state(State.DYING)
+
+func take_spike_damage(_spike_area: Area3D) -> void:
 	if state_node.can_die():
 		switch_state(State.DYING)
