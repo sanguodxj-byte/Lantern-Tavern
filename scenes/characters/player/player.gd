@@ -106,3 +106,12 @@ func can_pickup_object() -> bool:
 	
 func take_acid_damage() -> void:
 	print("ouch")
+
+func take_spike_damage(_spikes_trap: SpikesTrap) -> void:
+	print("ouchie")
+	
+	
+	
+	
+	
+	

@@ -4,12 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://bin1bnskndpug" path="res://scenes/rooms/entrance.tscn" id="2_iemd2"]
 [ext_resource type="PackedScene" uid="uid://bskrm716eop4r" path="res://scenes/rooms/foyer.tscn" id="3_xicp7"]
 [ext_resource type="PackedScene" uid="uid://cbkhj7qiy0wml" path="res://scenes/rooms/kitchen.tscn" id="4_td8hj"]
-[ext_resource type="PackedScene" uid="uid://cg5to3gopwqho" path="res://scenes/equipment/pickable_item.tscn" id="4_xicp7"]
-[ext_resource type="Resource" uid="uid://bmre07o38bl3s" path="res://data/weapons/shortsword.tres" id="5_h8tnv"]
-[ext_resource type="Resource" uid="uid://b85xdn0cdw6p1" path="res://data/weapons/axe.tres" id="5_xicp7"]
 [ext_resource type="PackedScene" uid="uid://tktvvhry0jfp" path="res://scenes/door/door.tscn" id="8_3sqe8"]
-[ext_resource type="Resource" uid="uid://dwwgg8a4e5a5o" path="res://data/shields/buckler.tres" id="9_pw0xg"]
-[ext_resource type="PackedScene" uid="uid://cgacgosoajhu4" path="res://scenes/traps/acid_trap.tscn" id="10_1omhj"]
 
 [node name="Level-01-Welcome" unique_id=113800226 instance=ExtResource("1_0mf82")]
 
@@ -26,38 +21,8 @@ data = {
 "cells": PackedInt32Array(65535, 65532, 1, 0, 65532, 655361, 65524, 65532, 1, 65525, 65532, 655361)
 }
 
-[node name="PickableItem" parent="." index="3" unique_id=1285890900 instance=ExtResource("4_xicp7")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, -11)
-weapon_data = ExtResource("5_h8tnv")
-
-[node name="PickableItem2" parent="." index="4" unique_id=1932526532 instance=ExtResource("4_xicp7")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, -15)
-weapon_data = ExtResource("5_xicp7")
-
 [node name="Door" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="0" unique_id=1915289721 instance=ExtResource("8_3sqe8")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.5)
 
 [node name="Door2" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="1" unique_id=157612695 instance=ExtResource("8_3sqe8")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 0, -3.5)
-
-[node name="PickableItem3" parent="." index="6" unique_id=2100067603 instance=ExtResource("4_xicp7")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.1004083, 0.5300405, -2.144401)
-shield_data = ExtResource("9_pw0xg")
-
-[node name="AcidTrap" parent="Traps" parent_id_path=PackedInt32Array(818966558) index="0" unique_id=1242214440 instance=ExtResource("10_1omhj")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 0, 5)
-
-[node name="AcidTrap3" parent="Traps" parent_id_path=PackedInt32Array(818966558) index="1" unique_id=37374271 instance=ExtResource("10_1omhj")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, 5)
-
-[node name="AcidTrap5" parent="Traps" parent_id_path=PackedInt32Array(818966558) index="2" unique_id=530422910 instance=ExtResource("10_1omhj")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 0, 6)
-
-[node name="AcidTrap6" parent="Traps" parent_id_path=PackedInt32Array(818966558) index="3" unique_id=282191580 instance=ExtResource("10_1omhj")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, 6)
-
-[node name="AcidTrap4" parent="Traps" parent_id_path=PackedInt32Array(818966558) index="4" unique_id=2078030139 instance=ExtResource("10_1omhj")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, 4)
-
-[node name="AcidTrap2" parent="Traps" parent_id_path=PackedInt32Array(818966558) index="5" unique_id=1201473170 instance=ExtResource("10_1omhj")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 0, 4)

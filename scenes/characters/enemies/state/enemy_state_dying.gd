@@ -4,6 +4,8 @@ extends EnemyState
 const DURATION_RAGDOLL_SIMULATION := 3.0
 
 func _enter_tree() -> void:
+	GameEvents.impact_felt.emit(GameEvents.ImpactIntensity.MEDIUM)
+	FxHelper.create_blood_fx(enemy.physical_bone_head.global_transform)	
 	enemy.equipment.drop_weapon()
 	enemy.equipment.drop_shield()
 	enemy.collision_shape.disabled = true

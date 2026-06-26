@@ -1,10 +1,9 @@
 class_name AcidTrap
-extends Node3D
-
-@onready var body_detection_area: Area3D = %BodyDetectionArea
+extends Area3D
 
 func _ready() -> void:
-	body_detection_area.body_entered.connect(on_body_entered)
+	body_entered.connect(on_body_entered)
 
-func on_body_entered(body: CharacterBody3D) -> void:
-	body.take_acid_damage()
+func on_body_entered(body: Node3D) -> void:
+	if body is Enemy or body is Player:
+		body.take_acid_damage()
