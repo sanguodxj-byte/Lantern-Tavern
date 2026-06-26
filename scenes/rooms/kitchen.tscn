@@ -2,11 +2,10 @@
 
 [ext_resource type="PackedScene" uid="uid://dvre4shd8agg2" path="res://scenes/rooms/base_room.tscn" id="1_3w07q"]
 [ext_resource type="PackedScene" uid="uid://cty2xvbejnvbg" path="res://scenes/characters/enemies/goblin.tscn" id="2_p7bu6"]
-[ext_resource type="PackedScene" uid="uid://bu6g5h8et62ur" path="res://scenes/traps/spikes_trap.tscn" id="3_sqdrw"]
 
 [sub_resource type="NavigationMesh" id="NavigationMesh_p7bu6"]
-vertices = PackedVector3Array(-1.5, 0.02, -0.25, 0.25, 0.02, -0.5, 0, 0.02, -3.25, -6.25, 0.02, -3.25, -6.25, 0.02, 4.25, -1.5, 0.02, 4.25, 3.75, 0.02, -0.25, 7.5, 0.02, -3.25, 3.75, 0.02, 4.25, 7.5, 0.02, 4.25)
-polygons = [PackedInt32Array(1, 0, 2), PackedInt32Array(2, 0, 3), PackedInt32Array(5, 4, 0), PackedInt32Array(0, 4, 3), PackedInt32Array(1, 2, 6), PackedInt32Array(6, 2, 7), PackedInt32Array(8, 6, 9), PackedInt32Array(9, 6, 7)]
+vertices = PackedVector3Array(-1.5, 0.02, -0.25, -1, 0.02, -0.75, -1.25, 0.02, -3.25, -6.25, 0.02, -3.25, -6.25, 0.02, 4.25, -1.5, 0.02, 4.25, 0.75, 0.02, -1, 1, 0.02, -0.5, 3.5, 0.02, -0.5, 7.5, 0.02, -3.25, 3.75, 0.02, 4.25, 7.5, 0.02, 4.25)
+polygons = [PackedInt32Array(1, 0, 2), PackedInt32Array(2, 0, 3), PackedInt32Array(5, 4, 0), PackedInt32Array(0, 4, 3), PackedInt32Array(8, 7, 6), PackedInt32Array(2, 6, 1), PackedInt32Array(6, 2, 8), PackedInt32Array(8, 2, 9), PackedInt32Array(10, 8, 11), PackedInt32Array(11, 8, 9)]
 cell_height = 0.01
 
 [node name="Kitchen" unique_id=1869601789 instance=ExtResource("1_3w07q")]
@@ -24,5 +23,3 @@ transform = Transform3D(-0.8660254, 0, -0.50000006, 0, 1, 0, 0.50000006, 0, -0.8
 
 [node name="Goblin2" parent="Enemies" parent_id_path=PackedInt32Array(2064123038) index="1" unique_id=546270593 instance=ExtResource("2_p7bu6")]
 transform = Transform3D(-0.86602545, 0, 0.5, 0, 1, 0, -0.5, 0, -0.86602545, 6, 0, -2)
-
-[node name="SpikesTrap" parent="Traps" parent_id_path=PackedInt32Array(1612382141) index="0" unique_id=1548292220 instance=ExtResource("3_sqdrw")]

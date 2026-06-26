@@ -10,8 +10,6 @@ func _enter_tree() -> void:
 	enemy.skeleton_simulator.active = true
 	enemy.skeleton_simulator.physical_bones_start_simulation()
 	enemy.physical_bone_torso.apply_impulse(state_data.impulse)
-	GameEvents.impact_felt.emit(GameEvents.ImpactIntensity.MEDIUM)
-	FxHelper.create_blood_fx(enemy.physical_bone_head.global_transform)
 	var timer := get_tree().create_timer(DURATION_RAGDOLL_SIMULATION)
 	timer.timeout.connect(freeze_ragdoll)
 
