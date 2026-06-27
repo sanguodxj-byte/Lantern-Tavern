@@ -18,10 +18,12 @@ func _ready() -> void:
 	original_basis = global_transform.basis
 	var throw_movement_speed := 0.0
 	var throw_rotation_speed := 0.0
+	var gravity := 0.8
 	if weapon_data != null:
 		thrown_object = weapon_data.glb_mesh.instantiate()
 		throw_movement_speed = weapon_data.throw_movement_speed
 		throw_rotation_speed = weapon_data.throw_rotation_speed
+		gravity = 0
 	elif shield_data != null:
 		thrown_object = shield_data.glb_mesh.instantiate()
 	elif furniture_data != null:
@@ -33,11 +35,11 @@ func _ready() -> void:
 		var mesh_node := thrown_object.get_child(0) as MeshInstance3D
 		collision_shape.shape = mesh_node.mesh.create_convex_shape()
 		if not is_being_dropped:
-			gravity_scale = 0
+			gravity_scale = gravity
 			linear_velocity = -global_basis.z * throw_movement_speed
 			angular_velocity = -global_basis.y * throw_rotation_speed
 		body_entered.connect(on_body_entered)
-			
+
 func on_body_entered(body: Node) -> void:
 	if weapon_data != null:
 		if body is Enemy and not is_being_dropped:
