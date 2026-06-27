@@ -43,12 +43,16 @@ func _ready() -> void:
 func on_body_entered(body: Node) -> void:
 	if weapon_data != null:
 		if body is Enemy and not is_being_dropped:
-			body.impale(self, original_basis)
+			var enemy := body as Enemy
+			enemy.impale(self, original_basis)
 		else:
 			gravity_scale = 1
 			if not sleeping_state_changed.is_connected(on_sleep):
 				sleeping_state_changed.connect(on_sleep)
 	elif furniture_data != null:
+		if body is Enemy and not is_being_dropped:
+			var enemy := body as Enemy
+			enemy.try_receive_furniture_impact(self)
 		var destructible_item := DESTRUCTIBLE_ITEM_PREFAB.instantiate() as DestructibleItem
 		destructible_item.global_transform = global_transform
 		destructible_item.furniture_data = furniture_data

@@ -63,6 +63,12 @@ func impale(thrown_item: ThrownItem, item_basis: Basis) -> void:
 		switch_state(State.BLOCKING, state_data)
 	screamed.emit()
 
+func try_receive_furniture_impact(thrown_item: ThrownItem) -> void:
+	equipment.drop_shield()
+	var hit_direction := thrown_item.global_position.direction_to(global_position)
+	var data := EnemyStateData.new().set_impact_direction(hit_direction).set_knockback_force(2.5)
+	switch_state(State.STUNNED, data)
+
 func has_registered_player() -> bool:
 	return player != null and is_instance_valid(player)
 

@@ -17,6 +17,7 @@ func _physics_process(delta: float) -> void:
 	enemy.velocity = enemy.velocity.move_toward(Vector3.ZERO, delta * GROUND_FRICTION)
 	enemy.process_movement(delta)
 	if Time.get_ticks_msec() - time_start > enemy.duration_stun:
+		enemy.screamed.emit()
 		transition_state(Enemy.State.MOVING)
 		
 func can_get_hurt() -> bool:
