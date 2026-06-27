@@ -1,6 +1,7 @@
 class_name ThrownItem
 extends RigidBody3D
 
+const DESTRUCTIBLE_ITEM_PREFAB := preload("res://scenes/props/destructible_item.tscn")
 const PICKABLE_ITEM_PREFAB := preload("res://scenes/equipment/pickable_item.tscn")
 
 @export var furniture_data: FurnitureData
@@ -38,12 +39,20 @@ func _ready() -> void:
 		body_entered.connect(on_body_entered)
 			
 func on_body_entered(body: Node) -> void:
-	if body is Enemy and not is_being_dropped:
-		body.impale(self, original_basis)
-	else:
-		gravity_scale = 1
-		if not sleeping_state_changed.is_connected(on_sleep):
-			sleeping_state_changed.connect(on_sleep)
+	if weapon_data != null:
+		if body is Enemy and not is_being_dropped:
+			body.impale(self, original_basis)
+		else:
+			gravity_scale = 1
+			if not sleeping_state_changed.is_connected(on_sleep):
+				sleeping_state_changed.connect(on_sleep)
+	elif furniture_data != null:
+		var destructible_item := DESTRUCTIBLE_ITEM_PREFAB.instantiate() as DestructibleItem
+		destructible_item.global_transform = global_transform
+		destructible_item.furniture_data = furniture_data
+		GameState.current_level.add_child(destructible_item)
+		destructible_item.explode()
+		queue_free()
 	
 func on_sleep() -> void:
 	var pickable_item := PICKABLE_ITEM_PREFAB.instantiate()
