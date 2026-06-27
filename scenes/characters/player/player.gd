@@ -40,9 +40,10 @@ func _physics_process(_delta: float) -> void:
 	move_and_slide()
 	check_for_selection()
 
-func process_movement(delta: float) -> void:
+func process_movement(delta: float, speed_multiplier: float = 1.0) -> void:
 	var input_3d_space := Vector3(input_dir.x, 0, -input_dir.y)
 	var target_speed := run_speed if Input.is_action_pressed("run") else walk_speed
+	target_speed *= speed_multiplier
 	var desired_velocity := transform.basis * input_3d_space * target_speed
 	if input_3d_space == Vector3.ZERO:
 		velocity.x = move_toward(velocity.x, 0, acceleration * delta)
