@@ -4,6 +4,8 @@ extends Node3D
 const EQUIPED_ITEM_PREFAB := preload("res://scenes/equipment/equiped_item.tscn")
 const THROWN_ITEM_PREFAB := preload("res://scenes/equipment/thrown_item.tscn")
 
+@export var furniture_data: FurnitureData
+@export var furniture_placeholder: Node3D
 @export var is_always_in_front: bool
 @export var shield_data: ShieldData
 @export var shield_placeholder: Node3D
@@ -43,6 +45,20 @@ func equip_shield(data: ShieldData, pickup_transform: Transform3D = Transform3D.
 		shield.global_transform = pickup_transform
 		animate_to_hand(shield)
 
+func equip_furniture(data: FurnitureData, pickup_transform: Transform3D = Transform3D.IDENTITY) -> void:
+	if has_shield():
+		hide_shield()
+	if has_weapon():
+		hide_weapon()
+	furniture_data = data.duplicate()
+	var furniture := EQUIPED_ITEM_PREFAB.instantiate() as EquipedItem
+	furniture.furniture_data = furniture_data
+	furniture.is_always_in_front = is_always_in_front
+	furniture_placeholder.add_child(furniture)
+	if pickup_transform != Transform3D.IDENTITY:
+		furniture.global_transform = pickup_transform
+		animate_to_hand(furniture)
+
 func animate_to_hand(equiped_item: Node3D) -> void:
 	var tween := equiped_item.create_tween()
 	tween.set_trans(Tween.TRANS_QUAD)
@@ -53,8 +69,20 @@ func animate_to_hand(equiped_item: Node3D) -> void:
 func has_shield() -> bool:
 	return shield_data != null and shield_placeholder.get_child_count() > 0
 
+func hide_shield() -> void:
+	shield_placeholder.visible = false
+
+func show_shield() -> void:
+	shield_placeholder.visible = true
+
 func has_weapon() -> bool:
 	return weapon_data != null and weapon_placeholder.get_child_count() > 0
+
+func hide_weapon() -> void:
+	weapon_placeholder.visible = false
+
+func show_weapon() -> void:
+	weapon_placeholder.visible = true
 
 func throw_weapon(is_being_dropped: bool = false) -> void:
 	if has_weapon():

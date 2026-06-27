@@ -1,11 +1,13 @@
 [gd_scene format=3 uid="uid://ci0wq7gvicf1p"]
 
 [ext_resource type="PackedScene" uid="uid://cg5to3gopwqho" path="res://scenes/equipment/pickable_item.tscn" id="1_mmi0q"]
+[ext_resource type="Resource" uid="uid://cjq4eveslcfua" path="res://data/furniture/barrel.tres" id="2_2gpa7"]
 [ext_resource type="PackedScene" uid="uid://dvpfwd74pf7ii" path="res://assets/meshes/props/barrel/barrel.glb" id="2_5377x"]
 
 [node name="Barrel" unique_id=1588726055 node_paths=PackedStringArray("mesh_node") instance=ExtResource("1_mmi0q")]
 collision_layer = 72
 mesh_node = NodePath("barrel/Barrel")
+furniture_data = ExtResource("2_2gpa7")
 
 [node name="barrel" parent="." index="1" unique_id=611773022 instance=ExtResource("2_5377x")]
 

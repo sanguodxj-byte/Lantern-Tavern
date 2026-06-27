@@ -49,8 +49,25 @@ collision_mask = 36
 
 [node name="character" parent="." unique_id=1982335508 instance=ExtResource("2_t61fv")]
 
-[node name="WeaponBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D" parent_id_path=PackedInt32Array(1982335508, 1494499618) index="0" unique_id=1090486696]
-transform = Transform3D(-0.4472139, 2.682209e-07, 0.8944266, -0.8944265, -1.937151e-07, -0.44721383, 7.2153114e-08, -0.99999964, 4.172325e-07, 0.8096086, 0.8068743, 0.02890563)
+[node name="Skeleton3D" parent="character/Armature" parent_id_path=PackedInt32Array(1982335508, 1555904924) index="0" unique_id=2085145724]
+bones/0/position = Vector3(0, 0.63719213, -0.058584828)
+bones/1/rotation = Quaternion(-0.26081848, 1.1508321e-07, -3.109199e-08, 0.96538794)
+bones/3/rotation = Quaternion(-0.3018214, -0.09959091, -0.27672833, 0.90686655)
+bones/4/rotation = Quaternion(-0.23353589, 0.26236373, 0.116321616, 0.92902935)
+bones/4/scale = Vector3(0.99999994, 0.99999994, 0.99999994)
+bones/5/rotation = Quaternion(-0.56170267, 9.663889e-09, -3.1751665e-07, 0.8273392)
+bones/6/rotation = Quaternion(-0.01420721, -0.04635846, 0.9871597, -0.15219975)
+bones/6/scale = Vector3(0.99999756, 0.9999997, 0.9999995)
+bones/7/rotation = Quaternion(0.38037068, -0.007745031, -0.06930004, 0.9222016)
+bones/7/scale = Vector3(0.99999976, 0.9999998, 0.9999999)
+bones/9/position = Vector3(-0.22114311, 0.47031987, 0.0021124508)
+bones/9/rotation = Quaternion(-0.37534428, -0.13842393, 0.33018485, 0.85494643)
+bones/10/rotation = Quaternion(-0.20703807, -0.25165173, -0.4476475, 0.8327175)
+bones/12/rotation = Quaternion(0.014207192, -0.046358455, 0.9871597, 0.15219972)
+bones/13/rotation = Quaternion(0.38037068, 0.00774503, 0.06930006, 0.9222016)
+
+[node name="WeaponBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D" index="0" unique_id=1090486696]
+transform = Transform3D(0.7507339, -0.5043182, 0.42668617, -0.58494526, -0.20733644, 0.7841237, -0.30698046, -0.8382564, -0.45065325, 0.5052753, 1.5868472, -0.321892)
 bone_name = "Hand.R"
 bone_idx = 5
 
@@ -58,8 +75,8 @@ bone_idx = 5
 unique_name_in_owner = true
 transform = Transform3D(0.7084582, -0.50713557, 0.49081618, 0.013062805, -0.68590885, -0.7275702, 0.7056319, 0.5218644, -0.47931296, 0.03993016, -0.059191193, -0.03899432)
 
-[node name="ShieldBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D" parent_id_path=PackedInt32Array(1982335508, 1494499618) index="1" unique_id=1020906555]
-transform = Transform3D(-0.4472139, -2.682209e-07, -0.8944266, 0.8944265, -1.937151e-07, -0.44721383, -7.2153114e-08, -0.99999964, 4.172325e-07, -0.8096086, 0.8068743, 0.02890563)
+[node name="ShieldBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D" index="1" unique_id=1020906555]
+transform = Transform3D(0.35395458, 0.9276093, 0.1194011, 0.15217783, -0.1830858, 0.971247, 0.92279875, -0.32560706, -0.20596568, -0.267815, 1.596041, -0.30361196)
 bone_name = "Hand.L"
 bone_idx = 11
 
@@ -67,11 +84,12 @@ bone_idx = 11
 unique_name_in_owner = true
 transform = Transform3D(0.9961947, -0.08715574, 0, 0.07547908, 0.8627299, 0.49999994, -0.04357787, -0.49809736, 0.86602527, 0, 0, 0)
 
-[node name="AnimationPlayer" parent="character" index="1" unique_id=1014050657]
+[node name="AnimationPlayer" parent="character" index="1" unique_id=280826956]
 autoplay = &"idle"
 
-[node name="EquipmentComponent" parent="." unique_id=2139399618 node_paths=PackedStringArray("shield_placeholder", "weapon_placeholder", "weapon_reach_raycast", "weapon_spawn_position") instance=ExtResource("3_hss88")]
+[node name="EquipmentComponent" parent="." unique_id=2139399618 node_paths=PackedStringArray("furniture_placeholder", "shield_placeholder", "weapon_placeholder", "weapon_reach_raycast", "weapon_spawn_position") instance=ExtResource("3_hss88")]
 unique_name_in_owner = true
+furniture_placeholder = NodePath("../FurniturePlaceholder")
 is_always_in_front = true
 shield_data = ExtResource("5_6avc5")
 shield_placeholder = NodePath("../character/Armature/Skeleton3D/ShieldBoneAttachment/ShieldPlaceholder")
@@ -93,5 +111,8 @@ collision_mask = 4
 unique_name_in_owner = true
 max_life = 30
 current_life = 30
+
+[node name="FurniturePlaceholder" type="Node3D" parent="." unique_id=1227463794]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -0.3)
 
 [editable path="character"]
