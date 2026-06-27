@@ -62,7 +62,7 @@ radius = 2.5
 
 [node name="Goblin" type="CharacterBody3D" unique_id=1305714049]
 collision_layer = 4
-collision_mask = 39
+collision_mask = 103
 script = ExtResource("1_lahws")
 duration_between_attacks = 2000
 duration_stun = 2500

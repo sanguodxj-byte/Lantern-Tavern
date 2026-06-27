@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="FurnitureData" format=3 uid="uid://cjq4eveslcfua"]
+
+[ext_resource type="PackedScene" uid="uid://ddp2fyx8tt6fx" path="res://assets/meshes/props/barrel/barrel-fragmented.glb" id="1_4kn78"]
+[ext_resource type="Script" uid="uid://bwlbtu7cpyg1" path="res://data/furniture_data.gd" id="1_70860"]
+[ext_resource type="PackedScene" uid="uid://dvpfwd74pf7ii" path="res://assets/meshes/props/barrel/barrel.glb" id="2_pgkjm"]
+
+[resource]
+script = ExtResource("1_70860")
+name = "Barrel"
+glb_mesh = ExtResource("2_pgkjm")
+glb_fragments_mesh = ExtResource("1_4kn78")
+metadata/_custom_type_script = "uid://bwlbtu7cpyg1"

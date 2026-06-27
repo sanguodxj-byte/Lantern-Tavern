@@ -2,10 +2,9 @@
 
 [ext_resource type="Script" uid="uid://d3u5204dbab6p" path="res://scenes/equipment/pickable_item.gd" id="1_sgxpu"]
 
-[node name="PickableItem" type="Area3D" unique_id=1285890900]
+[node name="PickableItem" type="StaticBody3D" unique_id=1588726055]
 collision_layer = 8
 collision_mask = 0
-monitoring = false
 script = ExtResource("1_sgxpu")
 
 [node name="CollisionShape" type="CollisionShape3D" parent="." unique_id=311348474]
