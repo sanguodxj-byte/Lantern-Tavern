@@ -7,8 +7,8 @@
 [resource]
 script = ExtResource("1_70860")
 name = "Barrel"
+throw_rotation_speed = 5.0
+throw_movement_speed = 8.0
 glb_mesh = ExtResource("2_pgkjm")
 glb_fragments_mesh = ExtResource("1_4kn78")
-carry_position_offset = Vector3(0.47464752, 2.046991, -0.65721744)
-carry_rotation = 90.0
 metadata/_custom_type_script = "uid://bwlbtu7cpyg1"

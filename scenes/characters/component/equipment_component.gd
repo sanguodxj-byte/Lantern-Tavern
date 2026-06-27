@@ -75,6 +75,9 @@ func hide_shield() -> void:
 func show_shield() -> void:
 	shield_placeholder.visible = true
 
+func has_furniture() -> bool:
+	return furniture_data != null and furniture_placeholder.get_child_count() > 0
+
 func has_weapon() -> bool:
 	return weapon_data != null and weapon_placeholder.get_child_count() > 0
 
@@ -96,6 +99,19 @@ func throw_weapon(is_being_dropped: bool = false) -> void:
 		GameState.current_level.add_child(thrown_item)
 		weapon_data = null
 		weapon_placeholder.get_child(0).queue_free()
+
+func throw_furniture(is_being_dropped: bool = false) -> void:
+	if has_furniture():
+		var thrown_item := THROWN_ITEM_PREFAB.instantiate()
+		thrown_item.furniture_data = furniture_data
+		thrown_item.is_being_dropped = is_being_dropped
+		var spawn_transform := furniture_placeholder.global_transform
+		thrown_item.global_transform = spawn_transform
+		GameState.current_level.add_child(thrown_item)
+		furniture_data = null
+		furniture_placeholder.get_child(0).queue_free()
+		show_weapon()
+		show_shield()
 
 func drop_weapon() -> void:
 	throw_weapon(true)
