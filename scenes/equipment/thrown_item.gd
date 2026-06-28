@@ -41,15 +41,7 @@ func _ready() -> void:
 		body_entered.connect(on_body_entered)
 
 func on_body_entered(body: Node) -> void:
-	if weapon_data != null:
-		if body is Enemy and not is_being_dropped:
-			var enemy := body as Enemy
-			enemy.impale(self, original_basis)
-		else:
-			gravity_scale = 1
-			if not sleeping_state_changed.is_connected(on_sleep):
-				sleeping_state_changed.connect(on_sleep)
-	elif furniture_data != null:
+	if furniture_data != null:
 		if body is Enemy and not is_being_dropped:
 			var enemy := body as Enemy
 			enemy.try_receive_furniture_impact(self)
@@ -59,7 +51,15 @@ func on_body_entered(body: Node) -> void:
 		GameState.current_level.add_child(destructible_item)
 		destructible_item.explode()
 		queue_free()
-	
+	else:
+		if weapon_data != null and body is Enemy and not is_being_dropped:
+			var enemy := body as Enemy
+			enemy.impale(self, original_basis)
+		else:
+			gravity_scale = 1
+			if not sleeping_state_changed.is_connected(on_sleep):
+				sleeping_state_changed.connect(on_sleep)
+
 func on_sleep() -> void:
 	var pickable_item := PICKABLE_ITEM_PREFAB.instantiate()
 	pickable_item.weapon_data = weapon_data
