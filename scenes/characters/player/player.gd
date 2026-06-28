@@ -113,6 +113,7 @@ func try_receive_hit(source_enemy: Enemy, damage: int) -> void:
 		var data := PlayerStateData.new().set_damage(damage).set_impact_direction(impact_direction)
 		switch_state(State.HURT, data)
 	elif state == State.BLOCKING:
+		equipment.apply_shield_damage(damage)
 		source_enemy.try_stun()
 
 func can_pickup_object() -> bool:

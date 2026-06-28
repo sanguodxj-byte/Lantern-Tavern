@@ -93,6 +93,7 @@ autoplay = &"idle"
 unique_name_in_owner = true
 furniture_placeholder = NodePath("../FurniturePlaceholder")
 is_always_in_front = true
+is_linked_to_ui = true
 shield_data = ExtResource("5_6avc5")
 shield_placeholder = NodePath("../character/Armature/Skeleton3D/ShieldBoneAttachment/ShieldPlaceholder")
 weapon_data = ExtResource("6_mk55u")

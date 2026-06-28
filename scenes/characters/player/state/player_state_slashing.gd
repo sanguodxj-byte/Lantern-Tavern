@@ -2,6 +2,7 @@ class_name PlayerStateSlashing
 extends PlayerState
 
 const TIME_EMIT_DAMAGE := 200
+const WEAPON_DAMAGE := 2
 
 var has_emitted_damage := false
 var time_start_slash := Time.get_ticks_msec()
@@ -18,6 +19,7 @@ func _process(_delta: float) -> void:
 			var enemy := player.weapon_reach_raycast.get_collider() as Enemy
 			if enemy != null:
 				var damage := player.equipment.weapon_data.get_damage_dealt()
+				player.equipment.apply_weapon_damage(WEAPON_DAMAGE)
 				enemy.try_receive_hit(player, damage)
 
 func _physics_process(delta: float) -> void:

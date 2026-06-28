@@ -7,6 +7,7 @@ const THROWN_ITEM_PREFAB := preload("res://scenes/equipment/thrown_item.tscn")
 @export var furniture_data: FurnitureData
 @export var furniture_placeholder: Node3D
 @export var is_always_in_front: bool
+@export var is_linked_to_ui: bool
 @export var shield_data: ShieldData
 @export var shield_placeholder: Node3D
 @export var weapon_data: WeaponData
@@ -29,6 +30,8 @@ func equip_weapon(data: WeaponData, pickup_transform: Transform3D = Transform3D.
 	weapon.is_always_in_front = is_always_in_front
 	weapon_placeholder.add_child(weapon)
 	weapon_reach_raycast.target_position.z = -sqrt(weapon_data.reach)
+	if is_linked_to_ui:
+		GameEvents.weapon_changed.emit(weapon_data)
 	if pickup_transform != Transform3D.IDENTITY:
 		weapon.global_transform = pickup_transform
 		animate_to_hand(weapon)
@@ -41,6 +44,8 @@ func equip_shield(data: ShieldData, pickup_transform: Transform3D = Transform3D.
 	shield.shield_data = shield_data
 	shield.is_always_in_front = is_always_in_front
 	shield_placeholder.add_child(shield)
+	if is_linked_to_ui:
+		GameEvents.shield_changed.emit(shield_data)
 	if pickup_transform != Transform3D.IDENTITY:
 		shield.global_transform = pickup_transform
 		animate_to_hand(shield)
@@ -99,6 +104,8 @@ func throw_weapon(is_being_dropped: bool = false) -> void:
 		GameState.current_level.add_child(thrown_item)
 		weapon_data = null
 		weapon_placeholder.get_child(0).queue_free()
+		if is_linked_to_ui:
+			GameEvents.weapon_changed.emit(weapon_data)
 
 func throw_furniture(is_being_dropped: bool = false) -> void:
 	if has_furniture():
@@ -129,3 +136,20 @@ func drop_shield() -> void:
 		GameState.current_level.add_child(dropped_item)
 		shield_data = null
 		shield_placeholder.get_child(0).queue_free()
+		if is_linked_to_ui:
+			GameEvents.shield_changed.emit(shield_data)
+
+func apply_weapon_damage(amount: int) -> void:
+	if has_weapon():
+		weapon_data.decrease_condition(amount)
+		if weapon_data.condition <= 0:
+			drop_weapon()
+		GameEvents.weapon_changed.emit(weapon_data)
+		
+func apply_shield_damage(amount: int) -> void:
+	if has_shield():
+		shield_data.decrease_condition(amount)
+		if shield_data.condition <= 0:
+			drop_shield()
+		GameEvents.shield_changed.emit(shield_data)
+		

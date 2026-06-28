@@ -5,6 +5,8 @@
 [ext_resource type="FontFile" uid="uid://c344fe0ani7r5" path="res://assets/fonts/my 3x5 tiny mono pixel font.ttf" id="3_aac20"]
 [ext_resource type="Texture2D" uid="uid://hd7jsctwhb1r" path="res://assets/textures/icons/icon-heart.png" id="4_g5kmx"]
 [ext_resource type="PackedScene" uid="uid://dbh0cjexla54w" path="res://scenes/ui/stat_indicator.tscn" id="5_0dwhk"]
+[ext_resource type="Texture2D" uid="uid://dvc1lt20y6cde" path="res://assets/textures/icons/icon-weapon.png" id="5_pfayw"]
+[ext_resource type="Texture2D" uid="uid://d2k25pc1q78hn" path="res://assets/textures/icons/icon-shield.png" id="6_7vp6q"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_u7n8c"]
 bg_color = Color(0.6, 0.6, 0.6, 0)
@@ -43,8 +45,9 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_u7n8c")
+metadata/_edit_lock_ = true
 
-[node name="HeartIcon" type="TextureRect" parent="." unique_id=137799481]
+[node name="HealthIcon" type="TextureRect" parent="." unique_id=137799481]
 offset_left = 16.0
 offset_top = 16.0
 offset_right = 48.0
@@ -58,6 +61,52 @@ offset_top = 24.0
 offset_right = 168.0
 offset_bottom = 40.0
 
+[node name="WeaponIcon" type="TextureRect" parent="." unique_id=874616063]
+unique_name_in_owner = true
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -98.0
+offset_right = 48.0
+offset_bottom = -66.0
+grow_vertical = 0
+texture = ExtResource("5_pfayw")
+
+[node name="WeaponIndicator" parent="." unique_id=2140088480 instance=ExtResource("5_0dwhk")]
+unique_name_in_owner = true
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 60.0
+offset_top = -88.0
+offset_right = 168.0
+offset_bottom = -72.0
+grow_vertical = 0
+
+[node name="ShieldIcon" type="TextureRect" parent="." unique_id=1672208824]
+unique_name_in_owner = true
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -48.0
+offset_right = 48.0
+offset_bottom = -16.0
+grow_vertical = 0
+texture = ExtResource("6_7vp6q")
+
+[node name="ShieldIndicator" parent="." unique_id=925420220 instance=ExtResource("5_0dwhk")]
+unique_name_in_owner = true
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 60.0
+offset_top = -40.0
+offset_right = 168.0
+offset_bottom = -24.0
+grow_vertical = 0
+
 [node name="DeathScreen" type="ColorRect" parent="." unique_id=178748000]
 unique_name_in_owner = true
 modulate = Color(1, 1, 1, 0)
@@ -67,6 +116,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.4745098, 0, 0.003921569, 1)
+metadata/_edit_lock_ = true
 
 [node name="Label" type="Label" parent="DeathScreen" unique_id=2107280873]
 layout_mode = 1
@@ -82,3 +132,4 @@ text = "YOU DIED!
 PRESS \"R\" TO RESTART"
 horizontal_alignment = 1
 vertical_alignment = 1
+metadata/_edit_lock_ = true
