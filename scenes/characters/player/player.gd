@@ -1,6 +1,7 @@
 class_name Player
 extends CharacterBody3D
 
+const SPIKE_DAMAGE := 5
 const GROUND_FRICTION := 15.0
 const MAX_ANGLE_LOOK_UP := deg_to_rad(70)
 const MAX_ANGLE_LOOK_DOWN := deg_to_rad(-70)
@@ -70,6 +71,7 @@ func switch_state(new_state: State, data: PlayerStateData = PlayerStateData.new(
 		state_node.queue_free()
 	var state_map := {
 		State.BLOCKING: PlayerStateBlocking,
+		State.DYING: PlayerStateDying,
 		State.HURT: PlayerStateHurt,
 		State.KICKING: PlayerStateKicking,
 		State.MOVING: PlayerStateMoving,
@@ -116,10 +118,13 @@ func can_pickup_object() -> bool:
 	return current_pickable_focused_item != null
 	
 func take_acid_damage() -> void:
-	print("ouch")
+	if state_node.can_die():
+		switch_state(State.DYING)
 
-func take_spike_damage(_spikes_trap: SpikesTrap) -> void:
-	print("ouchie")
+func take_spike_damage(spikes_trap: SpikesTrap) -> void:
+	var impact_direction := spikes_trap.global_position.direction_to(global_position)
+	var data := PlayerStateData.new().set_damage(SPIKE_DAMAGE).set_impact_direction(impact_direction)
+	switch_state(State.HURT, data)
 	
 	
 	

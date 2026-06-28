@@ -15,3 +15,6 @@ func transition_state(new_state: Player.State, source_data: PlayerStateData = Pl
 
 func can_get_hurt() -> bool:
 	return true
+
+func can_die() -> bool:
+	return true

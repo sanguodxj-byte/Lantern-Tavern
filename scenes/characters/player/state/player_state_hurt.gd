@@ -13,6 +13,9 @@ func _enter_tree() -> void:
 		player.equipment.drop_furniture()
 	player.pushback_force += state_data.impact_direction * PUSHBACK_FORCE
 	player.health.take_damage(state_data.damage)
+	print(player.health.current_life)
+	if player.health.is_dead():
+		transition_state(Player.State.DYING)
 
 func _physics_process(delta: float) -> void:
 	player.process_movement(delta)
