@@ -16,6 +16,7 @@ const GRAVITY := 20.0
 @onready var physical_bone_head: PhysicalBone3D = %"Physical Bone Head"
 @onready var physical_bone_torso: PhysicalBone3D = %"Physical Bone Torso"
 @onready var player_detection_area: Area3D = %PlayerDetectionArea
+@onready var presence_light: OmniLight3D = %PresenceLight
 @onready var weapon_reach_raycast: RayCast3D = %WeaponReachRaycast
 
 @export var duration_between_attacks: int

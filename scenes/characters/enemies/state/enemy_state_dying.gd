@@ -8,6 +8,7 @@ func _enter_tree() -> void:
 	FxHelper.create_blood_fx(enemy.physical_bone_head.global_transform)	
 	enemy.equipment.drop_weapon()
 	enemy.equipment.drop_shield()
+	enemy.presence_light.visible = false
 	enemy.collision_shape.disabled = true
 	enemy.skeleton_simulator.active = true
 	enemy.skeleton_simulator.physical_bones_start_simulation()
