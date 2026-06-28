@@ -7,6 +7,10 @@ var current_level_index := 0
 var current_loaded_level : BaseLevel = null
 
 func _ready() -> void:
+	GameEvents.level_restarted.connect(on_level_restarted)
+	load_level(current_level_index)
+
+func on_level_restarted() -> void:
 	load_level(current_level_index)
 
 func load_level(index: int) -> void:

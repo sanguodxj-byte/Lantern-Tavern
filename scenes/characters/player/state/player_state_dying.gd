@@ -8,7 +8,7 @@ func _enter_tree() -> void:
 
 func _process(_delta: float) -> void:
 	if Input.is_action_just_pressed("restart"):
-		print("restarting the level!")
+		GameEvents.level_restarted.emit()
 
 func can_get_hurt() -> bool:
 	return false
