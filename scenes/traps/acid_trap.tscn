@@ -3,6 +3,7 @@
 [ext_resource type="Texture2D" uid="uid://0ea0xflmod0o" path="res://assets/textures/acid.png" id="1_dhc81"]
 [ext_resource type="Script" uid="uid://y8vrdn0hc8yp" path="res://scenes/traps/acid_trap.gd" id="1_eld0c"]
 [ext_resource type="Shader" uid="uid://bemqmwsi0ovyi" path="res://shaders/liquid.gdshader" id="2_eld0c"]
+[ext_resource type="Texture2D" uid="uid://cvw8rkfyuxuhl" path="res://assets/textures/bubble.png" id="4_vqg1l"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_qdvwo"]
 render_priority = 0
@@ -21,6 +22,43 @@ orientation = 1
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_dhc81"]
 
+[sub_resource type="Curve" id="Curve_k5f3n"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_1bc20"]
+curve = SubResource("Curve_k5f3n")
+
+[sub_resource type="Curve" id="Curve_buh4x"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.3646533), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_kws40"]
+curve = SubResource("Curve_buh4x")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_wlsgo"]
+lifetime_randomness = 0.7
+emission_shape = 3
+emission_box_extents = Vector3(0.5, 0.2, 0.5)
+gravity = Vector3(0, 1, 0)
+scale_curve = SubResource("CurveTexture_kws40")
+alpha_curve = SubResource("CurveTexture_1bc20")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_mve47"]
+transparency = 1
+blend_mode = 1
+shading_mode = 0
+vertex_color_use_as_albedo = true
+albedo_color = Color(0.05882353, 0.83137256, 0.07450981, 1)
+albedo_texture = ExtResource("4_vqg1l")
+texture_filter = 0
+billboard_mode = 1
+billboard_keep_scale = true
+
+[sub_resource type="QuadMesh" id="QuadMesh_rewge"]
+material = SubResource("StandardMaterial3D_mve47")
+size = Vector2(0.2, 0.2)
+
 [node name="AcidTrap" type="Area3D" unique_id=857759605]
 collision_layer = 0
 collision_mask = 6
@@ -34,3 +72,20 @@ mesh = SubResource("QuadMesh_1ulyj")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=747465431]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, -0.8359643, 0.5)
 shape = SubResource("BoxShape3D_dhc81")
+
+[node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=851366085]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.5, 0.5)
+light_color = Color(0.21960784, 0.79607844, 0, 1)
+light_energy = 1.5
+light_specular = 0.0
+omni_range = 2.0
+omni_attenuation = 2.0
+
+[node name="Bubbles" type="GPUParticles3D" parent="." unique_id=393508275]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, -0.4, 0.5)
+amount = 20
+lifetime = 1.5
+randomness = 0.5
+fixed_fps = 60
+process_material = SubResource("ParticleProcessMaterial_wlsgo")
+draw_pass_1 = SubResource("QuadMesh_rewge")
