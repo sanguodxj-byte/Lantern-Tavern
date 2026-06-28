@@ -133,3 +133,33 @@ PRESS \"R\" TO RESTART"
 horizontal_alignment = 1
 vertical_alignment = 1
 metadata/_edit_lock_ = true
+
+[node name="ActionPanel" type="ColorRect" parent="." unique_id=1206415728]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -130.0
+offset_top = -88.0
+offset_right = 130.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 0
+color = Color(0.09411765, 0.078431375, 0.14509805, 1)
+
+[node name="ActionLabel" type="Label" parent="ActionPanel" unique_id=1180541945]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_fonts/font = ExtResource("3_aac20")
+theme_override_font_sizes/font_size = 26
+text = "[E] Pick Up"
+horizontal_alignment = 1
+vertical_alignment = 1

@@ -1,6 +1,8 @@
 class_name UI
 extends CanvasLayer
 
+@onready var action_panel: ColorRect = %ActionPanel
+@onready var action_label: Label = %ActionLabel
 @onready var death_screen: ColorRect = %DeathScreen
 @onready var health_indicator: StatIndicator = %HealthIndicator
 @onready var hurt_vignette: Panel = %HurtVignette
@@ -16,6 +18,7 @@ func _ready() -> void:
 	GameEvents.player_spawned.connect(on_player_spawned)
 	GameEvents.shield_changed.connect(on_shield_changed)
 	GameEvents.weapon_changed.connect(on_weapon_changed)
+	GameEvents.possible_action_changed.connect(on_possible_action_changed)
 	
 func on_player_hurt(player: Player) -> void:
 	health_indicator.refresh(player.health.current_life, player.health.max_life)
@@ -46,4 +49,8 @@ func on_shield_changed(shield_data: ShieldData) -> void:
 	shield_indicator.visible = shield_data != null
 	if shield_data:
 		shield_indicator.refresh(shield_data.condition, shield_data.max_condition)
+
+func on_possible_action_changed(action: String) -> void:
+	action_panel.visible = not action.is_empty()
+	action_label.text = action
 	
