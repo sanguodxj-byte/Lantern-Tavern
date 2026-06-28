@@ -4,6 +4,11 @@ extends PlayerState
 func _enter_tree() -> void:
 	player.equipment.drop_shield()
 	player.equipment.drop_weapon()
+	GameEvents.player_dead.emit()
+
+func _process(_delta: float) -> void:
+	if Input.is_action_just_pressed("restart"):
+		print("restarting the level!")
 
 func can_get_hurt() -> bool:
 	return false
