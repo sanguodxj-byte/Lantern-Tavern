@@ -32,6 +32,7 @@ var state_node: PlayerState
 func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	GameState.register_player(self)
+	GameEvents.player_spawned.emit(self)
 	switch_state(State.MOVING)
 
 func _process(_delta: float) -> void:

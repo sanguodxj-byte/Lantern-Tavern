@@ -2,14 +2,17 @@ class_name UI
 extends CanvasLayer
 
 @onready var death_screen: ColorRect = %DeathScreen
+@onready var health_indicator: StatIndicator = %HealthIndicator
 @onready var hurt_vignette: Panel = %HurtVignette
 
 func _ready() -> void:
 	GameEvents.player_hurt.connect(on_player_hurt)
 	GameEvents.player_dead.connect(on_player_dead)
 	GameEvents.level_restarted.connect(on_level_restart)
+	GameEvents.player_spawned.connect(on_player_spawned)
 	
-func on_player_hurt(_player: Player) -> void:
+func on_player_hurt(player: Player) -> void:
+	health_indicator.refresh(player.health.current_life, player.health.max_life)
 	var tween := create_tween()
 	tween.tween_property(hurt_vignette, "modulate:a", 1.0, 0.1)
 	tween.tween_property(hurt_vignette, "modulate:a", 0.0, 0.1)
@@ -22,3 +25,9 @@ func on_player_dead() -> void:
 
 func on_level_restart() -> void:
 	death_screen.modulate = Color.TRANSPARENT
+
+func on_player_spawned(player: Player) -> void:
+	health_indicator.refresh(player.health.current_life, player.health.max_life)
+	
+	
+	
