@@ -99,6 +99,9 @@ func check_for_selection() -> void:
 func try_receive_hit(source_enemy: Enemy, _damage: int) -> void:
 	if state_node.can_get_hurt():
 		GameEvents.player_hurt.emit(self)
+		if equipment.has_furniture():
+			equipment.drop_furniture()
+			switch_state(State.MOVING)
 	elif state == State.BLOCKING:
 		source_enemy.try_stun()
 

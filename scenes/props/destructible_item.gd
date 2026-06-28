@@ -19,4 +19,4 @@ func explode() -> void:
 	if destructible_object != null:
 		for fragment: RigidBody3D in destructible_object.get_children():
 			fragment.apply_impulse(fragment.position * EXPLOSION_FORCE, global_position)
-		
+		GameEvents.impact_felt.emit(GameEvents.ImpactIntensity.MEDIUM)

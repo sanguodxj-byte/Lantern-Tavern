@@ -113,6 +113,9 @@ func throw_furniture(is_being_dropped: bool = false) -> void:
 		show_weapon()
 		show_shield()
 
+func drop_furniture() -> void:
+	throw_furniture(true)
+
 func drop_weapon() -> void:
 	throw_weapon(true)
 

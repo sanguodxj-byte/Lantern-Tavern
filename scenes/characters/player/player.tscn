@@ -49,7 +49,7 @@ collision_mask = 36
 
 [node name="character" parent="." unique_id=1982335508 instance=ExtResource("2_t61fv")]
 
-[node name="Skeleton3D" parent="character/Armature" parent_id_path=PackedInt32Array(1982335508, 158212849) index="0" unique_id=215683945]
+[node name="Skeleton3D" parent="character/Armature" parent_id_path=PackedInt32Array(1982335508, 135107610) index="0" unique_id=1184024332]
 bones/0/position = Vector3(0.010508021, 0.6085653, -0.0525576)
 bones/1/rotation = Quaternion(-0.26081848, 1.1508321e-07, -3.109199e-08, 0.96538794)
 bones/3/position = Vector3(0.22114323, 0.45156574, -0.09300468)
@@ -86,7 +86,7 @@ bone_idx = 11
 unique_name_in_owner = true
 transform = Transform3D(0.9961947, -0.08715574, 0, 0.07547908, 0.8627299, 0.49999994, -0.04357787, -0.49809736, 0.86602527, 0, 0, 0)
 
-[node name="AnimationPlayer" parent="character" index="1" unique_id=423237474]
+[node name="AnimationPlayer" parent="character" index="1" unique_id=1131348519]
 autoplay = &"idle"
 
 [node name="EquipmentComponent" parent="." unique_id=2139399618 node_paths=PackedStringArray("furniture_placeholder", "shield_placeholder", "weapon_placeholder", "weapon_reach_raycast", "weapon_spawn_position") instance=ExtResource("3_hss88")]
