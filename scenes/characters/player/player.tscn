@@ -121,4 +121,7 @@ transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.3711392e-08, 0, 0, 0, 1, 0.5
 [node name="ActionAudioStreamPlayer" type="AudioStreamPlayer3D" parent="." unique_id=269270845]
 unique_name_in_owner = true
 
+[node name="FootstepAudioStreamPlayer" type="AudioStreamPlayer3D" parent="." unique_id=1519840771]
+unique_name_in_owner = true
+
 [editable path="character"]
