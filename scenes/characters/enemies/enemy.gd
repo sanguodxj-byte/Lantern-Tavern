@@ -7,6 +7,7 @@ const AIR_FRICTION := 20.0
 const DURATION_RAGDOLL_SIMULATION := 3.0
 const GRAVITY := 20.0
 
+@onready var action_audio_stream_player: AudioStreamPlayer3D = %ActionAudioStreamPlayer
 @onready var animation_player: AnimationPlayer = $character/AnimationPlayer
 @onready var collision_shape: CollisionShape3D = %CollisionShape
 @onready var equipment: EquipmentComponent = %EquipmentComponent

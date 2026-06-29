@@ -13,6 +13,7 @@ const MAX_ANGLE_LOOK_DOWN := deg_to_rad(-70)
 @export var run_speed: float
 @export var walk_speed: float
 
+@onready var action_audio_stream_player: AudioStreamPlayer3D = %ActionAudioStreamPlayer
 @onready var animation_player: AnimationPlayer = $character/AnimationPlayer
 @onready var camera: Camera3D = %MainCamera
 @onready var kick_raycast: RayCast3D = %KickRaycast
@@ -125,6 +126,7 @@ func try_receive_hit(source_enemy: Enemy, damage: int) -> void:
 		var data := PlayerStateData.new().set_damage(damage).set_impact_direction(impact_direction)
 		switch_state(State.HURT, data)
 	elif state == State.BLOCKING:
+		AudioManager.play("block", action_audio_stream_player)
 		equipment.apply_shield_damage(damage)
 		source_enemy.try_stun()
 
