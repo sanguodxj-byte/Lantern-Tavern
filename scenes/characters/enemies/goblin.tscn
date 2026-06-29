@@ -6,6 +6,7 @@
 [ext_resource type="Resource" uid="uid://b85xdn0cdw6p1" path="res://data/weapons/axe.tres" id="4_lahws"]
 [ext_resource type="Resource" uid="uid://dwwgg8a4e5a5o" path="res://data/shields/buckler.tres" id="5_cyclm"]
 [ext_resource type="PackedScene" uid="uid://d2mdkf8ja46kr" path="res://scenes/characters/component/health_component.tscn" id="6_yjp8u"]
+[ext_resource type="PackedScene" uid="uid://dbh0cjexla54w" path="res://scenes/ui/stat_indicator.tscn" id="7_cyclm"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ik1ic"]
 height = 1.7
@@ -61,6 +62,9 @@ texture_filter = 0
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_lahws"]
 radius = 2.5
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_cyclm"]
+viewport_path = NodePath("Healthbar/SubViewport")
 
 [node name="Goblin" type="CharacterBody3D" unique_id=1305714049]
 collision_layer = 4
@@ -128,11 +132,11 @@ shape = SubResource("CapsuleShape3D_yjp8u")
 
 [node name="Physical Bone Head" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D" unique_id=2054418634]
 unique_name_in_owner = true
-transform = Transform3D(0.9999667, -0.008157721, -0.0003753826, 0.0021050975, 0.30190942, -0.95333433, 0.007890367, 0.9533017, 0.3019165, -0.024133332, 1.349425, 0.13648099)
+transform = Transform3D(0.9999667, -0.008157721, -0.00037538266, 0.0021050975, 0.30190942, -0.95333433, 0.007890367, 0.9533017, 0.3019165, -0.024133332, 1.349425, 0.13648099)
 collision_layer = 0
 joint_type = 2
 joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.023238346, -0.11424885, 0.09656417)
-body_offset = Transform3D(0.9999667, -0.00815796, -0.00037537687, -0.0005902734, -0.026355535, -0.99965286, 0.008145232, 0.99961954, -0.02635941, -0.02413336, 0.09353328, 0.11656147)
+body_offset = Transform3D(0.9999667, -0.00815796, -0.00037537693, -0.0005902734, -0.026355535, -0.99965286, 0.008145232, 0.99961954, -0.02635941, -0.02413336, 0.09353328, 0.11656147)
 mass = 4.0
 bone_name = "Head"
 joint_constraints/swing_span = 39.999985
@@ -363,5 +367,17 @@ bus = &"SFX"
 [node name="VocalAudioStreamPlayer" type="AudioStreamPlayer3D" parent="." unique_id=269754404]
 unique_name_in_owner = true
 bus = &"SFX"
+
+[node name="Healthbar" type="Sprite3D" parent="." unique_id=1061245730]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+billboard = 1
+texture = SubResource("ViewportTexture_cyclm")
+
+[node name="SubViewport" type="SubViewport" parent="Healthbar" unique_id=1463664179]
+size = Vector2i(108, 16)
+
+[node name="HealthIndicator" parent="Healthbar/SubViewport" unique_id=444593229 instance=ExtResource("7_cyclm")]
+unique_name_in_owner = true
 
 [editable path="character"]

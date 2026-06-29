@@ -5,6 +5,7 @@ const KNOCKBACK_FORCE := 2.0
 
 func _enter_tree() -> void:
 	enemy.health.take_damage(state_data.damage)
+	enemy.health_indicator.refresh(enemy.health.current_life, enemy.health.max_life)
 	enemy.pushback_force += state_data.impact_direction * KNOCKBACK_FORCE
 	if enemy.health.is_dead():
 		AudioManager.play("hit-kill", enemy.action_audio_stream_player)

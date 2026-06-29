@@ -29,7 +29,11 @@
 [ext_resource type="AudioStream" uid="uid://dei8vb2tayahd" path="res://assets/sounds/sword-fly.wav" id="27_q8s0e"]
 [ext_resource type="AudioStream" uid="uid://udd5lewo2222" path="res://assets/sounds/sword-hit-wall.wav" id="28_a885w"]
 [ext_resource type="AudioStream" uid="uid://c10gb80pq3uge" path="res://assets/sounds/sword-pickup.wav" id="29_4c7ce"]
+[ext_resource type="AudioStream" uid="uid://cbdu5imgwo2ej" path="res://assets/music/dungeon-theme-01.mp3" id="30_8cial"]
 
 [node name="AudioManager" type="Node3D" unique_id=1204255329]
 script = ExtResource("1_exsf0")
 sound_files = Array[AudioStream]([ExtResource("2_sc5em"), ExtResource("3_8cial"), ExtResource("4_dww4r"), ExtResource("5_k6y0g"), ExtResource("6_mexhl"), ExtResource("7_bankh"), ExtResource("8_aflrn"), ExtResource("9_22wdt"), ExtResource("10_beban"), ExtResource("11_yjite"), ExtResource("12_7m7tt"), ExtResource("13_o3mrh"), ExtResource("14_83pdm"), ExtResource("15_341wv"), ExtResource("16_sew4i"), ExtResource("17_ra3r3"), ExtResource("18_nwqlb"), ExtResource("19_w33nu"), ExtResource("20_bkfmr"), ExtResource("21_jje7d"), ExtResource("22_0nod6"), ExtResource("23_jmwet"), ExtResource("24_op2sv"), ExtResource("25_3nons"), ExtResource("26_lmimt"), ExtResource("27_q8s0e"), ExtResource("28_a885w"), ExtResource("29_4c7ce")])
+
+[node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="." unique_id=471466190]
+stream = ExtResource("30_8cial")

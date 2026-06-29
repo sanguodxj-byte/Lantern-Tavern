@@ -12,6 +12,8 @@ const GRAVITY := 20.0
 @onready var collision_shape: CollisionShape3D = %CollisionShape
 @onready var equipment: EquipmentComponent = %EquipmentComponent
 @onready var health: HealthComponent = %HealthComponent
+@onready var healthbar: Sprite3D = %Healthbar
+@onready var health_indicator: StatIndicator = %HealthIndicator
 @onready var nav_agent: NavigationAgent3D = %NavigationAgent3D
 @onready var skeleton_simulator: PhysicalBoneSimulator3D = %PhysicalBoneSimulator3D
 @onready var physical_bone_head: PhysicalBone3D = %"Physical Bone Head"
@@ -35,6 +37,7 @@ var time_since_last_attack: int
 
 func _ready() -> void:
 	player_detection_area.body_entered.connect(on_player_detected)
+	health_indicator.refresh(health.current_life, health.max_life)
 	switch_state(State.MOVING)
 	
 func switch_state(new_state: State, data: EnemyStateData = EnemyStateData.new()) -> void:
