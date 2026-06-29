@@ -78,4 +78,18 @@ unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.63187504, 0, 0)
 shape = SubResource("ConcavePolygonShape3D_bu3y2")
 
+[node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=2028929055]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0.5)
+light_color = Color(1, 0.75686276, 0.30588236, 1)
+light_specular = 0.0
+omni_range = 2.0
+omni_attenuation = 2.0
+
+[node name="OmniLight3D2" type="OmniLight3D" parent="." unique_id=1631536000]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, -0.5)
+light_color = Color(1, 0.75686276, 0.30588236, 1)
+light_specular = 0.0
+omni_range = 2.0
+omni_attenuation = 2.0
+
 [editable path="door"]
