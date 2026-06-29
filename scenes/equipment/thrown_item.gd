@@ -11,6 +11,7 @@ const PICKABLE_ITEM_PREFAB := preload("res://scenes/equipment/pickable_item.tscn
 @onready var audio_stream_player_3d: AudioStreamPlayer3D = %AudioStreamPlayer3D
 @onready var collision_shape: CollisionShape3D = %CollisionShape
 
+var has_hit_world: bool = false
 var is_being_dropped: bool
 var original_basis: Basis
 
@@ -59,11 +60,12 @@ func on_body_entered(body: Node) -> void:
 			var enemy := body as Enemy
 			enemy.impale(self, original_basis)
 		else:
-			if weapon_data:
-				AudioManager.play("sword-hit-wall", audio_stream_player_3d)
 			gravity_scale = 1
-			if not sleeping_state_changed.is_connected(on_sleep):
+			if not has_hit_world:
+				has_hit_world = true
 				sleeping_state_changed.connect(on_sleep)
+				if weapon_data and not is_being_dropped:
+					AudioManager.play("sword-hit-wall", audio_stream_player_3d)
 
 func on_sleep() -> void:
 	var pickable_item := PICKABLE_ITEM_PREFAB.instantiate()

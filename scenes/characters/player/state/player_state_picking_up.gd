@@ -11,6 +11,7 @@ func _enter_tree() -> void:
 		player.animation_player.play("pickup")
 		player.animation_player.animation_finished.connect(on_animation_finished)
 		player.equipment.equip_weapon(pickable_object.weapon_data, pickable_object.global_transform)
+		AudioManager.play("sword-pickup", player.action_audio_stream_player)
 		pickable_object.queue_free()
 	elif pickable_object.shield_data != null:
 		player.animation_player.play("pickup")
