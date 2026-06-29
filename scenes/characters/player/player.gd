@@ -21,6 +21,7 @@ const MAX_ANGLE_LOOK_DOWN := deg_to_rad(-70)
 @onready var equipment: EquipmentComponent = %EquipmentComponent
 @onready var health: HealthComponent = %HealthComponent
 @onready var select_raycast: RayCast3D = %SelectRaycast
+@onready var vocal_audio_stream_player: AudioStreamPlayer3D = %VocalAudioStreamPlayer
 @onready var weapon_reach_raycast: RayCast3D = %WeaponReachRaycast
 
 enum State {MOVING, PICKING_UP, THROWING, SLASHING, KICKING, BLOCKING, HURT, DYING}
@@ -42,7 +43,6 @@ func _process(_delta: float) -> void:
 	input_dir = Input.get_vector("strafe_left", "strafe_right", "backward", "forward")
 
 func _physics_process(delta: float) -> void:
-	check_jump_input()
 	process_gravity()
 	process_pushback(delta)
 	move_and_slide()
@@ -89,10 +89,6 @@ func switch_state(new_state: State, data: PlayerStateData = PlayerStateData.new(
 	state_node.name = "State: " + State.keys()[new_state]
 	state = new_state
 	add_child(state_node)
-
-func check_jump_input() -> void:
-	if is_on_floor() and Input.is_action_just_pressed("jump"):
-		velocity.y = jump_force
 
 func process_gravity() -> void:
 	if not is_on_floor():

@@ -14,7 +14,10 @@ func _enter_tree() -> void:
 			door.open(player.global_transform)
 		elif collider is Enemy:
 			var enemy := collider as Enemy
+			AudioManager.play("kick", player.action_audio_stream_player)
 			enemy.try_receive_kick(player)
+	else:
+		AudioManager.play("kick-swoosh", player.action_audio_stream_player)
 
 func _physics_process(delta: float) -> void:
 	player.velocity = player.velocity.move_toward(Vector3.ZERO, delta * GROUND_FRICTION)

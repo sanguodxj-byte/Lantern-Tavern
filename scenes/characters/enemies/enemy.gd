@@ -18,6 +18,7 @@ const GRAVITY := 20.0
 @onready var physical_bone_torso: PhysicalBone3D = %"Physical Bone Torso"
 @onready var player_detection_area: Area3D = %PlayerDetectionArea
 @onready var presence_light: OmniLight3D = %PresenceLight
+@onready var vocal_audio_stream_player: AudioStreamPlayer3D = %VocalAudioStreamPlayer
 @onready var weapon_reach_raycast: RayCast3D = %WeaponReachRaycast
 
 @export var duration_between_attacks: int
@@ -127,4 +128,5 @@ func take_acid_damage() -> void:
 		
 func take_spike_damage(_spikes_trap: SpikesTrap) -> void:
 	if state_node.can_die():
+		AudioManager.play("spikes", action_audio_stream_player)
 		switch_state(State.DYING)

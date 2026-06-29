@@ -8,6 +8,7 @@ const PICKABLE_ITEM_PREFAB := preload("res://scenes/equipment/pickable_item.tscn
 @export var shield_data: ShieldData
 @export var weapon_data: WeaponData
 
+@onready var audio_stream_player_3d: AudioStreamPlayer3D = %AudioStreamPlayer3D
 @onready var collision_shape: CollisionShape3D = %CollisionShape
 
 var is_being_dropped: bool
@@ -38,6 +39,8 @@ func _ready() -> void:
 			gravity_scale = gravity
 			linear_velocity = -global_basis.z * throw_movement_speed
 			angular_velocity = -global_basis.y * throw_rotation_speed
+			if weapon_data:
+				AudioManager.play("sword-fly", audio_stream_player_3d)
 		body_entered.connect(on_body_entered)
 
 func on_body_entered(body: Node) -> void:
@@ -56,6 +59,8 @@ func on_body_entered(body: Node) -> void:
 			var enemy := body as Enemy
 			enemy.impale(self, original_basis)
 		else:
+			if weapon_data:
+				AudioManager.play("sword-hit-wall", audio_stream_player_3d)
 			gravity_scale = 1
 			if not sleeping_state_changed.is_connected(on_sleep):
 				sleeping_state_changed.connect(on_sleep)

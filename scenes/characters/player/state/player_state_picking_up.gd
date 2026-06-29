@@ -16,9 +16,11 @@ func _enter_tree() -> void:
 		player.animation_player.play("pickup")
 		player.animation_player.animation_finished.connect(on_animation_finished)
 		player.equipment.equip_shield(pickable_object.shield_data, pickable_object.global_transform)
+		AudioManager.play("pick-up", player.action_audio_stream_player)
 		pickable_object.queue_free()
 	elif pickable_object.furniture_data != null:
 		is_carrying = true
+		AudioManager.play("lift", player.vocal_audio_stream_player)
 		player.animation_player.play("lift")
 		player.equipment.equip_furniture(pickable_object.furniture_data, pickable_object.global_transform)
 		pickable_object.queue_free()

@@ -4,6 +4,7 @@ extends PlayerState
 func _enter_tree() -> void:
 	player.equipment.drop_shield()
 	player.equipment.drop_weapon()
+	AudioManager.play("player-death", player.vocal_audio_stream_player)
 	GameEvents.player_dead.emit()
 
 func _process(_delta: float) -> void:

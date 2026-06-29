@@ -12,3 +12,7 @@ script = ExtResource("1_ttrru")
 
 [node name="CollisionShape" type="CollisionShape3D" parent="." unique_id=112709767]
 unique_name_in_owner = true
+
+[node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="." unique_id=1833922901]
+unique_name_in_owner = true
+bus = &"SFX"

@@ -21,6 +21,8 @@ func _process(_delta: float) -> void:
 				var damage := player.equipment.weapon_data.get_damage_dealt()
 				player.equipment.apply_weapon_damage(WEAPON_DAMAGE)
 				enemy.try_receive_hit(player, damage)
+		else:
+			AudioManager.play("slash", player.action_audio_stream_player)
 
 func _physics_process(delta: float) -> void:
 	player.process_movement(delta)

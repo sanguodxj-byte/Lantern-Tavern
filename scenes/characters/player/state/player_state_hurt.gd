@@ -15,6 +15,8 @@ func _enter_tree() -> void:
 	player.health.take_damage(state_data.damage)
 	if player.health.is_dead():
 		transition_state(Player.State.DYING)
+	else:
+		AudioManager.play("hurt", player.vocal_audio_stream_player)
 
 func _physics_process(delta: float) -> void:
 	player.process_movement(delta)

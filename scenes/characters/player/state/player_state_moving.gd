@@ -17,6 +17,9 @@ func _process(_delta: float) -> void:
 		transition_state(Player.State.KICKING)
 	elif Input.is_action_just_pressed("block") and player.equipment.has_shield():
 		transition_state(Player.State.BLOCKING)
+	elif player.is_on_floor() and Input.is_action_just_pressed("jump"):
+		player.velocity.y = player.jump_force
+		AudioManager.play("jump", player.vocal_audio_stream_player)
 		
 func _physics_process(delta: float) -> void:
 	player.process_movement(delta)

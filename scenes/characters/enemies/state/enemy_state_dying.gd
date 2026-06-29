@@ -6,6 +6,7 @@ const DURATION_RAGDOLL_SIMULATION := 3.0
 func _enter_tree() -> void:
 	GameEvents.impact_felt.emit(GameEvents.ImpactIntensity.MEDIUM)
 	FxHelper.create_blood_fx(enemy.physical_bone_head.global_transform)	
+	AudioManager.play("orc-die", enemy.vocal_audio_stream_player)
 	enemy.equipment.drop_weapon()
 	enemy.equipment.drop_shield()
 	enemy.presence_light.visible = false

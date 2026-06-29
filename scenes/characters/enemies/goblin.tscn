@@ -128,11 +128,11 @@ shape = SubResource("CapsuleShape3D_yjp8u")
 
 [node name="Physical Bone Head" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D" unique_id=2054418634]
 unique_name_in_owner = true
-transform = Transform3D(0.9999667, -0.008157721, -0.00037538275, 0.0021050975, 0.30190942, -0.95333433, 0.007890367, 0.9533017, 0.3019165, -0.024133332, 1.349425, 0.13648099)
+transform = Transform3D(0.9999667, -0.008157721, -0.0003753826, 0.0021050975, 0.30190942, -0.95333433, 0.007890367, 0.9533017, 0.3019165, -0.024133332, 1.349425, 0.13648099)
 collision_layer = 0
 joint_type = 2
 joint_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.023238346, -0.11424885, 0.09656417)
-body_offset = Transform3D(0.9999667, -0.00815796, -0.000375377, -0.0005902734, -0.026355535, -0.99965286, 0.008145232, 0.99961954, -0.02635941, -0.02413336, 0.09353328, 0.11656147)
+body_offset = Transform3D(0.9999667, -0.00815796, -0.00037537687, -0.0005902734, -0.026355535, -0.99965286, 0.008145232, 0.99961954, -0.02635941, -0.02413336, 0.09353328, 0.11656147)
 mass = 4.0
 bone_name = "Head"
 joint_constraints/swing_span = 39.999985
@@ -358,5 +358,10 @@ omni_attenuation = 2.0
 
 [node name="ActionAudioStreamPlayer" type="AudioStreamPlayer3D" parent="." unique_id=1875084951]
 unique_name_in_owner = true
+bus = &"SFX"
+
+[node name="VocalAudioStreamPlayer" type="AudioStreamPlayer3D" parent="." unique_id=269754404]
+unique_name_in_owner = true
+bus = &"SFX"
 
 [editable path="character"]
