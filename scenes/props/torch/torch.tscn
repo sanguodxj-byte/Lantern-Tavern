@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://ww8hovdjir8v"]
 
 [ext_resource type="PackedScene" uid="uid://rbgql238cn72" path="res://assets/meshes/props/lighting/torch.glb" id="1_paw5d"]
+[ext_resource type="AudioStream" uid="uid://d12bv381cywix" path="res://assets/sounds/fire.wav" id="2_pnlsr"]
 
 [sub_resource type="Curve" id="Curve_paw5d"]
 _data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
@@ -68,5 +69,12 @@ randomness = 0.5
 fixed_fps = 60
 process_material = SubResource("ParticleProcessMaterial_83u1b")
 draw_pass_1 = SubResource("QuadMesh_v0w6w")
+
+[node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="." unique_id=1996845430]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6871469, -0.37026381)
+stream = ExtResource("2_pnlsr")
+unit_size = 1.0
+autoplay = true
+bus = &"SFX"
 
 [editable path="torch"]

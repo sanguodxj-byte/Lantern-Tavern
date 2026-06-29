@@ -5,6 +5,8 @@ const EXPLOSION_FORCE := 5.0
 
 @export var furniture_data: FurnitureData
 
+@onready var audio_stream_player_3d: AudioStreamPlayer3D = %AudioStreamPlayer3D
+
 var destructible_object: Node3D = null
 
 func _ready() -> void:

@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://y8vrdn0hc8yp" path="res://scenes/traps/acid_trap.gd" id="1_eld0c"]
 [ext_resource type="Shader" uid="uid://bemqmwsi0ovyi" path="res://shaders/liquid.gdshader" id="2_eld0c"]
 [ext_resource type="Texture2D" uid="uid://cvw8rkfyuxuhl" path="res://assets/textures/bubble.png" id="4_vqg1l"]
+[ext_resource type="AudioStream" uid="uid://ronjbgv5vj8n" path="res://assets/sounds/boil.wav" id="5_k5f3n"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_qdvwo"]
 render_priority = 0
@@ -89,3 +90,10 @@ randomness = 0.5
 fixed_fps = 60
 process_material = SubResource("ParticleProcessMaterial_wlsgo")
 draw_pass_1 = SubResource("QuadMesh_rewge")
+
+[node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="." unique_id=187933994]
+stream = ExtResource("5_k5f3n")
+volume_db = -10.0
+unit_size = 1.0
+autoplay = true
+bus = &"SFX"
