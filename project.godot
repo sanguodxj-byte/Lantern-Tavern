@@ -110,6 +110,7 @@ restart={
 3d_physics/layer_5="Projectiles"
 3d_physics/layer_6="Doors"
 3d_physics/layer_7="Furniture"
+3d_physics/layer_8="Collectibles"
 
 [physics]
 

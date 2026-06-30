@@ -13,6 +13,7 @@
 [ext_resource type="PackedScene" uid="uid://bqm3c3s5gulaw" path="res://scenes/props/decor/spiderweb.tscn" id="9_nnerm"]
 [ext_resource type="PackedScene" uid="uid://c8hsymady11em" path="res://scenes/equipment/pickable_buckler.tscn" id="9_pw0xg"]
 [ext_resource type="PackedScene" uid="uid://bkg7jsbq7u5rl" path="res://scenes/equipment/pickable_axe.tscn" id="10_1omhj"]
+[ext_resource type="PackedScene" uid="uid://cn2aqq52jfy0w" path="res://scenes/collectibles/dropped_key/dropped_key.tscn" id="14_5grbt"]
 
 [node name="Level-01-Welcome" unique_id=113800226 instance=ExtResource("1_0mf82")]
 
@@ -93,3 +94,7 @@ transform = Transform3D(-0.50000006, 0, 0.8660254, 0, 1, 0, -0.8660254, 0, -0.50
 
 [node name="PickableAxe" parent="Decor" index="8" unique_id=1354600351 instance=ExtResource("10_1omhj")]
 transform = Transform3D(-0.1464157, 0.88438994, 0.44318965, 0.03776524, 0.45268843, -0.8908688, -0.98850214, -0.1137, -0.0996799, 3.5566998, 0.20169497, -12.061372)
+
+[node name="DroppedKey" parent="." index="5" unique_id=406115655 instance=ExtResource("14_5grbt")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.0245728, 0, -2.4027777)
+color = 3

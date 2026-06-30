@@ -63,6 +63,7 @@ offset_bottom = 40.0
 
 [node name="WeaponIcon" type="TextureRect" parent="." unique_id=874616063]
 unique_name_in_owner = true
+visible = false
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
@@ -75,6 +76,7 @@ texture = ExtResource("5_pfayw")
 
 [node name="WeaponIndicator" parent="." unique_id=2140088480 instance=ExtResource("5_0dwhk")]
 unique_name_in_owner = true
+visible = false
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
@@ -86,6 +88,7 @@ grow_vertical = 0
 
 [node name="ShieldIcon" type="TextureRect" parent="." unique_id=1672208824]
 unique_name_in_owner = true
+visible = false
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
@@ -98,6 +101,7 @@ texture = ExtResource("6_7vp6q")
 
 [node name="ShieldIndicator" parent="." unique_id=925420220 instance=ExtResource("5_0dwhk")]
 unique_name_in_owner = true
+visible = false
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0

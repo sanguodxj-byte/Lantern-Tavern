@@ -1,0 +1,39 @@
+[gd_scene format=3 uid="uid://cn2aqq52jfy0w"]
+
+[ext_resource type="Script" uid="uid://cehnbftnswiu7" path="res://scenes/collectibles/dropped_key/dropped_key.gd" id="1_31daf"]
+[ext_resource type="PackedScene" uid="uid://cxnteq1wr8c03" path="res://assets/meshes/collectibles/key.glb" id="1_bd4en"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_bd4en"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_31daf"]
+radius = 2.0
+
+[node name="DroppedKey" type="RigidBody3D" unique_id=406115655 node_paths=PackedStringArray("mesh")]
+script = ExtResource("1_31daf")
+mesh = NodePath("key/Key")
+
+[node name="key" parent="." unique_id=2108619820 instance=ExtResource("1_bd4en")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1053340102]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("SphereShape3D_bd4en")
+
+[node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=1084000640]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5849764, 0)
+distance_fade_enabled = true
+distance_fade_begin = 5.0
+distance_fade_length = 5.0
+omni_range = 2.0
+omni_attenuation = 2.0
+
+[node name="PlayerDetectionArea" type="Area3D" parent="." unique_id=956977624]
+unique_name_in_owner = true
+collision_layer = 128
+collision_mask = 2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PlayerDetectionArea" unique_id=1902863631]
+shape = SubResource("SphereShape3D_31daf")
+
+[editable path="key"]

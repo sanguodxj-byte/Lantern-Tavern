@@ -37,6 +37,7 @@ func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	GameState.register_player(self)
 	GameEvents.player_spawned.emit(self)
+	GameEvents.key_picked_up.connect(on_key_picked_up)
 	switch_state(State.MOVING)
 
 func _process(_delta: float) -> void:
@@ -140,8 +141,8 @@ func take_spike_damage(spikes_trap: SpikesTrap) -> void:
 	var data := PlayerStateData.new().set_damage(SPIKE_DAMAGE).set_impact_direction(impact_direction)
 	switch_state(State.HURT, data)
 	
-	
-	
+func on_key_picked_up(_color: Door.KeyColor) -> void:
+	AudioManager.play("key-pickup", vocal_audio_stream_player)
 	
 	
 	

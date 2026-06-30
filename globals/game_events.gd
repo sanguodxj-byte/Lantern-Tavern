@@ -3,6 +3,7 @@ extends Node
 enum ImpactIntensity {LOW, MEDIUM, HIGH}
 
 signal impact_felt(intensity: ImpactIntensity)
+signal key_picked_up(color: Door.KeyColor)
 signal level_restarted
 signal player_dead
 signal player_hurt(player: Player)
