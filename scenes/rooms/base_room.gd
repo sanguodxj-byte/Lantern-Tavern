@@ -46,7 +46,8 @@ func on_enemy_death(enemy_transform: Transform3D) -> void:
 	for enemy: Enemy in enemies.get_children():
 		if not enemy.health.is_dead():
 			return
-	drop_key(enemy_transform)
+	if key_color != Door.KeyColor.None:
+		drop_key(enemy_transform)
 
 func drop_key(key_transform: Transform3D) -> void:
 	var key := DROPPED_KEY_PREFAB.instantiate() as DroppedKey
