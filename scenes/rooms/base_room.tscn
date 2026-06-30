@@ -3,9 +3,13 @@
 [ext_resource type="MeshLibrary" uid="uid://5befjqaqells" path="res://assets/meshlibs/walls-tiles.meshlib" id="1_43ixu"]
 [ext_resource type="Script" uid="uid://1fsbjhvt2rhv" path="res://scenes/rooms/base_room.gd" id="1_oxyh5"]
 [ext_resource type="MeshLibrary" uid="uid://dic1c2kqdhter" path="res://assets/meshlibs/ceilings-tiles.meshlib" id="2_4x8xk"]
+[ext_resource type="PackedScene" uid="uid://cxnteq1wr8c03" path="res://assets/meshes/collectibles/key.glb" id="4_ativ4"]
 
-[node name="BaseRoom" type="Node3D" unique_id=1869601789]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_u6ncq"]
+
+[node name="BaseRoom" type="Node3D" unique_id=1869601789 node_paths=PackedStringArray("editor_key_indicator_mesh")]
 script = ExtResource("1_oxyh5")
+editor_key_indicator_mesh = NodePath("EditorKeyIndicator/Key")
 
 [node name="Ceilings" type="GridMap" parent="." unique_id=1924657198]
 unique_name_in_owner = true
@@ -30,3 +34,12 @@ unique_name_in_owner = true
 [node name="Lights" type="Node3D" parent="." unique_id=68944341]
 
 [node name="Decor" type="Node3D" parent="." unique_id=1369690705]
+
+[node name="EditorKeyIndicator" parent="." unique_id=2108619820 instance=ExtResource("4_ativ4")]
+unique_name_in_owner = true
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 3.5, 0)
+
+[node name="Key" parent="EditorKeyIndicator" index="0" unique_id=130235742]
+surface_material_override/0 = SubResource("StandardMaterial3D_u6ncq")
+
+[editable path="EditorKeyIndicator"]
