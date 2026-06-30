@@ -50,6 +50,7 @@ data = {
 
 [node name="Door" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="0" unique_id=1915289721 instance=ExtResource("8_3sqe8")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.5)
+door_color = 3
 
 [node name="Door4" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="1" unique_id=1131277384 instance=ExtResource("8_3sqe8")]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 13, 0, -6)
@@ -98,3 +99,7 @@ transform = Transform3D(-0.1464157, 0.88438994, 0.44318965, 0.03776524, 0.452688
 [node name="DroppedKey" parent="." index="5" unique_id=406115655 instance=ExtResource("14_5grbt")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.0245728, 0, -2.4027777)
 color = 3
+
+[node name="DroppedKey2" parent="." index="6" unique_id=1126432857 instance=ExtResource("14_5grbt")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.1702089, 0, -2.4027777)
+color = 2

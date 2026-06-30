@@ -10,8 +10,12 @@ func _enter_tree() -> void:
 		var collider := player.kick_raycast.get_collider() as Node
 		if collider is Door:
 			var door := collider as Door
-			AudioManager.play("door-kick", player.action_audio_stream_player)
-			door.open(player.global_transform)
+			if door.door_color != Door.KeyColor.None and GameState.has_key(door.door_color):
+				AudioManager.play("door-kick", player.action_audio_stream_player)
+				door.open(player.global_transform)
+				GameState.use_key(door.door_color)
+			else:
+				AudioManager.play("door-locked", player.action_audio_stream_player)
 		elif collider is Enemy:
 			var enemy := collider as Enemy
 			AudioManager.play("kick", player.action_audio_stream_player)

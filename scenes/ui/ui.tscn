@@ -167,3 +167,14 @@ theme_override_font_sizes/font_size = 26
 text = "[E] Pick Up"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="KeyContainer" type="HBoxContainer" parent="." unique_id=1060516033]
+unique_name_in_owner = true
+layout_direction = 3
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -72.0
+offset_right = 240.0
+grow_vertical = 0

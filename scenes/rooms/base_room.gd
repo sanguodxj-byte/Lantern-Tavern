@@ -1,6 +1,8 @@
 class_name BaseRoom
 extends Node3D
 
+@export var key_color: Door.KeyColor
+
 @onready var ceilings: GridMap = %Ceilings
 @onready var enemies: Node3D = %Enemies
 @onready var floors: GridMap = %Floors
