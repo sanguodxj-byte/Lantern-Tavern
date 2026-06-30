@@ -1,0 +1,5 @@
+[gd_scene format=3 uid="uid://dsb27xa66l28m"]
+
+[ext_resource type="PackedScene" uid="uid://blq82fctjxq71" path="res://assets/meshes/props/chair/pillar.glb" id="1_gfqa4"]
+
+[node name="pillar" unique_id=1383364199 instance=ExtResource("1_gfqa4")]

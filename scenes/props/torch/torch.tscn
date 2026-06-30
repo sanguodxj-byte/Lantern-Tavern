@@ -48,20 +48,24 @@ size = Vector2(0.15, 0.15)
 [node name="Torch" type="Node3D" unique_id=1383287539]
 
 [node name="torch" parent="." unique_id=1458976576 instance=ExtResource("1_paw5d")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, -0.4)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, -0.34136927)
 
 [node name="Torch" parent="torch" index="0" unique_id=1640419623]
 cast_shadow = 0
 
 [node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=80217149]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9472842, -0.37553537)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9472842, -0.3169046)
 light_color = Color(1, 0.6156863, 0.23137255, 1)
 light_energy = 2.0
 light_size = 0.1
 light_specular = 0.0
+distance_fade_enabled = true
+distance_fade_begin = 10.0
+distance_fade_shadow = 10.0
+distance_fade_length = 5.0
 
 [node name="GPUParticles3D" type="GPUParticles3D" parent="." unique_id=1001640127]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.669026, -0.4085648)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.669026, -0.34993404)
 amount = 20
 lifetime = 1.3
 explosiveness = 0.1
@@ -71,7 +75,7 @@ process_material = SubResource("ParticleProcessMaterial_83u1b")
 draw_pass_1 = SubResource("QuadMesh_v0w6w")
 
 [node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="." unique_id=1996845430]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6871469, -0.37026381)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6871469, -0.31163305)
 stream = ExtResource("2_pnlsr")
 unit_size = 1.0
 autoplay = true

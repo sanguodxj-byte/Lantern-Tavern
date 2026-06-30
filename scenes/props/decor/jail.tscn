@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://8jfohf71jest"]
+
+[ext_resource type="PackedScene" uid="uid://bbe754vmej7nd" path="res://assets/meshes/props/chair/jail.glb" id="1_tmkxj"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_wjo81"]
+height = 1.4104004
+
+[node name="Jail" type="StaticBody3D" unique_id=442165433]
+
+[node name="jail" parent="." unique_id=1250514866 instance=ExtResource("1_tmkxj")]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=742699246]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6763916, 0)
+shape = SubResource("CylinderShape3D_wjo81")

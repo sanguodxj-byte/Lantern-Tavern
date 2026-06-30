@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://csc2tbrvwusxh"]
+
+[ext_resource type="PackedScene" uid="uid://g85ci6t8nuib" path="res://assets/meshes/props/chair/grate.glb" id="1_ev2va"]
+
+[node name="Grate" type="Node3D" unique_id=1107712500]
+
+[node name="grate" parent="." unique_id=1089933424 instance=ExtResource("1_ev2va")]

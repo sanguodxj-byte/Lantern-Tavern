@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://chvnearsmbbeh"]
+
+[ext_resource type="PackedScene" uid="uid://d1gmm2bhsidng" path="res://assets/meshes/props/chair/ruble.glb" id="1_v6vog"]
+
+[node name="Ruble" type="Node3D" unique_id=804873487]
+
+[node name="ruble" parent="." unique_id=693594503 instance=ExtResource("1_v6vog")]

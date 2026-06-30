@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://cr6h75g71d3vb"]
+
+[ext_resource type="PackedScene" uid="uid://qgslx1sfy6wa" path="res://assets/meshes/props/chair/bucket.glb" id="1_gdvpm"]
+
+[node name="Bucket" type="Node3D" unique_id=1548985006]
+
+[node name="bucket" parent="." unique_id=308451486 instance=ExtResource("1_gdvpm")]

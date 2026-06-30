@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://c8hsymady11em"]
+
+[ext_resource type="PackedScene" uid="uid://cg5to3gopwqho" path="res://scenes/equipment/pickable_item.tscn" id="1_nepd6"]
+[ext_resource type="Resource" uid="uid://dwwgg8a4e5a5o" path="res://data/shields/buckler.tres" id="2_2f2q4"]
+[ext_resource type="PackedScene" uid="uid://dkhdwshp0w5tn" path="res://assets/meshes/shields/buckler.glb" id="3_cw7ar"]
+
+[node name="PickableBuckler" unique_id=1588726055 node_paths=PackedStringArray("mesh_node") instance=ExtResource("1_nepd6")]
+mesh_node = NodePath("buckler/Buckler")
+shield_data = ExtResource("2_2f2q4")
+
+[node name="PresenceLight" parent="." index="1" unique_id=1446751178]
+visible = false
+
+[node name="buckler" parent="." index="2" unique_id=519318510 instance=ExtResource("3_cw7ar")]
+
+[editable path="buckler"]
