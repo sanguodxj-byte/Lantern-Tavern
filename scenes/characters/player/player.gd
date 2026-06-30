@@ -121,6 +121,7 @@ func try_receive_hit(source_enemy: Enemy, damage: int) -> void:
 	if state_node.can_get_hurt():
 		var impact_direction := source_enemy.global_position.direction_to(global_position)
 		var data := PlayerStateData.new().set_damage(damage).set_impact_direction(impact_direction)
+		AudioManager.play("slash-hit", action_audio_stream_player)
 		switch_state(State.HURT, data)
 	elif state == State.BLOCKING:
 		AudioManager.play("block", action_audio_stream_player)

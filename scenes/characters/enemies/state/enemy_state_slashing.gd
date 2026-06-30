@@ -19,6 +19,8 @@ func _process(_delta: float) -> void:
 			if player != null:
 				var damage := enemy.equipment.weapon_data.get_damage_dealt()
 				player.try_receive_hit(enemy, damage)
+		else:
+			AudioManager.play("slash", enemy.action_audio_stream_player)
 
 
 func on_animation_finished(_anim_name: String) -> void:
