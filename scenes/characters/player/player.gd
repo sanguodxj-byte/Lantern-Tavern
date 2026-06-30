@@ -34,7 +34,8 @@ var state: State
 var state_node: PlayerState
 
 func _ready() -> void:
-	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	if not OS.has_feature("web"):
+		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	GameState.register_player(self)
 	GameEvents.player_spawned.emit(self)
 	GameEvents.current_keys_changed.connect(on_current_keys_changed)
@@ -67,6 +68,10 @@ func process_pushback(delta: float) -> void:
 	velocity += pushback_force
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed:
+		if Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
+			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+			return
 	if event is InputEventMouseMotion:
 		rotate_y(-event.relative.x * mouse_sensitivity) # PI 3.14 => 180 degrees 
 		camera.rotate_x(-event.relative.y * mouse_sensitivity)
