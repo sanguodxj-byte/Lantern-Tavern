@@ -13,7 +13,6 @@
 [ext_resource type="PackedScene" uid="uid://bqm3c3s5gulaw" path="res://scenes/props/decor/spiderweb.tscn" id="9_nnerm"]
 [ext_resource type="PackedScene" uid="uid://c8hsymady11em" path="res://scenes/equipment/pickable_buckler.tscn" id="9_pw0xg"]
 [ext_resource type="PackedScene" uid="uid://bkg7jsbq7u5rl" path="res://scenes/equipment/pickable_axe.tscn" id="10_1omhj"]
-[ext_resource type="PackedScene" uid="uid://cn2aqq52jfy0w" path="res://scenes/collectibles/dropped_key/dropped_key.tscn" id="14_5grbt"]
 
 [node name="Level-01-Welcome" unique_id=113800226 instance=ExtResource("1_0mf82")]
 
@@ -30,16 +29,17 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 0)
 
 [node name="Foyer" parent="Rooms" parent_id_path=PackedInt32Array(540883177) index="4" unique_id=1928138106 instance=ExtResource("3_xicp7")]
 transform = Transform3D(1.3113416e-07, 0, -1, 0, 1, 0, 1, 0, 1.3113416e-07, 21, 0, -6)
+key_color = 3
 
 [node name="JailConnection" parent="Rooms" parent_id_path=PackedInt32Array(540883177) index="5" unique_id=1240240296 instance=ExtResource("5_h8tnv")]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 0, 0, -6)
-key_color = 2
 
 [node name="SacrificeRoom" parent="Rooms" parent_id_path=PackedInt32Array(540883177) index="6" unique_id=1545453307 instance=ExtResource("5_nnerm")]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -7, 0, -6)
 
 [node name="CenterPillarRoom" parent="Rooms" parent_id_path=PackedInt32Array(540883177) index="7" unique_id=2135843705 instance=ExtResource("6_ms6qq")]
 transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, -24, 0, 5)
+key_color = 4
 
 [node name="Cellar" parent="Rooms" parent_id_path=PackedInt32Array(540883177) index="8" unique_id=936478408 instance=ExtResource("7_62vsf")]
 transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, -20, 0, -21)
@@ -51,7 +51,6 @@ data = {
 
 [node name="Door" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="0" unique_id=1915289721 instance=ExtResource("8_3sqe8")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.5)
-door_color = 3
 
 [node name="Door4" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="1" unique_id=1131277384 instance=ExtResource("8_3sqe8")]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 13, 0, -6)
@@ -62,10 +61,15 @@ transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -18,
 [node name="Door7" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="3" unique_id=1695158843 instance=ExtResource("8_3sqe8")]
 transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, -21, 0, -2)
 
-[node name="Door5" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="4" unique_id=31767772 instance=ExtResource("8_3sqe8")]
-transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -3.5, 0, -6)
+[node name="Door8" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="4" unique_id=769037173 instance=ExtResource("8_3sqe8")]
+transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, -21, 0, -11)
+door_color = 4
 
-[node name="Door3" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="5" unique_id=309275261 instance=ExtResource("8_3sqe8")]
+[node name="Door5" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="5" unique_id=31767772 instance=ExtResource("8_3sqe8")]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -3.5, 0, -6)
+door_color = 3
+
+[node name="Door3" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="6" unique_id=309275261 instance=ExtResource("8_3sqe8")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, -9.5)
 
 [node name="Decor" type="Node3D" parent="." index="4" unique_id=1504613085]
@@ -96,11 +100,3 @@ transform = Transform3D(-0.50000006, 0, 0.8660254, 0, 1, 0, -0.8660254, 0, -0.50
 
 [node name="PickableAxe" parent="Decor" index="8" unique_id=1354600351 instance=ExtResource("10_1omhj")]
 transform = Transform3D(-0.1464157, 0.88438994, 0.44318965, 0.03776524, 0.45268843, -0.8908688, -0.98850214, -0.1137, -0.0996799, 3.5566998, 0.20169497, -12.061372)
-
-[node name="DroppedKey" parent="." index="5" unique_id=406115655 instance=ExtResource("14_5grbt")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.0245728, 0, -2.4027777)
-color = 3
-
-[node name="DroppedKey2" parent="." index="6" unique_id=1126432857 instance=ExtResource("14_5grbt")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.1702089, 0, -2.4027777)
-color = 2

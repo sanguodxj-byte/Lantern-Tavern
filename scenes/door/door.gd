@@ -15,12 +15,19 @@ static var COLOR_MAP : Dictionary[KeyColor, Color] = {
 @onready var collision_shape_3d: CollisionShape3D = %CollisionShape3D
 @onready var frame: Node3D = %Frame
 
-@export var door_color: KeyColor
+@export var door_color: KeyColor:
+	set(new_color):
+		door_color = new_color
+		editor_update_key_indicator()
+@export var editor_key_indicator: MeshInstance3D
 @export var frame_mesh: MeshInstance3D
 
 func _ready() -> void:
-	frame.visible = door_color != KeyColor.None
-	update_frame_color()
+	if Engine.is_editor_hint():
+		editor_update_key_indicator()
+	else:
+		frame.visible = door_color != KeyColor.None
+		update_frame_color()
 
 func open(source_transform: Transform3D) -> void:
 	collision_shape_3d.disabled = true
@@ -43,3 +50,13 @@ func update_frame_color() -> void:
 		frame_mesh.set_surface_override_material(0, material)
 	else:
 		frame.hide()
+		
+func editor_update_key_indicator() -> void:
+	if Engine.is_editor_hint():
+		editor_key_indicator.visible = door_color != KeyColor.None
+		if door_color != KeyColor.None:
+			var material := editor_key_indicator.get_active_material(0).duplicate() as StandardMaterial3D
+			material.albedo_color = COLOR_MAP[door_color]
+			editor_key_indicator.set_surface_override_material(0, material)
+	else:
+		editor_key_indicator.visible = false
