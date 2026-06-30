@@ -98,7 +98,7 @@ func check_for_possible_action() -> void:
 	var new_action := ""
 	if select_raycast.is_colliding():
 		new_action = "[E] Pick Up"
-	elif kick_raycast.is_colliding():
+	elif kick_raycast.is_colliding() and kick_raycast.get_collider() is Door:
 		new_action = "[F] Open"
 	if new_action != current_possible_action:
 		GameEvents.possible_action_changed.emit(new_action)

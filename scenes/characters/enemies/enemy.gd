@@ -70,10 +70,13 @@ func impale(thrown_item: ThrownItem, item_basis: Basis) -> void:
 	screamed.emit()
 
 func try_receive_furniture_impact(thrown_item: ThrownItem) -> void:
-	equipment.drop_shield()
-	var hit_direction := thrown_item.global_position.direction_to(global_position)
-	var data := EnemyStateData.new().set_impact_direction(hit_direction).set_knockback_force(2.5)
-	switch_state(State.STUNNED, data)
+	if equipment.has_shield():
+		equipment.drop_shield()
+		var hit_direction := thrown_item.global_position.direction_to(global_position)
+		var data := EnemyStateData.new().set_impact_direction(hit_direction).set_knockback_force(2.5)
+		switch_state(State.STUNNED, data)
+	else:
+		switch_state(State.DYING)
 
 func has_registered_player() -> bool:
 	return player != null and is_instance_valid(player)
