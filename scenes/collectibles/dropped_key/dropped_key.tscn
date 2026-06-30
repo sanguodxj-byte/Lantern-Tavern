@@ -43,6 +43,9 @@ shadow_mesh = SubResource("ArrayMesh_e3rfk")
 radius = 2.0
 
 [node name="DroppedKey" type="RigidBody3D" unique_id=406115655 node_paths=PackedStringArray("mesh")]
+collision_layer = 0
+axis_lock_angular_x = true
+axis_lock_angular_z = true
 script = ExtResource("1_31daf")
 mesh = NodePath("key/Key")
 

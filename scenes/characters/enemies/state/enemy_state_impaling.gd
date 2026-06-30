@@ -5,6 +5,7 @@ const EQUIPED_ITEM_PREFAB := preload("res://scenes/equipment/equiped_item.tscn")
 const IMPALE_INTENSITY := 100.0
 
 func _enter_tree() -> void:
+	enemy.health.current_life = 0
 	GameEvents.impact_felt.emit(GameEvents.ImpactIntensity.MEDIUM)
 	AudioManager.play("impale", enemy.action_audio_stream_player)
 	var impaled_item := EQUIPED_ITEM_PREFAB.instantiate() as EquipedItem

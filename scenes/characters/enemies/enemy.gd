@@ -1,6 +1,7 @@
 class_name Enemy
 extends CharacterBody3D
 
+signal dead(death_transform: Transform3D)
 signal screamed
 
 const AIR_FRICTION := 20.0

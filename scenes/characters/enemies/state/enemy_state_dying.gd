@@ -8,6 +8,7 @@ func _enter_tree() -> void:
 	FxHelper.create_blood_fx(enemy.physical_bone_head.global_transform)	
 	AudioManager.play("orc-die", enemy.vocal_audio_stream_player)
 	enemy.healthbar.visible = false
+	enemy.dead.emit(enemy.global_transform)
 	enemy.equipment.drop_weapon()
 	enemy.equipment.drop_shield()
 	enemy.presence_light.visible = false

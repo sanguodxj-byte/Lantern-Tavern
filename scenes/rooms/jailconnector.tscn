@@ -20,6 +20,7 @@ polygons = [PackedInt32Array(1, 0, 2), PackedInt32Array(2, 0, 5), PackedInt32Arr
 cell_height = 0.01
 
 [node name="JailConnection" unique_id=1869601789 instance=ExtResource("1_ig0ta")]
+key_color = 1
 
 [node name="RoomNavigation" parent="." index="1" unique_id=434851523]
 navigation_mesh = SubResource("NavigationMesh_0jdwc")
