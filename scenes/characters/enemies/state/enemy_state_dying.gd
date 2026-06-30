@@ -4,6 +4,7 @@ extends EnemyState
 const DURATION_RAGDOLL_SIMULATION := 3.0
 
 func _enter_tree() -> void:
+	enemy.health.current_life = 0
 	GameEvents.impact_felt.emit(GameEvents.ImpactIntensity.MEDIUM)
 	FxHelper.create_blood_fx(enemy.physical_bone_head.global_transform)	
 	AudioManager.play("orc-die", enemy.vocal_audio_stream_player)

@@ -2,9 +2,9 @@ extends Node
 
 var current_intensity: GameEvents.ImpactIntensity
 var duration_map := {
-	GameEvents.ImpactIntensity.LOW: 70,
-	GameEvents.ImpactIntensity.MEDIUM: 100,
-	GameEvents.ImpactIntensity.HIGH: 130,
+	GameEvents.ImpactIntensity.LOW: 50,
+	GameEvents.ImpactIntensity.MEDIUM: 70,
+	GameEvents.ImpactIntensity.HIGH: 100,
 }
 var is_paused := false
 var time_since_start_pause := Time.get_ticks_msec()

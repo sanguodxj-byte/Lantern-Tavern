@@ -12,7 +12,7 @@ dest_files=["res://.godot/imported/dungeon-theme-02.mp3-d86350c20ad5326d395d2e62
 
 [params]
 
-loop=false
+loop=true
 loop_offset=0
 bpm=0
 beat_count=0
