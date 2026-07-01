@@ -8,8 +8,8 @@ var current_loaded_level: BaseLevel = null
 
 func _ready() -> void:
 	GameEvents.level_restarted.connect(on_level_restarted)
-	#await _warm_shaders()
-	#AudioManager.start_music()
+	await _warm_shaders()
+	AudioManager.start_music()
 	load_level(current_level_index)
 
 func _warm_shaders() -> void:
