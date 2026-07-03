@@ -1,0 +1,5 @@
+# Material for troll_skin
+newmtl troll_skin_mat
+Kd 0.250 0.400 0.250
+Ks 0.000 0.000 0.000
+Ns 99

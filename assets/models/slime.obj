@@ -1,4 +1,5 @@
-# Procedural low-poly Monster Character: slime
+mtllib slime.mtl
+# OBJ mesh with PBR mapping: slime (faces: 120)
 v 0.0000 0.0000 1.0000
 v 0.0000 0.0000 1.0000
 v 0.0000 0.0000 1.0000
@@ -69,6 +70,7 @@ v -0.0000 -0.0000 -0.6000
 v -0.0000 -0.0000 -0.6000
 v 0.0000 -0.0000 -0.6000
 v 0.0000 -0.0000 -0.6000
+usemtl slime_mat
 f 1 2 12
 f 1 12 11
 f 2 3 13

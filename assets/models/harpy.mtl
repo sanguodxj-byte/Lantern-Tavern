@@ -1,0 +1,5 @@
+# Material for harpy
+newmtl harpy_mat
+Kd 0.500 0.750 0.900
+Ks 0.000 0.000 0.000
+Ns 400

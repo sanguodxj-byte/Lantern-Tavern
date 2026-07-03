@@ -1,0 +1,5 @@
+# Material for spider_poison_sac
+newmtl spider_poison_sac_mat
+Kd 0.500 0.100 0.600
+Ks 0.100 0.100 0.100
+Ns 800

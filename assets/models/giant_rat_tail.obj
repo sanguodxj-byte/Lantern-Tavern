@@ -1,4 +1,5 @@
-# Procedural low-poly Monster Drop: giant_rat_tail
+mtllib giant_rat_tail.mtl
+# OBJ mesh with PBR mapping: giant_rat_tail (faces: 32)
 v 0.0000 0.0000 0.0000
 v 0.0000 0.0000 1.5000
 v 0.1000 0.0000 0.0000
@@ -17,6 +18,7 @@ v -0.0100 0.0000 1.5000
 v -0.0071 -0.0071 1.5000
 v -0.0000 -0.0100 1.5000
 v 0.0071 -0.0071 1.5000
+usemtl giant_rat_tail_mat
 f 1 4 3
 f 2 11 12
 f 1 5 4

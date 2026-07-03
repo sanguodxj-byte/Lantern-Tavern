@@ -1,4 +1,5 @@
-# Procedural low-poly Gathered Material: shadow_lotus
+mtllib shadow_lotus.mtl
+# OBJ mesh with PBR mapping: shadow_lotus (faces: 96)
 v 0.0000 0.0000 0.0000
 v 0.0000 0.0000 0.1000
 v 0.8000 0.0000 0.0000
@@ -57,6 +58,7 @@ v -0.0000 0.0000 -0.3000
 v -0.0000 -0.0000 -0.3000
 v -0.0000 -0.0000 -0.3000
 v 0.0000 -0.0000 -0.3000
+usemtl shadow_lotus_mat
 f 1 4 3
 f 2 11 12
 f 1 5 4

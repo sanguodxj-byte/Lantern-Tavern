@@ -1,0 +1,5 @@
+# Material for pillar
+newmtl pillar_mat
+Kd 0.400 0.400 0.400
+Ks 0.000 0.000 0.000
+Ns 150

@@ -1,4 +1,5 @@
-# Procedural low-poly Monster Drop: spider_poison_sac
+mtllib spider_poison_sac.mtl
+# OBJ mesh with PBR mapping: spider_poison_sac (faces: 128)
 v -0.2000 0.0000 0.3000
 v -0.2000 0.0000 0.3000
 v -0.2000 0.0000 0.3000
@@ -79,6 +80,7 @@ v 0.2000 0.0000 -0.3000
 v 0.2000 -0.0000 -0.3000
 v 0.2000 -0.0000 -0.3000
 v 0.2000 -0.0000 -0.3000
+usemtl spider_poison_sac_mat
 f 1 2 10
 f 1 10 9
 f 2 3 11

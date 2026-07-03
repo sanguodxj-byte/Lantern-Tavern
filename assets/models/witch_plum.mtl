@@ -1,0 +1,5 @@
+# Material for witch_plum
+newmtl witch_plum_mat
+Kd 0.350 0.100 0.500
+Ks 0.000 0.000 0.000
+Ns 800

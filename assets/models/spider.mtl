@@ -1,0 +1,5 @@
+# Material for spider
+newmtl spider_mat
+Kd 0.150 0.150 0.150
+Ks 0.200 0.200 0.200
+Ns 700

@@ -1,4 +1,5 @@
-# Procedural low-poly Gathered Material: amber_resin
+mtllib amber_resin.mtl
+# OBJ mesh with PBR mapping: amber_resin (faces: 64)
 v 0.0000 0.0000 0.5000
 v 0.0000 0.0000 0.5000
 v 0.0000 0.0000 0.5000
@@ -39,6 +40,7 @@ v -0.0000 0.0000 -0.5000
 v -0.0000 -0.0000 -0.5000
 v -0.0000 -0.0000 -0.5000
 v 0.0000 -0.0000 -0.5000
+usemtl amber_resin_mat
 f 1 2 10
 f 1 10 9
 f 2 3 11

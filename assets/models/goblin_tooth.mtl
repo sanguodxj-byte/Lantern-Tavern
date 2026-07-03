@@ -1,0 +1,5 @@
+# Material for goblin_tooth
+newmtl goblin_tooth_mat
+Kd 0.950 0.950 0.850
+Ks 0.100 0.100 0.100
+Ns 700

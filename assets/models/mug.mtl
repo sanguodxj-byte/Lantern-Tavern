@@ -1,0 +1,5 @@
+# Material for mug
+newmtl mug_mat
+Kd 0.650 0.450 0.300
+Ks 0.000 0.000 0.000
+Ns 449

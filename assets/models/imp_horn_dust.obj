@@ -1,4 +1,5 @@
-# Procedural low-poly Monster Drop: imp_horn_dust
+mtllib imp_horn_dust.mtl
+# OBJ mesh with PBR mapping: imp_horn_dust (faces: 32)
 v 0.0000 0.0000 0.0000
 v 0.0000 0.0000 0.8000
 v 0.2500 0.0000 0.0000
@@ -17,6 +18,7 @@ v -0.0200 0.0000 0.8000
 v -0.0141 -0.0141 0.8000
 v -0.0000 -0.0200 0.8000
 v 0.0141 -0.0141 0.8000
+usemtl imp_horn_dust_mat
 f 1 4 3
 f 2 11 12
 f 1 5 4

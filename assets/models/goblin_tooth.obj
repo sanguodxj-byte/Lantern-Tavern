@@ -1,4 +1,5 @@
-# Procedural low-poly Monster Drop: goblin_tooth
+mtllib goblin_tooth.mtl
+# OBJ mesh with PBR mapping: goblin_tooth (faces: 32)
 v 0.0000 0.0000 0.0000
 v 0.0000 0.0000 0.8000
 v 0.2000 0.0000 0.0000
@@ -17,6 +18,7 @@ v 0.0000 0.0000 0.8000
 v 0.0000 0.0000 0.8000
 v 0.0000 0.0000 0.8000
 v 0.0000 0.0000 0.8000
+usemtl goblin_tooth_mat
 f 1 4 3
 f 2 11 12
 f 1 5 4

@@ -1,0 +1,5 @@
+# Material for goblin
+newmtl goblin_mat
+Kd 0.500 0.700 0.400
+Ks 0.000 0.000 0.000
+Ns 400

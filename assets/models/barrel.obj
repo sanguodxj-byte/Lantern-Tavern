@@ -1,4 +1,5 @@
-# Procedural low-poly Environmental Prop: barrel
+mtllib barrel.mtl
+# OBJ mesh with PBR mapping: barrel (faces: 64)
 v 0.0000 0.0000 0.0000
 v 0.0000 0.0000 1.4000
 v 0.6000 0.0000 0.0000
@@ -35,6 +36,7 @@ v -0.7000 0.0000 1.1000
 v -0.4950 -0.4950 1.1000
 v -0.0000 -0.7000 1.1000
 v 0.4950 -0.4950 1.1000
+usemtl barrel_mat
 f 1 4 3
 f 2 11 12
 f 1 5 4

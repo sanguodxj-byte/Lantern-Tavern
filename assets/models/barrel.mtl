@@ -1,0 +1,5 @@
+# Material for barrel
+newmtl barrel_mat
+Kd 0.550 0.350 0.200
+Ks 0.100 0.100 0.100
+Ns 550
