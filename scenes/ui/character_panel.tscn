@@ -1,0 +1,287 @@
+[gd_scene load_steps=3 format=3 uid="uid://clmv5y0rh9a7p"]
+
+[ext_resource type="Script" path="res://scenes/ui/character_panel.gd" id="1_cpanel"]
+[ext_resource type="Theme" uid="uid://clmv5y0rh9a7o" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
+
+[node name="CharacterPanel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_cpanel")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.05, 0.04, 0.85)
+
+[node name="PanelContainer" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -460.0
+offset_top = -280.0
+offset_right = 460.0
+offset_bottom = 280.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="PanelContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelContainer/VBoxContainer/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 28
+text = " ADVENTURER LOG & STATS"
+
+[node name="ReturnBtn" type="Button" parent="PanelContainer/VBoxContainer/Header"]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+text = "Close Panel"
+
+[node name="TabContainer" type="TabContainer" parent="PanelContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+current_tab = 0
+
+[node name="Character Attributes" type="MarginContainer" parent="PanelContainer/VBoxContainer/TabContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+metadata/_tab_index = 0
+
+[node name="HBox" type="HBoxContainer" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes"]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="DetailsPanel" type="PanelContainer" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="VBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox/DetailsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Label" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox/DetailsPanel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Hero Specifications"
+
+[node name="Grid" type="GridContainer" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox/DetailsPanel/VBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 14
+columns = 2
+
+[node name="HPLbl" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox/DetailsPanel/VBox/Grid"]
+layout_mode = 2
+text = "Life Force (HP):"
+
+[node name="HPVal" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox/DetailsPanel/VBox/Grid" unique_name_in_owner = true
+layout_mode = 2
+text = "100 / 100"
+
+[node name="GoldLbl" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox/DetailsPanel/VBox/Grid"]
+layout_mode = 2
+text = "Tavern Funds (Gold):"
+
+[node name="GoldVal" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox/DetailsPanel/VBox/Grid" unique_name_in_owner = true
+layout_mode = 2
+text = "120 Gold"
+
+[node name="DmgLbl" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox/DetailsPanel/VBox/Grid"]
+layout_mode = 2
+text = "Weapon Damage:"
+
+[node name="DmgVal" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox/DetailsPanel/VBox/Grid" unique_name_in_owner = true
+layout_mode = 2
+text = "3 - 5 Phys"
+
+[node name="DefLbl" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox/DetailsPanel/VBox/Grid"]
+layout_mode = 2
+text = "Shield Defense:"
+
+[node name="DefVal" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox/DetailsPanel/VBox/Grid" unique_name_in_owner = true
+layout_mode = 2
+text = "30 Shield Block"
+
+[node name="ReachLbl" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox/DetailsPanel/VBox/Grid"]
+layout_mode = 2
+text = "Attack Reach:"
+
+[node name="ReachVal" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox/DetailsPanel/VBox/Grid" unique_name_in_owner = true
+layout_mode = 2
+text = "3.5 meters"
+
+[node name="SpeedLbl" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox/DetailsPanel/VBox/Grid"]
+layout_mode = 2
+text = "Attack Speed:"
+
+[node name="SpeedVal" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox/DetailsPanel/VBox/Grid" unique_name_in_owner = true
+layout_mode = 2
+text = "1.0 factor"
+
+[node name="DescPanel" type="PanelContainer" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox/DescPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Label" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox/DescPanel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Status Lore"
+
+[node name="DescVal" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Character Attributes/HBox/DescPanel/VBox" unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+text = "A brave adventurer..."
+autowrap_mode = 2
+
+[node name="Equipment Inspect" type="MarginContainer" parent="PanelContainer/VBoxContainer/TabContainer"]
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+metadata/_tab_index = 1
+
+[node name="HBox" type="HBoxContainer" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="GearList" type="ItemList" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox" unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+
+[node name="InspectViewport" type="SubViewportContainer" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+stretch = true
+
+[node name="EqSubViewport" type="SubViewport" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox/InspectViewport" unique_name_in_owner = true
+handle_input_locally = false
+size = Vector2i(328, 413)
+render_target_update_mode = 0
+
+[node name="EqCameraPivot" type="Node3D" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox/InspectViewport/EqSubViewport" unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 0.9396926, 0.3420201, 0, -0.3420201, 0.9396926, 0, 0, 0)
+
+[node name="Camera3D" type="Camera3D" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox/InspectViewport/EqSubViewport/EqCameraPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.8)
+
+[node name="EqLight" type="DirectionalLight3D" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox/InspectViewport/EqSubViewport" unique_name_in_owner = true
+transform = Transform3D(0.866025, -0.25, 0.433013, 0, 0.866025, 0.5, -0.5, -0.433013, 0.75, 0, 2, 0)
+light_color = Color(1, 0.7, 0.4, 1)
+light_energy = 2.0
+
+[node name="StatsPanel" type="PanelContainer" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox"]
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox/StatsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox/StatsPanel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Gear Specifications"
+
+[node name="Grid" type="GridContainer" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox/StatsPanel/VBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 2
+
+[node name="EqNameLbl" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox/StatsPanel/VBox/Grid"]
+layout_mode = 2
+text = "Name:"
+
+[node name="EqNameVal" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox/StatsPanel/VBox/Grid" unique_name_in_owner = true
+layout_mode = 2
+text = "Short Sword"
+
+[node name="EqCondLbl" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox/StatsPanel/VBox/Grid"]
+layout_mode = 2
+text = "Condition:"
+
+[node name="EqCondVal" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox/StatsPanel/VBox/Grid" unique_name_in_owner = true
+layout_mode = 2
+text = "30 / 30"
+
+[node name="EqDmgLbl" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox/StatsPanel/VBox/Grid"]
+layout_mode = 2
+text = "Power/Dmg:"
+
+[node name="EqDmgVal" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox/StatsPanel/VBox/Grid" unique_name_in_owner = true
+layout_mode = 2
+text = "3 - 5 Phys"
+
+[node name="EqReachLbl" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox/StatsPanel/VBox/Grid"]
+layout_mode = 2
+text = "Reach Limit:"
+
+[node name="EqReachVal" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox/StatsPanel/VBox/Grid" unique_name_in_owner = true
+layout_mode = 2
+text = "3.5 meters"
+
+[node name="DescLbl" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox/StatsPanel/VBox"]
+layout_mode = 2
+text = "Item Lore:"
+
+[node name="EqDescVal" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Equipment Inspect/HBox/StatsPanel/VBox" unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+text = "A versatile close-combat weapon..."
+autowrap_mode = 2
+
+[node name="Adventure Quests" type="MarginContainer" parent="PanelContainer/VBoxContainer/TabContainer"]
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+metadata/_tab_index = 2
+
+[node name="HBox" type="HBoxContainer" parent="PanelContainer/VBoxContainer/TabContainer/Adventure Quests"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="QuestTree" type="Tree" parent="PanelContainer/VBoxContainer/TabContainer/Adventure Quests/HBox" unique_name_in_owner = true
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+
+[node name="DetailsPanel" type="PanelContainer" parent="PanelContainer/VBoxContainer/TabContainer/Adventure Quests/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Margin" type="MarginContainer" parent="PanelContainer/VBoxContainer/TabContainer/Adventure Quests/HBox/DetailsPanel"]
+layout_mode = 2
+
+[node name="QuestDetailsVal" type="Label" parent="PanelContainer/VBoxContainer/TabContainer/Adventure Quests/HBox/DetailsPanel/Margin" unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+text = "QUEST DETAILS:"
+autowrap_mode = 2

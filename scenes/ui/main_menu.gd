@@ -5,6 +5,7 @@ class_name MainMenu
 @onready var classic_button: Button = $MarginContainer/VBoxContainer/ClassicButton
 @onready var settings_button: Button = $MarginContainer/VBoxContainer/SettingsButton
 @onready var model_viewer_button: Button = $MarginContainer/VBoxContainer/ModelViewerButton
+@onready var character_log_button: Button = $MarginContainer/VBoxContainer/CharacterLogButton
 @onready var exit_button: Button = $MarginContainer/VBoxContainer/ExitButton
 @onready var lang_toggle: Button = $MarginContainer/VBoxContainer/LangToggle
 
@@ -19,6 +20,7 @@ func _ready() -> void:
 	classic_button.pressed.connect(_on_classic_pressed)
 	settings_button.pressed.connect(_on_settings_pressed)
 	model_viewer_button.pressed.connect(_on_model_viewer_pressed)
+	character_log_button.pressed.connect(_on_character_log_pressed)
 	exit_button.pressed.connect(_on_exit_pressed)
 	lang_toggle.pressed.connect(_on_lang_toggle_pressed)
 	
@@ -98,6 +100,9 @@ func _on_settings_pressed() -> void:
 
 func _on_model_viewer_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/model_viewer.tscn")
+
+func _on_character_log_pressed() -> void:
+	get_tree().change_scene_to_file("res://scenes/ui/character_panel.tscn")
 
 func _on_exit_pressed() -> void:
 	get_tree().quit()
