@@ -1,0 +1,294 @@
+[
+    {
+        "id": "wild_glowcap",
+        "name": "野生荧光菇",
+        "type": "gather",
+        "flavors": {
+            "earthy": 3,
+            "bitter": 1
+        },
+        "description": "在黑暗洞穴中散发微光的菌类，能给酒液带来奇妙的视觉效果。"
+    },
+    {
+        "id": "frost_berry",
+        "name": "霜冻浆果",
+        "type": "gather",
+        "flavors": {
+            "sour": 2,
+            "sweet": 4
+        },
+        "description": "生长在寒冷高地的浆果，能让饮品保持冰凉的口感。"
+    },
+    {
+        "id": "fire_bloom",
+        "name": "烈焰花瓣",
+        "type": "gather",
+        "flavors": {
+            "spicy": 5
+        },
+        "description": "蕴含微弱火元素的红色花朵，能让酒口感发热。"
+    },
+    {
+        "id": "cave_lichen",
+        "name": "洞穴苔藓",
+        "type": "gather",
+        "flavors": {
+            "salty": 2,
+            "earthy": 2
+        },
+        "description": "附着在阴湿岩石上的地衣，常用于低成本酿造。"
+    },
+    {
+        "id": "honeycomb",
+        "name": "野生蜂巢",
+        "type": "gather",
+        "flavors": {
+            "sweet": 5,
+            "floral": 2
+        },
+        "description": "森林哥布林最喜欢的甜味来源。"
+    },
+    {
+        "id": "sweet_grass",
+        "name": "甜心草",
+        "type": "gather",
+        "flavors": {
+            "sweet": 2,
+            "fresh": 3
+        },
+        "description": "原野上常见的多汁草本，适合作为基础甜味调和。"
+    },
+    {
+        "id": "bitter_root",
+        "name": "苦艾根",
+        "type": "gather",
+        "flavors": {
+            "bitter": 5
+        },
+        "description": "极度苦涩的植物根茎，是某些重口味客人的最爱。"
+    },
+    {
+        "id": "mountain_barley",
+        "name": "高山大麦",
+        "type": "gather",
+        "flavors": {
+            "earthy": 4
+        },
+        "description": "酿造烈性麦芽酒的核心谷物。"
+    },
+    {
+        "id": "witch_plum",
+        "name": "女巫李",
+        "type": "gather",
+        "flavors": {
+            "sour": 4,
+            "sweet": 1
+        },
+        "description": "带有神秘紫色光泽的水果，酸味浓郁。"
+    },
+    {
+        "id": "shadow_lotus",
+        "name": "暗影莲花",
+        "type": "gather",
+        "flavors": {
+            "umami": 3,
+            "floral": 3
+        },
+        "description": "只在夜间盛开的黑色莲花。"
+    },
+    {
+        "id": "sunflower_seed",
+        "name": "向日葵籽",
+        "type": "gather",
+        "flavors": {
+            "nutty": 3,
+            "sweet": 1
+        },
+        "description": "炒熟后能提供浓郁的油脂和坚果香气。"
+    },
+    {
+        "id": "ironwood_bark",
+        "name": "铁木树皮",
+        "type": "gather",
+        "flavors": {
+            "woody": 4,
+            "bitter": 2
+        },
+        "description": "质地坚硬的树皮，能带给酒桶陈酿般的厚重木香。"
+    },
+    {
+        "id": "amber_resin",
+        "name": "琥珀树树脂",
+        "type": "gather",
+        "flavors": {
+            "sweet": 3,
+            "smoky": 2
+        },
+        "description": "凝固的树脂，带有一股独特的松脂与烟熏风味。"
+    },
+    {
+        "id": "acid_grape",
+        "name": "酸腺葡萄",
+        "type": "gather",
+        "flavors": {
+            "sour": 5
+        },
+        "description": "酸度惊人的野生葡萄，需要大量甜味中和。"
+    },
+    {
+        "id": "rock_salt",
+        "name": "岩盐结晶",
+        "type": "gather",
+        "flavors": {
+            "salty": 5
+        },
+        "description": "矿洞深处的盐结晶，可以强化其他风味的表达。"
+    },
+    {
+        "id": "goblin_ear",
+        "name": "哥布林耳尖",
+        "type": "drop",
+        "flavors": {
+            "gaminess": 2,
+            "bitter": 2
+        },
+        "description": "虽然听起来可怕，但某些亚人种认为它很有嚼劲和辛香。"
+    },
+    {
+        "id": "spider_poison_sac",
+        "name": "蜘蛛毒囊",
+        "type": "drop",
+        "flavors": {
+            "spicy": 4,
+            "bitter": 3
+        },
+        "description": "微量使用时会带来刺痛舌尖的酥麻感。"
+    },
+    {
+        "id": "slime_jelly",
+        "name": "史莱姆凝胶",
+        "type": "drop",
+        "flavors": {
+            "sweet": 2,
+            "fresh": 4
+        },
+        "description": "透明富有弹性的凝胶，能极大地改变饮料的质感。"
+    },
+    {
+        "id": "bat_wing",
+        "name": "蝙蝠翅膀",
+        "type": "drop",
+        "flavors": {
+            "leathery": 2,
+            "sour": 1
+        },
+        "description": "干燥后磨成粉末，可增加酒的浑厚度。"
+    },
+    {
+        "id": "wolf_fang",
+        "name": "野狼犬齿",
+        "type": "drop",
+        "flavors": {
+            "mineral": 2
+        },
+        "description": "泡在酒中可释放出微量矿物风味。"
+    },
+    {
+        "id": "boar_tusk",
+        "name": "野猪獠牙",
+        "type": "drop",
+        "flavors": {
+            "earthy": 3
+        },
+        "description": "常用于制作骨汤酒的辅料。"
+    },
+    {
+        "id": "skeleton_dust",
+        "name": "白骨粉末",
+        "type": "drop",
+        "flavors": {
+            "dry": 4,
+            "earthy": 1
+        },
+        "description": "亡灵身上掉落的干燥粉末，可降低酒液的湿润黏度。"
+    },
+    {
+        "id": "giant_rat_tail",
+        "name": "巨鼠尾巴",
+        "type": "drop",
+        "flavors": {
+            "gaminess": 3,
+            "bitter": 2
+        },
+        "description": "廉价肉质风味原料。"
+    },
+    {
+        "id": "screaming_spores",
+        "name": "尖叫蕈孢子",
+        "type": "drop",
+        "flavors": {
+            "spicy": 3,
+            "umami": 4
+        },
+        "description": "被惊扰时会发出异响的蘑菇孢子，风味极其鲜辣。"
+    },
+    {
+        "id": "imp_horn_dust",
+        "name": "小恶魔角粉",
+        "type": "drop",
+        "flavors": {
+            "smoky": 4,
+            "spicy": 2
+        },
+        "description": "带有硫磺味道的粉末，会产生淡淡的烟熏感。"
+    },
+    {
+        "id": "troll_blood",
+        "name": "巨魔之血",
+        "type": "drop",
+        "flavors": {
+            "metallic": 3,
+            "salty": 2
+        },
+        "description": "活性极强的血液，饮用后会让怪物感到热血沸腾。"
+    },
+    {
+        "id": "zombie_flesh",
+        "name": "腐肉精华",
+        "type": "drop",
+        "flavors": {
+            "pungent": 4,
+            "bitter": 2
+        },
+        "description": "亡灵类客人（如食尸鬼或骷髅）极度钟爱的独特风味。"
+    },
+    {
+        "id": "harpy_feather",
+        "name": "哈比羽毛粉",
+        "type": "drop",
+        "flavors": {
+            "floral": 2,
+            "fresh": 2
+        },
+        "description": "带有高空微风气息的羽毛粉末。"
+    },
+    {
+        "id": "basilisk_scale",
+        "name": "蜥蜴人鳞片",
+        "type": "drop",
+        "flavors": {
+            "salty": 3,
+            "spicy": 1
+        },
+        "description": "研磨后可作为类似胡椒的调味剂。"
+    },
+    {
+        "id": "drake_scale",
+        "name": "幼龙碎鳞",
+        "type": "drop",
+        "flavors": {
+            "smoky": 5
+        },
+        "description": "极为罕见的鳞片碎片，能酿造出带烈火余温的高档酒。"
+    }
+]
