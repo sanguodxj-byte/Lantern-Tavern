@@ -1,0 +1,162 @@
+[
+    {
+        "id": "goblin",
+        "name": "哥布林",
+        "liked_flavors": [
+            "sweet",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "bitter",
+            "salty"
+        ],
+        "drops": [
+            "goblin_ear",
+            "goblin_tooth"
+        ]
+    },
+    {
+        "id": "spider",
+        "name": "巨型蜘蛛",
+        "liked_flavors": [
+            "gaminess",
+            "salty"
+        ],
+        "disliked_flavors": [
+            "spicy",
+            "sweet"
+        ],
+        "drops": [
+            "spider_poison_sac",
+            "spider_web"
+        ]
+    },
+    {
+        "id": "slime",
+        "name": "史莱姆",
+        "liked_flavors": [
+            "sour",
+            "sweet"
+        ],
+        "disliked_flavors": [
+            "salty",
+            "earthy"
+        ],
+        "drops": [
+            "slime_core",
+            "slime_jelly"
+        ]
+    },
+    {
+        "id": "bat",
+        "name": "洞穴蝙蝠",
+        "liked_flavors": [
+            "bitter",
+            "sour"
+        ],
+        "disliked_flavors": [
+            "fresh",
+            "floral"
+        ],
+        "drops": [
+            "bat_wing",
+            "bat_guano"
+        ]
+    },
+    {
+        "id": "skeleton",
+        "name": "骷髅兵",
+        "liked_flavors": [
+            "earthy",
+            "dry"
+        ],
+        "disliked_flavors": [
+            "umami",
+            "sweet"
+        ],
+        "drops": [
+            "skeleton_dust",
+            "fossil_bone"
+        ]
+    },
+    {
+        "id": "rat",
+        "name": "巨鼠",
+        "liked_flavors": [
+            "gaminess",
+            "earthy"
+        ],
+        "disliked_flavors": [
+            "sour",
+            "spicy"
+        ],
+        "drops": [
+            "giant_rat_tail",
+            "rat_whisker"
+        ]
+    },
+    {
+        "id": "imp",
+        "name": "小恶魔",
+        "liked_flavors": [
+            "spicy",
+            "smoky"
+        ],
+        "disliked_flavors": [
+            "fresh",
+            "sour"
+        ],
+        "drops": [
+            "imp_horn_dust",
+            "imp_wing_ash"
+        ]
+    },
+    {
+        "id": "troll",
+        "name": "巨魔",
+        "liked_flavors": [
+            "salty",
+            "metallic"
+        ],
+        "disliked_flavors": [
+            "sweet",
+            "earthy"
+        ],
+        "drops": [
+            "troll_blood",
+            "troll_skin"
+        ]
+    },
+    {
+        "id": "zombie",
+        "name": "僵尸",
+        "liked_flavors": [
+            "pungent",
+            "bitter"
+        ],
+        "disliked_flavors": [
+            "floral",
+            "sweet"
+        ],
+        "drops": [
+            "zombie_flesh",
+            "zombie_nail"
+        ]
+    },
+    {
+        "id": "harpy",
+        "name": "哈比",
+        "liked_flavors": [
+            "floral",
+            "fresh"
+        ],
+        "disliked_flavors": [
+            "gaminess",
+            "bitter"
+        ],
+        "drops": [
+            "harpy_feather",
+            "harpy_talon"
+        ]
+    }
+]

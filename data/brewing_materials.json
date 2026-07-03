@@ -46,7 +46,7 @@
             "sweet": 5,
             "floral": 2
         },
-        "description": "森林哥布林最喜欢的甜味来源。"
+        "description": "森林里野生蜂巢，极度甜美。"
     },
     {
         "id": "sweet_grass",
@@ -148,147 +148,200 @@
         "id": "goblin_ear",
         "name": "哥布林耳尖",
         "type": "drop",
+        "dropped_by": "goblin",
         "flavors": {
-            "gaminess": 2,
-            "bitter": 2
+            "bitter": 3
         },
-        "description": "虽然听起来可怕，但某些亚人种认为它很有嚼劲和辛香。"
+        "description": "哥布林囤积苦涩味的耳朵，风味干涩。"
+    },
+    {
+        "id": "goblin_tooth",
+        "name": "哥布林犬齿",
+        "type": "drop",
+        "dropped_by": "goblin",
+        "flavors": {
+            "salty": 2
+        },
+        "description": "钙质结晶，带有微量的咸涩咸风味。"
     },
     {
         "id": "spider_poison_sac",
         "name": "蜘蛛毒囊",
         "type": "drop",
+        "dropped_by": "spider",
         "flavors": {
-            "spicy": 4,
-            "bitter": 3
+            "spicy": 4
         },
-        "description": "微量使用时会带来刺痛舌尖的酥麻感。"
+        "description": "充满神经毒素，入口带强烈的辛辣刺痛感。"
+    },
+    {
+        "id": "spider_web",
+        "name": "粘稠蜘蛛丝",
+        "type": "drop",
+        "dropped_by": "spider",
+        "flavors": {
+            "sweet": 2
+        },
+        "description": "蛛丝提取的糖蛋白，具有出奇的粘稠甜味。"
+    },
+    {
+        "id": "slime_core",
+        "name": "史莱姆核心",
+        "type": "drop",
+        "dropped_by": "slime",
+        "flavors": {
+            "salty": 3
+        },
+        "description": "凝结的无机盐核心，风味极咸。"
     },
     {
         "id": "slime_jelly",
         "name": "史莱姆凝胶",
         "type": "drop",
+        "dropped_by": "slime",
         "flavors": {
-            "sweet": 2,
-            "fresh": 4
+            "earthy": 2
         },
-        "description": "透明富有弹性的凝胶，能极大地改变饮料的质感。"
+        "description": "胶质外壳，带有潮湿地底的泥土腥香。"
     },
     {
         "id": "bat_wing",
         "name": "蝙蝠翅膀",
         "type": "drop",
+        "dropped_by": "bat",
         "flavors": {
-            "leathery": 2,
-            "sour": 1
+            "floral": 2
         },
-        "description": "干燥后磨成粉末，可增加酒的浑厚度。"
+        "description": "蝙蝠长期接触岩壁奇花，积攒了淡淡的花香。"
     },
     {
-        "id": "wolf_fang",
-        "name": "野狼犬齿",
+        "id": "bat_guano",
+        "name": "蝙蝠粪便结晶",
         "type": "drop",
+        "dropped_by": "bat",
         "flavors": {
-            "mineral": 2
+            "fresh": 3
         },
-        "description": "泡在酒中可释放出微量矿物风味。"
-    },
-    {
-        "id": "boar_tusk",
-        "name": "野猪獠牙",
-        "type": "drop",
-        "flavors": {
-            "earthy": 3
-        },
-        "description": "常用于制作骨汤酒的辅料。"
+        "description": "蝙蝠排泄出的精纯草本浓缩结晶，味道清香四溢。"
     },
     {
         "id": "skeleton_dust",
         "name": "白骨粉末",
         "type": "drop",
+        "dropped_by": "skeleton",
         "flavors": {
-            "dry": 4,
-            "earthy": 1
+            "sweet": 2
         },
-        "description": "亡灵身上掉落的干燥粉末，可降低酒液的湿润黏度。"
+        "description": "腐殖质脱水产生的甜味骨粉。"
+    },
+    {
+        "id": "fossil_bone",
+        "name": "古老遗骨",
+        "type": "drop",
+        "dropped_by": "skeleton",
+        "flavors": {
+            "umami": 3
+        },
+        "description": "深层化石，富含有机钙质鲜味。"
     },
     {
         "id": "giant_rat_tail",
         "name": "巨鼠尾巴",
         "type": "drop",
+        "dropped_by": "rat",
         "flavors": {
-            "gaminess": 3,
-            "bitter": 2
+            "sour": 3
         },
-        "description": "廉价肉质风味原料。"
+        "description": "巨鼠尾巴积累的酸性腺体分泌物，酸涩无比。"
     },
     {
-        "id": "screaming_spores",
-        "name": "尖叫蕈孢子",
+        "id": "rat_whisker",
+        "name": "巨鼠胡须",
         "type": "drop",
+        "dropped_by": "rat",
         "flavors": {
-            "spicy": 3,
-            "umami": 4
+            "spicy": 2
         },
-        "description": "被惊扰时会发出异响的蘑菇孢子，风味极其鲜辣。"
+        "description": "坚硬锋利的胡须，浸泡后释放刺鼻的辛辣感。"
     },
     {
         "id": "imp_horn_dust",
         "name": "小恶魔角粉",
         "type": "drop",
+        "dropped_by": "imp",
         "flavors": {
-            "smoky": 4,
-            "spicy": 2
+            "sour": 3
         },
-        "description": "带有硫磺味道的粉末，会产生淡淡的烟熏感。"
+        "description": "恶魔尖角粉，具有极高浓度的酸性腐蚀风味。"
+    },
+    {
+        "id": "imp_wing_ash",
+        "name": "恶魔翅灰",
+        "type": "drop",
+        "dropped_by": "imp",
+        "flavors": {
+            "fresh": 3
+        },
+        "description": "恶魔拍打翅膀燃尽后的灰烬，带有一股冷冽的清凉感。"
     },
     {
         "id": "troll_blood",
         "name": "巨魔之血",
         "type": "drop",
+        "dropped_by": "troll",
         "flavors": {
-            "metallic": 3,
-            "salty": 2
+            "earthy": 4
         },
-        "description": "活性极强的血液，饮用后会让怪物感到热血沸腾。"
+        "description": "巨魔再生能力来源，带有厚重的地底泥土芬芳。"
+    },
+    {
+        "id": "troll_skin",
+        "name": "巨魔厚皮",
+        "type": "drop",
+        "dropped_by": "troll",
+        "flavors": {
+            "sweet": 2
+        },
+        "description": "角质化厚皮，咀嚼后释放奇特的胶原蛋白甜味。"
     },
     {
         "id": "zombie_flesh",
         "name": "腐肉精华",
         "type": "drop",
+        "dropped_by": "zombie",
         "flavors": {
-            "pungent": 4,
-            "bitter": 2
+            "floral": 3
         },
-        "description": "亡灵类客人（如食尸鬼或骷髅）极度钟爱的独特风味。"
+        "description": "虽然腐烂，却因为常年埋藏于墓地而散发浓郁的花香。"
+    },
+    {
+        "id": "zombie_nail",
+        "name": "僵尸指甲",
+        "type": "drop",
+        "dropped_by": "zombie",
+        "flavors": {
+            "sweet": 2
+        },
+        "description": "指甲盖内积蓄的古老酵糖，味道甘甜。"
     },
     {
         "id": "harpy_feather",
         "name": "哈比羽毛粉",
         "type": "drop",
+        "dropped_by": "harpy",
         "flavors": {
-            "floral": 2,
-            "fresh": 2
+            "bitter": 3
         },
-        "description": "带有高空微风气息的羽毛粉末。"
+        "description": "羽毛管腺体分泌的极度苦涩油脂，防风防雨。"
     },
     {
-        "id": "basilisk_scale",
-        "name": "蜥蜴人鳞片",
+        "id": "harpy_talon",
+        "name": "哈比尖爪",
         "type": "drop",
+        "dropped_by": "harpy",
         "flavors": {
-            "salty": 3,
-            "spicy": 1
+            "gaminess": 4
         },
-        "description": "研磨后可作为类似胡椒的调味剂。"
-    },
-    {
-        "id": "drake_scale",
-        "name": "幼龙碎鳞",
-        "type": "drop",
-        "flavors": {
-            "smoky": 5
-        },
-        "description": "极为罕见的鳞片碎片，能酿造出带烈火余温的高档酒。"
+        "description": "撕裂猎物后留下的、带浓重野兽膻腥气息的利爪。"
     }
 ]
