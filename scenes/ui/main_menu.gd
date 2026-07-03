@@ -2,6 +2,7 @@ extends Control
 class_name MainMenu
 
 @onready var start_button: Button = $MarginContainer/VBoxContainer/StartButton
+@onready var classic_button: Button = $MarginContainer/VBoxContainer/ClassicButton
 @onready var settings_button: Button = $MarginContainer/VBoxContainer/SettingsButton
 @onready var exit_button: Button = $MarginContainer/VBoxContainer/ExitButton
 @onready var lang_toggle: Button = $MarginContainer/VBoxContainer/LangToggle
@@ -13,8 +14,8 @@ class_name MainMenu
 @onready var camera: Camera3D = $TavernBackground/SubViewport/CameraPivot/Camera3D
 
 func _ready() -> void:
-	# Bind buttons
 	start_button.pressed.connect(_on_start_pressed)
+	classic_button.pressed.connect(_on_classic_pressed)
 	settings_button.pressed.connect(_on_settings_pressed)
 	exit_button.pressed.connect(_on_exit_pressed)
 	lang_toggle.pressed.connect(_on_lang_toggle_pressed)
@@ -78,13 +79,20 @@ func _spawn_fallback_cozy_tavern() -> void:
 func _on_start_pressed() -> void:
 	if TavernManager:
 		TavernManager.gold = 100
-		TavernManager.materials_inventory.clear()
+		TavernManager.inventory.clear() # Clear materials
 		TavernManager.enter_phase(TavernManager.Phase.DAY_EXPEDITION)
 	else:
-		get_tree().change_scene_to_file("res://scenes/expedition/expedition.tscn")
+		get_tree().change_scene_to_file("res://scenes/expedition/procedural_dungeon.tscn")
+
+func _on_classic_pressed() -> void:
+	get_tree().change_scene_to_file("res://scenes/world/world.tscn")
 
 func _on_settings_pressed() -> void:
-	print("Settings panel toggled!")
+	# Redirect settings button to the Tavern Brewing Phase Board to give it direct access
+	if TavernManager:
+		TavernManager.enter_phase(TavernManager.Phase.NIGHT_TAVERN)
+	else:
+		get_tree().change_scene_to_file("res://scenes/ui/tavern_ui.tscn")
 
 func _on_exit_pressed() -> void:
 	get_tree().quit()

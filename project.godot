@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Goblins Den Course"
-run/main_scene="uid://du4iytvqujxe7"
+run/main_scene="res://scenes/ui/main_menu.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
 

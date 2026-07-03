@@ -1,5 +1,6 @@
 extends Node
 
+enum Phase { DAY_EXPEDITION, NIGHT_TAVERN }
 enum GamePhase { DAY_EXPEDITION, NIGHT_TAVERN }
 
 var current_phase: GamePhase = GamePhase.DAY_EXPEDITION
@@ -13,6 +14,13 @@ var inventory: Dictionary = {
 	"sweet_grass": 5,
 	"mountain_barley": 10
 }
+
+# Alias for materials_inventory used in UI scripts to prevent crashes
+var materials_inventory: Dictionary:
+	get:
+		return inventory
+	set(value):
+		inventory = value
 
 # Materials database with flavors
 var materials_db: Dictionary = {
@@ -48,10 +56,10 @@ var materials_db: Dictionary = {
 	"drake_scale": {"name": "幼龙碎鳞", "type": "drop", "flavors": {"smoky": 5}}
 }
 
-# Active batch of beers brewed for the tonight's sell
+# Active batch of beers brewed for tonight's sale
 var current_brews: Array = []
 
-func add_to_inventory(material_id: String, amount: int = 1):
+func add_material(material_id: String, amount: int = 1):
 	if material_id in materials_db:
 		if inventory.has(material_id):
 			inventory[material_id] += amount
@@ -109,3 +117,12 @@ func switch_to_night():
 func switch_to_day():
 	current_phase = GamePhase.DAY_EXPEDITION
 	print("Switched to Day Expedition Phase! Time to search, fight, and extract.")
+
+# High-level entry point function for phase switching
+func enter_phase(phase: int) -> void:
+	if phase == Phase.DAY_EXPEDITION:
+		current_phase = GamePhase.DAY_EXPEDITION
+		get_tree().change_scene_to_file("res://scenes/expedition/procedural_dungeon.tscn")
+	elif phase == Phase.NIGHT_TAVERN:
+		current_phase = GamePhase.NIGHT_TAVERN
+		get_tree().change_scene_to_file("res://scenes/ui/tavern_ui.tscn")
