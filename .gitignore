@@ -17,3 +17,6 @@ bin/
 
 # Sensitive credentials (especially for Android exports)
 export_credentials.cfg
+
+# Local test runner binary
+godot_bin
