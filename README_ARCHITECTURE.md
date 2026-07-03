@@ -143,3 +143,26 @@ CUSTOMER_WANTS,"A guest wants {0} flavors","顾客想要 {0} 风味"
 ```
 
 Godot 4 会自动将此 `.csv` 识别并编译为 `.translation` 资源文件，我们在代码中只需要调用 `tr("BREW_DRINK")` 即可实现中英文在运行时无缝、即时地切换。
+
+
+## 五、 地牢房间生成算法：结构化 + WFC 模板化生成 (Structured + WFC Room Generation)
+
+为了在白天的冒险搜刮阶段（DAY_EXPEDITION）提供无穷的可玩性、策略深度与拓扑合理性，我们采用 **「宏观结构化布局 + 微观波函数坍缩（Wave Function Collapse）」** 的模板化生成算法。
+
+### 1. 算法核心步骤
+
+1.  **宏观结构化布线 (Macro Structured Layout)**:
+    -   系统首先生出一个基于图（Graph）或树（Tree）的拓扑关系关卡骨架。
+    -   定义起点（老板出航入口）、核心探索路径、旁支危险区（高等级怪物与宝箱）以及撤离点（Extraction Point）。
+    -   锁、门、密室根据拓扑强关联规律分布，保证撤离通道在逻辑和流程上 100% 绝对通畅。
+
+2.  **微观 WFC 拼图坍缩 (Micro WFC Tile Collapse)**:
+    -   每个结构化节点被关联到一个固定尺寸（如 10x10）的房间模板边界中。
+    -   利用 WFC 算法对单元格进行局部的具体填充，包含：空地 (FLOOR)、墙壁 (WALL)、宝藏 (LOOT)、酿酒素材 (RESOURCE)、立柱 (PILLAR) 等。
+    -   **邻接规则约束 (Constraint Map)**:
+        -   `LOOT` (宝藏) 和 `RESOURCE` (素材点) 周围必须至少有 2 个 `FLOOR` (空地) 相邻，确保酒馆老板可以顺利走过去进行采集。
+        -   `WALL` (墙壁) 必须在指定的四个方向对齐外界的出入口通道，维持物理连通。
+
+### 2. 代码实现参考
+
+我们已将功能完备、逻辑严密的波函数坍缩房间模板填充器实现并注册在项目 `scenes/expedition/wfc_generator.gd` 中。该脚本包含了完整的叠加态（Superposition）初始化、最小信息熵（Lowest Entropy First）搜索、局部确定性选择（State Collapse）以及限制向外扩散（Propagation）核心循环，可完美自适应模板生成多变的室内微观摆设与材质排布。
