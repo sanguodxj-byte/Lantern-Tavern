@@ -7,6 +7,10 @@ var is_carrying := false
 
 func _enter_tree() -> void:
 	var pickable_object := player.current_pickable_focused_item
+	if not pickable_object:
+		transition_state(Player.State.MOVING)
+		return
+		
 	if pickable_object.weapon_data != null:
 		player.animation_player.play("pickup")
 		player.animation_player.animation_finished.connect(on_animation_finished)
@@ -25,6 +29,17 @@ func _enter_tree() -> void:
 		player.animation_player.play("lift")
 		player.equipment.equip_furniture(pickable_object.furniture_data, pickable_object.global_transform)
 		pickable_object.queue_free()
+	elif pickable_object.material_id != "":
+		# Add brewing material to the inventory in real-time
+		if TavernManager:
+			TavernManager.add_material(pickable_object.material_id, 1)
+			print("Collected material: ", pickable_object.material_id)
+			
+		AudioManager.play("key-pickup", player.action_audio_stream_player)
+		pickable_object.queue_free()
+		
+		# Immediately return to moving state since materials are auto-bagged!
+		transition_state(Player.State.MOVING)
 
 func _physics_process(delta: float) -> void:
 	player.process_movement(delta, CARRY_SPEED_MULTIPLIER)

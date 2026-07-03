@@ -56,6 +56,40 @@ var materials_db: Dictionary = {
 	"drake_scale": {"name": "幼龙碎鳞", "type": "drop", "flavors": {"smoky": 5}}
 }
 
+# Recipes defining unique combinations of ingredients and rating bonuses
+var brewing_recipes: Dictionary = {
+	"glowberry_ale": {
+		"name": "荧光浆果麦芽酒",
+		"required_ingredients": ["wild_glowcap", "frost_berry", "mountain_barley"],
+		"rating_bonus": 50,
+		"description": "带有淡淡幽光与极寒霜冻风味的清爽麦芽酒。"
+	},
+	"sweet_slime_nectar": {
+		"name": "甜心史莱姆花蜜",
+		"required_ingredients": ["sweet_grass", "slime_jelly", "honeycomb"],
+		"rating_bonus": 45,
+		"description": "极度黏稠甜美的花蜜，是史莱姆的最爱。"
+	},
+	"goblin_bitter_brew": {
+		"name": "哥布林苦汁烈酒",
+		"required_ingredients": ["goblin_ear", "bitter_root", "rock_salt"],
+		"rating_bonus": 40,
+		"description": "带有强烈腥膻气味与极度苦咸风味的哥布林传统烈酒。"
+	},
+	"fiery_imp_infusion": {
+		"name": "恶魔烈焰浸剂",
+		"required_ingredients": ["fire_bloom", "imp_horn_dust", "cave_lichen"],
+		"rating_bonus": 60,
+		"description": "辛辣灼热至极，饮下后会呼出硫磺与黑烟的恶魔之饮。"
+	},
+	"shadow_lotus_tea": {
+		"name": "暗影莲华圣茗",
+		"required_ingredients": ["shadow_lotus", "sweet_grass", "witch_plum"],
+		"rating_bonus": 55,
+		"description": "散发出迷离花香与微酸幽暗气质的高阶冥想圣茶。"
+	}
+}
+
 # Active batch of beers brewed for tonight's sale
 var current_brews: Array = []
 
@@ -94,10 +128,50 @@ func brew_drink(ingredients: Array) -> Dictionary:
 	if valid_ingredients.is_empty():
 		return {}
 		
+	# Check for recipe match
+	var recipe_matched = ""
+	var recipe_display_name = "Generic Brew (普通酿造)"
+	var rating_bonus = 0
+	var rating_class = "C" # C, B, A, S, SS
+	
+	for r_id in brewing_recipes:
+		var recipe = brewing_recipes[r_id]
+		var reqs = recipe["required_ingredients"]
+		var match_count = 0
+		var temp_ingredients = valid_ingredients.duplicate()
+		for req in reqs:
+			if req in temp_ingredients:
+				temp_ingredients.erase(req)
+				match_count += 1
+		if match_count == reqs.size():
+			recipe_matched = r_id
+			recipe_display_name = recipe["name"]
+			rating_bonus = recipe["rating_bonus"]
+			break
+			
+	var quality = compute_drink_quality(drink_flavors)
+	if recipe_matched != "":
+		quality += int(rating_bonus / 10.0)
+		
+	# Determine rating class based on final quality
+	if quality >= 12:
+		rating_class = "SS"
+	elif quality >= 8:
+		rating_class = "S"
+	elif quality >= 5:
+		rating_class = "A"
+	elif quality >= 3:
+		rating_class = "B"
+	else:
+		rating_class = "C"
+		
 	var drink = {
 		"ingredients": valid_ingredients,
 		"flavors": drink_flavors,
-		"quality": compute_drink_quality(drink_flavors)
+		"quality": quality,
+		"recipe_id": recipe_matched,
+		"recipe_name": recipe_display_name,
+		"rating_class": rating_class
 	}
 	current_brews.append(drink)
 	return drink

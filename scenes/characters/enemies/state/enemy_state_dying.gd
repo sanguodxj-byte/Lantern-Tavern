@@ -17,8 +17,40 @@ func _enter_tree() -> void:
 	enemy.skeleton_simulator.active = true
 	enemy.skeleton_simulator.physical_bones_start_simulation()
 	enemy.physical_bone_torso.apply_impulse(state_data.impulse)
+	
+	# Spawn dynamic monster drop on death!
+	_spawn_monster_drop()
+	
 	var timer := get_tree().create_timer(DURATION_RAGDOLL_SIMULATION)
 	timer.timeout.connect(freeze_ragdoll)
+
+func _spawn_monster_drop() -> void:
+	var monster_drops = [
+		"goblin_ear", "spider_poison_sac", "slime_jelly", "bat_wing",
+		"boar_tusk", "skeleton_dust", "giant_rat_tail", "imp_horn_dust",
+		"troll_blood", "zombie_flesh", "harpy_feather"
+	]
+	
+	var drop_id = ""
+	var lower_name = enemy.name.to_lower()
+	if "goblin" in lower_name:
+		drop_id = "goblin_ear"
+	elif "spider" in lower_name:
+		drop_id = "spider_poison_sac"
+	elif "slime" in lower_name:
+		drop_id = "slime_jelly"
+	elif "kobold" in lower_name:
+		drop_id = "boar_tusk"
+	else:
+		drop_id = monster_drops[randi() % monster_drops.size()]
+		
+	var mat_scene = load("res://scenes/equipment/pickable_item.tscn")
+	if mat_scene:
+		var item_instance = mat_scene.instantiate()
+		item_instance.material_id = drop_id
+		item_instance.global_position = enemy.global_position + Vector3(0, 0.4, 0)
+		enemy.get_parent().add_child(item_instance)
+		print("Monster defeated! Dropped material: ", drop_id)
 
 func freeze_ragdoll() -> void:
 	transition_state(Enemy.State.DEAD)
