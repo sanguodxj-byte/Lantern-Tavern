@@ -23,8 +23,8 @@
 │   └── tavern_manager.gd       # 昼夜交替、酿酒与背包状态管理器
 ├── scenes/                     # 游戏关卡与实体场景
 │   ├── characters/             # 角色与纸娃娃
-│   │   ├── base_goblin.tscn    # 基础哥布林玩家
-│   │   ├── base_goblin.gd      # 纸娃娃装配与状态逻辑
+│   │   ├── player/player.tscn    # 基础人类酒馆老板
+│   │   ├── player/player.gd      # 纸娃娃装配与状态逻辑
 │   │   └── monster_customer.gd # 怪物顾客AI及口味偏好
 │   ├── expedition/             # 搜打撤 (白天关卡)
 │   │   ├── levels/             # 地形与关卡
@@ -49,7 +49,7 @@
 利用夜晚酒馆经营中，售卖高风味酒品给各类怪物顾客赚取的 **金币 (Gold)**，玩家可以在夜晚的「升级台 (Upgrade Desk)」进行局外永久强化：
 
 ### 1. 升级类型
-*   **哥布林冒险强化 (Goblin Upgrades)**：
+*   **酒馆老板冒险强化 (Owner Upgrades)**：
     *   *Max Health* (最大生命值)：提升在白天搜寻阶段的容错率。
     *   *Inventory Slots* (背包格数)：提升单次出航能够带回的酿酒素材上限。
     *   *Speed* (移动速度)：提升搜刮效率。
@@ -62,13 +62,13 @@
 
 ## 三、 纸娃娃装备系统 (Paper Doll System)
 
-为了让哥布林穿戴不同的装备并在 3D 世界中即时可见，我们将采用 **「槽位网格动态替换 (Modular Mesh Swap)」** 的架构：
+为了让酒馆老板穿戴不同的装备并在 3D 世界中即时可见，我们将采用 **「槽位网格动态替换 (Modular Mesh Swap)」** 的架构：
 
 ### 1. 骨骼挂载与节点层级 (BoneAttachment3D)
-在 `base_goblin.tscn` 场景中，我们基于骨骼节点建立如下装备槽：
+在 `player/player.tscn` 场景中，我们基于骨骼节点建立如下装备槽：
 ```
-BaseGoblin (CharacterBody3D)
-└── Skeleton3D (哥布林骨骼)
+BaseOwner (CharacterBody3D)
+└── Skeleton3D (人类骨骼)
     ├── RightHand_Attachment (BoneAttachment3D) -> 绑定右手指骨
     │   └── WeaponSlot (Node3D)                 -> 武器插槽 (可变模型)
     ├── LeftArm_Attachment (BoneAttachment3D)   -> 绑定左手腕骨
@@ -77,10 +77,10 @@ BaseGoblin (CharacterBody3D)
         └── HelmetSlot (Node3D)                 -> 头盔/发型插槽 (可变模型)
 ```
 
-### 2. 纸娃娃动态更新代码框架 (`base_goblin.gd`)
+### 2. 纸娃娃动态更新代码框架 (`player/player.gd`)
 ```gdscript
 extends CharacterBody3D
-class_name PlayerGoblin
+class_name PlayerOwner
 
 @onready var weapon_slot = $Skeleton3D/RightHand_Attachment/WeaponSlot
 @onready var shield_slot = $Skeleton3D/LeftArm_Attachment/ShieldSlot
