@@ -2,6 +2,9 @@ class_name EnemyStateMoving
 extends EnemyState
 
 const SPEED_ROTATION := 10.0
+const PATH_UPDATE_INTERVAL_MS := 150
+
+var last_path_update_time := 0
 
 func _enter_tree() -> void:
 	enemy.animation_player.play("idle")
@@ -20,7 +23,12 @@ func _physics_process(delta: float) -> void:
 				transition_state(Enemy.State.SLASHING)
 		else:
 			enemy.animation_player.play("run")
-			enemy.nav_agent.target_position = target_position
+			
+			var current_time := Time.get_ticks_msec()
+			if current_time - last_path_update_time >= PATH_UPDATE_INTERVAL_MS:
+				enemy.nav_agent.target_position = target_position
+				last_path_update_time = current_time
+				
 			var next_path_position := enemy.nav_agent.get_next_path_position()
 			var direction := enemy.global_position.direction_to(next_path_position)
 			enemy.velocity = direction * enemy.speed
