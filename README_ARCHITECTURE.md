@@ -196,3 +196,41 @@ Godot 4 会自动将此 `.csv` 识别并编译为 `.translation` 资源文件，
 ### 3. 代码实现规范
 
 该全套数学与拓扑分布排布逻辑已完整实装于项目 `scenes/expedition/prop_distributor.gd` 逻辑脚本中。包含高效的 Poisson Annulus 采样器、Topological BFS 求解器以及酒馆家具栅格生成器，供关卡场景（Level Spawner）在运行时直接调用装配。
+
+
+## 七、 跨端自适应 UI 架构与像素风格主题规约 (Cross-platform Adaptive UI)
+
+由于『灯火酒馆』将同时面向 **PC 桌面端 (Keyboard/Mouse)** 与 **Android 移动触屏端 (Mobile/Touch)** 释出，项目的 UI 系统不仅需要强烈的复古像素感，更要实现跨平台的完美自适应与操控对齐。
+
+### 1. 跨端双向操控映射规范 (Dual-end Control Mapping)
+
+| UI 场景 | 桌面端操作逻辑 (Desktop / PC) | 安卓移动端操作逻辑 (Android / Touch) |
+| --- | --- | --- |
+| **整体视窗** | 固定或自由拉伸，支持高刷分辨率与窗口化。 | 锁定横屏（Landscape 16:9），隐藏系统虚拟条。 |
+| **按键尺寸** | 最小 24x24 像素即可，支持悬停特效（Hover Color）。 | 最小点击热区锁定 $48 \times 48$ dp，过滤 Hover，仅识别 Press。 |
+| **地牢走位** | `WASD` 键盘位移，鼠标点击朝向。 | 屏幕左下角虚化摇杆 (Virtual Joystick)，右下角释放攻击与交互。 |
+| **背包与装备** | 鼠标左键拖拽（Drag & Drop）或右键直接穿戴。 | 单击弹窗选择「穿戴/卸下/丢弃」，支持双击直接穿戴。 |
+| **长段悬停提示** | 鼠标光标悬停（Hover）在素材上，即时展示配方与说明。 | 长按（Press & Hold）或点击小问号标识呼出独立提示面板（Popup）。 |
+
+### 2. 界面视图排布设计 (Core Screens Layout)
+
+#### A. 主界面 (Main Menu)
+-   **自适应缩放**: 布局采用 `CenterContainer` 垂直对齐，背景大图设为 `canvas_items` 并拉伸填充，保证在 $1920 \times 1080$ 或手机 $19.5:9$ 的长屏幕下主体都不发生变形与画面溢出。
+-   **按钮群**: 包含「出航搜刮 (Expedition)」、「酒馆营业 (Tavern)」、「成长装备 (Equipment)」、「系统设置 (Settings)」以及「退出酒馆」。
+
+#### B. 夜晚经营与酿酒面板 (Tavern & Brewing UI)
+-   **顾客点单队列**: 屏幕上方横向滚动排列顾客的「气泡点单框」，展示它们期望的风味点数（如：`sweet: 5`）。
+-   **大容错点击**: 酿酒面板位于屏幕中央，采用大面积的 Grid 宫格，方便手机手指粗触点击放入素材。
+-   **状态轮播HUD**: 金币、天数在屏幕顶端，字体采用大字号阴影像素字，任何分辨率下都极为醒目。
+
+#### C. 装备与纸娃娃面板 (Equipment & Paper Doll Screen)
+-   **三栏式经典分栏**:
+    1.  **左栏**：装备背包 Grid。移动端支持滑动列表 (`ScrollContainer` + 拖拽大热区阻尼)。
+    2.  **中栏**：3D 老板纸娃娃预览（通过 `SubViewportContainer` 嵌入 3D 相机对准 3D 老板模型）。
+    3.  **右栏**：当前穿戴插槽（Weapon、Shield、Helmet），并提供一键升级最大生命值、移速的「局外成长面板」。
+
+### 3. UI 主题文件规范
+
+我们已经在项目 `scenes/ui/lantern_theme.tres` 中实装了全局像素主题。该主题指定了：
+-   **Dark Wood & Parchment 调色盘**：面板底色使用暗棕木色 (`#2D1B18`)，边框使用复古羊皮纸浅色 (`#E6C29E`)，激活高光采用极具温馨感的蜡烛火光橙金色 (`#F9A31B`)。
+-   **StyleBoxFlat 的像素硬化**：关闭了所有 Button 和 Panel 的抗锯齿 (Anti-aliasing = false)，将 Corner Detail 降为 1，确保边角线条在任何屏幕分辨率下都呈现刀切斧凿般的复古像素美感！
