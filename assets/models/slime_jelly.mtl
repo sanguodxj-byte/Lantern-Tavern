@@ -1,0 +1,5 @@
+# Material for slime_jelly
+newmtl slime_jelly_mat
+Kd 0.000 0.800 0.900
+Ks 0.000 0.000 0.000
+Ns 900

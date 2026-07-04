@@ -1,0 +1,46 @@
+[gd_scene format=3 uid="uid://du4iytvqujxe7"]
+
+[ext_resource type="Script" uid="uid://g64lpuyecptu" path="res://scenes/world/world.gd" id="1_6m72w"]
+[ext_resource type="PackedScene" uid="uid://37tccejpw454" path="res://scenes/ui/ui.tscn" id="2_sl2e5"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_4rhad"]
+sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+ground_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+
+[sub_resource type="Sky" id="Sky_dphjl"]
+sky_material = SubResource("ProceduralSkyMaterial_4rhad")
+
+[sub_resource type="Environment" id="Environment_sl2e5"]
+background_mode = 1
+background_color = Color(0, 0, 0.03529412, 1)
+sky = SubResource("Sky_dphjl")
+ambient_light_color = Color(0, 0.8392157, 0, 1)
+ambient_light_energy = 0.3
+tonemap_mode = 3
+glow_enabled = true
+glow_intensity = 0.8
+glow_bloom = 0.3
+fog_enabled = true
+fog_light_color = Color(0.15342441, 0.26982078, 0.050790556, 1)
+fog_light_energy = 0.5
+fog_sun_scatter = 0.2
+fog_density = 0.15
+adjustment_enabled = true
+adjustment_brightness = 0.9
+adjustment_contrast = 1.2
+adjustment_saturation = 1.3
+
+[node name="World" type="Node3D" unique_id=906285710]
+script = ExtResource("1_6m72w")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=915396933]
+environment = SubResource("Environment_sl2e5")
+
+[node name="WorldLight" type="DirectionalLight3D" parent="." unique_id=1219091590]
+transform = Transform3D(-0.8660254, -0.43301278, 0.25, 0, 0.49999997, 0.86602545, -0.50000006, 0.75, -0.43301266, 0, 0, 0)
+light_color = Color(0.6086186, 1, 0.6509105, 1)
+light_energy = 0.2
+light_angular_distance = 0.5
+shadow_enabled = true
+
+[node name="UI" parent="." unique_id=123153430 instance=ExtResource("2_sl2e5")]

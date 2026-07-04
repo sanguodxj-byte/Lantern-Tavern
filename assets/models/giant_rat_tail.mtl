@@ -1,0 +1,5 @@
+# Material for giant_rat_tail
+newmtl giant_rat_tail_mat
+Kd 0.900 0.600 0.650
+Ks 0.000 0.000 0.000
+Ns 400

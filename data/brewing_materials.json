@@ -1,0 +1,347 @@
+[
+    {
+        "id": "wild_glowcap",
+        "name": "野生荧光菇",
+        "type": "gather",
+        "flavors": {
+            "earthy": 3,
+            "bitter": 1
+        },
+        "description": "在黑暗洞穴中散发微光的菌类，能给酒液带来奇妙的视觉效果。"
+    },
+    {
+        "id": "frost_berry",
+        "name": "霜冻浆果",
+        "type": "gather",
+        "flavors": {
+            "sour": 2,
+            "sweet": 4
+        },
+        "description": "生长在寒冷高地的浆果，能让饮品保持冰凉的口感。"
+    },
+    {
+        "id": "fire_bloom",
+        "name": "烈焰花瓣",
+        "type": "gather",
+        "flavors": {
+            "spicy": 5
+        },
+        "description": "蕴含微弱火元素的红色花朵，能让酒口感发热。"
+    },
+    {
+        "id": "cave_lichen",
+        "name": "洞穴苔藓",
+        "type": "gather",
+        "flavors": {
+            "salty": 2,
+            "earthy": 2
+        },
+        "description": "附着在阴湿岩石上的地衣，常用于低成本酿造。"
+    },
+    {
+        "id": "honeycomb",
+        "name": "野生蜂巢",
+        "type": "gather",
+        "flavors": {
+            "sweet": 5,
+            "floral": 2
+        },
+        "description": "森林里野生蜂巢，极度甜美。"
+    },
+    {
+        "id": "sweet_grass",
+        "name": "甜心草",
+        "type": "gather",
+        "flavors": {
+            "sweet": 2,
+            "fresh": 3
+        },
+        "description": "原野上常见的多汁草本，适合作为基础甜味调和。"
+    },
+    {
+        "id": "bitter_root",
+        "name": "苦艾根",
+        "type": "gather",
+        "flavors": {
+            "bitter": 5
+        },
+        "description": "极度苦涩的植物根茎，是某些重口味客人的最爱。"
+    },
+    {
+        "id": "mountain_barley",
+        "name": "高山大麦",
+        "type": "gather",
+        "flavors": {
+            "earthy": 4
+        },
+        "description": "酿造烈性麦芽酒的核心谷物。"
+    },
+    {
+        "id": "witch_plum",
+        "name": "女巫李",
+        "type": "gather",
+        "flavors": {
+            "sour": 4,
+            "sweet": 1
+        },
+        "description": "带有神秘紫色光泽的水果，酸味浓郁。"
+    },
+    {
+        "id": "shadow_lotus",
+        "name": "暗影莲花",
+        "type": "gather",
+        "flavors": {
+            "umami": 3,
+            "floral": 3
+        },
+        "description": "只在夜间盛开的黑色莲花。"
+    },
+    {
+        "id": "sunflower_seed",
+        "name": "向日葵籽",
+        "type": "gather",
+        "flavors": {
+            "nutty": 3,
+            "sweet": 1
+        },
+        "description": "炒熟后能提供浓郁的油脂和坚果香气。"
+    },
+    {
+        "id": "ironwood_bark",
+        "name": "铁木树皮",
+        "type": "gather",
+        "flavors": {
+            "woody": 4,
+            "bitter": 2
+        },
+        "description": "质地坚硬的树皮，能带给酒桶陈酿般的厚重木香。"
+    },
+    {
+        "id": "amber_resin",
+        "name": "琥珀树树脂",
+        "type": "gather",
+        "flavors": {
+            "sweet": 3,
+            "smoky": 2
+        },
+        "description": "凝固的树脂，带有一股独特的松脂与烟熏风味。"
+    },
+    {
+        "id": "acid_grape",
+        "name": "酸腺葡萄",
+        "type": "gather",
+        "flavors": {
+            "sour": 5
+        },
+        "description": "酸度惊人的野生葡萄，需要大量甜味中和。"
+    },
+    {
+        "id": "rock_salt",
+        "name": "岩盐结晶",
+        "type": "gather",
+        "flavors": {
+            "salty": 5
+        },
+        "description": "矿洞深处的盐结晶，可以强化其他风味的表达。"
+    },
+    {
+        "id": "goblin_ear",
+        "name": "哥布林耳尖",
+        "type": "drop",
+        "dropped_by": "goblin",
+        "flavors": {
+            "bitter": 3
+        },
+        "description": "哥布林囤积苦涩味的耳朵，风味干涩。"
+    },
+    {
+        "id": "goblin_tooth",
+        "name": "哥布林犬齿",
+        "type": "drop",
+        "dropped_by": "goblin",
+        "flavors": {
+            "salty": 2
+        },
+        "description": "钙质结晶，带有微量的咸涩咸风味。"
+    },
+    {
+        "id": "spider_poison_sac",
+        "name": "蜘蛛毒囊",
+        "type": "drop",
+        "dropped_by": "spider",
+        "flavors": {
+            "spicy": 4
+        },
+        "description": "充满神经毒素，入口带强烈的辛辣刺痛感。"
+    },
+    {
+        "id": "spider_web",
+        "name": "粘稠蜘蛛丝",
+        "type": "drop",
+        "dropped_by": "spider",
+        "flavors": {
+            "sweet": 2
+        },
+        "description": "蛛丝提取的糖蛋白，具有出奇的粘稠甜味。"
+    },
+    {
+        "id": "slime_core",
+        "name": "史莱姆核心",
+        "type": "drop",
+        "dropped_by": "slime",
+        "flavors": {
+            "salty": 3
+        },
+        "description": "凝结的无机盐核心，风味极咸。"
+    },
+    {
+        "id": "slime_jelly",
+        "name": "史莱姆凝胶",
+        "type": "drop",
+        "dropped_by": "slime",
+        "flavors": {
+            "earthy": 2
+        },
+        "description": "胶质外壳，带有潮湿地底的泥土腥香。"
+    },
+    {
+        "id": "bat_wing",
+        "name": "蝙蝠翅膀",
+        "type": "drop",
+        "dropped_by": "bat",
+        "flavors": {
+            "floral": 2
+        },
+        "description": "蝙蝠长期接触岩壁奇花，积攒了淡淡的花香。"
+    },
+    {
+        "id": "bat_guano",
+        "name": "蝙蝠粪便结晶",
+        "type": "drop",
+        "dropped_by": "bat",
+        "flavors": {
+            "fresh": 3
+        },
+        "description": "蝙蝠排泄出的精纯草本浓缩结晶，味道清香四溢。"
+    },
+    {
+        "id": "skeleton_dust",
+        "name": "白骨粉末",
+        "type": "drop",
+        "dropped_by": "skeleton",
+        "flavors": {
+            "sweet": 2
+        },
+        "description": "腐殖质脱水产生的甜味骨粉。"
+    },
+    {
+        "id": "fossil_bone",
+        "name": "古老遗骨",
+        "type": "drop",
+        "dropped_by": "skeleton",
+        "flavors": {
+            "umami": 3
+        },
+        "description": "深层化石，富含有机钙质鲜味。"
+    },
+    {
+        "id": "giant_rat_tail",
+        "name": "巨鼠尾巴",
+        "type": "drop",
+        "dropped_by": "rat",
+        "flavors": {
+            "sour": 3
+        },
+        "description": "巨鼠尾巴积累的酸性腺体分泌物，酸涩无比。"
+    },
+    {
+        "id": "rat_whisker",
+        "name": "巨鼠胡须",
+        "type": "drop",
+        "dropped_by": "rat",
+        "flavors": {
+            "spicy": 2
+        },
+        "description": "坚硬锋利的胡须，浸泡后释放刺鼻的辛辣感。"
+    },
+    {
+        "id": "imp_horn_dust",
+        "name": "小恶魔角粉",
+        "type": "drop",
+        "dropped_by": "imp",
+        "flavors": {
+            "sour": 3
+        },
+        "description": "恶魔尖角粉，具有极高浓度的酸性腐蚀风味。"
+    },
+    {
+        "id": "imp_wing_ash",
+        "name": "恶魔翅灰",
+        "type": "drop",
+        "dropped_by": "imp",
+        "flavors": {
+            "fresh": 3
+        },
+        "description": "恶魔拍打翅膀燃尽后的灰烬，带有一股冷冽的清凉感。"
+    },
+    {
+        "id": "troll_blood",
+        "name": "巨魔之血",
+        "type": "drop",
+        "dropped_by": "troll",
+        "flavors": {
+            "earthy": 4
+        },
+        "description": "巨魔再生能力来源，带有厚重的地底泥土芬芳。"
+    },
+    {
+        "id": "troll_skin",
+        "name": "巨魔厚皮",
+        "type": "drop",
+        "dropped_by": "troll",
+        "flavors": {
+            "sweet": 2
+        },
+        "description": "角质化厚皮，咀嚼后释放奇特的胶原蛋白甜味。"
+    },
+    {
+        "id": "zombie_flesh",
+        "name": "腐肉精华",
+        "type": "drop",
+        "dropped_by": "zombie",
+        "flavors": {
+            "floral": 3
+        },
+        "description": "虽然腐烂，却因为常年埋藏于墓地而散发浓郁的花香。"
+    },
+    {
+        "id": "zombie_nail",
+        "name": "僵尸指甲",
+        "type": "drop",
+        "dropped_by": "zombie",
+        "flavors": {
+            "sweet": 2
+        },
+        "description": "指甲盖内积蓄的古老酵糖，味道甘甜。"
+    },
+    {
+        "id": "harpy_feather",
+        "name": "哈比羽毛粉",
+        "type": "drop",
+        "dropped_by": "harpy",
+        "flavors": {
+            "bitter": 3
+        },
+        "description": "羽毛管腺体分泌的极度苦涩油脂，防风防雨。"
+    },
+    {
+        "id": "harpy_talon",
+        "name": "哈比尖爪",
+        "type": "drop",
+        "dropped_by": "harpy",
+        "flavors": {
+            "gaminess": 4
+        },
+        "description": "撕裂猎物后留下的、带浓重野兽膻腥气息的利爪。"
+    }
+]

@@ -1,0 +1,168 @@
+[gd_scene load_steps=5 format=3 uid="uid://df7283723bfb3"]
+
+[ext_resource type="Script" path="res://scenes/ui/tavern_hud.gd" id="1_tvhud"]
+[ext_resource type="Theme" uid="uid://clmv5y0rh9a7o" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
+[ext_resource type="PackedScene" uid="uid://djqow6v7lq7et" path="res://scenes/ui/pause_menu.tscn" id="3_pmenu"]
+[ext_resource type="PackedScene" uid="uid://b1brewpanel0001" path="res://scenes/tavern/brewing_panel.tscn" id="4_bpanel"]
+
+[node name="TavernUI" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_tvhud")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.12, 0.08, 0.05, 1)
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 24.0
+offset_right = 200.0
+offset_bottom = 64.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 32
+text = "COZY BREWING TAVERN"
+horizontal_alignment = 1
+
+[node name="OrderPanel" type="Panel" parent="."]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 90.0
+offset_right = 360.0
+offset_bottom = 540.0
+
+[node name="Label" type="Label" parent="OrderPanel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 40.0
+grow_horizontal = 2
+text = "Customer Orders"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="OrderPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 40.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="OrderList" type="VBoxContainer" parent="OrderPanel/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="InventoryPanel" type="Panel" parent="."]
+layout_mode = 0
+offset_left = 390.0
+offset_top = 90.0
+offset_right = 740.0
+offset_bottom = 540.0
+
+[node name="Label" type="Label" parent="InventoryPanel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 40.0
+grow_horizontal = 2
+text = "Your Gathered Materials"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="InventoryPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 40.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="InventoryList" type="ItemList" parent="InventoryPanel/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="BrewingPanel" type="Panel" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 770.0
+offset_top = 90.0
+offset_right = 1110.0
+offset_bottom = 540.0
+
+[node name="Label" type="Label" parent="BrewingPanel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 40.0
+grow_horizontal = 2
+text = "Kettle / Cauldron"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BrewingPanelInstance" parent="BrewingPanel" instance=ExtResource("4_bpanel")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 40.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ControlPanel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -80.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="NextDayButton" type="Button" parent="ControlPanel"]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -250.0
+offset_top = -25.0
+offset_right = -40.0
+offset_bottom = 25.0
+grow_horizontal = 0
+grow_vertical = 2
+text = "Proceed to Next Expedition"
+
+[node name="StatusLabel" type="Label" parent="ControlPanel"]
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 40.0
+offset_top = -20.0
+offset_right = 400.0
+offset_bottom = 20.0
+grow_vertical = 2
+text = "Brew drinks to earn gold!"
+vertical_alignment = 1
+
+[node name="PauseMenu" parent="." instance=ExtResource("3_pmenu")]

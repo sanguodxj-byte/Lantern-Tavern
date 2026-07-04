@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://jrgrdddaqiwh"
+path="res://.godot/imported/witch_plum.obj-f346e0e8b60a3fb896e792c1e09c46bd.mesh"
+
+[deps]
+
+files=["res://.godot/imported/witch_plum.obj-f346e0e8b60a3fb896e792c1e09c46bd.mesh"]
+
+source_file="res://assets/models/witch_plum.obj"
+dest_files=["res://.godot/imported/witch_plum.obj-f346e0e8b60a3fb896e792c1e09c46bd.mesh", "res://.godot/imported/witch_plum.obj-f346e0e8b60a3fb896e792c1e09c46bd.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false

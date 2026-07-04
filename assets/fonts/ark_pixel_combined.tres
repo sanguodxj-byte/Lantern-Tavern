@@ -1,0 +1,8 @@
+[gd_resource type="FontVariation" format=3]
+
+[ext_resource type="FontFile" uid="uid://cxmfr8qtao5" path="res://assets/fonts/ark-pixel-12px-proportional-latin.ttf" id="1_latin"]
+[ext_resource type="FontFile" uid="uid://cvdugakb5g0kr" path="res://assets/fonts/ark-pixel-12px-proportional-zh_cn.ttf" id="1_zhcn"]
+
+[resource]
+base_font = ExtResource("1_latin")
+fallbacks = [ExtResource("1_zhcn")]

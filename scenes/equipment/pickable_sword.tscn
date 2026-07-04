@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://c8yk6ihllva1h"]
+
+[ext_resource type="PackedScene" uid="uid://cg5to3gopwqho" path="res://scenes/equipment/pickable_item.tscn" id="1_1avku"]
+[ext_resource type="Resource" uid="uid://bmre07o38bl3s" path="res://data/weapons/shortsword.tres" id="2_b1jfq"]
+[ext_resource type="PackedScene" uid="uid://cx6sejxqnakyo" path="res://assets/meshes/weapons/shortsword.glb" id="3_2be78"]
+
+[node name="PickableSword" unique_id=1588726055 node_paths=PackedStringArray("mesh_node") instance=ExtResource("1_1avku")]
+mesh_node = NodePath("shortsword/Sword")
+weapon_data = ExtResource("2_b1jfq")
+
+[node name="PresenceLight" parent="." index="1" unique_id=1446751178]
+visible = false
+
+[node name="shortsword" parent="." index="2" unique_id=893484860 instance=ExtResource("3_2be78")]
+
+[editable path="shortsword"]

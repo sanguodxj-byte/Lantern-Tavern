@@ -1,0 +1,102 @@
+[gd_scene format=3 uid="uid://csjgov3pqdkoj"]
+
+[ext_resource type="PackedScene" uid="uid://bas238v6il42s" path="res://scenes/levels/base_level.tscn" id="1_0mf82"]
+[ext_resource type="PackedScene" uid="uid://bin1bnskndpug" path="res://scenes/rooms/jailcell.tscn" id="2_iemd2"]
+[ext_resource type="PackedScene" uid="uid://bskrm716eop4r" path="res://scenes/rooms/foyer.tscn" id="3_xicp7"]
+[ext_resource type="PackedScene" uid="uid://dq8ugtx0qcvau" path="res://scenes/rooms/jailconnector.tscn" id="5_h8tnv"]
+[ext_resource type="PackedScene" uid="uid://o1xg6ur0co6j" path="res://scenes/rooms/sacrifice_room.tscn" id="5_nnerm"]
+[ext_resource type="PackedScene" uid="uid://g02aihansf2i" path="res://scenes/rooms/centerpillarroom.tscn" id="6_ms6qq"]
+[ext_resource type="PackedScene" uid="uid://cqs50bgig7fcv" path="res://scenes/rooms/Cellar.tscn" id="7_62vsf"]
+[ext_resource type="PackedScene" uid="uid://tktvvhry0jfp" path="res://scenes/door/door.tscn" id="8_3sqe8"]
+[ext_resource type="PackedScene" uid="uid://cio78080nmm8l" path="res://scenes/props/decor/bones.tscn" id="8_pw0xg"]
+[ext_resource type="PackedScene" uid="uid://cggpkb6pephps" path="res://scenes/props/crates/small_crate.tscn" id="9_1omhj"]
+[ext_resource type="PackedScene" uid="uid://bqm3c3s5gulaw" path="res://scenes/props/decor/spiderweb.tscn" id="9_nnerm"]
+[ext_resource type="PackedScene" uid="uid://c8hsymady11em" path="res://scenes/equipment/pickable_buckler.tscn" id="9_pw0xg"]
+[ext_resource type="PackedScene" uid="uid://bkg7jsbq7u5rl" path="res://scenes/equipment/pickable_axe.tscn" id="10_1omhj"]
+
+[node name="Level-01-Welcome" unique_id=113800226 instance=ExtResource("1_0mf82")]
+
+[node name="Jail" parent="Rooms" parent_id_path=PackedInt32Array(540883177) index="0" unique_id=1869601789 instance=ExtResource("2_iemd2")]
+
+[node name="Jail3" parent="Rooms" parent_id_path=PackedInt32Array(540883177) index="1" unique_id=2128246593 instance=ExtResource("2_iemd2")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 8.742278e-08, 0, -13)
+
+[node name="Jail4" parent="Rooms" parent_id_path=PackedInt32Array(540883177) index="2" unique_id=451154093 instance=ExtResource("2_iemd2")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 5, 0, -13)
+
+[node name="Jail2" parent="Rooms" parent_id_path=PackedInt32Array(540883177) index="3" unique_id=274622850 instance=ExtResource("2_iemd2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 0)
+
+[node name="Foyer" parent="Rooms" parent_id_path=PackedInt32Array(540883177) index="4" unique_id=1928138106 instance=ExtResource("3_xicp7")]
+transform = Transform3D(1.3113416e-07, 0, -1, 0, 1, 0, 1, 0, 1.3113416e-07, 21, 0, -6)
+key_color = 3
+
+[node name="JailConnection" parent="Rooms" parent_id_path=PackedInt32Array(540883177) index="5" unique_id=1240240296 instance=ExtResource("5_h8tnv")]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 0, 0, -6)
+
+[node name="SacrificeRoom" parent="Rooms" parent_id_path=PackedInt32Array(540883177) index="6" unique_id=1545453307 instance=ExtResource("5_nnerm")]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -7, 0, -6)
+
+[node name="CenterPillarRoom" parent="Rooms" parent_id_path=PackedInt32Array(540883177) index="7" unique_id=2135843705 instance=ExtResource("6_ms6qq")]
+transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, -24, 0, 5)
+key_color = 4
+
+[node name="Cellar" parent="Rooms" parent_id_path=PackedInt32Array(540883177) index="8" unique_id=936478408 instance=ExtResource("7_62vsf")]
+transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, -20, 0, -21)
+
+[node name="Floors" parent="Hallways" parent_id_path=PackedInt32Array(715007728) index="0" unique_id=1456009944]
+data = {
+"cells": PackedInt32Array(65535, 65532, 1, 0, 65532, 655361, 4, 65532, 1, 5, 65532, 655361, 5, 65526, 655361, 0, 65526, 655361, 65535, 65526, 1, 4, 65526, 1, 7, 65529, 1441793, 8, 65529, 1441793, 9, 65529, 1441793, 10, 65529, 1441793, 7, 65530, 1048577, 8, 65530, 1048577, 9, 65530, 1048577, 10, 65530, 1048577, 11, 65530, 1048577, 12, 65530, 1048577, 11, 65529, 1441793, 12, 65529, 1441793, 13, 65529, 1441793, 13, 65530, 1048577, 65532, 65530, 1048577, 65532, 65529, 1441793, 65518, 65529, 1441793, 65518, 65530, 1048577, 65517, 65530, 1048577, 65517, 65529, 1441793, 65516, 65529, 1441793, 65516, 65530, 1048577, 65515, 65530, 1048579, 65515, 65529, 655363, 65515, 65531, 655361, 65515, 65532, 655361, 65515, 65528, 655361, 65515, 65527, 655361, 65515, 65526, 655361, 65514, 65532, 1, 65514, 65531, 1, 65514, 65530, 1, 65514, 65529, 1, 65514, 65528, 1, 65514, 65527, 1, 65514, 65526, 1, 65514, 65525, 1, 65515, 65525, 655361)
+}
+
+[node name="Door" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="0" unique_id=1915289721 instance=ExtResource("8_3sqe8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.5)
+
+[node name="Door4" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="1" unique_id=1131277384 instance=ExtResource("8_3sqe8")]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 13, 0, -6)
+
+[node name="Door6" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="2" unique_id=833929701 instance=ExtResource("8_3sqe8")]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -18, 0, -6)
+
+[node name="Door7" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="3" unique_id=1695158843 instance=ExtResource("8_3sqe8")]
+transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, -21, 0, -2)
+
+[node name="Door8" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="4" unique_id=769037173 instance=ExtResource("8_3sqe8")]
+transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, -21, 0, -11)
+door_color = 4
+
+[node name="Door5" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="5" unique_id=31767772 instance=ExtResource("8_3sqe8")]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -3.5, 0, -6)
+door_color = 3
+
+[node name="Door3" parent="Doors" parent_id_path=PackedInt32Array(2141035982) index="6" unique_id=309275261 instance=ExtResource("8_3sqe8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, -9.5)
+
+[node name="Decor" type="Node3D" parent="." index="4" unique_id=1504613085]
+
+[node name="Bones" parent="Decor" index="0" unique_id=987850209 instance=ExtResource("8_pw0xg")]
+transform = Transform3D(0.6263589, 0, -0.77953476, 0, 1, 0, 0.77953476, 0, 0.6263589, 6, 0, -2)
+
+[node name="Bones2" parent="Decor" index="1" unique_id=2060857156 instance=ExtResource("8_pw0xg")]
+transform = Transform3D(-0.63112634, 0.08005964, -0.43139073, -0.08497275, -0.5946348, -0.058081012, -0.38238344, 0, 0.72491986, 3.5114741, 0.06524742, -2)
+
+[node name="SmallCrate" parent="Decor" index="2" unique_id=2108371687 instance=ExtResource("9_1omhj")]
+transform = Transform3D(0.70710677, 0, 0.70710677, 0, 1, 0, -0.70710677, 0, 0.70710677, 5.7317986, 0, 2.0984616)
+
+[node name="SmallCrate2" parent="Decor" index="3" unique_id=987787168 instance=ExtResource("9_1omhj")]
+transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 5, 0, 2)
+
+[node name="SmallCrate3" parent="Decor" index="4" unique_id=1977122951 instance=ExtResource("9_1omhj")]
+transform = Transform3D(0.79127675, 0, -0.6114579, 0, 1, 0, 0.6114579, 0, 0.79127675, 5.4684153, 0.61749697, 2)
+
+[node name="PickableBuckler" parent="Decor" index="5" unique_id=1588726055 instance=ExtResource("9_pw0xg")]
+transform = Transform3D(0.88112193, -0.45818803, -0.1169951, 0, -0.24740493, 0.9689122, -0.47288913, -0.8537298, -0.21799392, -1.6033592, 0.34650314, -15.807795)
+
+[node name="Spiderweb" parent="Decor" index="6" unique_id=1050656607 instance=ExtResource("9_nnerm")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 1, -6)
+
+[node name="Spiderweb2" parent="Decor" index="7" unique_id=1113247181 instance=ExtResource("9_nnerm")]
+transform = Transform3D(-0.50000006, 0, 0.8660254, 0, 1, 0, -0.8660254, 0, -0.50000006, 11, 1, -6)
+
+[node name="PickableAxe" parent="Decor" index="8" unique_id=1354600351 instance=ExtResource("10_1omhj")]
+transform = Transform3D(-0.1464157, 0.88438994, 0.44318965, 0.03776524, 0.45268843, -0.8908688, -0.98850214, -0.1137, -0.0996799, 3.5566998, 0.20169497, -12.061372)

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites id="2026-07-05" name="report_277" tests="16" failures="0" skipped="0" flaky="0" time="0.000">
+	<testsuite id="0" name="dungeon_interaction_test" package="tests/gdunit" timestamp="2026-07-04T16:52:40" hostname="localhost" tests="16" failures="0" errors="0" skipped="0" flaky="0" time="3.546">
+		<testcase name="test_chest_script_exists" classname="dungeon_interaction_test" time="0.095">
+		</testcase>
+		<testcase name="test_chest_has_zone_export" classname="dungeon_interaction_test" time="0.091">
+		</testcase>
+		<testcase name="test_chest_open_chest_method" classname="dungeon_interaction_test" time="0.091">
+		</testcase>
+		<testcase name="test_procedural_dungeon_injects_zone_to_chest" classname="dungeon_interaction_test" time="0.169">
+		</testcase>
+		<testcase name="test_procedural_dungeon_has_extraction_portal" classname="dungeon_interaction_test" time="0.091">
+		</testcase>
+		<testcase name="test_extraction_triggers_tavern_return" classname="dungeon_interaction_test" time="0.093">
+		</testcase>
+		<testcase name="test_extraction_settles_loot" classname="dungeon_interaction_test" time="0.091">
+		</testcase>
+		<testcase name="test_pickable_item_exists" classname="dungeon_interaction_test" time="0.093">
+		</testcase>
+		<testcase name="test_pickable_item_has_weapon_data_field" classname="dungeon_interaction_test" time="0.092">
+		</testcase>
+		<testcase name="test_pickable_item_highlight_methods" classname="dungeon_interaction_test" time="0.093">
+		</testcase>
+		<testcase name="test_thrown_item_exists" classname="dungeon_interaction_test" time="0.094">
+		</testcase>
+		<testcase name="test_barrel_is_throwable" classname="dungeon_interaction_test" time="0.093">
+		</testcase>
+		<testcase name="test_enemy_impale_interface" classname="dungeon_interaction_test" time="0.094">
+		</testcase>
+		<testcase name="test_dungeon_spawner_registered" classname="dungeon_interaction_test" time="0.093">
+		</testcase>
+		<testcase name="test_procedural_dungeon_calls_spawner" classname="dungeon_interaction_test" time="0.091">
+		</testcase>
+		<testcase name="test_enemy_prefabs_exist" classname="dungeon_interaction_test" time="0.092">
+		</testcase>
+	</testsuite>
+</testsuites>

@@ -1,0 +1,5 @@
+# Material for boar_tusk
+newmtl boar_tusk_mat
+Kd 0.900 0.850 0.750
+Ks 0.100 0.100 0.100
+Ns 400

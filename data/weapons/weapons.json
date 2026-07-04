@@ -1,0 +1,632 @@
+{
+  "comment": "Dungeon Tavern / Lantern Tavern — Equipment Database",
+  "version": 2,
+  "categories": [
+    "weapons",
+    "shields",
+    "armor_light",
+    "armor_heavy",
+    "accessories"
+  ],
+  "weapons": [
+    {
+      "id": "shortsword",
+      "name": "Shortsword",
+      "name_zh": "短剑",
+      "category": "weapons",
+      "hands": "one_hand",
+      "glb_path": "res://assets/meshes/weapons/shortsword.glb",
+      "icon": "res://assets/textures/icons/icon-weapon.png",
+      "tiers": [
+        {
+          "name": "青铜短剑",
+          "damage_dice": "1d6+3",
+          "reach": 2.5,
+          "condition": 20,
+          "hit_bonus": 0.05,
+          "crit_bonus": 0
+        },
+        {
+          "name": "精钢长剑",
+          "damage_dice": "2d6+8",
+          "reach": 2.5,
+          "condition": 28,
+          "hit_bonus": 0.1,
+          "crit_bonus": 0
+        },
+        {
+          "name": "誓约之刃",
+          "damage_dice": "3d6+20",
+          "reach": 2.5,
+          "condition": 35,
+          "hit_bonus": 0.15,
+          "crit_bonus": 0.05
+        }
+      ],
+      "stats": {
+        "condition": 30,
+        "max_condition": 30,
+        "damage_min": 3,
+        "damage_max": 5,
+        "reach": 3.5,
+        "throw_rotation_speed": 40.0,
+        "throw_movement_speed": 10.0,
+        "impale_local_translation": [
+          0,
+          0,
+          0.7
+        ],
+        "impale_local_rotation": 0.0
+      }
+    },
+    {
+      "id": "greatsword",
+      "name": "Greatsword",
+      "name_zh": "双手大剑",
+      "category": "weapons",
+      "hands": "two_hand",
+      "glb_path": "res://assets/meshes/weapons/greatsword.glb",
+      "icon": "res://assets/textures/icons/icon-weapon.png",
+      "tiers": [
+        {
+          "name": "锈铁大剑",
+          "damage_dice": "1d12+5",
+          "reach": 3.5,
+          "condition": 22,
+          "knockback": 1,
+          "evade_penalty": -0.1,
+          "crit_bonus": 0
+        },
+        {
+          "name": "精钢斩马刀",
+          "damage_dice": "2d12+12",
+          "reach": 3.5,
+          "condition": 30,
+          "knockback": 2,
+          "evade_penalty": -0.1,
+          "crit_bonus": 0
+        },
+        {
+          "name": "屠魔狂剑",
+          "damage_dice": "3d12+28",
+          "reach": 3.5,
+          "condition": 38,
+          "knockback": 2,
+          "evade_penalty": -0.1,
+          "crit_bonus": 0.08
+        }
+      ],
+      "stats": {
+        "condition": 35,
+        "max_condition": 35,
+        "damage_min": 5,
+        "damage_max": 8,
+        "reach": 5.0,
+        "throw_rotation_speed": 35.0,
+        "throw_movement_speed": 8.0,
+        "impale_local_translation": [
+          0,
+          0,
+          0.9
+        ],
+        "impale_local_rotation": 0.0
+      }
+    },
+    {
+      "id": "axe",
+      "name": "Axe",
+      "name_zh": "双手斧",
+      "category": "weapons",
+      "hands": "two_hand",
+      "glb_path": "res://assets/meshes/weapons/axe.glb",
+      "icon": "res://assets/textures/icons/icon-weapon.png",
+      "tiers": [
+        {
+          "name": "木柄伐木斧",
+          "damage_dice": "2d6+4",
+          "reach": 3.0,
+          "condition": 20,
+          "armor_pierce": 0.05,
+          "crit_dmg_bonus": 0
+        },
+        {
+          "name": "精钢战斧",
+          "damage_dice": "3d6+10",
+          "reach": 3.0,
+          "condition": 28,
+          "armor_pierce": 0.1,
+          "crit_dmg_bonus": 0
+        },
+        {
+          "name": "崩岩巨斧",
+          "damage_dice": "4d6+24",
+          "reach": 3.0,
+          "condition": 36,
+          "armor_pierce": 0.15,
+          "crit_dmg_bonus": 0.2
+        }
+      ],
+      "stats": {
+        "condition": 25,
+        "max_condition": 25,
+        "damage_min": 4,
+        "damage_max": 5,
+        "reach": 4.0,
+        "throw_rotation_speed": 50.0,
+        "throw_movement_speed": 12.0,
+        "impale_local_translation": [
+          0,
+          0,
+          1
+        ],
+        "impale_local_rotation": 0.5
+      }
+    },
+    {
+      "id": "warhammer",
+      "name": "Warhammer",
+      "name_zh": "战锤",
+      "category": "weapons",
+      "hands": "two_hand",
+      "glb_path": "res://assets/meshes/weapons/weapons_warhammer.glb",
+      "icon": "res://assets/textures/icons/icon-weapon.png",
+      "tiers": [
+        {
+          "name": "采石木槌",
+          "damage_dice": "1d10+4",
+          "reach": 3.0,
+          "condition": 25,
+          "knockback": 1,
+          "wall_bonus": 0.3,
+          "stun": 1
+        },
+        {
+          "name": "铁铸战锤",
+          "damage_dice": "2d10+10",
+          "reach": 3.0,
+          "condition": 32,
+          "knockback": 2,
+          "wall_bonus": 0.45,
+          "stun": 2
+        },
+        {
+          "name": "灭世雷锤",
+          "damage_dice": "3d10+25",
+          "reach": 3.0,
+          "condition": 40,
+          "knockback": 2,
+          "wall_bonus": 0.6,
+          "stun": 2,
+          "hit_bonus": 0.05
+        }
+      ],
+      "stats": {
+        "condition": 30,
+        "max_condition": 30,
+        "damage_min": 5,
+        "damage_max": 9,
+        "reach": 4.0,
+        "throw_rotation_speed": 35.0,
+        "throw_movement_speed": 8.0,
+        "impale_local_translation": [
+          0,
+          0,
+          0.8
+        ],
+        "impale_local_rotation": 0.0
+      }
+    },
+    {
+      "id": "spear",
+      "name": "Spear",
+      "name_zh": "长枪",
+      "category": "weapons",
+      "hands": "two_hand",
+      "glb_path": "res://assets/meshes/weapons/weapons_spear.glb",
+      "icon": "res://assets/textures/icons/icon-weapon.png",
+      "tiers": [
+        {
+          "name": "竹尖长枪",
+          "damage_dice": "1d8+3",
+          "reach": 4.0,
+          "condition": 20,
+          "range": 2
+        },
+        {
+          "name": "精钢骑士长枪",
+          "damage_dice": "2d8+9",
+          "reach": 4.0,
+          "condition": 28,
+          "range": 2,
+          "hit_bonus": 0.05
+        },
+        {
+          "name": "破空闪电枪",
+          "damage_dice": "3d8+22",
+          "reach": 4.0,
+          "condition": 35,
+          "range": 2,
+          "hit_bonus": 0.1,
+          "crit_bonus": 0.05
+        }
+      ],
+      "stats": {
+        "condition": 25,
+        "max_condition": 25,
+        "damage_min": 4,
+        "damage_max": 7,
+        "reach": 5.5,
+        "throw_rotation_speed": 30.0,
+        "throw_movement_speed": 9.0,
+        "impale_local_translation": [
+          0,
+          0,
+          0.7
+        ],
+        "impale_local_rotation": 0.0
+      }
+    },
+    {
+      "id": "dagger",
+      "name": "Dagger",
+      "name_zh": "匕首",
+      "category": "weapons",
+      "hands": "one_hand",
+      "glb_path": "res://assets/meshes/weapons/weapons_dagger.glb",
+      "icon": "res://assets/textures/icons/icon-weapon.png",
+      "tiers": [
+        {
+          "name": "骨质飞刃",
+          "damage_dice": "1d4+2",
+          "reach": 1.5,
+          "condition": 15,
+          "crit_bonus": 0.05
+        },
+        {
+          "name": "暗影短刀",
+          "damage_dice": "2d4+7",
+          "reach": 1.5,
+          "condition": 22,
+          "crit_bonus": 0.1,
+          "flank_bonus": 0.05
+        },
+        {
+          "name": "无声瞬杀",
+          "damage_dice": "3d4+16",
+          "reach": 1.5,
+          "condition": 28,
+          "crit_bonus": 0.15,
+          "backstab_bonus": 0.3
+        }
+      ],
+      "stats": {
+        "condition": 20,
+        "max_condition": 20,
+        "damage_min": 2,
+        "damage_max": 4,
+        "reach": 2.5,
+        "throw_rotation_speed": 60.0,
+        "throw_movement_speed": 15.0,
+        "impale_local_translation": [
+          0,
+          0,
+          0.4
+        ],
+        "impale_local_rotation": 0.0
+      }
+    },
+    {
+      "id": "longbow",
+      "name": "Longbow",
+      "name_zh": "长弓",
+      "category": "weapons",
+      "hands": "two_hand",
+      "glb_path": "res://assets/meshes/weapons/weapons_longbow.glb",
+      "icon": "res://assets/textures/icons/icon-weapon.png",
+      "tiers": [
+        {
+          "name": "猎人木弓",
+          "damage_dice": "1d8+2",
+          "reach": 6.0,
+          "condition": 15,
+          "range": 3
+        },
+        {
+          "name": "精灵长弓",
+          "damage_dice": "2d8+8",
+          "reach": 6.0,
+          "condition": 22,
+          "range": 4,
+          "hit_bonus": 0.05
+        },
+        {
+          "name": "群星之怒",
+          "damage_dice": "3d8+20",
+          "reach": 6.0,
+          "condition": 30,
+          "range": 5,
+          "hit_bonus": 0.1,
+          "crit_bonus": 0.05
+        }
+      ],
+      "stats": {
+        "condition": 20,
+        "max_condition": 20,
+        "damage_min": 3,
+        "damage_max": 6,
+        "reach": 8.0,
+        "throw_rotation_speed": 0,
+        "throw_movement_speed": 0,
+        "impale_local_translation": [
+          0,
+          0,
+          0.5
+        ],
+        "impale_local_rotation": 0.0
+      }
+    },
+    {
+      "id": "crossbow",
+      "name": "Crossbow",
+      "name_zh": "轻弩",
+      "category": "weapons",
+      "hands": "two_hand",
+      "glb_path": "res://assets/meshes/weapons/weapons_crossbow.glb",
+      "icon": "res://assets/textures/icons/icon-weapon.png",
+      "tiers": [
+        {
+          "name": "木制轻弩",
+          "damage_dice": "1d6+4",
+          "reach": 5.0,
+          "condition": 20,
+          "range": 3,
+          "hit_bonus": 0.1
+        },
+        {
+          "name": "钢翼弩",
+          "damage_dice": "2d6+10",
+          "reach": 5.0,
+          "condition": 28,
+          "range": 3,
+          "hit_bonus": 0.15
+        },
+        {
+          "name": "幻影连弩",
+          "damage_dice": "3d6+22",
+          "reach": 5.0,
+          "condition": 35,
+          "range": 4,
+          "hit_bonus": 0.2,
+          "crit_bonus": 0.05
+        }
+      ],
+      "stats": {
+        "condition": 25,
+        "max_condition": 25,
+        "damage_min": 4,
+        "damage_max": 7,
+        "reach": 7.0,
+        "throw_rotation_speed": 0,
+        "throw_movement_speed": 0,
+        "impale_local_translation": [
+          0,
+          0,
+          0.6
+        ],
+        "impale_local_rotation": 0.0
+      }
+    },
+    {
+      "id": "staff",
+      "name": "Staff",
+      "name_zh": "法杖",
+      "category": "weapons",
+      "hands": "two_hand",
+      "glb_path": "res://assets/meshes/weapons/weapons_staff.glb",
+      "icon": "res://assets/textures/icons/icon-weapon.png",
+      "tiers": [
+        {
+          "name": "学徒橡木棒",
+          "damage_dice": "1d6+3",
+          "reach": 3.0,
+          "condition": 15,
+          "range": 2,
+          "magic_mult": 0.05
+        },
+        {
+          "name": "元素法杖",
+          "damage_dice": "2d6+8",
+          "reach": 3.0,
+          "condition": 22,
+          "range": 3,
+          "magic_mult": 0.1
+        },
+        {
+          "name": "贤者之理",
+          "damage_dice": "3d6+20",
+          "reach": 3.0,
+          "condition": 30,
+          "range": 3,
+          "magic_mult": 0.15,
+          "crit_bonus": 0.05
+        }
+      ],
+      "stats": {
+        "condition": 20,
+        "max_condition": 20,
+        "damage_min": 3,
+        "damage_max": 5,
+        "reach": 4.5,
+        "throw_rotation_speed": 0,
+        "throw_movement_speed": 0,
+        "impale_local_translation": [
+          0,
+          0,
+          0.7
+        ],
+        "impale_local_rotation": 0.0
+      }
+    },
+    {
+      "id": "shield",
+      "name": "Shield",
+      "name_zh": "盾牌",
+      "category": "shields",
+      "hands": "off_hand",
+      "glb_path": "res://assets/meshes/weapons/weapons_shield.glb",
+      "icon": "res://assets/textures/icons/icon-shield.png",
+      "tiers": [
+        {
+          "name": "破圆木盾",
+          "damage_dice": "0",
+          "reach": 1.0,
+          "condition": 25,
+          "phys_def": 1,
+          "block_value": 5,
+          "block_rate": 0.05
+        },
+        {
+          "name": "精铁圆盾",
+          "damage_dice": "0",
+          "reach": 1.0,
+          "condition": 32,
+          "phys_def": 3,
+          "block_value": 15,
+          "block_rate": 0.1
+        },
+        {
+          "name": "矮人叹息",
+          "damage_dice": "0",
+          "reach": 1.0,
+          "condition": 40,
+          "phys_def": 8,
+          "block_value": 35,
+          "block_rate": 0.15
+        }
+      ],
+      "stats": {
+        "condition": 35,
+        "max_condition": 35,
+        "damage_min": 1,
+        "damage_max": 2,
+        "reach": 2.0,
+        "throw_rotation_speed": 20.0,
+        "throw_movement_speed": 6.0,
+        "impale_local_translation": [
+          0,
+          0,
+          0.3
+        ],
+        "impale_local_rotation": 0.0
+      }
+    }
+  ],
+  "armor": [
+    {
+      "id": "light_armor",
+      "name": "Light Armor",
+      "name_zh": "轻型铠甲",
+      "category": "armor_light",
+      "icon": "res://assets/textures/icons/icon-armor.png",
+      "tiers": [
+        {
+          "name": "粗糙皮甲",
+          "phys_def": 2,
+          "evade_bonus": 0.02,
+          "condition": 15
+        },
+        {
+          "name": "野性革甲",
+          "phys_def": 6,
+          "evade_bonus": 0.05,
+          "condition": 25
+        },
+        {
+          "name": "暗影刺客装",
+          "phys_def": 15,
+          "evade_bonus": 0.1,
+          "condition": 35
+        }
+      ],
+      "proficiency_perks": [
+        {
+          "name": "轻盈步法",
+          "effect": "闪避率+2%"
+        },
+        {
+          "name": "侧身闪避",
+          "effect": "闪避率+4%，侧击命中减半"
+        },
+        {
+          "name": "疾风闪跃",
+          "effect": "闪避率+6%，暴击率-5%，闪避后Tick-15%"
+        }
+      ]
+    },
+    {
+      "id": "heavy_armor",
+      "name": "Heavy Armor",
+      "name_zh": "重型铠甲",
+      "category": "armor_heavy",
+      "icon": "res://assets/textures/icons/icon-armor.png",
+      "tiers": [
+        {
+          "name": "生铁锁子甲",
+          "phys_def": 5,
+          "evade_penalty": -0.05,
+          "condition": 25
+        },
+        {
+          "name": "钢板半身铠",
+          "phys_def": 14,
+          "evade_penalty": -0.08,
+          "condition": 35
+        },
+        {
+          "name": "巨神兵全身甲",
+          "phys_def": 30,
+          "evade_penalty": -0.12,
+          "condition": 45
+        }
+      ],
+      "proficiency_perks": [
+        {
+          "name": "装甲加固",
+          "effect": "物理防御+2"
+        },
+        {
+          "name": "冲击缓冲",
+          "effect": "物理防御+5，20%概率不消耗耐久"
+        },
+        {
+          "name": "不屈壁垒",
+          "effect": "物理防御+10，免疫击退，15%反震50%防御真伤"
+        }
+      ]
+    },
+    {
+      "id": "weight_accessory",
+      "name": "Weight Accessory",
+      "name_zh": "负重挂件",
+      "category": "accessories",
+      "icon": "res://assets/textures/icons/icon-bag.png",
+      "tiers": [
+        {
+          "name": "旧布袋",
+          "carry_bonus": 5,
+          "condition": 10
+        },
+        {
+          "name": "旅行皮包",
+          "carry_bonus": 12,
+          "condition": 18
+        },
+        {
+          "name": "冒险多功能背篓",
+          "carry_bonus": 25,
+          "condition": 25
+        }
+      ]
+    }
+  ]
+}

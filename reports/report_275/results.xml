@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites id="2026-07-05" name="report_275" tests="20" failures="0" skipped="0" flaky="0" time="0.000">
+	<testsuite id="0" name="player_milestone_integration_test" package="tests/gdunit" timestamp="2026-07-04T16:52:21" hostname="localhost" tests="20" failures="0" errors="0" skipped="0" flaky="0" time="4.527">
+		<testcase name="test_attr_panel_autoload_available" classname="player_milestone_integration_test" time="0.093">
+		</testcase>
+		<testcase name="test_thick_skin_reduces_hurt_damage" classname="player_milestone_integration_test" time="0.093">
+		</testcase>
+		<testcase name="test_sidestep_can_fully_dodge" classname="player_milestone_integration_test" time="0.091">
+		</testcase>
+		<testcase name="test_sidestep_not_melee_never_dodges" classname="player_milestone_integration_test" time="0.094">
+		</testcase>
+		<testcase name="test_move_speed_mult_base_no_bonus" classname="player_milestone_integration_test" time="0.092">
+		</testcase>
+		<testcase name="test_move_speed_mult_with_fleet_foot" classname="player_milestone_integration_test" time="0.121">
+		</testcase>
+		<testcase name="test_attr_panel_provides_attrs_for_combat_bridge" classname="player_milestone_integration_test" time="0.123">
+		</testcase>
+		<testcase name="test_hit_accumulates_str_exp_for_melee" classname="player_milestone_integration_test" time="0.093">
+		</testcase>
+		<testcase name="test_hit_accumulates_proficiency" classname="player_milestone_integration_test" time="0.092">
+		</testcase>
+		<testcase name="test_skill_unlock_triggers_on_threshold" classname="player_milestone_integration_test" time="0.140">
+		</testcase>
+		<testcase name="test_negate_flank_bonus_when_unlocked" classname="player_milestone_integration_test" time="0.093">
+		</testcase>
+		<testcase name="test_negate_flank_bonus_not_unlocked" classname="player_milestone_integration_test" time="0.091">
+		</testcase>
+		<testcase name="test_knockback_chance_adds_force" classname="player_milestone_integration_test" time="0.093">
+		</testcase>
+		<testcase name="test_heavy_stride_melee_damage_boost" classname="player_milestone_integration_test" time="0.094">
+		</testcase>
+		<testcase name="test_defense_exp_accumulation_on_hit" classname="player_milestone_integration_test" time="0.094">
+		</testcase>
+		<testcase name="test_max_hp_includes_fortitude" classname="player_milestone_integration_test" time="0.092">
+		</testcase>
+		<testcase name="test_evade_rate_includes_elusive" classname="player_milestone_integration_test" time="0.077">
+		</testcase>
+		<testcase name="test_crit_rate_includes_find_weakness" classname="player_milestone_integration_test" time="0.092">
+		</testcase>
+		<testcase name="test_full_chain_str_milestone_unlocks_and_heavy_stride_active" classname="player_milestone_integration_test" time="0.122">
+		</testcase>
+		<testcase name="test_full_chain_agi_milestone_unlocks_and_fleet_foot_active" classname="player_milestone_integration_test" time="0.122">
+		</testcase>
+	</testsuite>
+</testsuites>

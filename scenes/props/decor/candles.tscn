@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://bmdk5lkr5cmaq"]
+
+[ext_resource type="PackedScene" uid="uid://bt1xm6t5n86xv" path="res://assets/meshes/props/chair/candles.glb" id="1_a6uov"]
+
+[node name="Candles" type="Node3D" unique_id=1444555783]
+
+[node name="candles" parent="." unique_id=795970562 instance=ExtResource("1_a6uov")]

@@ -1,0 +1,58 @@
+[gd_scene format=3 uid="uid://bu6g5h8et62ur"]
+
+[ext_resource type="PackedScene" uid="uid://wrwal7ejd61e" path="res://assets/meshes/traps/spikes.glb" id="1_3h3hk"]
+[ext_resource type="Script" uid="uid://cuwsgmuvxrdr7" path="res://scenes/traps/spikes_trap.gd" id="1_fjxlh"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_fjxlh"]
+albedo_color = Color(0.8091469, 0.8425004, 0.86494404, 1)
+metallic = 1.0
+roughness = 0.0
+emission_enabled = true
+emission = Color(0.81088924, 1.2754649e-06, 7.70092e-07, 1)
+emission_energy_multiplier = 0.6
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_3h3hk"]
+size = Vector3(0.6, 1.8, 0.2)
+
+[node name="SpikesTrap" type="Area3D" unique_id=1532410152]
+collision_layer = 0
+collision_mask = 6
+monitorable = false
+script = ExtResource("1_fjxlh")
+
+[node name="spikes" parent="." unique_id=1590120529 instance=ExtResource("1_3h3hk")]
+
+[node name="Spikes" parent="spikes" index="0" unique_id=1363729375]
+surface_material_override/0 = SubResource("StandardMaterial3D_fjxlh")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1147310308]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0709947, -0.08701956)
+shape = SubResource("BoxShape3D_3h3hk")
+
+[node name="NavigationObstacle3D" type="NavigationObstacle3D" parent="." unique_id=711186043]
+vertices = PackedVector3Array(-1.0208827, 0, -0.009554885, -1.0318699, 0, -0.9984011, -0.3067162, 0, -1.5367728, 0.40745068, 0, -1.5257856, 1.0941491, 0, -0.98741394, 1.0776684, 0, 0.01241935, 0.5777519, 0, 0.60572726, -0.46053648, 0, 0.64418226)
+affect_navigation_mesh = true
+
+[node name="SpotLight3D" type="SpotLight3D" parent="." unique_id=652356571]
+transform = Transform3D(1, 0, 0, 0, -0.50000006, 0.8660254, 0, -0.8660254, -0.50000006, 0, 2.3, -0.7)
+light_color = Color(0.7549433, 0, 0.1785306, 1)
+light_energy = 2.0
+distance_fade_enabled = true
+distance_fade_begin = 5.0
+distance_fade_length = 5.0
+spot_range = 3.0
+spot_attenuation = 2.0
+spot_angle = 25.0
+
+[node name="SpotLight3D2" type="SpotLight3D" parent="." unique_id=440942256]
+transform = Transform3D(1, 0, 0, 0, -0.50000006, -0.8660254, 0, 0.8660254, -0.50000006, 0, -0.8, -0.7)
+light_color = Color(0.7549433, 0, 0.1785306, 1)
+light_energy = 2.0
+distance_fade_enabled = true
+distance_fade_begin = 5.0
+distance_fade_length = 5.0
+spot_range = 3.0
+spot_attenuation = 2.0
+spot_angle = 25.0
+
+[editable path="spikes"]

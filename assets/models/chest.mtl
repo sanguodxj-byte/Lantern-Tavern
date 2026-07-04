@@ -1,0 +1,5 @@
+# Material for chest
+newmtl chest_mat
+Kd 0.850 0.650 0.150
+Ks 0.900 0.900 0.900
+Ns 850

@@ -1,0 +1,5 @@
+# Material for slime
+newmtl slime_mat
+Kd 0.100 0.800 0.950
+Ks 0.000 0.000 0.000
+Ns 900

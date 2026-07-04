@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites id="2026-07-05" name="report_276" tests="37" failures="0" skipped="0" flaky="0" time="0.000">
+	<testsuite id="0" name="tavern_settlement_test" package="tests/gdunit" timestamp="2026-07-04T16:52:29" hostname="localhost" tests="37" failures="0" errors="0" skipped="0" flaky="0" time="8.070">
+		<testcase name="test_generate_customer_has_race" classname="tavern_settlement_test" time="0.094">
+		</testcase>
+		<testcase name="test_generate_customer_copies_race_template" classname="tavern_settlement_test" time="0.092">
+		</testcase>
+		<testcase name="test_generate_customer_carry_type_is_valid" classname="tavern_settlement_test" time="0.095">
+		</testcase>
+		<testcase name="test_iron_carry_has_positive_amount" classname="tavern_settlement_test" time="0.092">
+		</testcase>
+		<testcase name="test_gear_carry_has_zero_iron_and_gear_item" classname="tavern_settlement_test" time="0.094">
+		</testcase>
+		<testcase name="test_iron_amount_within_race_base_range" classname="tavern_settlement_test" time="0.097">
+		</testcase>
+		<testcase name="test_customer_has_real_name" classname="tavern_settlement_test" time="0.093">
+		</testcase>
+		<testcase name="test_human_accepts_clean_brew_cheap_price" classname="tavern_settlement_test" time="0.093">
+		</testcase>
+		<testcase name="test_human_accepts_normal_price" classname="tavern_settlement_test" time="0.091">
+		</testcase>
+		<testcase name="test_human_expensive_price_reputation_penalty" classname="tavern_settlement_test" time="0.092">
+		</testcase>
+		<testcase name="test_human_extortionate_price_refused" classname="tavern_settlement_test" time="0.076">
+		</testcase>
+		<testcase name="test_human_refuses_brew_with_stench" classname="tavern_settlement_test" time="0.092">
+		</testcase>
+		<testcase name="test_human_refuses_brew_with_poison" classname="tavern_settlement_test" time="0.094">
+		</testcase>
+		<testcase name="test_monster_perfect_settlement_iron_full_pay" classname="tavern_settlement_test" time="0.092">
+		</testcase>
+		<testcase name="test_monster_satisfied_settlement_iron_full_pay" classname="tavern_settlement_test" time="0.092">
+		</testcase>
+		<testcase name="test_monster_perfect_gear_type_gives_blind_box" classname="tavern_settlement_test" time="0.092">
+		</testcase>
+		<testcase name="test_blind_box_gear_uses_weapon_registry" classname="tavern_settlement_test" time="0.092">
+		</testcase>
+		<testcase name="test_blind_box_tier_index_in_valid_range" classname="tavern_settlement_test" time="0.090">
+		</testcase>
+		<testcase name="test_blind_box_prefix_is_from_defined_pool" classname="tavern_settlement_test" time="0.094">
+		</testcase>
+		<testcase name="test_blind_box_display_name_includes_prefix_and_tier" classname="tavern_settlement_test" time="0.094">
+		</testcase>
+		<testcase name="test_monster_satisfied_gear_type_no_gift" classname="tavern_settlement_test" time="0.093">
+		</testcase>
+		<testcase name="test_monster_normal_settlement_partial_pay" classname="tavern_settlement_test" time="0.092">
+		</testcase>
+		<testcase name="test_monster_refuse_with_disliked_flavor_high" classname="tavern_settlement_test" time="0.094">
+		</testcase>
+		<testcase name="test_monster_no_liked_no_disliked_refuse" classname="tavern_settlement_test" time="0.092">
+		</testcase>
+		<testcase name="test_affinity_transfers_to_faction_reputation" classname="tavern_settlement_test" time="0.076">
+		</testcase>
+		<testcase name="test_negative_affinity_transfers_to_faction" classname="tavern_settlement_test" time="0.092">
+		</testcase>
+		<testcase name="test_human_does_not_affect_faction_reputation" classname="tavern_settlement_test" time="0.092">
+		</testcase>
+		<testcase name="test_rumor_reputation_decreases_on_human_refuse" classname="tavern_settlement_test" time="0.094">
+		</testcase>
+		<testcase name="test_rumor_reputation_decreases_on_extortionate_price" classname="tavern_settlement_test" time="0.092">
+		</testcase>
+		<testcase name="test_prestige_tier_wary_at_zero" classname="tavern_settlement_test" time="0.093">
+		</testcase>
+		<testcase name="test_prestige_tier_exalted_at_high_value" classname="tavern_settlement_test" time="0.078">
+		</testcase>
+		<testcase name="test_prestige_tier_boundaries" classname="tavern_settlement_test" time="0.092">
+		</testcase>
+		<testcase name="test_prestige_gift_pool_contains_valid_materials" classname="tavern_settlement_test" time="0.093">
+		</testcase>
+		<testcase name="test_wary_tier_no_gift" classname="tavern_settlement_test" time="0.094">
+		</testcase>
+		<testcase name="test_regular_registration_at_affinity_threshold" classname="tavern_settlement_test" time="0.093">
+		</testcase>
+		<testcase name="test_regular_pool_max_five_per_race" classname="tavern_settlement_test" time="0.092">
+		</testcase>
+		<testcase name="test_settlement_result_initial_state" classname="tavern_settlement_test" time="0.095">
+		</testcase>
+	</testsuite>
+</testsuites>

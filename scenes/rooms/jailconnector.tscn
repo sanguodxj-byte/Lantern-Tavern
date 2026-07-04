@@ -1,0 +1,84 @@
+[gd_scene format=3 uid="uid://dq8ugtx0qcvau"]
+
+[ext_resource type="PackedScene" uid="uid://dvre4shd8agg2" path="res://scenes/rooms/base_room.tscn" id="1_ig0ta"]
+[ext_resource type="PackedScene" uid="uid://ww8hovdjir8v" path="res://scenes/props/torch/torch.tscn" id="2_3wkn7"]
+[ext_resource type="PackedScene" uid="uid://bkjv50xux8dtw" path="res://scenes/characters/enemies/kobold.tscn" id="2_q1bkv"]
+[ext_resource type="PackedScene" uid="uid://ci0wq7gvicf1p" path="res://scenes/props/barrel/barrel.tscn" id="4_ktt4c"]
+[ext_resource type="PackedScene" uid="uid://mrn3nvs8n76" path="res://scenes/props/crates/large_crate.tscn" id="5_0jdwc"]
+[ext_resource type="PackedScene" uid="uid://cggpkb6pephps" path="res://scenes/props/crates/small_crate.tscn" id="6_0jdwc"]
+[ext_resource type="PackedScene" uid="uid://dtxlceyhstp3f" path="res://scenes/props/decor/chair.tscn" id="7_ma8kr"]
+[ext_resource type="PackedScene" uid="uid://bkg7jsbq7u5rl" path="res://scenes/equipment/pickable_axe.tscn" id="8_e1ugj"]
+[ext_resource type="PackedScene" uid="uid://csc2tbrvwusxh" path="res://scenes/props/decor/grate.tscn" id="8_wt4ek"]
+[ext_resource type="PackedScene" uid="uid://bmdk5lkr5cmaq" path="res://scenes/props/decor/candles.tscn" id="9_f4tfp"]
+[ext_resource type="PackedScene" uid="uid://cibipij5wf3t3" path="res://scenes/props/decor/wall_crack.tscn" id="10_hrswg"]
+[ext_resource type="PackedScene" uid="uid://cr6h75g71d3vb" path="res://scenes/props/decor/bucket.tscn" id="11_v004h"]
+[ext_resource type="PackedScene" uid="uid://bqm3c3s5gulaw" path="res://scenes/props/decor/spiderweb.tscn" id="12_6s1n3"]
+
+[sub_resource type="NavigationMesh" id="NavigationMesh_0jdwc"]
+vertices = PackedVector3Array(-0.75, 0.02, -6.5, -2.25, 0.02, -6.25, -2.5, 0.02, -5.75, -2.25, 0.02, 2.25, 1.5, 0.02, 2.25, 1.5, 0.02, -6.25)
+polygons = [PackedInt32Array(1, 0, 2), PackedInt32Array(2, 0, 5), PackedInt32Array(2, 5, 3), PackedInt32Array(3, 5, 4)]
+cell_height = 0.01
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_6s1n3"]
+albedo_color = Color(0, 0, 0.54509807, 1)
+
+[node name="JailConnection" unique_id=1869601789 instance=ExtResource("1_ig0ta")]
+
+[node name="RoomNavigation" parent="." index="1" unique_id=434851523]
+navigation_mesh = SubResource("NavigationMesh_0jdwc")
+
+[node name="Floors" parent="RoomNavigation" index="0" unique_id=1733117505]
+data = {
+"cells": PackedInt32Array(65535, 1, 0, 65535, 0, 0, 65535, 65535, 0, 65535, 65534, 0, 65535, 65533, 0, 65535, 65532, 0, 65535, 65531, 0, 65534, 65530, 0, 65534, 65529, 1441793, 65535, 2, 3, 65534, 2, 1048577, 65534, 1, 0, 65534, 0, 0, 65534, 65535, 0, 65534, 65534, 0, 65534, 65533, 0, 65534, 65532, 0, 65534, 65531, 0, 65535, 65529, 1441795, 65535, 65530, 0, 0, 65529, 655363, 1, 65529, 655362, 1, 65530, 655363, 0, 65530, 0, 0, 65531, 0, 0, 65532, 0, 1, 65531, 1048579, 1, 65532, 655361, 1, 65533, 655361, 0, 65533, 0, 0, 65534, 0, 0, 65535, 0, 0, 0, 0, 0, 1, 0, 0, 2, 1048579, 1, 1, 655361, 1, 0, 1048579, 1, 65535, 655363, 1, 65534, 655361, 1, 2, 1048578, 65533, 65535, 1441795, 65533, 0, 3, 65533, 65531, 3, 65533, 65530, 1441795, 65533, 65529, 1441794, 65533, 65532, 1, 65533, 65533, 1, 65533, 65534, 1, 65533, 1, 1, 65533, 2, 2)
+}
+
+[node name="Kobold" parent="Enemies" parent_id_path=PackedInt32Array(2064123038) index="0" unique_id=1305714049 instance=ExtResource("2_q1bkv")]
+transform = Transform3D(0.8987099, 0, -0.43854368, 0, 1, 0, 0.43854368, 0, 0.8987099, -0.22685385, 0, -5.377876)
+
+[node name="Torch2" parent="Lights" parent_id_path=PackedInt32Array(68944341) index="0" unique_id=336706906 instance=ExtResource("2_3wkn7")]
+transform = Transform3D(-1, 0, -2.9802322e-08, 0, 1, 0, 2.9802322e-08, 0, -1, -2, 0, -7.0640607)
+
+[node name="Barrel" parent="Decor" parent_id_path=PackedInt32Array(1369690705) index="0" unique_id=1588726055 instance=ExtResource("4_ktt4c")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, 2)
+
+[node name="LargeCrate" parent="Decor" parent_id_path=PackedInt32Array(1369690705) index="1" unique_id=318100283 instance=ExtResource("5_0jdwc")]
+transform = Transform3D(0.9595993, 0, -0.28137022, 0, 1, 0, 0.28137022, 0, 0.9595993, -2.4026444, 0, -2)
+
+[node name="LargeCrate2" parent="Decor" parent_id_path=PackedInt32Array(1369690705) index="2" unique_id=1815432134 instance=ExtResource("5_0jdwc")]
+transform = Transform3D(0.9462379, 0, 0.3234715, 0, 1, 0, -0.3234715, 0, 0.9462379, -1.9798852, -2.3841858e-07, -0.85637385)
+
+[node name="SmallCrate" parent="Decor" parent_id_path=PackedInt32Array(1369690705) index="3" unique_id=2108371687 instance=ExtResource("6_0jdwc")]
+transform = Transform3D(0.67812115, 0, -0.7349501, 0, 1, 0, 0.7349501, 0, 0.67812115, -2.312836, 0.9915092, -2)
+
+[node name="Chair" parent="Decor" parent_id_path=PackedInt32Array(1369690705) index="4" unique_id=2127585963 instance=ExtResource("7_ma8kr")]
+transform = Transform3D(0.73852277, 0.57631934, 0.34991488, 0.09222947, 0.42775303, -0.899178, -0.6678907, 0.69633585, 0.26275185, -2.5775778, 0.40176523, -6.7730994)
+
+[node name="Grate" parent="Decor" parent_id_path=PackedInt32Array(1369690705) index="5" unique_id=1107712500 instance=ExtResource("8_wt4ek")]
+transform = Transform3D(2.9802322e-08, -1, 0, -4.371139e-08, -1.3027009e-15, -1, 1, 2.9802322e-08, -4.371139e-08, 2.0050197, 0.3115868, -2.3813457)
+
+[node name="Candles" parent="Decor" parent_id_path=PackedInt32Array(1369690705) index="6" unique_id=1444555783 instance=ExtResource("9_f4tfp")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 1, -0.8555261)
+
+[node name="WallCrack" parent="Decor" parent_id_path=PackedInt32Array(1369690705) index="7" unique_id=1258854390 instance=ExtResource("10_hrswg")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -6.9924088)
+
+[node name="Bucket" parent="Decor" parent_id_path=PackedInt32Array(1369690705) index="8" unique_id=1548985006 instance=ExtResource("11_v004h")]
+transform = Transform3D(0.76088184, 0, -0.6488905, 0, 1, 0, 0.6488905, 0, 0.76088184, 1.4393461, 0, 2.4664369)
+
+[node name="Spiderweb" parent="Decor" parent_id_path=PackedInt32Array(1369690705) index="9" unique_id=1050656607 instance=ExtResource("12_6s1n3")]
+transform = Transform3D(0.70710677, 0, 0.70710677, 0, 1, 0, -0.70710677, 0, 0.70710677, 2, 0, 2)
+
+[node name="Spiderweb2" parent="Decor" parent_id_path=PackedInt32Array(1369690705) index="10" unique_id=2020326670 instance=ExtResource("12_6s1n3")]
+transform = Transform3D(0.70710677, 0, 0.70710677, 0, 1, 0, -0.70710677, 0, 0.70710677, -2, 1.3771632, -2)
+
+[node name="Spiderweb3" parent="Decor" parent_id_path=PackedInt32Array(1369690705) index="11" unique_id=1382727121 instance=ExtResource("12_6s1n3")]
+transform = Transform3D(0, 0, 0.99999994, 0, 1, 0, -0.99999994, 0, 0, -2, 1.1419003, -1.3475404)
+
+[node name="PickableAxe" parent="." index="6" unique_id=191843841 instance=ExtResource("8_e1ugj")]
+transform = Transform3D(-0.99924135, -0.036074817, -0.0146763325, 1.4901163e-08, 0.37683865, -0.9262789, 0.038945913, -0.9255762, -0.37655276, -1.3674768, 0.24236298, 2.6031854)
+
+[node name="Key" parent="EditorKeyIndicator" parent_id_path=PackedInt32Array(2108619820) index="0" unique_id=130235742]
+visible = false
+surface_material_override/0 = SubResource("StandardMaterial3D_6s1n3")
+
+[editable path="EditorKeyIndicator"]

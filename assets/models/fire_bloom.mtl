@@ -1,0 +1,6 @@
+# Material for fire_bloom
+newmtl fire_bloom_mat
+Kd 1.000 0.300 0.000
+Ks 0.000 0.000 0.000
+Ns 700
+Ke 1.000 0.300 0.000

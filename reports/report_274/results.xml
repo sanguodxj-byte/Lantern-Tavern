@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites id="2026-07-05" name="report_274" tests="10" failures="0" skipped="0" flaky="0" time="0.000">
+	<testsuite id="0" name="extraction_loot_test" package="tests/gdunit" timestamp="2026-07-04T16:52:05" hostname="localhost" tests="10" failures="0" errors="0" skipped="0" flaky="0" time="2.218">
+		<testcase name="test_game_state_has_carried_fields" classname="extraction_loot_test" time="0.094">
+		</testcase>
+		<testcase name="test_add_carried_material_accumulates" classname="extraction_loot_test" time="0.094">
+		</testcase>
+		<testcase name="test_add_carried_weapon_increments" classname="extraction_loot_test" time="0.046">
+		</testcase>
+		<testcase name="test_add_carried_shield_increments" classname="extraction_loot_test" time="0.093">
+		</testcase>
+		<testcase name="test_register_level_resets_carried" classname="extraction_loot_test" time="0.093">
+		</testcase>
+		<testcase name="test_player_state_picking_up_records_carried" classname="extraction_loot_test" time="0.093">
+		</testcase>
+		<testcase name="test_settle_extraction_loot_reads_game_state" classname="extraction_loot_test" time="0.135">
+		</testcase>
+		<testcase name="test_tavern_manager_has_record_expedition_loot" classname="extraction_loot_test" time="0.092">
+		</testcase>
+		<testcase name="test_tavern_manager_add_material_accumulates" classname="extraction_loot_test" time="0.095">
+		</testcase>
+		<testcase name="test_settle_extraction_loot_calls_record_expedition_loot" classname="extraction_loot_test" time="0.091">
+		</testcase>
+	</testsuite>
+</testsuites>

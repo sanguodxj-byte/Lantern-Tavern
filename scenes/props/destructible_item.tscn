@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://bp1v8ljdyj0yt"]
+
+[ext_resource type="Script" uid="uid://dudqivg8wpf2x" path="res://scenes/props/destructible_item.gd" id="1_fornf"]
+
+[node name="DestructibleItem" type="Node3D" unique_id=213950285]
+script = ExtResource("1_fornf")
+
+[node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="." unique_id=1648563054]
+unique_name_in_owner = true
+volume_db = -15.0
+bus = &"SFX"

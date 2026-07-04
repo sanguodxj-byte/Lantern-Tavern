@@ -1,0 +1,5 @@
+# Material for bat
+newmtl bat_mat
+Kd 0.300 0.250 0.300
+Ks 0.000 0.000 0.000
+Ns 300

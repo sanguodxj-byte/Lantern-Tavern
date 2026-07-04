@@ -1,0 +1,108 @@
+[gd_scene format=3 uid="uid://20e8hcee8vwa"]
+
+[ext_resource type="Script" path="res://scenes/tavern/brewing_panel.gd" id="1_bp"]
+
+[node name="BrewingPanelRoot" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_bp")
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -150.0
+offset_top = 8.0
+offset_right = 150.0
+offset_bottom = 36.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 20
+text = "酿酒台 / Brewing Panel"
+horizontal_alignment = 1
+
+[node name="KegStatusList" type="ItemList" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 8.0
+offset_top = 44.0
+offset_right = -8.0
+offset_bottom = 180.0
+grow_horizontal = 2
+tooltip_text = "桶位状态（点击选中）"
+
+[node name="MaterialGrid" type="ItemList" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 8.0
+offset_top = 188.0
+offset_right = -8.0
+offset_bottom = 340.0
+grow_horizontal = 2
+tooltip_text = "材料库存（点击加入下料篮）"
+
+[node name="SelectedIngredientsLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -120.0
+offset_right = -8.0
+offset_bottom = -96.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "下料篮：空"
+
+[node name="ButtonRow" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -88.0
+offset_right = -8.0
+offset_bottom = -44.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 6
+
+[node name="BrewButton" type="Button" parent="ButtonRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "下料启动发酵"
+
+[node name="OpenKegButton" type="Button" parent="ButtonRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+disabled = true
+text = "开缸取酒"
+
+[node name="SealAgingButton" type="Button" parent="ButtonRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+disabled = true
+text = "封存陈酿"
+
+[node name="StatusLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -36.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "选择材料与桶位后操作"
+horizontal_alignment = 1

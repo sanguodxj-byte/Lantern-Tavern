@@ -1,0 +1,208 @@
+[gd_scene load_steps=3 format=3 uid="uid://cmv5y0rh9a7o9"]
+
+[ext_resource type="Script" path="res://scenes/ui/model_viewer.gd" id="1_mview"]
+[ext_resource type="Theme" uid="uid://clmv5y0rh9a7o" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
+
+[node name="ModelViewer" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_mview")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.06, 0.04, 0.03, 1.0)
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="Sidebar" type="VBoxContainer" parent="HBoxContainer"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+
+[node name="SidebarTitle" type="Label" parent="HBoxContainer/Sidebar"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = " MODEL VIEWER / EDITOR"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="AssetTree" type="Tree" parent="HBoxContainer/Sidebar"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PanelContainer" type="PanelContainer" parent="HBoxContainer/Sidebar"]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer/Sidebar/PanelContainer"]
+layout_mode = 2
+
+[node name="ToggleAutoRotBtn" type="CheckButton" parent="HBoxContainer/Sidebar/PanelContainer/VBoxContainer"]
+layout_mode = 2
+button_pressed = true
+text = "Auto-Rotate Model"
+
+[node name="HBoxContainer_Rot" type="HBoxContainer" parent="HBoxContainer/Sidebar/PanelContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="HBoxContainer/Sidebar/PanelContainer/VBoxContainer/HBoxContainer_Rot"]
+layout_mode = 2
+text = "Rot Speed: "
+
+[node name="RotSpeedSlider" type="HSlider" parent="HBoxContainer/Sidebar/PanelContainer/VBoxContainer/HBoxContainer_Rot"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = -2.0
+max_value = 2.0
+step = 0.1
+value = 0.5
+
+[node name="ToggleGridBtn" type="CheckButton" parent="HBoxContainer/Sidebar/PanelContainer/VBoxContainer"]
+layout_mode = 2
+button_pressed = true
+text = "Display Floor Grid"
+
+[node name="HBoxContainer_Light" type="HBoxContainer" parent="HBoxContainer/Sidebar/PanelContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="HBoxContainer/Sidebar/PanelContainer/VBoxContainer/HBoxContainer_Light"]
+layout_mode = 2
+text = "Light Kit: "
+
+[node name="LightColorOption" type="OptionButton" parent="HBoxContainer/Sidebar/PanelContainer/VBoxContainer/HBoxContainer_Light"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ReturnBtn" type="Button" parent="HBoxContainer/Sidebar"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Return to Main Menu"
+
+[node name="ViewportContainer" type="SubViewportContainer" parent="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="HBoxContainer/ViewportContainer"]
+handle_input_locally = false
+size = Vector2i(592, 648)
+render_target_update_mode = 4
+
+[node name="CameraPivot" type="Node3D" parent="HBoxContainer/ViewportContainer/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 0.9396926, 0.3420201, 0, -0.3420201, 0.9396926, 0, 0.5, 0)
+
+[node name="Camera3D" type="Camera3D" parent="HBoxContainer/ViewportContainer/SubViewport/CameraPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.5)
+
+[node name="MainLight" type="DirectionalLight3D" parent="HBoxContainer/ViewportContainer/SubViewport"]
+transform = Transform3D(0.866025, -0.25, 0.433013, 0, 0.866025, 0.5, -0.5, -0.433013, 0.75, 0, 3, 0)
+light_color = Color(1, 0.65, 0.3, 1)
+light_energy = 1.5
+shadow_enabled = true
+
+[node name="FillLight" type="OmniLight3D" parent="HBoxContainer/ViewportContainer/SubViewport"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 1.5, 1)
+light_color = Color(1, 0.5, 0.2, 1)
+light_energy = 1.0
+omni_range = 4.0
+
+[node name="Inspector" type="VBoxContainer" parent="HBoxContainer"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+
+[node name="InspectorTitle" type="Label" parent="HBoxContainer/Inspector"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = " ASSET INSPECTOR"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PanelContainer" type="PanelContainer" parent="HBoxContainer/Inspector"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="MarginContainer" type="MarginContainer" parent="HBoxContainer/Inspector/PanelContainer"]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="SectionTitle" type="Label" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Model Specifications:"
+
+[node name="GridContainer" type="GridContainer" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 12
+columns = 2
+
+[node name="AssetNameLbl" type="Label" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer/GridContainer"]
+layout_mode = 2
+text = "Name:"
+
+[node name="AssetNameVal" type="Label" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer/GridContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Barrel"
+
+[node name="AssetPathLbl" type="Label" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer/GridContainer"]
+layout_mode = 2
+text = "Path:"
+
+[node name="AssetPathVal" type="Label" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer/GridContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "res://assets/models/barrel.obj"
+
+[node name="AssetTypeLbl" type="Label" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer/GridContainer"]
+layout_mode = 2
+text = "Type:"
+
+[node name="AssetTypeVal" type="Label" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer/GridContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "OBJ Mesh"
+
+[node name="BoundsLbl" type="Label" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer/GridContainer"]
+layout_mode = 2
+text = "Bounds:"
+
+[node name="BoundsVal" type="Label" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer/GridContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Normalized"
+
+[node name="VerticesLbl" type="Label" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer/GridContainer"]
+layout_mode = 2
+text = "Vertices:"
+
+[node name="VerticesVal" type="Label" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer/GridContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "1,852 Verts"
+
+[node name="StatusLbl" type="Label" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer/GridContainer"]
+layout_mode = 2
+text = "Status Check:"
+
+[node name="StatusVal" type="Label" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer/GridContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "VALIDATED"

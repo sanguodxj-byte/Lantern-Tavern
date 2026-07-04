@@ -1,0 +1,5 @@
+# Material for bat_wing
+newmtl bat_wing_mat
+Kd 0.250 0.200 0.250
+Ks 0.000 0.000 0.000
+Ns 250

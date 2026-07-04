@@ -1,0 +1,10 @@
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://t5b7fx6ew7yo"]
+
+[ext_resource type="Texture2D" uid="uid://ckot5t7lvifuj" path="res://assets/textures/dungeon-texture.png" id="1_lmkya"]
+
+[resource]
+albedo_texture = ExtResource("1_lmkya")
+emission_enabled = true
+emission = Color(0.87058824, 0.78431374, 0.23529412, 1)
+emission_energy_multiplier = 0.3
+texture_filter = 0
