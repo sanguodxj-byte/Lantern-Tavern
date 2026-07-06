@@ -1,0 +1,109 @@
+[
+	{
+	 "tag": "material",
+	 "base_probability": 0.008,
+	 "zone_probabilities": { "0": 1.0, "1": 1.0, "2": 1.0, "3": 1.0, "4": 1.0, "5": 1.2 },
+		"location_preference": 3,
+		"physics_mode": 0,
+		"spawn_min_dist_from_player": 3.0,
+		"max_per_room": 8,
+		"item_scene_paths": [
+		 { "path": "res://scenes/equipment/pickable_item.tscn", "weight": 100 }
+		]
+	},
+	{
+	 "tag": "decor",
+	 "base_probability": 0.04,
+	 "zone_probabilities": { "0": 1.0, "1": 1.0, "2": 1.0, "3": 1.0, "4": 1.0, "5": 1.0 },
+		"location_preference": 3,
+		"physics_mode": 0,
+		"spawn_min_dist_from_player": 2.0,
+		"max_per_room": 6,
+		"item_scene_paths": [
+			{ "path": "res://scenes/props/decor/bones.tscn", "weight": 20 },
+			{ "path": "res://scenes/props/decor/lit_candles.tscn", "weight": 15 },
+			{ "path": "res://scenes/props/decor/floor_candelabrum.tscn", "weight": 9 },
+			{ "path": "res://scenes/props/decor/wall_candelabrum.tscn", "weight": 8 },
+			{ "path": "res://scenes/props/decor/iron_bar_grate.tscn", "weight": 7 },
+			{ "path": "res://scenes/props/decor/spiderweb.tscn", "weight": 15 },
+			{ "path": "res://scenes/props/decor/bench.tscn", "weight": 10 },
+			{ "path": "res://scenes/props/decor/chair.tscn", "weight": 10 },
+			{ "path": "res://scenes/props/decor/table.tscn", "weight": 10 },
+			{ "path": "res://scenes/props/decor/banner.tscn", "weight": 8 },
+			{ "path": "res://scenes/props/decor/bucket.tscn", "weight": 8 },
+			{ "path": "res://scenes/props/decor/candles.tscn", "weight": 6 },
+			{ "path": "res://scenes/props/decor/ruble.tscn", "weight": 8 }
+		]
+	},
+	{
+	 "tag": "container",
+	 "base_probability": 0.12,
+	 "zone_probabilities": { "0": 0.8, "1": 1.0, "2": 1.2, "3": 1.3, "4": 1.5, "5": 1.8 },
+		"location_preference": 1,
+		"physics_mode": 0,
+		"spawn_min_dist_from_player": 4.0,
+		"max_per_room": 3,
+		"item_scene_paths": [
+			{ "path": "res://scenes/props/barrel/barrel.tscn", "weight": 50 },
+			{ "path": "res://scenes/props/crates/small_crate.tscn", "weight": 50 }
+		]
+	},
+	{
+	 "tag": "weapon",
+	 "base_probability": 0.02,
+	 "zone_probabilities": { "0": 0.8, "1": 1.0, "2": 1.2, "3": 1.5, "4": 2.0, "5": 2.5 },
+		"location_preference": 0,
+		"physics_mode": 0,
+		"spawn_min_dist_from_player": 5.0,
+		"max_per_room": 1,
+		"item_scene_paths": [
+			{ "path": "res://scenes/equipment/pickable_item.tscn", "weight": 100 }
+		]
+	},
+	{
+	 "tag": "shield",
+	 "base_probability": 0.015,
+	 "zone_probabilities": { "0": 0.8, "1": 1.0, "2": 1.2, "3": 1.5, "4": 2.0, "5": 2.5 },
+		"location_preference": 0,
+		"physics_mode": 0,
+		"spawn_min_dist_from_player": 5.0,
+		"max_per_room": 1,
+		"item_scene_paths": [
+			{ "path": "res://scenes/equipment/pickable_item.tscn", "weight": 100 }
+		]
+	},
+	{
+		"tag": "key",
+		"base_probability": 0.0,
+		"zone_probabilities": {},
+		"location_preference": 4,
+		"physics_mode": 1,
+		"spawn_min_dist_from_player": 0.0,
+		"max_per_room": 1,
+		"item_scene_paths": [
+			{ "path": "res://scenes/collectibles/dropped_key/dropped_key.tscn", "weight": 100 }
+		]
+	},
+	{
+		"tag": "furniture",
+		"base_probability": 0.0,
+		"zone_probabilities": {},
+		"location_preference": 5,
+		"physics_mode": 0,
+		"spawn_min_dist_from_player": 0.0,
+		"max_per_room": 0,
+		"item_scene_paths": []
+	},
+	{
+	 "tag": "treasure",
+	 "base_probability": 0.03,
+	 "zone_probabilities": { "0": 0.8, "1": 1.0, "2": 1.0, "3": 1.0, "4": 1.0, "5": 1.2 },
+		"location_preference": 1,
+		"physics_mode": 0,
+		"spawn_min_dist_from_player": 6.0,
+		"max_per_room": 1,
+		"item_scene_paths": [
+			{ "path": "res://scenes/props/chest/chest.tscn", "weight": 100 }
+		]
+	}
+]

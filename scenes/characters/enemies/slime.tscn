@@ -1,0 +1,43 @@
+[gd_scene format=3 uid="uid://cc7cda3m1m6rp"]
+
+[ext_resource type="PackedScene" uid="uid://cty2xvbejnvbg" path="res://scenes/characters/enemies/goblin.tscn" id="1_slim"]
+[ext_resource type="PackedScene" uid="uid://cjkjkpf3t0xa5" path="res://assets/meshes/characters/voxel_slime_18px.glb" id="2_voxel"]
+[ext_resource type="Resource" uid="uid://cdset1o032fxp" path="res://data/weapons/claw.tres" id="3_claw"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_slim"]
+albedo_color = Color(0.3, 0.7, 0.3, 0.85)
+backlight_enabled = true
+backlight = Color(0.1, 0.4, 0.1, 1)
+texture_filter = 0
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_slim"]
+viewport_path = NodePath("Healthbar/SubViewport")
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_slim"]
+radius = 0.4
+height = 0.8
+
+[node name="Slime" instance=ExtResource("1_slim")]
+duration_between_attacks = 1500
+duration_stun = 2000
+speed = 1.5
+
+[node name="CollisionShape" parent="." index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+shape = SubResource("CapsuleShape3D_slim")
+
+[node name="EquipmentComponent" parent="." index="2"]
+shield_data = null
+weapon_data = ExtResource("3_claw")
+
+[node name="HealthComponent" parent="." index="6"]
+max_life = 6
+current_life = 6
+
+[node name="Healthbar" parent="." index="11"]
+texture = SubResource("ViewportTexture_slim")
+
+[node name="PresenceLight" parent="." index="9"]
+light_color = Color(0.2, 0.6, 0.2, 1)
+light_energy = 0.8
+omni_range = 1.5

@@ -21,7 +21,7 @@ offset_top = 8.0
 offset_right = 150.0
 offset_bottom = 36.0
 grow_horizontal = 2
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 28
 text = "酿酒台 / Brewing Panel"
 horizontal_alignment = 1
 

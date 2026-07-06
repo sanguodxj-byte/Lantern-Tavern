@@ -10,11 +10,11 @@ const ZCLIP_MATERIAL := preload("res://materials/zclip_material.tres")
 
 func _ready() -> void:
 	var equiped_object : Node = null
-	if weapon_data:
+	if weapon_data and weapon_data.glb_mesh:
 		equiped_object = weapon_data.glb_mesh.instantiate()
-	elif shield_data:
+	elif shield_data and shield_data.glb_mesh:
 		equiped_object = shield_data.glb_mesh.instantiate()
-	elif furniture_data:
+	elif furniture_data and furniture_data.glb_mesh:
 		equiped_object = furniture_data.glb_mesh.instantiate()
 	if equiped_object != null:
 		add_child(equiped_object)

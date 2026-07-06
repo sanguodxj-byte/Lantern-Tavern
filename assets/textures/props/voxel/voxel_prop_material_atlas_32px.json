@@ -1,0 +1,130 @@
+{
+  "image": "voxel_prop_material_atlas_32px.png",
+  "tile_px": [
+    32,
+    32
+  ],
+  "grid": [
+    4,
+    2
+  ],
+  "size_px": [
+    128,
+    64
+  ],
+  "voxel_px_per_meter": 32,
+  "tiles": {
+    "wood_mid": {
+      "col": 0,
+      "row": 0,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        0,
+        0,
+        32,
+        32
+      ]
+    },
+    "wood_dark": {
+      "col": 1,
+      "row": 0,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        32,
+        0,
+        32,
+        32
+      ]
+    },
+    "black_iron": {
+      "col": 2,
+      "row": 0,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        64,
+        0,
+        32,
+        32
+      ]
+    },
+    "cut_stone": {
+      "col": 3,
+      "row": 0,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        96,
+        0,
+        32,
+        32
+      ]
+    },
+    "wax": {
+      "col": 0,
+      "row": 1,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        0,
+        32,
+        32,
+        32
+      ]
+    },
+    "flame": {
+      "col": 1,
+      "row": 1,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        32,
+        32,
+        32,
+        32
+      ]
+    },
+    "bone": {
+      "col": 2,
+      "row": 1,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        64,
+        32,
+        32,
+        32
+      ]
+    },
+    "red_cloth": {
+      "col": 3,
+      "row": 1,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        96,
+        32,
+        32,
+        32
+      ]
+    }
+  }
+}

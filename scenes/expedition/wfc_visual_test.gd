@@ -8,14 +8,19 @@ const TORCH_PREFAB := preload("res://scenes/props/torch/torch.tscn")
 const CHEST_PREFAB := preload("res://scenes/props/chest/chest.tscn")
 const PICKABLE_ITEM_PREFAB := preload("res://scenes/equipment/pickable_item.tscn")
 
-# 所有地形贴图统一采用 32x32px 规格，在 128px 贴图集内
+# 所有地形贴图统一采用 32x32px 规格，在 256x128 贴图集内
 const TILE_PIXEL_SIZE := 32.0
-const DUNGEON_TEXTURE_SIZE := 128.0
-const TILE_PIXEL_OFFSET_X := 16.0
-const TILE_PIXEL_OFFSET_Y := 0.0
+const DUNGEON_TEXTURE_SIZE := 256.0
+const DUNGEON_ATLAS_GRID := Vector2(8, 4)
+const TERRAIN_TILE_LAYOUT := {
+	"WALL": Vector2(0, 0),
+	"FLOOR": Vector2(1, 0),
+	"CEILING": Vector2(2, 0),
+	"LINTEL": Vector2(3, 0),
+}
 
 const ZONE_TEXTURES := {
-	0: preload("res://assets/textures/dungeon-texture.png"),
+	0: preload("res://assets/textures/terrain/level0_dungeon/level0_dungeon_terrain_atlas_32px.png"),
 	1: preload("res://assets/textures/ice_dungeon-texture.png")
 }
 
@@ -35,17 +40,11 @@ func get_zone_texture(zone_id: int) -> Texture2D:
 	return ZONE_TEXTURES[0]
 
 func get_terrain_uv_config(type_name: String, physical_size: Vector3) -> Dictionary:
-	var ratio_x := 0.25
-	if type_name == "FLOOR" or type_name == "CEILING":
-		ratio_x = 0.125
-		
-	var offset_x := 0.125
-	if type_name == "FLOOR" or type_name == "CEILING":
-		offset_x = 0.25
-		
+	var col_row: Vector2 = TERRAIN_TILE_LAYOUT.get(type_name, TERRAIN_TILE_LAYOUT["WALL"])
+	var tile_frac := Vector2(1.0 / DUNGEON_ATLAS_GRID.x, 1.0 / DUNGEON_ATLAS_GRID.y)
 	return {
-		"scale": Vector3(ratio_x * physical_size.x, 0.25 * physical_size.y, 0.25 * physical_size.z),
-		"offset": Vector3(offset_x, 0.0, 0.0)
+		"scale": Vector3(tile_frac.x * physical_size.x, tile_frac.y * physical_size.y, tile_frac.y * physical_size.z),
+		"offset": Vector3(col_row.x * tile_frac.x, col_row.y * tile_frac.y, 0.0)
 	}
 
 const MATERIALS_CONFIG = {
@@ -410,12 +409,18 @@ func _spawn_prefab(prefab: PackedScene, pos: Vector3) -> void:
 	instance.position = pos
 	add_child(instance)
 
-func _spawn_torch_on_wall(cell_pos: Vector3, wall_dir: Vector2i) -> void:
+## 在墙面上生成火把。
+## cell_pos: 相邻地板的格子中心位置
+## wall_dir: 墙体方向
+## wall_height: 墙体高度（米），决定火把的放置高度
+func _spawn_torch_on_wall(cell_pos: Vector3, wall_dir: Vector2i, wall_height: float = 3.0) -> void:
 	var torch := TORCH_PREFAB.instantiate()
 	const TILE_SIZE := 3.0
 	var pos_offset := Vector3(wall_dir.x, 0, wall_dir.y) * (TILE_SIZE / 2.0)
 	var clip_offset := -Vector3(wall_dir.x, 0, wall_dir.y) * 0.1
-	torch.position = cell_pos + pos_offset + clip_offset + Vector3(0, 1.5, 0)
+	# 火把高度 = 墙面高度的 45%，下限 0.8m（低通道），上限距天花板 0.3m
+	var torch_y := clampf(wall_height * 0.45, 0.8, wall_height - 0.3)
+	torch.position = cell_pos + pos_offset + clip_offset + Vector3(0, torch_y, 0)
 	
 	if wall_dir == Vector2i(0, -1):
 		torch.rotation.y = PI

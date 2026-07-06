@@ -7,6 +7,7 @@ var width: int
 var height: int
 var grid: Array = []
 var ceiling_heights: Array = []
+var rooms: Array[Rect2i] = []
 
 class Leaf:
 	var x: int
@@ -73,6 +74,7 @@ class Leaf:
 			var room_x := randi_range(x + 1, x + w - room_w - 1)
 			var room_y := randi_range(y + 1, y + h - room_h - 1)
 			room = Rect2i(room_x, room_y, room_w, room_h)
+			generator.rooms.append(room)
 
 			# ── Determine ceiling height from room area ────────────────────────
 			var room_ceiling_height := 3.0
@@ -89,6 +91,7 @@ class Leaf:
 			# Select and apply a template appropriate for this room's size
 			var template := wfc.get_template_for_size(room_w, room_h)
 			var wfc_grid := wfc.collapse_room(room_w, room_h, template)
+			wfc.free()
 
 			# ── Blit WFC output into the global dungeon grid ──────────────────
 			for ry in range(room_h):
@@ -132,6 +135,7 @@ func generate_dungeon(p_width: int, p_height: int, min_leaf_size: int = 8, min_r
 	# Fill entire grid with WALL initially, and set default ceiling height
 	grid = []
 	ceiling_heights = []
+	rooms.clear()
 	for y in range(height):
 		var row_grid := []
 		var row_height := []

@@ -5,7 +5,14 @@ class_name MainMenu
 @onready var continue_btn: Button = $SidePanel/MenuVBox/ContinueBtn
 @onready var gallery_btn: Button = $SidePanel/MenuVBox/GalleryBtn
 @onready var settings_btn: Button = $SidePanel/MenuVBox/SettingsBtn
+@onready var lang_btn: Button = $SidePanel/MenuVBox/LangBtn
 @onready var exit_btn: Button = $SidePanel/MenuVBox/ExitBtn
+@onready var tutorial_choice_panel: PanelContainer = $SidePanel/TutorialChoicePanel
+@onready var tutorial_title: Label = $SidePanel/TutorialChoicePanel/TutorialChoiceVBox/TutorialTitle
+@onready var tutorial_desc: Label = $SidePanel/TutorialChoicePanel/TutorialChoiceVBox/TutorialDesc
+@onready var start_with_tutorial_btn: Button = $SidePanel/TutorialChoicePanel/TutorialChoiceVBox/StartWithTutorialBtn
+@onready var skip_tutorial_btn: Button = $SidePanel/TutorialChoicePanel/TutorialChoiceVBox/SkipTutorialBtn
+@onready var back_from_tutorial_btn: Button = $SidePanel/TutorialChoicePanel/TutorialChoiceVBox/BackFromTutorialBtn
 
 # 3D Viewport reference for the Tavern Background
 @onready var viewport_container: SubViewportContainer = $TavernBackground
@@ -15,32 +22,59 @@ class_name MainMenu
 
 var gallery_menu_open := false
 
+const LOCALIZATION_MANAGER_SCRIPT := preload("res://globals/core/localization_manager.gd")
+static var fallback_translations_registered := false
+
 func _ready() -> void:
+	_ensure_translations_registered()
 	start_btn.pressed.connect(_on_start_pressed)
 	continue_btn.pressed.connect(_on_continue_pressed)
 	gallery_btn.pressed.connect(_on_gallery_pressed)
 	settings_btn.pressed.connect(_on_settings_pressed)
+	lang_btn.pressed.connect(_on_lang_toggle_pressed)
 	exit_btn.pressed.connect(_on_exit_pressed)
+	start_with_tutorial_btn.pressed.connect(_on_start_with_tutorial_pressed)
+	skip_tutorial_btn.pressed.connect(_on_skip_tutorial_pressed)
+	back_from_tutorial_btn.pressed.connect(_on_back_from_tutorial_pressed)
 
 	_setup_3d_background()
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	_update_button_texts()
 
 func _update_button_texts() -> void:
-	start_btn.text = tr("[S]tart Game")
-	continue_btn.text = tr("[C]ontinue")
-	gallery_btn.text = tr("[G]allery")
-	settings_btn.text = tr("Settin[g]s")
-	exit_btn.text = tr("E[x]it Game")
+	start_btn.text = tr("Start Game")
+	continue_btn.text = tr("Continue")
+	gallery_btn.text = tr("Gallery")
+	settings_btn.text = tr("Settings")
+	lang_btn.text = tr("Language: 简体中文 (CN)") if _is_chinese_locale() else tr("Language: English (EN)")
+	exit_btn.text = tr("Exit Game")
+	tutorial_title.text = tr("Tutorial")
+	tutorial_desc.text = tr("Choose whether to play the opening tutorial before entering the tavern.")
+	start_with_tutorial_btn.text = tr("Play Tutorial")
+	skip_tutorial_btn.text = tr("Skip To Tavern")
+	back_from_tutorial_btn.text = tr("Back")
 
 
-func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo:
-		match event.keycode:
-			KEY_S: _on_start_pressed()
-			KEY_C: _on_continue_pressed()
-			KEY_G: _on_gallery_pressed()
-			KEY_X: _on_exit_pressed()
+func _ensure_translations_registered() -> void:
+	var localization_manager := get_node_or_null("/root/LocalizationManager")
+	if localization_manager != null:
+		return
+	if fallback_translations_registered:
+		return
+
+	var fallback_loader: Node = LOCALIZATION_MANAGER_SCRIPT.new()
+	fallback_loader._load_translations()
+	fallback_loader.free()
+	fallback_translations_registered = true
+
+
+func _is_chinese_locale() -> bool:
+	return TranslationServer.get_locale().begins_with("zh")
+
+
+func _on_lang_toggle_pressed() -> void:
+	TranslationServer.set_locale("en" if _is_chinese_locale() else "zh")
+	_update_button_texts()
 
 
 func _process(delta: float) -> void:
@@ -53,58 +87,44 @@ func _setup_3d_background() -> void:
 		var tavern_scene = load(tavern_scene_path)
 		var tavern_instance = tavern_scene.instantiate()
 		viewport.add_child(tavern_instance)
-		print("3D Tavern scene dynamically loaded as Main Menu background!")
+		print("3D Tavern scene loaded as Main Menu background!")
 	else:
-		print("Tavern scene not found, instantiating fallback cozy 3D tavern props...")
-		_spawn_fallback_cozy_tavern()
+		push_error("[MainMenu] Tavern scene not found at: " + tavern_scene_path)
 
-func _spawn_fallback_cozy_tavern() -> void:
-	var light = OmniLight3D.new()
-	light.position = Vector3(0, 2.5, 0)
-	light.omni_range = 10.0
-	light.omni_attenuation = 1.0
-	light.light_color = Color(1.0, 0.65, 0.3)
-	light.light_energy = 2.0
-	viewport.add_child(light)
-	
-	var table_mesh_path = "res://assets/models/table.obj"
-	var table_mat_path = "res://materials/table_mat.tres"
-	if ResourceLoader.exists(table_mesh_path):
-			var table = MeshInstance3D.new()
-			table.mesh = load(table_mesh_path)
-			if ResourceLoader.exists(table_mat_path):
-				table.material_override = load(table_mat_path)
-			table.position = Vector3(0, 0, 0)
-			viewport.add_child(table)
-			
-			var stool_mesh_path = "res://assets/models/stool.obj"
-			var stool_mat_path = "res://materials/stool_mat.tres"
-			if ResourceLoader.exists(stool_mesh_path):
-				var stool_offsets = [Vector3(-0.8, 0, 0), Vector3(0.8, 0, 0), Vector3(0, 0, -0.8)]
-				for offset in stool_offsets:
-					var stool = MeshInstance3D.new()
-					stool.mesh = load(stool_mesh_path)
-					if ResourceLoader.exists(stool_mat_path):
-						stool.material_override = load(stool_mat_path)
-					stool.position = offset
-					viewport.add_child(stool)
+func _set_tutorial_choice_visible(visible: bool) -> void:
+	tutorial_choice_panel.visible = visible
+	$SidePanel/MenuVBox.visible = not visible
 
 func _on_start_pressed() -> void:
+	_set_tutorial_choice_visible(true)
+	start_with_tutorial_btn.grab_focus()
+
+func _on_start_with_tutorial_pressed() -> void:
 	if TavernManager:
-		TavernManager.gold = 100
-		TavernManager.inventory.clear()
-	# 开始游戏：主界面 UI 退出，进入酒馆场景（不直接跳地牢）
-	# 玩家在酒馆内按住 F 触发环形进度条进入地牢探险
-	get_tree().change_scene_to_file("res://scenes/tavern/tavern.tscn")
+		TavernManager.start_new_game(true)
+	else:
+		get_tree().change_scene_to_file("res://scenes/world/world.tscn")
+
+func _on_skip_tutorial_pressed() -> void:
+	if TavernManager:
+		TavernManager.start_new_game(false)
+	else:
+		get_tree().change_scene_to_file("res://scenes/world/world.tscn")
+
+func _on_back_from_tutorial_pressed() -> void:
+	_set_tutorial_choice_visible(false)
 
 func _on_continue_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/ui/tavern_ui.tscn")
+	if TavernManager:
+		TavernManager.continue_in_tavern()
+	else:
+		get_tree().change_scene_to_file("res://scenes/world/world.tscn")
 
 func _on_gallery_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/model_viewer.tscn")
 
 func _on_settings_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/ui/character_panel.tscn")
+	get_tree().change_scene_to_file("res://scenes/ui/settings_menu.tscn")
 
 func _on_exit_pressed() -> void:
 	get_tree().quit()

@@ -1,0 +1,278 @@
+{
+  "image": "level0_dungeon_terrain_atlas_32px.png",
+  "tile_px": [
+    32,
+    32
+  ],
+  "grid": [
+    8,
+    4
+  ],
+  "size_px": [
+    256,
+    128
+  ],
+  "tiles": {
+    "wall_stone_brick": {
+      "source": "source_tiles/wall_stone_brick.png",
+      "col": 0,
+      "row": 0,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        0,
+        0,
+        32,
+        32
+      ]
+    },
+    "floor_rough_stone": {
+      "source": "source_tiles/floor_rough_stone.png",
+      "col": 1,
+      "row": 0,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        32,
+        0,
+        32,
+        32
+      ]
+    },
+    "ceiling_stone_slab": {
+      "source": "source_tiles/ceiling_stone_slab.png",
+      "col": 2,
+      "row": 0,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        64,
+        0,
+        32,
+        32
+      ]
+    },
+    "lintel_cut_stone": {
+      "source": "source_tiles/lintel_cut_stone.png",
+      "col": 3,
+      "row": 0,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        96,
+        0,
+        32,
+        32
+      ]
+    },
+    "pillar_stone_side": {
+      "source": "source_tiles/pillar_stone_side.png",
+      "col": 4,
+      "row": 0,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        128,
+        0,
+        32,
+        32
+      ]
+    },
+    "door_oak_iron": {
+      "source": "source_tiles/door_oak_iron.png",
+      "col": 7,
+      "row": 1,
+      "span": [
+        1,
+        2
+      ],
+      "pixel_rect": [
+        224,
+        32,
+        32,
+        64
+      ]
+    },
+    "portal_rune": {
+      "source": "source_tiles/portal_rune.png",
+      "col": 7,
+      "row": 0,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        224,
+        0,
+        32,
+        32
+      ]
+    },
+    "decor_iron_grate": {
+      "source": "source_tiles/decor_iron_grate.png",
+      "col": 0,
+      "row": 1,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        0,
+        32,
+        32,
+        32
+      ]
+    },
+    "decor_rubble": {
+      "source": "source_tiles/decor_rubble.png",
+      "col": 1,
+      "row": 1,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        32,
+        32,
+        32,
+        32
+      ]
+    },
+    "door_edge_side": {
+      "source": "source_tiles/door_edge_side.png",
+      "col": 2,
+      "row": 2,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        64,
+        64,
+        32,
+        32
+      ]
+    },
+    "door_edge_top": {
+      "source": "source_tiles/door_edge_top.png",
+      "col": 3,
+      "row": 2,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        96,
+        64,
+        32,
+        32
+      ]
+    },
+    "overlay_cracks": {
+      "source": "source_tiles/overlay_cracks.png",
+      "col": 2,
+      "row": 1,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        64,
+        32,
+        32,
+        32
+      ]
+    },
+    "overlay_moss": {
+      "source": "source_tiles/overlay_moss.png",
+      "col": 3,
+      "row": 1,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        96,
+        32,
+        32,
+        32
+      ]
+    },
+    "overlay_grime": {
+      "source": "source_tiles/overlay_grime.png",
+      "col": 4,
+      "row": 1,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        128,
+        32,
+        32,
+        32
+      ]
+    },
+    "overlay_blood": {
+      "source": "source_tiles/overlay_blood.png",
+      "col": 5,
+      "row": 1,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        160,
+        32,
+        32,
+        32
+      ]
+    },
+    "overlay_torch_scorch": {
+      "source": "source_tiles/overlay_torch_scorch.png",
+      "col": 6,
+      "row": 1,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        192,
+        32,
+        32,
+        32
+      ]
+    },
+    "boss_skull_double_door": {
+      "source": "source_tiles/boss_skull_double_door.png",
+      "col": 0,
+      "row": 2,
+      "span": [
+        2,
+        2
+      ],
+      "pixel_rect": [
+        0,
+        64,
+        64,
+        64
+      ]
+    }
+  },
+  "level": 0,
+  "deprecated_replaces": [
+    "res://assets/textures/dungeon-texture.png",
+    "res://assets/textures/dungeon_floor.png",
+    "res://assets/textures/dungeon_wall.png"
+  ]
+}

@@ -1,7 +1,9 @@
-[gd_scene format=3 uid="uid://cio78080nmm8l"]
+[gd_scene load_steps=2 format=3 uid="uid://cio78080nmm8l"]
 
-[ext_resource type="PackedScene" uid="uid://cb1rt3ral48ms" path="res://assets/meshes/props/chair/bones.glb" id="1_ifah8"]
+[ext_resource type="Script" path="res://scenes/props/voxel_prop.gd" id="1_voxel"]
 
-[node name="Bones" type="Node3D" unique_id=987850209]
-
-[node name="bones" parent="." unique_id=833858226 instance=ExtResource("1_ifah8")]
+[node name="Bones" type="StaticBody3D"]
+script = ExtResource("1_voxel")
+prop_kind = "bones"
+metadata/topdown_kind = "terrain_feature"
+metadata/decor_kind = "bones"

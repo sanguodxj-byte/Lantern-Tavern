@@ -1,0 +1,391 @@
+{
+  "generated_by": "D:/123/blender/pipeline/run_pipeline.py",
+  "target_dir": "res://assets/models/materials/",
+  "placement_schema": "location_preference, align_to_wall, random_yaw, visual_offset, visual_rotation_degrees, spawn_offset, surface",
+  "materials": [
+    {
+      "id": "rat_tail",
+      "name_zh": "老鼠尾巴",
+      "glb_path": "res://assets/models/materials/materials_rat_tail.glb",
+      "bbox": [0.6519, 0.0799, 0.084],
+      "shape_note": "long thin tail",
+      "placement": {
+        "location_preference": "scatter",
+        "align_to_wall": false,
+        "random_yaw": true,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 0],
+        "spawn_offset": [0, 0.3, 0],
+        "surface": "floor"
+      }
+    },
+    {
+      "id": "moldy_bread",
+      "name_zh": "发霉面包",
+      "glb_path": "res://assets/models/materials/materials_moldy_bread.glb",
+      "bbox": [0.42, 0.1799, 0.26],
+      "shape_note": "wide squat loaf",
+      "placement": {
+        "location_preference": "scatter",
+        "align_to_wall": false,
+        "random_yaw": true,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 0],
+        "spawn_offset": [0, 0.3, 0],
+        "surface": "floor"
+      }
+    },
+    {
+      "id": "rusty_nail",
+      "name_zh": "生锈铁钉",
+      "glb_path": "res://assets/models/materials/materials_rusty_nail.glb",
+      "bbox": [0.104, 0.634, 0.104],
+      "shape_note": "long narrow nail, laid flat by visual rotation",
+      "placement": {
+        "location_preference": "scatter",
+        "align_to_wall": false,
+        "random_yaw": true,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 90],
+        "spawn_offset": [0, 0.3, 0],
+        "surface": "floor"
+      }
+    },
+    {
+      "id": "dungeon_moss",
+      "name_zh": "地牢苔",
+      "glb_path": "res://assets/models/materials/materials_dungeon_moss.glb",
+      "bbox": [0.5527, 0.1666, 0.318],
+      "shape_note": "rounded moss cushion cluster with short sprouts",
+      "placement": {
+        "location_preference": "near_wall",
+        "align_to_wall": true,
+        "random_yaw": true,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 0],
+        "spawn_offset": [0, 0.28, 0],
+        "surface": "floor_wall_base"
+      }
+    },
+    {
+      "id": "bone_shard",
+      "name_zh": "碎骨片",
+      "glb_path": "res://assets/models/materials/materials_bone_shard.glb",
+      "bbox": [0.0858, 0.504, 0.0836],
+      "shape_note": "thin bone splinter, laid flat by visual rotation",
+      "placement": {
+        "location_preference": "scatter",
+        "align_to_wall": false,
+        "random_yaw": true,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 90],
+        "spawn_offset": [0, 0.3, 0],
+        "surface": "floor"
+      }
+    },
+    {
+      "id": "stale_water",
+      "name_zh": "陈腐积水",
+      "glb_path": "res://assets/models/materials/materials_stale_water.glb",
+      "bbox": [0.32, 0.112, 0.32],
+      "shape_note": "flat murky droplet",
+      "placement": {
+        "location_preference": "scatter",
+        "align_to_wall": false,
+        "random_yaw": false,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 0],
+        "spawn_offset": [0, 0.24, 0],
+        "surface": "floor"
+      }
+    },
+    {
+      "id": "prison_lichen",
+      "name_zh": "囚室地衣",
+      "glb_path": "res://assets/models/materials/materials_prison_lichen.glb",
+      "bbox": [0.4159, 0.0594, 0.222],
+      "shape_note": "flat lichen rosette with small yellow spore clusters",
+      "placement": {
+        "location_preference": "near_wall",
+        "align_to_wall": true,
+        "random_yaw": true,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 0],
+        "spawn_offset": [0, 0.22, 0],
+        "surface": "floor_wall_base"
+      }
+    },
+    {
+      "id": "cellar_mushroom",
+      "name_zh": "地窖蘑菇",
+      "glb_path": "res://assets/models/materials/materials_cellar_mushroom.glb",
+      "bbox": [0.3, 0.326, 0.3],
+      "shape_note": "upright mushroom",
+      "placement": {
+        "location_preference": "near_wall",
+        "align_to_wall": true,
+        "random_yaw": false,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 0],
+        "spawn_offset": [0, 0.3, 0],
+        "surface": "floor_wall_base"
+      }
+    },
+    {
+      "id": "blackberry",
+      "name_zh": "黑莓",
+      "glb_path": "res://assets/models/materials/materials_blackberry.glb",
+      "bbox": [0.2685, 0.2443, 0.15],
+      "shape_note": "clustered dark berries",
+      "placement": {
+        "location_preference": "scatter",
+        "align_to_wall": false,
+        "random_yaw": true,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 0],
+        "spawn_offset": [0, 0.3, 0],
+        "surface": "floor"
+      }
+    },
+    {
+      "id": "glowshroom",
+      "name_zh": "蓝光菇",
+      "glb_path": "res://assets/models/materials/materials_glowshroom.glb",
+      "bbox": [0.26, 0.2892, 0.26],
+      "shape_note": "upright glowing mushroom",
+      "placement": {
+        "location_preference": "near_wall",
+        "align_to_wall": true,
+        "random_yaw": false,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 0],
+        "spawn_offset": [0, 0.3, 0],
+        "surface": "floor_wall_base"
+      }
+    },
+    {
+      "id": "moongrass",
+      "name_zh": "月光草",
+      "glb_path": "res://assets/models/materials/materials_moongrass.glb",
+      "bbox": [0.2896, 0.2836, 0.2205],
+      "shape_note": "upright pale green grass cluster",
+      "placement": {
+        "location_preference": "scatter",
+        "align_to_wall": false,
+        "random_yaw": true,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 0],
+        "spawn_offset": [0, 0.3, 0],
+        "surface": "floor"
+      }
+    },
+    {
+      "id": "pixie_dust",
+      "name_zh": "妖精尘",
+      "glb_path": "res://assets/models/materials/materials_pixie_dust.glb",
+      "bbox": [0.1653, 0.1281, 0.131],
+      "shape_note": "small colored dust cluster",
+      "placement": {
+        "location_preference": "scatter",
+        "align_to_wall": false,
+        "random_yaw": true,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 0],
+        "spawn_offset": [0, 0.26, 0],
+        "surface": "floor"
+      }
+    },
+    {
+      "id": "poison_berry",
+      "name_zh": "毒莓",
+      "glb_path": "res://assets/models/materials/materials_poison_berry.glb",
+      "bbox": [0.2468, 0.335, 0.228],
+      "shape_note": "single purple berry with small thorns",
+      "placement": {
+        "location_preference": "scatter",
+        "align_to_wall": false,
+        "random_yaw": true,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 0],
+        "spawn_offset": [0, 0.32, 0],
+        "surface": "floor"
+      }
+    },
+    {
+      "id": "deeprock_moss",
+      "name_zh": "深岩苔藓",
+      "glb_path": "res://assets/models/materials/materials_deeprock_moss.glb",
+      "bbox": [0.4805, 0.126, 0.252],
+      "shape_note": "low cave moss clump",
+      "placement": {
+        "location_preference": "near_wall",
+        "align_to_wall": true,
+        "random_yaw": true,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 0],
+        "spawn_offset": [0, 0.25, 0],
+        "surface": "floor_wall_base"
+      }
+    },
+    {
+      "id": "black_rye_root",
+      "name_zh": "黑麦根",
+      "glb_path": "res://assets/models/materials/materials_black_rye_root.glb",
+      "bbox": [0.51, 0.3289, 0.09],
+      "shape_note": "forked root, laid flat by visual rotation",
+      "placement": {
+        "location_preference": "scatter",
+        "align_to_wall": false,
+        "random_yaw": true,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [90, 0, 0],
+        "spawn_offset": [0, 0.3, 0],
+        "surface": "floor"
+      }
+    },
+    {
+      "id": "stalactite_sap",
+      "name_zh": "钟乳石液",
+      "glb_path": "res://assets/models/materials/materials_stalactite_sap.glb",
+      "bbox": [0.1601, 0.3457, 0.15],
+      "shape_note": "upright pale mineral sap shard",
+      "placement": {
+        "location_preference": "near_wall",
+        "align_to_wall": true,
+        "random_yaw": false,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 0],
+        "spawn_offset": [0, 0.32, 0],
+        "surface": "floor_wall_base"
+      }
+    },
+    {
+      "id": "goblin_nail",
+      "name_zh": "哥布林指甲",
+      "glb_path": "res://assets/models/materials/materials_goblin_nail.glb",
+      "bbox": [0.0913, 0.453, 0.1144],
+      "shape_note": "long dirty claw nail, laid flat by visual rotation",
+      "placement": {
+        "location_preference": "scatter",
+        "align_to_wall": false,
+        "random_yaw": true,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 90],
+        "spawn_offset": [0, 0.3, 0],
+        "surface": "floor"
+      }
+    },
+    {
+      "id": "mistflower",
+      "name_zh": "迷雾花",
+      "glb_path": "res://assets/models/materials/materials_mistflower.glb",
+      "bbox": [0.3153, 0.2651, 0.3025],
+      "shape_note": "upright pale flower with mist petals",
+      "placement": {
+        "location_preference": "scatter",
+        "align_to_wall": false,
+        "random_yaw": true,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 0],
+        "spawn_offset": [0, 0.3, 0],
+        "surface": "floor"
+      }
+    },
+    {
+      "id": "wolfear_herb",
+      "name_zh": "狼耳草",
+      "glb_path": "res://assets/models/materials/materials_wolfear_herb.glb",
+      "bbox": [0.2054, 0.3016, 0.144],
+      "shape_note": "upright paired ear-shaped herb leaves",
+      "placement": {
+        "location_preference": "scatter",
+        "align_to_wall": false,
+        "random_yaw": true,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 0],
+        "spawn_offset": [0, 0.3, 0],
+        "surface": "floor"
+      }
+    },
+    {
+      "id": "cyclops_beard",
+      "name_zh": "独眼巨人的胡须",
+      "glb_path": "res://assets/models/materials/materials_cyclops_beard.glb",
+      "bbox": [0.1665, 0.3537, 0.11],
+      "shape_note": "tied thick beard strands, laid flat by visual rotation",
+      "placement": {
+        "location_preference": "scatter",
+        "align_to_wall": false,
+        "random_yaw": true,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 90],
+        "spawn_offset": [0, 0.3, 0],
+        "surface": "floor"
+      }
+    },
+    {
+      "id": "geothermal_ear",
+      "name_zh": "地热木耳",
+      "glb_path": "res://assets/models/materials/materials_geothermal_ear.glb",
+      "bbox": [0.3367, 0.193, 0.2838],
+      "shape_note": "warm ear fungus for wall-base placement",
+      "placement": {
+        "location_preference": "near_wall",
+        "align_to_wall": true,
+        "random_yaw": false,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 0],
+        "spawn_offset": [0, 0.27, 0],
+        "surface": "floor_wall_base"
+      }
+    },
+    {
+      "id": "luminous_fern",
+      "name_zh": "荧光蕨",
+      "glb_path": "res://assets/models/materials/materials_luminous_fern.glb",
+      "bbox": [0.2243, 0.3117, 0.152],
+      "shape_note": "upright glowing fern with flat fronds",
+      "placement": {
+        "location_preference": "scatter",
+        "align_to_wall": false,
+        "random_yaw": true,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 0],
+        "spawn_offset": [0, 0.3, 0],
+        "surface": "floor"
+      }
+    },
+    {
+      "id": "quartz_dust",
+      "name_zh": "石英晶粉",
+      "glb_path": "res://assets/models/materials/materials_quartz_dust.glb",
+      "bbox": [0.3189, 0.1625, 0.189],
+      "shape_note": "low quartz powder pile with small crystals",
+      "placement": {
+        "location_preference": "scatter",
+        "align_to_wall": false,
+        "random_yaw": true,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 0],
+        "spawn_offset": [0, 0.26, 0],
+        "surface": "floor"
+      }
+    },
+    {
+      "id": "blindfish_jerky",
+      "name_zh": "盲鱼干",
+      "glb_path": "res://assets/models/materials/materials_blindfish_jerky.glb",
+      "bbox": [0.6308, 0.1331, 0.2023],
+      "shape_note": "dried blindfish, long and flat on floor",
+      "placement": {
+        "location_preference": "scatter",
+        "align_to_wall": false,
+        "random_yaw": true,
+        "visual_offset": [0, 0, 0],
+        "visual_rotation_degrees": [0, 0, 0],
+        "spawn_offset": [0, 0.28, 0],
+        "surface": "floor"
+      }
+    }
+  ]
+}

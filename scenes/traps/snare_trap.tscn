@@ -1,0 +1,28 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scenes/traps/snare_trap.gd" id="1_snare"]
+
+[sub_resource type="TorusMesh" id="TorusMesh_snare"]
+inner_radius = 0.38
+outer_radius = 0.58
+rings = 16
+ring_segments = 8
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_snare"]
+albedo_color = Color(0.13, 0.09, 0.05, 1)
+roughness = 0.95
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_snare"]
+height = 0.25
+radius = 0.72
+
+[node name="SnareTrap" type="Area3D"]
+script = ExtResource("1_snare")
+
+[node name="SnareMesh" type="MeshInstance3D" parent="."]
+mesh = SubResource("TorusMesh_snare")
+material_override = SubResource("StandardMaterial3D_snare")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+position = Vector3(0, 0.08, 0)
+shape = SubResource("CylinderShape3D_snare")

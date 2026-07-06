@@ -1,0 +1,14 @@
+[gd_resource type="ShaderMaterial" load_steps=3 format=3]
+
+[ext_resource type="Shader" path="res://assets/shaders/dungeon_terrain.gdshader" id="1_shader"]
+[ext_resource type="Texture2D" path="res://assets/textures/terrain/level0_dungeon/level0_dungeon_terrain_atlas_32px.png" id="2_atlas"]
+
+[resource]
+shader = ExtResource("1_shader")
+shader_parameter/atlas = ExtResource("2_atlas")
+shader_parameter/tile_col_row = Vector2(0, 2)
+shader_parameter/tile_span = Vector2(2, 2)
+shader_parameter/atlas_grid = Vector2(8, 4)
+shader_parameter/tile_repeat = Vector2(1, 1)
+shader_parameter/roughness = 0.9
+shader_parameter/specular = 0.2

@@ -10,3 +10,6 @@ func _enter_tree() -> void:
 
 func can_die() -> bool:
 	return false
+
+func can_get_hurt() -> bool:
+	return false

@@ -310,7 +310,7 @@ bone_idx = 11
 transform = Transform3D(1, 0, 0, 0, 0.8660254, 0.5, 0, -0.5, 0.8660254, 0, 0, 0)
 
 [node name="Character" parent="character/Armature/Skeleton3D" index="3" unique_id=1191931240]
-layers = 2
+layers = 1
 extra_cull_margin = 2.0
 surface_material_override/0 = SubResource("StandardMaterial3D_cyclm")
 
@@ -360,8 +360,8 @@ light_size = 0.1
 light_specular = 0.0
 light_cull_mask = 4294967293
 distance_fade_enabled = true
-distance_fade_begin = 7.0
-distance_fade_length = 5.0
+distance_fade_begin = 14.0
+distance_fade_length = 8.0
 omni_range = 2.0
 omni_attenuation = 2.0
 

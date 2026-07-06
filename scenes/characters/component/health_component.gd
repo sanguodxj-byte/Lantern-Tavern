@@ -7,5 +7,8 @@ extends Node
 func take_damage(damage: int) -> void:
 	current_life = clampi(current_life - damage, 0, max_life)
 
+func heal(amount: int) -> void:
+	current_life = clampi(current_life + amount, 0, max_life)
+
 func is_dead() -> bool:
 	return current_life == 0

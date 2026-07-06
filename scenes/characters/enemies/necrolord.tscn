@@ -1,0 +1,44 @@
+[gd_scene format=3 uid="uid://0gcxc0vlt2jh"]
+
+[ext_resource type="PackedScene" uid="uid://cty2xvbejnvbg" path="res://scenes/characters/enemies/goblin.tscn" id="1_necr"]
+[ext_resource type="PackedScene" uid="uid://jrgfhydxknge" path="res://assets/meshes/characters/voxel_necrolord_80px.glb" id="2_voxel"]
+[ext_resource type="Resource" uid="uid://bmre07o38bl3s" path="res://data/weapons/shortsword.tres" id="3_sw"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_necr"]
+albedo_color = Color(0.2, 0.15, 0.3, 1)
+backlight_enabled = true
+backlight = Color(0.3, 0.0, 0.5, 1)
+texture_filter = 0
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_necr"]
+viewport_path = NodePath("Healthbar/SubViewport")
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_necr"]
+radius = 0.45
+height = 2.0
+
+[node name="Necrolord" instance=ExtResource("1_necr")]
+duration_between_attacks = 2500
+duration_stun = 3500
+speed = 1.3
+is_elite = true
+
+[node name="CollisionShape" parent="." index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 0)
+shape = SubResource("CapsuleShape3D_necr")
+
+[node name="EquipmentComponent" parent="." index="2"]
+shield_data = null
+weapon_data = ExtResource("3_sw")
+
+[node name="HealthComponent" parent="." index="6"]
+max_life = 25
+current_life = 25
+
+[node name="Healthbar" parent="." index="11"]
+texture = SubResource("ViewportTexture_necr")
+
+[node name="PresenceLight" parent="." index="9"]
+light_color = Color(0.4, 0.1, 0.6, 1)
+light_energy = 2.0
+omni_range = 3.0

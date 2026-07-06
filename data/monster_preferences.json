@@ -2,6 +2,7 @@
     {
         "id": "goblin",
         "name": "哥布林",
+        "voxel_model": "res://assets/meshes/characters/voxel_goblin_32px.glb",
         "liked_flavors": [
             "sweet",
             "umami"
@@ -16,72 +17,9 @@
         ]
     },
     {
-        "id": "spider",
-        "name": "巨型蜘蛛",
-        "liked_flavors": [
-            "gaminess",
-            "salty"
-        ],
-        "disliked_flavors": [
-            "spicy",
-            "sweet"
-        ],
-        "drops": [
-            "spider_poison_sac",
-            "spider_web"
-        ]
-    },
-    {
-        "id": "slime",
-        "name": "史莱姆",
-        "liked_flavors": [
-            "sour",
-            "sweet"
-        ],
-        "disliked_flavors": [
-            "salty",
-            "earthy"
-        ],
-        "drops": [
-            "slime_core",
-            "slime_jelly"
-        ]
-    },
-    {
-        "id": "bat",
-        "name": "洞穴蝙蝠",
-        "liked_flavors": [
-            "bitter",
-            "sour"
-        ],
-        "disliked_flavors": [
-            "fresh",
-            "floral"
-        ],
-        "drops": [
-            "bat_wing",
-            "bat_guano"
-        ]
-    },
-    {
-        "id": "skeleton",
-        "name": "骷髅兵",
-        "liked_flavors": [
-            "earthy",
-            "dry"
-        ],
-        "disliked_flavors": [
-            "umami",
-            "sweet"
-        ],
-        "drops": [
-            "skeleton_dust",
-            "fossil_bone"
-        ]
-    },
-    {
         "id": "rat",
         "name": "巨鼠",
+        "voxel_model": "res://assets/meshes/characters/voxel_rat_12px.glb",
         "liked_flavors": [
             "gaminess",
             "earthy"
@@ -96,24 +34,43 @@
         ]
     },
     {
-        "id": "imp",
-        "name": "小恶魔",
+        "id": "skeleton",
+        "name": "骷髅兵",
+        "voxel_model": "res://assets/meshes/characters/voxel_skeleton_48px.glb",
         "liked_flavors": [
-            "spicy",
-            "smoky"
+            "earthy",
+            "dry"
         ],
         "disliked_flavors": [
-            "fresh",
-            "sour"
+            "umami",
+            "sweet"
         ],
         "drops": [
-            "imp_horn_dust",
-            "imp_wing_ash"
+            "skeleton_dust",
+            "fossil_bone"
+        ]
+    },
+    {
+        "id": "slime",
+        "name": "史莱姆",
+        "voxel_model": "res://assets/meshes/characters/voxel_slime_18px.glb",
+        "liked_flavors": [
+            "sour",
+            "sweet"
+        ],
+        "disliked_flavors": [
+            "salty",
+            "earthy"
+        ],
+        "drops": [
+            "slime_core",
+            "slime_jelly"
         ]
     },
     {
         "id": "troll",
         "name": "巨魔",
+        "voxel_model": "res://assets/meshes/characters/voxel_troll_64x.glb",
         "liked_flavors": [
             "salty",
             "metallic"
@@ -128,35 +85,37 @@
         ]
     },
     {
-        "id": "zombie",
-        "name": "僵尸",
+        "id": "necrolord",
+        "name": "死灵领主",
+        "voxel_model": "res://assets/meshes/characters/voxel_necrolord_80px.glb",
         "liked_flavors": [
             "pungent",
-            "bitter"
+            "smoky"
         ],
         "disliked_flavors": [
-            "floral",
-            "sweet"
+            "fresh",
+            "floral"
         ],
         "drops": [
-            "zombie_flesh",
-            "zombie_nail"
+            "necrolord_scepter",
+            "soul_gem"
         ]
     },
     {
-        "id": "harpy",
-        "name": "哈比",
+        "id": "dragon",
+        "name": "巨龙",
+        "voxel_model": "res://assets/meshes/characters/voxel_dragon_256px.glb",
         "liked_flavors": [
-            "floral",
-            "fresh"
+            "spicy",
+            "smoky"
         ],
         "disliked_flavors": [
-            "gaminess",
-            "bitter"
+            "sour",
+            "fresh"
         ],
         "drops": [
-            "harpy_feather",
-            "harpy_talon"
+            "dragon_scale",
+            "dragon_tooth"
         ]
     }
 ]

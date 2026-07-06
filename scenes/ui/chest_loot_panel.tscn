@@ -1,0 +1,124 @@
+[gd_scene load_steps=3 format=3 uid="uid://chest_loot_panel_v1"]
+
+[ext_resource type="Script" path="res://scenes/ui/chest_loot_panel.gd" id="1_script"]
+[ext_resource type="Theme" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
+
+[node name="ChestLootPanel" type="CanvasLayer"]
+layer = 30
+script = ExtResource("1_script")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+theme = ExtResource("2_theme")
+
+[node name="DimBackground" type="ColorRect" parent="Root"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+color = Color(0, 0, 0, 0.4)
+
+[node name="MainPanel" type="PanelContainer" parent="Root"]
+custom_minimum_size = Vector2(640, 520)
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 40.0
+offset_bottom = -40.0
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Root/MainPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="Root/MainPanel/VBox"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="Root/MainPanel/VBox/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 28
+text = "宝箱战利品"
+
+[node name="CloseBtn" type="Button" parent="Root/MainPanel/VBox/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "关闭"
+
+[node name="ContentRow" type="HBoxContainer" parent="Root/MainPanel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="ChestColumn" type="VBoxContainer" parent="Root/MainPanel/VBox/ContentRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ChestLabel" type="Label" parent="Root/MainPanel/VBox/ContentRow/ChestColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "📦 宝箱内容"
+
+[node name="ChestList" type="ItemList" parent="Root/MainPanel/VBox/ContentRow/ChestColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 18
+item_count = 0
+same_column_width = true
+icon_mode = 0
+select_mode = 1
+allow_reselect = true
+
+[node name="BackpackColumn" type="VBoxContainer" parent="Root/MainPanel/VBox/ContentRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BackpackLabel" type="Label" parent="Root/MainPanel/VBox/ContentRow/BackpackColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "🎒 背包"
+
+[node name="BackpackList" type="ItemList" parent="Root/MainPanel/VBox/ContentRow/BackpackColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 18
+item_count = 0
+same_column_width = true
+icon_mode = 0
+select_mode = 1
+
+[node name="Footer" type="HBoxContainer" parent="Root/MainPanel/VBox"]
+layout_mode = 2
+alignment = 1
+
+[node name="Spacer" type="Control" parent="Root/MainPanel/VBox/Footer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HarvestAllBtn" type="Button" parent="Root/MainPanel/VBox/Footer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "✅ 一键收获"
+
+[node name="Spacer2" type="Control" parent="Root/MainPanel/VBox/Footer"]
+layout_mode = 2
+size_flags_horizontal = 3

@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://cmv5y0rh9a7o9"]
 
 [ext_resource type="Script" path="res://scenes/ui/model_viewer.gd" id="1_mview"]
-[ext_resource type="Theme" uid="uid://clmv5y0rh9a7o" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
+[ext_resource type="Theme" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
 
 [node name="ModelViewer" type="Control"]
 layout_mode = 3
@@ -37,7 +37,7 @@ layout_mode = 2
 
 [node name="SidebarTitle" type="Label" parent="HBoxContainer/Sidebar"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 30
 text = " MODEL VIEWER / EDITOR"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -90,7 +90,7 @@ size_flags_horizontal = 3
 
 [node name="ReturnBtn" type="Button" parent="HBoxContainer/Sidebar"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 26
 text = "Return to Main Menu"
 
 [node name="ViewportContainer" type="SubViewportContainer" parent="HBoxContainer"]
@@ -127,7 +127,7 @@ layout_mode = 2
 
 [node name="InspectorTitle" type="Label" parent="HBoxContainer/Inspector"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 30
 text = " ASSET INSPECTOR"
 horizontal_alignment = 1
 vertical_alignment = 1

@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3 uid="uid://df7283723bfb3"]
 
 [ext_resource type="Script" path="res://scenes/ui/tavern_hud.gd" id="1_tvhud"]
-[ext_resource type="Theme" uid="uid://clmv5y0rh9a7o" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
+[ext_resource type="Theme" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
 [ext_resource type="PackedScene" uid="uid://djqow6v7lq7et" path="res://scenes/ui/pause_menu.tscn" id="3_pmenu"]
 [ext_resource type="PackedScene" uid="uid://b1brewpanel0001" path="res://scenes/tavern/brewing_panel.tscn" id="4_bpanel"]
 
@@ -34,7 +34,7 @@ offset_top = 24.0
 offset_right = 200.0
 offset_bottom = 64.0
 grow_horizontal = 2
-theme_override_font_sizes/font_size = 32
+theme_override_font_sizes/font_size = 40
 text = "COZY BREWING TAVERN"
 horizontal_alignment = 1
 

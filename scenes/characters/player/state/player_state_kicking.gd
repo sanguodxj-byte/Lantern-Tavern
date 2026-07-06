@@ -6,11 +6,11 @@ const GROUND_FRICTION := 10.0
 func _enter_tree() -> void:
 	player.animation_player.play("kick")
 	player.animation_player.animation_finished.connect(on_animation_finished)
-	if player.kick_raycast.is_colliding():
+	if player._raycast_is_colliding(player.kick_raycast):
 		var collider := player.kick_raycast.get_collider() as Node
 		if collider is Door:
 			var door := collider as Door
-			if door.door_color == Door.KeyColor.None or GameState.has_key(door.door_color):
+			if door.can_open_with_kick() and (door.door_color == Door.KeyColor.None or GameState.has_key(door.door_color)):
 				AudioManager.play("door-kick", player.action_audio_stream_player)
 				door.open(player.global_transform)
 				GameState.use_key(door.door_color)
@@ -19,7 +19,10 @@ func _enter_tree() -> void:
 		elif collider is Enemy:
 			var enemy := collider as Enemy
 			AudioManager.play("kick", player.action_audio_stream_player)
-			enemy.try_receive_kick(player)
+			player.apply_kick_hit(enemy)
+		elif collider != null and collider.has_method("try_receive_hit"):
+			AudioManager.play("kick", player.action_audio_stream_player)
+			collider.try_receive_hit(player, 2)
 	else:
 		AudioManager.play("kick-swoosh", player.action_audio_stream_player)
 

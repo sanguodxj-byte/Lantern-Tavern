@@ -1,22 +1,22 @@
-[gd_scene load_steps=5 format=3 uid="uid://cxab38qpeche1"]
+[gd_scene load_steps=4 format=3 uid="uid://cxab38qpeche1"]
 
 [ext_resource type="Script" path="res://scenes/props/chest/chest.gd" id="1_script"]
-[ext_resource type="ArrayMesh" path="res://assets/models/chest.obj" id="2_mesh"]
-[ext_resource type="Material" path="res://materials/chest_mat.tres" id="3_material"]
+[ext_resource type="Script" path="res://scenes/props/voxel_prop.gd" id="2_voxel"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_chest"]
-size = Vector3(1.0, 0.8, 0.8)
+size = Vector3(1.1, 0.9, 0.85)
 
 [node name="Chest" type="StaticBody3D"]
 collision_layer = 72
 collision_mask = 0
 script = ExtResource("1_script")
+metadata/topdown_kind = "terrain_feature"
+metadata/decor_kind = "chest"
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
-transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.4, 0.0)
-mesh = ExtResource("2_mesh")
-material_override = ExtResource("3_material")
+[node name="ChestVisual" type="StaticBody3D" parent="."]
+script = ExtResource("2_voxel")
+prop_kind = "chest"
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
-transform = Transform3D(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.4, 0.0)
+position = Vector3(0, 0.45, 0)
 shape = SubResource("BoxShape3D_chest")

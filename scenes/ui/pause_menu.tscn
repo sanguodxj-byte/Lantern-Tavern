@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3 uid="uid://djqow6v7lq7et"]
 
 [ext_resource type="Script" path="res://scenes/ui/pause_menu.gd" id="1_pmenu"]
-[ext_resource type="Theme" uid="uid://clmv5y0rh9a7o" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
+[ext_resource type="Theme" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
 [ext_resource type="Shader" uid="" path="res://assets/shaders/blur_overlay.gdshader" id="3_shader"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_1"]
@@ -46,24 +46,24 @@ theme_override_constants/separation = 16
 
 [node name="Title" type="Label" parent="CenterContainer/Panel/VBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 36
 text = "PAUSED"
 horizontal_alignment = 1
 
 [node name="ResumeBtn" type="Button" parent="CenterContainer/Panel/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 30
 text = ""
 
 [node name="MainMenuBtn" type="Button" parent="CenterContainer/Panel/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 30
 text = ""
 
 [node name="ExitBtn" type="Button" parent="CenterContainer/Panel/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 30
 text = ""

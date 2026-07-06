@@ -1,0 +1,73 @@
+class_name PixelBar
+extends Control
+
+## 像素风格数值条（血量 / 蓝量通用）。
+## 使用纯色方块绘制，关闭抗锯齿，配合 ark-pixel 字体实现像素风。
+
+@export var bar_color: Color = Color.RED
+@export var bg_color: Color = Color(0.08, 0.06, 0.12, 0.85)
+@export var frame_color: Color = Color(0.3, 0.22, 0.15, 0.9)
+@export var label_text: String = ""
+@export var show_numeric: bool = true
+@export var pixel_size: int = 4  # 每个"像素方块"的屏幕像素边长
+
+var _current: int = 0
+var _max: int = 100
+var _display_ratio: float = 1.0  # 平滑插值用
+
+@onready var _label: Label = $Label
+
+
+func _ready() -> void:
+	custom_minimum_size = Vector2(180, 28)
+	if _label:
+		_label.add_theme_font_override("font", _pixel_font())
+		_label.add_theme_font_size_override("font_size", 12)
+
+
+func _pixel_font() -> Font:
+	return load("res://assets/fonts/ark-pixel-12px-proportional-zh_cn.ttf") as Font
+
+
+func _draw() -> void:
+	var rect := Rect2(Vector2.ZERO, size)
+	var frame_w := 2
+
+	# 外框
+	draw_rect(rect, frame_color, false, frame_w)
+
+	# 背景
+	var bg_rect := rect.grow_individual(-frame_w, -frame_w, -frame_w, -frame_w)
+	draw_rect(bg_rect, bg_color, true)
+
+	# 填充
+	var fill_w := int(bg_rect.size.x * _display_ratio)
+	# 对齐到 pixel_size 网格
+	fill_w = floori(fill_w / pixel_size) * pixel_size
+	if fill_w > 0:
+		var fill_rect := Rect2(bg_rect.position, Vector2(fill_w, bg_rect.size.y))
+		# 像素风：用方块逐块绘制边缘锯齿
+		draw_rect(fill_rect, bar_color, true)
+		# 顶部高光（1px 亮色）
+		var hl := bar_color.lightened(0.3)
+		draw_rect(
+			Rect2(fill_rect.position, Vector2(fill_rect.size.x, pixel_size)),
+			hl, true
+		)
+
+
+func set_values(current: int, maximum: int) -> void:
+	_current = maxi(current, 0)
+	_max = maxi(maximum, 1)
+	var target := float(_current) / float(_max)
+	_display_ratio = target
+	if show_numeric and _label:
+		_label.text = "%s  %d / %d" % [label_text, _current, _max]
+	queue_redraw()
+
+
+func set_label(text: String) -> void:
+	label_text = text
+	if _label:
+		_label.text = "%s  %d / %d" % [label_text, _current, _max]
+	queue_redraw()

@@ -30,7 +30,7 @@ func _setup_chat_label() -> void:
 	_chat_label.name = "ChatBubble"
 	_chat_label.position = Vector3(0, 2.2, 0)
 	_chat_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_chat_label.font_size = 28
+	_chat_label.font_size = 34
 	_chat_label.outline_size = 12
 	_chat_label.outline_modulate = Color.BLACK
 	_chat_label.modulate = Color(1, 0.95, 0.7)

@@ -1,14 +1,16 @@
-[gd_scene format=3 uid="uid://ci0wq7gvicf1p"]
+[gd_scene load_steps=4 format=3 uid="uid://ci0wq7gvicf1p"]
 
-[ext_resource type="PackedScene" uid="uid://cg5to3gopwqho" path="res://scenes/equipment/pickable_item.tscn" id="1_mmi0q"]
-[ext_resource type="Resource" uid="uid://cjq4eveslcfua" path="res://data/furniture/barrel.tres" id="2_2gpa7"]
-[ext_resource type="PackedScene" uid="uid://dvpfwd74pf7ii" path="res://assets/meshes/props/barrel/barrel.glb" id="2_5377x"]
+[ext_resource type="PackedScene" uid="uid://cg5to3gopwqho" path="res://scenes/equipment/pickable_item.tscn" id="1_pickable"]
+[ext_resource type="Resource" uid="uid://cjq4eveslcfua" path="res://data/furniture/barrel.tres" id="2_furniture"]
+[ext_resource type="Script" path="res://scenes/props/voxel_prop.gd" id="3_voxel"]
 
-[node name="Barrel" unique_id=1588726055 node_paths=PackedStringArray("mesh_node") instance=ExtResource("1_mmi0q")]
+[node name="Barrel" node_paths=PackedStringArray("mesh_node") instance=ExtResource("1_pickable")]
 collision_layer = 72
-mesh_node = NodePath("barrel/Barrel")
-furniture_data = ExtResource("2_2gpa7")
+mesh_node = NodePath("")
+furniture_data = ExtResource("2_furniture")
+metadata/topdown_kind = "terrain_feature"
+metadata/decor_kind = "barrel"
 
-[node name="barrel" parent="." index="1" unique_id=611773022 instance=ExtResource("2_5377x")]
-
-[editable path="barrel"]
+[node name="BarrelVisual" type="StaticBody3D" parent="."]
+script = ExtResource("3_voxel")
+prop_kind = "barrel"

@@ -1,0 +1,43 @@
+[gd_scene format=3 uid="uid://djebda3m1m6rp"]
+
+[ext_resource type="PackedScene" uid="uid://cty2xvbejnvbg" path="res://scenes/characters/enemies/goblin.tscn" id="1_trol"]
+[ext_resource type="PackedScene" uid="uid://xcuc7v12xpt6" path="res://assets/meshes/characters/voxel_troll_64x.glb" id="2_voxel"]
+[ext_resource type="Resource" uid="uid://b85xdn0cdw6p1" path="res://data/weapons/axe.tres" id="3_axe"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_trol"]
+albedo_color = Color(0.4, 0.5, 0.35, 1)
+backlight_enabled = true
+backlight = Color(0.15, 0.2, 0.05, 1)
+texture_filter = 0
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_trol"]
+viewport_path = NodePath("Healthbar/SubViewport")
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_trol"]
+radius = 0.5
+height = 2.2
+
+[node name="Troll" instance=ExtResource("1_trol")]
+duration_between_attacks = 2800
+duration_stun = 3000
+speed = 1.0
+
+[node name="CollisionShape" parent="." index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+shape = SubResource("CapsuleShape3D_trol")
+
+[node name="EquipmentComponent" parent="." index="2"]
+shield_data = null
+weapon_data = ExtResource("3_axe")
+
+[node name="HealthComponent" parent="." index="6"]
+max_life = 20
+current_life = 20
+
+[node name="Healthbar" parent="." index="11"]
+texture = SubResource("ViewportTexture_trol")
+
+[node name="PresenceLight" parent="." index="9"]
+light_color = Color(0.3, 0.4, 0.15, 1)
+light_energy = 1.2
+omni_range = 2.5

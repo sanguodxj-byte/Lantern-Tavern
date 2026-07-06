@@ -173,4 +173,4 @@ func _on_next_day_pressed() -> void:
 	if TavernManager:
 		TavernManager.start_next_day()
 	else:
-		get_tree().change_scene_to_file("res://scenes/expedition/procedural_dungeon.tscn")
+		get_tree().change_scene_to_file("res://scenes/world/world.tscn")

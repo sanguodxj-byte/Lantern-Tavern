@@ -1,15 +1,14 @@
-[gd_scene format=3 uid="uid://tktvvhry0jfp"]
+[gd_scene load_steps=12 format=3 uid="uid://tktvvhry0jfp"]
 
-[ext_resource type="PackedScene" uid="uid://c2qlyjbybc3i2" path="res://assets/meshes/doors/door.glb" id="1_bu3y2"]
-[ext_resource type="Script" uid="uid://btv7nsy7780mw" path="res://scenes/door/door.gd" id="1_odsy8"]
-[ext_resource type="PackedScene" uid="uid://6mjxl2ykkddj" path="res://assets/meshes/doors/door-frame.glb" id="3_u3mo4"]
+[ext_resource type="Script" uid="uid://btv7nsy7780mw" path="res://scenes/door/door.gd" id="1_script"]
+[ext_resource type="Material" path="res://scenes/tavern/materials/tavern_door_mat.tres" id="2_tavdoor"]
 
-[sub_resource type="Animation" id="Animation_odsy8"]
+[sub_resource type="Animation" id="Animation_reset"]
 length = 0.001
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("door/Door:rotation")
+tracks/0/path = NodePath("door:rotation")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
@@ -19,14 +18,14 @@ tracks/0/keys = {
 "values": [Vector3(0, 0, 0)]
 }
 
-[sub_resource type="Animation" id="Animation_u3mo4"]
+[sub_resource type="Animation" id="Animation_open_left"]
 resource_name = "open-left"
 length = 0.1
 step = 0.1
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("door/Door:rotation")
+tracks/0/path = NodePath("door:rotation")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
@@ -36,14 +35,14 @@ tracks/0/keys = {
 "values": [Vector3(0, 0, 0), Vector3(0, 1.5707964, 0)]
 }
 
-[sub_resource type="Animation" id="Animation_bsixq"]
+[sub_resource type="Animation" id="Animation_open_right"]
 resource_name = "open-right"
 length = 0.1
 step = 0.1
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("door/Door:rotation")
+tracks/0/path = NodePath("door:rotation")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
@@ -53,77 +52,104 @@ tracks/0/keys = {
 "values": [Vector3(0, 0, 0), Vector3(0, -1.5707964, 0)]
 }
 
-[sub_resource type="AnimationLibrary" id="AnimationLibrary_iwle0"]
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_door"]
 _data = {
-&"RESET": SubResource("Animation_odsy8"),
-&"open-left": SubResource("Animation_u3mo4"),
-&"open-right": SubResource("Animation_bsixq")
+&"RESET": SubResource("Animation_reset"),
+&"open-left": SubResource("Animation_open_left"),
+&"open-right": SubResource("Animation_open_right")
 }
 
-[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_bu3y2"]
-data = PackedVector3Array(-1.2638, 0, 0.16849999, -1.2638, 2.0219998, -0.16849999, -1.2638, 2.0219998, 0.16849999, -1.2638, 0, 0.16849999, -1.2638, 0, -0.16849999, -1.2638, 2.0219998, -0.16849999, -1.2638, 0, -0.16849999, 0, 2.0219998, -0.16849999, -1.2638, 2.0219998, -0.16849999, -1.2638, 0, -0.16849999, 0, 0, -0.16849999, 0, 2.0219998, -0.16849999, 0, 0, -0.16849999, 0, 2.0219998, 0.16849999, 0, 2.0219998, -0.16849999, 0, 0, -0.16849999, 0, 0, 0.16849999, 0, 2.0219998, 0.16849999, 0, 0, 0.16849999, -1.2638, 2.0219998, 0.16849999, 0, 2.0219998, 0.16849999, 0, 0, 0.16849999, -1.2638, 0, 0.16849999, -1.2638, 2.0219998, 0.16849999, -1.0711, 1.0138999, -0.15869999, -1.0711, 1.077, -0.2219, -1.0711, 1.077, -0.15869999, -1.0711, 1.0138999, -0.15869999, -1.0711, 1.0138999, -0.2219, -1.0711, 1.077, -0.2219, 0, 2.0219998, -0.16849999, -1.2638, 2.0219998, 0.16849999, -1.2638, 2.0219998, -0.16849999, 0, 2.0219998, -0.16849999, 0, 2.0219998, 0.16849999, -1.2638, 2.0219998, 0.16849999, -1.0711, 1.0138999, -0.2219, -0.88159996, 1.077, -0.2219, -1.0711, 1.077, -0.2219, -1.0711, 1.0138999, -0.2219, -0.88159996, 1.0138999, -0.2219, -0.88159996, 1.077, -0.2219, -0.88159996, 1.0138999, -0.2219, -0.88159996, 1.077, -0.15869999, -0.88159996, 1.077, -0.2219, -0.88159996, 1.0138999, -0.2219, -0.88159996, 1.0138999, -0.15869999, -0.88159996, 1.077, -0.15869999, -0.88159996, 1.0138999, -0.15869999, -1.0711, 1.077, -0.15869999, -0.88159996, 1.077, -0.15869999, -0.88159996, 1.0138999, -0.15869999, -1.0711, 1.0138999, -0.15869999, -1.0711, 1.077, -0.15869999, -1.0711, 1.0138999, -0.2219, -0.88159996, 1.0138999, -0.15869999, -0.88159996, 1.0138999, -0.2219, -1.0711, 1.0138999, -0.2219, -1.0711, 1.0138999, -0.15869999, -0.88159996, 1.0138999, -0.15869999, -0.88159996, 1.077, -0.2219, -1.0711, 1.077, -0.15869999, -1.0711, 1.077, -0.2219, -0.88159996, 1.077, -0.2219, -0.88159996, 1.077, -0.15869999, -1.0711, 1.077, -0.15869999, -1.0711, 1.0138999, 0.2244, -1.0711, 1.077, 0.1612, -1.0711, 1.077, 0.2244, -1.0711, 1.0138999, 0.2244, -1.0711, 1.0138999, 0.1612, -1.0711, 1.077, 0.1612, -1.0711, 1.0138999, 0.1612, -0.88159996, 1.077, 0.1612, -1.0711, 1.077, 0.1612, -1.0711, 1.0138999, 0.1612, -0.88159996, 1.0138999, 0.1612, -0.88159996, 1.077, 0.1612, -0.88159996, 1.0138999, 0.1612, -0.88159996, 1.077, 0.2244, -0.88159996, 1.077, 0.1612, -0.88159996, 1.0138999, 0.1612, -0.88159996, 1.0138999, 0.2244, -0.88159996, 1.077, 0.2244, -0.88159996, 1.0138999, 0.2244, -1.0711, 1.077, 0.2244, -0.88159996, 1.077, 0.2244, -0.88159996, 1.0138999, 0.2244, -1.0711, 1.0138999, 0.2244, -1.0711, 1.077, 0.2244, -1.0711, 1.0138999, 0.1612, -0.88159996, 1.0138999, 0.2244, -0.88159996, 1.0138999, 0.1612, -1.0711, 1.0138999, 0.1612, -1.0711, 1.0138999, 0.2244, -0.88159996, 1.0138999, 0.2244, -0.88159996, 1.077, 0.1612, -1.0711, 1.077, 0.2244, -1.0711, 1.077, 0.1612, -0.88159996, 1.077, 0.1612, -0.88159996, 1.077, 0.2244, -1.0711, 1.077, 0.2244)
+[sub_resource type="BoxShape3D" id="DoorCollision"]
+size = Vector3(1.25, 2.05, 0.18)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_u3mo4"]
-albedo_color = Color(0.54509807, 0, 0, 1)
+[sub_resource type="StandardMaterial3D" id="FrameMat"]
+albedo_color = Color(0.545098, 0, 0, 1)
 emission_enabled = true
-emission = Color(0.54509807, 0, 0, 1)
+emission = Color(0.545098, 0, 0, 1)
 emission_energy_multiplier = 3.0
 
-[sub_resource type="SphereMesh" id="SphereMesh_bsixq"]
+[sub_resource type="StandardMaterial3D" id="IndicatorMat"]
+albedo_color = Color(0.721569, 0.52549, 0.0431373, 1)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bsixq"]
-albedo_color = Color(0.72156864, 0.5254902, 0.043137256, 1)
+[sub_resource type="BoxMesh" id="DoorMesh"]
+size = Vector3(1.25, 2.0, 0.125)
 
-[node name="Door" type="StaticBody3D" unique_id=1915289721 node_paths=PackedStringArray("editor_key_indicator", "frame_mesh")]
+[sub_resource type="BoxMesh" id="FrameSideMesh"]
+size = Vector3(0.125, 2.25, 0.18)
+
+[sub_resource type="BoxMesh" id="FrameTopMesh"]
+size = Vector3(1.5, 0.125, 0.18)
+
+[sub_resource type="BoxMesh" id="IndicatorMesh"]
+size = Vector3(0.25, 0.25, 0.25)
+
+[node name="Door" type="StaticBody3D" node_paths=PackedStringArray("editor_key_indicator", "frame_mesh")]
 collision_layer = 32
 collision_mask = 0
-script = ExtResource("1_odsy8")
+script = ExtResource("1_script")
 editor_key_indicator = NodePath("EditorKeyIndicator")
 frame_mesh = NodePath("Frame/DoorFrame")
+metadata/voxel_style = "one_px_32px_per_meter"
+metadata/voxel_unit_px = 1
+metadata/voxel_px_per_meter = 32
 
-[node name="door" parent="." unique_id=948023046 instance=ExtResource("1_bu3y2")]
+[node name="door" type="Node3D" parent="."]
 
-[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1338554944]
+[node name="Door" type="MeshInstance3D" parent="door"]
+position = Vector3(-0.625, 1, 0)
+mesh = SubResource("DoorMesh")
+surface_material_override/0 = ExtResource("2_tavdoor")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 unique_name_in_owner = true
-libraries/ = SubResource("AnimationLibrary_iwle0")
+libraries/ = SubResource("AnimationLibrary_door")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=2080459608]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 unique_name_in_owner = true
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.63187504, 0, 0)
-shape = SubResource("ConcavePolygonShape3D_bu3y2")
+position = Vector3(-0.625, 1.025, 0)
+shape = SubResource("DoorCollision")
 
-[node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=2028929055]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0.5)
-light_color = Color(1, 0.75686276, 0.30588236, 1)
+[node name="OmniLight3D" type="OmniLight3D" parent="."]
+position = Vector3(0, 2, 0.5)
+light_color = Color(1, 0.756863, 0.305882, 1)
 light_specular = 0.0
 distance_fade_enabled = true
-distance_fade_begin = 7.0
-distance_fade_length = 5.0
+distance_fade_begin = 14.0
+distance_fade_length = 8.0
 omni_range = 2.0
 omni_attenuation = 2.0
 
-[node name="OmniLight3D2" type="OmniLight3D" parent="." unique_id=1631536000]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, -0.5)
-light_color = Color(1, 0.75686276, 0.30588236, 1)
+[node name="OmniLight3D2" type="OmniLight3D" parent="."]
+position = Vector3(0, 2, -0.5)
+light_color = Color(1, 0.756863, 0.305882, 1)
 light_specular = 0.0
 distance_fade_enabled = true
-distance_fade_begin = 7.0
-distance_fade_length = 5.0
+distance_fade_begin = 14.0
+distance_fade_length = 8.0
 omni_range = 2.0
 omni_attenuation = 2.0
 
-[node name="Frame" parent="." unique_id=601091102 instance=ExtResource("3_u3mo4")]
+[node name="Frame" type="Node3D" parent="."]
 unique_name_in_owner = true
 
-[node name="DoorFrame" parent="Frame" index="0" unique_id=490091922]
-surface_material_override/0 = SubResource("StandardMaterial3D_u3mo4")
+[node name="DoorFrame" type="MeshInstance3D" parent="Frame"]
+position = Vector3(-0.625, 1.125, -0.09)
+mesh = SubResource("FrameTopMesh")
+surface_material_override/0 = SubResource("FrameMat")
 
-[node name="EditorKeyIndicator" type="MeshInstance3D" parent="." unique_id=161264554]
+[node name="FrameLeft" type="MeshInstance3D" parent="Frame"]
+position = Vector3(-1.3125, 1.0625, -0.09)
+mesh = SubResource("FrameSideMesh")
+surface_material_override/0 = SubResource("FrameMat")
+
+[node name="FrameRight" type="MeshInstance3D" parent="Frame"]
+position = Vector3(0.0625, 1.0625, -0.09)
+mesh = SubResource("FrameSideMesh")
+surface_material_override/0 = SubResource("FrameMat")
+
+[node name="EditorKeyIndicator" type="MeshInstance3D" parent="."]
 unique_name_in_owner = true
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.744934, 0)
+position = Vector3(0, 2.75, 0)
 visible = false
-mesh = SubResource("SphereMesh_bsixq")
-surface_material_override/0 = SubResource("StandardMaterial3D_bsixq")
-
-[editable path="door"]
-[editable path="Frame"]
+mesh = SubResource("IndicatorMesh")
+surface_material_override/0 = SubResource("IndicatorMat")

@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bes2gjspevsei"]
 
-[ext_resource type="Texture2D" uid="uid://cgwut7gi1bi1m" path="res://assets/textures/key.png" id="1_6mucb"]
+[ext_resource type="Texture2D" uid="uid://b28rngnslxysr" path="res://assets/textures/tick.png" id="1_6mucb"]
 
 [node name="KeyTexture" type="TextureRect" unique_id=1569550602]
 custom_minimum_size = Vector2(72, 72)

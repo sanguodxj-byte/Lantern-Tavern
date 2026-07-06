@@ -1,0 +1,122 @@
+[gd_scene load_steps=3 format=3 uid="uid://settings_menu"]
+
+[ext_resource type="Script" path="res://scenes/ui/settings_menu.gd" id="1_settings"]
+[ext_resource type="Theme" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
+
+[node name="SettingsMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_settings")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.055, 0.039, 0.031, 0.96)
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 42.0
+offset_bottom = 126.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 56
+text = "设置"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 110.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="CenterContainer"]
+custom_minimum_size = Vector2(640, 420)
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="CenterContainer/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 28
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 28
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 22
+
+[node name="AudioTitle" type="Label" parent="CenterContainer/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 34
+text = "音频"
+
+[node name="VolumeRow" type="HBoxContainer" parent="CenterContainer/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="MasterVolumeLabel" type="Label" parent="CenterContainer/Panel/Margin/VBox/VolumeRow"]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+text = "主音量"
+vertical_alignment = 1
+
+[node name="MasterVolumeSlider" type="HSlider" parent="CenterContainer/Panel/Margin/VBox/VolumeRow" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 100.0
+step = 1.0
+value = 100.0
+
+[node name="MasterVolumeValue" type="Label" parent="CenterContainer/Panel/Margin/VBox/VolumeRow" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+text = "100%"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="VideoTitle" type="Label" parent="CenterContainer/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 34
+text = "显示"
+
+[node name="FullscreenCheck" type="CheckButton" parent="CenterContainer/Panel/Margin/VBox" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
+text = "全屏"
+
+[node name="LanguageTitle" type="Label" parent="CenterContainer/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 34
+text = "语言"
+
+[node name="LanguageOption" type="OptionButton" parent="CenterContainer/Panel/Margin/VBox" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+
+[node name="Spacer" type="Control" parent="CenterContainer/Panel/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BackBtn" type="Button" parent="CenterContainer/Panel/Margin/VBox" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 62)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "返回"

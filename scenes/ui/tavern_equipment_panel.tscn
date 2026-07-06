@@ -1,0 +1,751 @@
+﻿[gd_scene load_steps=9 format=3 uid="uid://tavern_equipment_panel"]
+
+[ext_resource type="Script" path="res://scenes/ui/tavern_equipment_panel.gd" id="1_panel"]
+[ext_resource type="Theme" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
+[ext_resource type="Script" path="res://scenes/ui/inventory_drag_list.gd" id="3_drag"]
+[ext_resource type="Script" path="res://scenes/ui/inventory_tab_container.gd" id="4_tabs"]
+[ext_resource type="Script" path="res://scenes/ui/equipment_slot_drop_button.gd" id="5_slot"]
+[ext_resource type="Script" path="res://scenes/ui/skill_drag_list.gd" id="6_skill_drag"]
+[ext_resource type="Script" path="res://scenes/ui/skill_slot_drop_button.gd" id="7_skill_slot"]
+[ext_resource type="Script" path="res://scenes/ui/rune_slot_drop_button.gd" id="8_rune_slot"]
+
+[node name="TavernEquipmentPanel" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_panel")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0666667, 0.0431373, 0.0352941, 0.921569)
+
+[node name="PanelContainer" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="PanelContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PanelContainer/VBoxContainer/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 34
+text = " 酒馆装备与仓库"
+
+[node name="ReturnBtn" type="Button" parent="PanelContainer/VBoxContainer/Header" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 44)
+layout_mode = 2
+text = "关闭"
+
+[node name="MainLayout" type="HBoxContainer" parent="PanelContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="LeftColumn" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="EquipTop" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ArmorSlots" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+alignment = 0
+theme_override_constants/separation = 6
+
+[node name="ArmorTitle" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ArmorSlots"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "防具"
+horizontal_alignment = 1
+
+[node name="SlotHead" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ArmorSlots" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 112)
+layout_mode = 2
+text = "头部
+[空]"
+script = ExtResource("5_slot")
+slot_kind = "armor"
+armor_slot = "head"
+
+[node name="SlotBody" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ArmorSlots" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 112)
+layout_mode = 2
+text = "身体
+[皮甲]"
+script = ExtResource("5_slot")
+slot_kind = "armor"
+armor_slot = "body"
+
+[node name="SlotHands" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ArmorSlots" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 112)
+layout_mode = 2
+text = "手部
+[手套]"
+script = ExtResource("5_slot")
+slot_kind = "armor"
+armor_slot = "hands"
+
+[node name="SlotFeet" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ArmorSlots" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 112)
+layout_mode = 2
+text = "脚部
+[靴子]"
+script = ExtResource("5_slot")
+slot_kind = "armor"
+armor_slot = "feet"
+
+[node name="ModelPlaceholder" type="PanelContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop"]
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PreviewInfoBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ModelViewer" type="SubViewportContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox"]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+stretch = true
+
+[node name="EqSubViewport" type="SubViewport" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox/ModelViewer" unique_name_in_owner = true]
+unique_name_in_owner = true
+own_world_3d = true
+handle_input_locally = false
+size = Vector2i(320, 150)
+render_target_update_mode = 4
+
+[node name="EqCameraPivot" type="Node3D" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox/ModelViewer/EqSubViewport" unique_name_in_owner = true]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 0.965926, 0.258819, 0, -0.258819, 0.965926, 0, 0.55, 0)
+
+[node name="EqCamera3D" type="Camera3D" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox/ModelViewer/EqSubViewport/EqCameraPivot" unique_name_in_owner = true]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 2.0)
+current = true
+
+[node name="EqLight" type="DirectionalLight3D" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox/ModelViewer/EqSubViewport" unique_name_in_owner = true]
+unique_name_in_owner = true
+transform = Transform3D(0.866025, -0.25, 0.433013, 0, 0.866025, 0.5, -0.5, -0.433013, 0.75, 0, 2, 0)
+light_color = Color(1, 0.768627, 0.521569, 1)
+light_energy = 2.0
+
+[node name="ModelLabel" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox"]
+layout_mode = 2
+text = "装备预览"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BottomInfo" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn"]
+custom_minimum_size = Vector2(0, 240)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="StatsPanel" type="TabContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="属性" type="MarginContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 6
+
+[node name="StatsScroll" type="ScrollContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel/属性"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+
+[node name="StatsBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel/属性/StatsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="CharacterStatsTitle" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel/属性/StatsScroll/StatsBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "属性"
+horizontal_alignment = 1
+
+[node name="CharacterStatsText" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel/属性/StatsScroll/StatsBox" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 14
+text = "未找到实机角色"
+autowrap_mode = 3
+
+[node name="熟练度" type="MarginContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel"]
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 6
+
+[node name="ProfScroll" type="ScrollContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel/熟练度"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+
+[node name="ProficiencyBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel/熟练度/ProfScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="ProficiencyTitle" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel/熟练度/ProfScroll/ProficiencyBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "熟练度"
+horizontal_alignment = 1
+
+[node name="ProficiencyText" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel/熟练度/ProfScroll/ProficiencyBox" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 14
+text = "暂无熟练度记录"
+autowrap_mode = 3
+
+[node name="WeaponSlots" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+alignment = 0
+theme_override_constants/separation = 6
+
+[node name="WeaponTitle" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/WeaponSlots"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "武器"
+horizontal_alignment = 1
+
+[node name="SlotWeapon1" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/WeaponSlots" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 112)
+layout_mode = 2
+text = "手持 1 *
+[空]"
+script = ExtResource("5_slot")
+slot_kind = "weapon"
+slot_index = 0
+
+[node name="SlotWeapon2" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/WeaponSlots" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 112)
+layout_mode = 2
+text = "手持 2
+[空]"
+script = ExtResource("5_slot")
+slot_kind = "weapon"
+slot_index = 1
+
+[node name="SlotWeapon3" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/WeaponSlots" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 112)
+layout_mode = 2
+text = "手持 3
+[空]"
+script = ExtResource("5_slot")
+slot_kind = "weapon"
+slot_index = 2
+
+[node name="SlotWeapon4" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/WeaponSlots" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 112)
+layout_mode = 2
+text = "手持 4
+[空]"
+script = ExtResource("5_slot")
+slot_kind = "weapon"
+slot_index = 3
+
+[node name="RightTabs" type="TabContainer" parent="PanelContainer/VBoxContainer/MainLayout" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.15
+current_tab = 0
+script = ExtResource("4_tabs")
+
+[node name="物品" type="MarginContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="ItemsBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="GearList" type="ItemList" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("3_drag")
+inventory_source = "items"
+
+[node name="EquipSelectedBtn" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 46)
+layout_mode = 2
+text = "装备到当前槽"
+
+[node name="技能" type="MarginContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs"]
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="SkillLayout" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="SkillPyramidPanel" type="PanelContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout"]
+custom_minimum_size = Vector2(520, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SkillPyramidBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SkillPyramid" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox"]
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 1
+theme_override_constants/separation = 12
+
+[node name="ActiveRow" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 18
+
+[node name="ActiveFBranch" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/ActiveRow"]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SkillSlot0" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/ActiveRow/ActiveFBranch" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 62)
+layout_mode = 2
+text = "F 动作槽
+空"
+script = ExtResource("7_skill_slot")
+slot_index = 0
+
+[node name="ActiveFRunes" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/ActiveRow/ActiveFBranch"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 4
+
+[node name="RuneSlot0_0" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/ActiveRow/ActiveFBranch/ActiveFRunes" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+text = "-"
+script = ExtResource("8_rune_slot")
+skill_slot_index = 0
+rune_socket_index = 0
+
+[node name="RuneSlot0_1" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/ActiveRow/ActiveFBranch/ActiveFRunes" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+text = "-"
+script = ExtResource("8_rune_slot")
+skill_slot_index = 0
+rune_socket_index = 1
+
+[node name="RuneSlot0_2" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/ActiveRow/ActiveFBranch/ActiveFRunes" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+text = "-"
+script = ExtResource("8_rune_slot")
+skill_slot_index = 0
+rune_socket_index = 2
+
+[node name="ActiveGBranch" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/ActiveRow"]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SkillSlot1" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/ActiveRow/ActiveGBranch" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 62)
+layout_mode = 2
+text = "G 武器槽
+空"
+script = ExtResource("7_skill_slot")
+slot_index = 1
+
+[node name="ActiveGRunes" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/ActiveRow/ActiveGBranch"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 4
+
+[node name="RuneSlot1_0" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/ActiveRow/ActiveGBranch/ActiveGRunes" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+text = "-"
+script = ExtResource("8_rune_slot")
+skill_slot_index = 1
+rune_socket_index = 0
+
+[node name="RuneSlot1_1" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/ActiveRow/ActiveGBranch/ActiveGRunes" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+text = "-"
+script = ExtResource("8_rune_slot")
+skill_slot_index = 1
+rune_socket_index = 1
+
+[node name="RuneSlot1_2" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/ActiveRow/ActiveGBranch/ActiveGRunes" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+text = "-"
+script = ExtResource("8_rune_slot")
+skill_slot_index = 1
+rune_socket_index = 2
+
+[node name="PassiveRow" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="PassiveBranch1" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow"]
+custom_minimum_size = Vector2(92, 0)
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SkillSlot2" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch1" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 62)
+layout_mode = 2
+text = "被动槽 1
+空"
+script = ExtResource("7_skill_slot")
+slot_index = 2
+
+[node name="PassiveRunes1" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch1"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 4
+
+[node name="RuneSlot2_0" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch1/PassiveRunes1" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "-"
+script = ExtResource("8_rune_slot")
+skill_slot_index = 2
+rune_socket_index = 0
+
+[node name="RuneSlot2_1" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch1/PassiveRunes1" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "-"
+script = ExtResource("8_rune_slot")
+skill_slot_index = 2
+rune_socket_index = 1
+
+[node name="PassiveBranch2" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow"]
+custom_minimum_size = Vector2(92, 0)
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SkillSlot3" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch2" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 62)
+layout_mode = 2
+text = "被动槽 2
+空"
+script = ExtResource("7_skill_slot")
+slot_index = 3
+
+[node name="PassiveRunes2" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch2"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 4
+
+[node name="RuneSlot3_0" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch2/PassiveRunes2" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "-"
+script = ExtResource("8_rune_slot")
+skill_slot_index = 3
+rune_socket_index = 0
+
+[node name="RuneSlot3_1" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch2/PassiveRunes2" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "-"
+script = ExtResource("8_rune_slot")
+skill_slot_index = 3
+rune_socket_index = 1
+
+[node name="PassiveBranch3" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow"]
+custom_minimum_size = Vector2(92, 0)
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SkillSlot4" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch3" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 62)
+layout_mode = 2
+text = "被动槽 3
+空"
+script = ExtResource("7_skill_slot")
+slot_index = 4
+
+[node name="PassiveRunes3" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch3"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 4
+
+[node name="RuneSlot4_0" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch3/PassiveRunes3" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "-"
+script = ExtResource("8_rune_slot")
+skill_slot_index = 4
+rune_socket_index = 0
+
+[node name="RuneSlot4_1" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch3/PassiveRunes3" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "-"
+script = ExtResource("8_rune_slot")
+skill_slot_index = 4
+rune_socket_index = 1
+
+[node name="PassiveBranch4" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow"]
+custom_minimum_size = Vector2(92, 0)
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SkillSlot5" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch4" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 62)
+layout_mode = 2
+text = "被动槽 4
+空"
+script = ExtResource("7_skill_slot")
+slot_index = 5
+
+[node name="PassiveRunes4" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch4"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 4
+
+[node name="RuneSlot5_0" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch4/PassiveRunes4" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "-"
+script = ExtResource("8_rune_slot")
+skill_slot_index = 5
+rune_socket_index = 0
+
+[node name="RuneSlot5_1" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch4/PassiveRunes4" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "-"
+script = ExtResource("8_rune_slot")
+skill_slot_index = 5
+rune_socket_index = 1
+
+[node name="PassiveBranch5" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow"]
+custom_minimum_size = Vector2(92, 0)
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SkillSlot6" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch5" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 62)
+layout_mode = 2
+text = "被动槽 5
+空"
+script = ExtResource("7_skill_slot")
+slot_index = 6
+
+[node name="PassiveRunes5" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch5"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 4
+
+[node name="RuneSlot6_0" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch5/PassiveRunes5" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "-"
+script = ExtResource("8_rune_slot")
+skill_slot_index = 6
+rune_socket_index = 0
+
+[node name="RuneSlot6_1" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch5/PassiveRunes5" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "-"
+script = ExtResource("8_rune_slot")
+skill_slot_index = 6
+rune_socket_index = 1
+
+[node name="RuneWarehousePanel" type="PanelContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="RuneWarehouseBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/RuneWarehousePanel"]
+layout_mode = 2
+
+[node name="RuneWarehouseTitle" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/RuneWarehousePanel/RuneWarehouseBox"]
+layout_mode = 2
+text = "符文仓库"
+horizontal_alignment = 1
+
+[node name="RuneWarehouseList" type="ItemList" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/RuneWarehousePanel/RuneWarehouseBox" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("3_drag")
+inventory_source = "rune_warehouse"
+
+[node name="AvailableSkillsList" type="ItemList" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+script = ExtResource("6_skill_drag")
+drag_source = "available_skills"
+
+[node name="SkillPanel" type="PanelContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout"]
+layout_mode = 2
+size_flags_horizontal = 2
+
+[node name="SkillBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SkillDetails" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPanel/SkillBox" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+size_flags_vertical = 3
+text = "选择技能"
+autowrap_mode = 2
+
+[node name="SkillButtons" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPanel/SkillBox"]
+layout_mode = 2
+
+[node name="BindSkillBtn" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPanel/SkillBox/SkillButtons" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
+text = "绑定"
+
+[node name="UnbindSkillBtn" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPanel/SkillBox/SkillButtons" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
+text = "解绑"
+[node name="仓库" type="MarginContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs"]
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="WarehouseLayout" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/仓库"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="CarriedPanel" type="PanelContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/仓库/WarehouseLayout"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CarriedBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/仓库/WarehouseLayout/CarriedPanel"]
+layout_mode = 2
+
+[node name="CarriedTitle" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/仓库/WarehouseLayout/CarriedPanel/CarriedBox"]
+layout_mode = 2
+text = "随身物品"
+horizontal_alignment = 1
+
+[node name="WarehouseCarriedList" type="ItemList" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/仓库/WarehouseLayout/CarriedPanel/CarriedBox" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("3_drag")
+inventory_source = "items"
+
+[node name="WarehousePanel" type="PanelContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/仓库/WarehouseLayout"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="WarehouseBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/仓库/WarehouseLayout/WarehousePanel"]
+layout_mode = 2
+
+[node name="WarehouseTitle" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/仓库/WarehouseLayout/WarehousePanel/WarehouseBox"]
+layout_mode = 2
+text = "仓库"
+horizontal_alignment = 1
+
+[node name="WarehouseList" type="ItemList" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/仓库/WarehouseLayout/WarehousePanel/WarehouseBox" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("3_drag")
+inventory_source = "warehouse"

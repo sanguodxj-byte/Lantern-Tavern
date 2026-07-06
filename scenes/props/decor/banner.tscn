@@ -1,7 +1,9 @@
-[gd_scene format=3 uid="uid://jyro4ffrsice"]
+[gd_scene load_steps=2 format=3 uid="uid://jyro4ffrsice"]
 
-[ext_resource type="PackedScene" uid="uid://bbpds5w8e1cwd" path="res://assets/meshes/props/chair/sign.glb" id="1_qb6ml"]
+[ext_resource type="Script" path="res://scenes/props/voxel_prop.gd" id="1_voxel"]
 
-[node name="Banner" type="Node3D" unique_id=2043201811]
-
-[node name="sign" parent="." unique_id=2032261069 instance=ExtResource("1_qb6ml")]
+[node name="Banner" type="StaticBody3D"]
+script = ExtResource("1_voxel")
+prop_kind = "banner"
+metadata/topdown_kind = "terrain_feature"
+metadata/decor_kind = "banner"

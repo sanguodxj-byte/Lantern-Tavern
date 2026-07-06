@@ -1,0 +1,262 @@
+[gd_scene load_steps=18 format=3 uid="uid://drpcp1oupcw37"]
+
+[ext_resource type="Script" uid="uid://ddh8wrgo3laeq" path="res://scenes/intro/new_game_intro.gd" id="1_intro"]
+[ext_resource type="PackedScene" uid="uid://tktvvhry0jfp" path="res://scenes/door/door.tscn" id="2_door"]
+[ext_resource type="Shader" uid="uid://0a424uwj7eya" path="res://assets/shaders/blur_overlay.gdshader" id="3_shader"]
+[ext_resource type="PackedScene" uid="uid://mwe5owh0wha7" path="res://assets/models/environment/environment_tutorial_cart_wreck.glb" id="4_cart"]
+[ext_resource type="PackedScene" uid="uid://f2jvdhhr8fd3" path="res://assets/models/environment/environment_tutorial_forest_cluster.glb" id="5_forest"]
+[ext_resource type="PackedScene" uid="uid://08vpj4svvvfk" path="res://assets/models/environment/environment_tutorial_entrance_ruins.glb" id="6_ruins"]
+[ext_resource type="PackedScene" uid="uid://dynp46f6e5ar3" path="res://assets/models/environment/environment_tutorial_road_blocker.glb" id="7_blocker"]
+[ext_resource type="PackedScene" uid="uid://ww8hovdjir8v" path="res://scenes/props/torch/torch.tscn" id="8_torch"]
+
+[sub_resource type="ProceduralSkyMaterial" id="SkyMat_sky"]
+sky_top_color = Color(0.04, 0.07, 0.12, 1)
+sky_horizon_color = Color(0.08, 0.15, 0.12, 1)
+ground_horizon_color = Color(0.05, 0.09, 0.06, 1)
+ground_bottom_color = Color(0.02, 0.04, 0.03, 1)
+
+[sub_resource type="Sky" id="Sky_intro"]
+sky_material = SubResource("SkyMat_sky")
+
+[sub_resource type="Environment" id="Env_intro"]
+background_mode = 2
+sky = SubResource("Sky_intro")
+ambient_light_source = 2
+ambient_light_color = Color(0.13, 0.18, 0.16, 1)
+ambient_light_energy = 0.7
+tonemap_mode = 3
+fog_enabled = true
+fog_light_color = Color(0.08, 0.15, 0.11, 1)
+fog_density = 0.012
+
+[sub_resource type="StandardMaterial3D" id="Mat_floor"]
+albedo_color = Color(0.18, 0.16, 0.12, 1)
+roughness = 0.96
+
+[sub_resource type="StandardMaterial3D" id="Mat_shoulder"]
+albedo_color = Color(0.09, 0.14, 0.08, 1)
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="Mat_rock"]
+albedo_color = Color(0.25, 0.26, 0.29, 1)
+roughness = 0.98
+
+[sub_resource type="BoxMesh" id="Mesh_floor"]
+size = Vector3(6.8, 0.18, 4.2)
+
+[sub_resource type="BoxMesh" id="Mesh_shoulder"]
+size = Vector3(4.2, 0.12, 4.2)
+
+[sub_resource type="SphereMesh" id="Mesh_rock"]
+radius = 0.72
+height = 0.9
+
+[sub_resource type="BoxMesh" id="BoxMesh_cart"]
+size = Vector3(2.8, 1.2, 5)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_blink"]
+shader = ExtResource("3_shader")
+shader_parameter/blur_size = 6.0
+
+[node name="NewGameIntro" type="Node3D"]
+script = ExtResource("1_intro")
+
+[node name="IntroWorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_intro")
+
+[node name="IntroMoonlight" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.913545, 0.20673, -0.353429, 0, 0.863762, 0.503774, 0.406737, -0.460008, 0.789103, 0, 0, 0)
+light_color = Color(0.58, 0.66, 0.78, 1)
+light_energy = 0.8
+shadow_enabled = true
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+transform = Transform3D(8, 0, 0, 0, 0.1, 0, 0, 0, 20, 0, -0.05, 0)
+mesh = SubResource("BoxMesh_cart")
+
+[node name="PlayerSpawn" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.684712, 25.479599)
+
+[node name="LeftGapMarker" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 2)
+
+[node name="SetDressing" type="Node3D" parent="."]
+
+[node name="FloorTile0" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.09, 7)
+mesh = SubResource("Mesh_floor")
+material_override = SubResource("Mat_floor")
+
+[node name="FloorTile1" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.09, 3)
+mesh = SubResource("Mesh_floor")
+material_override = SubResource("Mat_floor")
+
+[node name="FloorTile2" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.09, -1)
+mesh = SubResource("Mesh_floor")
+material_override = SubResource("Mat_floor")
+
+[node name="FloorTile3" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.09, -5)
+mesh = SubResource("Mesh_floor")
+material_override = SubResource("Mat_floor")
+
+[node name="FloorTile4" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.09, -9)
+mesh = SubResource("Mesh_floor")
+material_override = SubResource("Mat_floor")
+
+[node name="FloorTile5" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.09, -13)
+mesh = SubResource("Mesh_floor")
+material_override = SubResource("Mat_floor")
+
+[node name="FloorTile6" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.09, -17)
+mesh = SubResource("Mesh_floor")
+material_override = SubResource("Mat_floor")
+
+[node name="ShoulderL0" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.4, -0.06, 7)
+mesh = SubResource("Mesh_shoulder")
+material_override = SubResource("Mat_shoulder")
+
+[node name="ShoulderL1" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.4, -0.06, 3)
+mesh = SubResource("Mesh_shoulder")
+material_override = SubResource("Mat_shoulder")
+
+[node name="ShoulderL2" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.4, -0.06, -1)
+mesh = SubResource("Mesh_shoulder")
+material_override = SubResource("Mat_shoulder")
+
+[node name="ShoulderL3" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.4, -0.06, -5)
+mesh = SubResource("Mesh_shoulder")
+material_override = SubResource("Mat_shoulder")
+
+[node name="ShoulderL6" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.4, -0.06, -17)
+mesh = SubResource("Mesh_shoulder")
+material_override = SubResource("Mat_shoulder")
+
+[node name="ShoulderR0" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.4, -0.06, 7)
+mesh = SubResource("Mesh_shoulder")
+material_override = SubResource("Mat_shoulder")
+
+[node name="ShoulderR1" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.4, -0.06, 3)
+mesh = SubResource("Mesh_shoulder")
+material_override = SubResource("Mat_shoulder")
+
+[node name="ShoulderR2" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.4, -0.06, -1)
+mesh = SubResource("Mesh_shoulder")
+material_override = SubResource("Mat_shoulder")
+
+[node name="ShoulderR3" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.4, -0.06, -5)
+mesh = SubResource("Mesh_shoulder")
+material_override = SubResource("Mat_shoulder")
+
+[node name="ShoulderR4" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.4, -0.06, -9)
+mesh = SubResource("Mesh_shoulder")
+material_override = SubResource("Mat_shoulder")
+
+[node name="ShoulderR5" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.4, -0.06, -13)
+mesh = SubResource("Mesh_shoulder")
+material_override = SubResource("Mat_shoulder")
+
+[node name="ShoulderR6" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.4, -0.06, -17)
+mesh = SubResource("Mesh_shoulder")
+material_override = SubResource("Mat_shoulder")
+
+[node name="CartWreck" parent="SetDressing" instance=ExtResource("4_cart")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 2.2)
+
+[node name="ForestL0" parent="SetDressing" instance=ExtResource("5_forest")]
+transform = Transform3D(0.970296, 0, 0.241922, 0, 1, 0, -0.241922, 0, 0.970296, -6.5, 0, 8)
+
+[node name="ForestL1" parent="SetDressing" instance=ExtResource("5_forest")]
+transform = Transform3D(1.018812, 0, -0.254006, 0, 1, 0, 0.254006, 0, 1.018812, -6.8, 0, 4)
+
+[node name="ForestL2" parent="SetDressing" instance=ExtResource("5_forest")]
+transform = Transform3D(1.067742, 0, 0.188265, 0, 1, 0, -0.188265, 0, 1.067742, -6, 0, -4.8)
+transform = Transform3D(1.067742, 0, -0.171079, 0, 1, 0, 0.171079, 0, 1.067742, -6, 0, -4.8)
+
+[node name="ForestL3" parent="SetDressing" instance=ExtResource("5_forest")]
+transform = Transform3D(0.951061, 0, -0.309017, 0, 1, 0, 0.309017, 0, 0.951061, -6.3, 0, -8.6)
+
+[node name="ForestR0" parent="SetDressing" instance=ExtResource("5_forest")]
+transform = Transform3D(0.961262, 0, -0.275637, 0, 1, 0, 0.275637, 0, 0.961262, 6.4, 0, 8)
+
+[node name="ForestR1" parent="SetDressing" instance=ExtResource("5_forest")]
+transform = Transform3D(1.067471, 0, 0.168756, 0, 1, 0, -0.168756, 0, 1.067471, 6.9, 0, 4.1)
+
+[node name="ForestR2" parent="SetDressing" instance=ExtResource("5_forest")]
+transform = Transform3D(0.981627, 0, -0.190809, 0, 1, 0, 0.190809, 0, 0.981627, 6.6, 0, 0.2)
+
+[node name="ForestR3" parent="SetDressing" instance=ExtResource("5_forest")]
+transform = Transform3D(1.007159, 0, 0.247148, 0, 1, 0, -0.247148, 0, 1.007159, 6.7, 0, -3.8)
+
+[node name="ForestR4" parent="SetDressing" instance=ExtResource("5_forest")]
+transform = Transform3D(0.978148, 0, -0.207912, 0, 1, 0, 0.207912, 0, 0.978148, 6.3, 0, -7.7)
+
+[node name="Boulder0" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1.3, 0, 0, 0, 0.75, 0, 0, 0, 1, -3.6, 0.45, -0.7)
+mesh = SubResource("Mesh_rock")
+material_override = SubResource("Mat_rock")
+
+[node name="Boulder1" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1.3, 0, 0, 0, 0.75, 0, 0, 0, 1, -3, 0.38, -2.1)
+mesh = SubResource("Mesh_rock")
+material_override = SubResource("Mat_rock")
+
+[node name="Boulder2" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1.3, 0, 0, 0, 0.75, 0, 0, 0, 1, 3.8, 0.42, 0.4)
+mesh = SubResource("Mesh_rock")
+material_override = SubResource("Mat_rock")
+
+[node name="Boulder3" type="MeshInstance3D" parent="SetDressing"]
+transform = Transform3D(1.3, 0, 0, 0, 0.75, 0, 0, 0, 1, 4.1, 0.35, -1.5)
+mesh = SubResource("Mesh_rock")
+material_override = SubResource("Mat_rock")
+
+[node name="EntranceRuins" parent="SetDressing" instance=ExtResource("6_ruins")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -8, 0, -0.8)
+
+[node name="RoadBlocker0" parent="SetDressing" instance=ExtResource("7_blocker")]
+transform = Transform3D(0.961262, 0, 0.275637, 0, 1, 0, -0.275637, 0, 0.961262, 3.9, 0, 3.1)
+
+[node name="RoadBlocker1" parent="SetDressing" instance=ExtResource("7_blocker")]
+transform = Transform3D(0.970296, 0, -0.241922, 0, 1, 0, 0.241922, 0, 0.970296, 4.6, 0, -2.7)
+
+[node name="RoadBlocker2" parent="SetDressing" instance=ExtResource("7_blocker")]
+transform = Transform3D(0.927184, 0, -0.374607, 0, 1, 0, 0.374607, 0, 0.927184, -3.9, 0, 5.4)
+
+[node name="TorchL" parent="SetDressing" instance=ExtResource("8_torch")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -9.7, 1.5, -1.6)
+
+[node name="TorchR" parent="SetDressing" instance=ExtResource("8_torch")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -6.3, 1.5, -1.6)
+
+[node name="IntroDoor" parent="." instance=ExtResource("2_door")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, -2)
+tutorial_kick_prompt = ""
+requires_kick_to_open = true
+
+[node name="IntroCanvas" type="CanvasLayer" parent="."]
+layer = 20
+
+[node name="BlinkOverlay" type="ColorRect" parent="IntroCanvas"]
+material = SubResource("ShaderMaterial_blink")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 1)

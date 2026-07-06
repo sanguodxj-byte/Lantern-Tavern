@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://801uvv41lf28" path="res://assets/meshes/characters/character.glb" id="2_t61fv"]
 [ext_resource type="PackedScene" uid="uid://dmfg86jn8qjol" path="res://scenes/characters/component/equipment_component.tscn" id="3_hss88"]
 [ext_resource type="PackedScene" uid="uid://d2mdkf8ja46kr" path="res://scenes/characters/component/health_component.tscn" id="4_hss88"]
+[ext_resource type="PackedScene" uid="uid://cbvq8m4p7x0vw" path="res://scenes/characters/player/view_model.tscn" id="5_vm"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_bcx1r"]
 margin = 0.3
@@ -32,18 +33,22 @@ unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1.0000002, 0, 0, 0, 1.0000001, 0, 1.5, -0.47325873)
 current = true
 near = 0.001
+cull_mask = 1
 script = ExtResource("2_qd3e3")
 
 [node name="SelectRaycast" type="RayCast3D" parent="MainCamera" unique_id=1304238975]
 unique_name_in_owner = true
 target_position = Vector3(0, 0, -2)
-collision_mask = 8
+collision_mask = 72
 
 [node name="KickRaycast" type="RayCast3D" parent="MainCamera" unique_id=786304336]
 unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
 target_position = Vector3(0, 0, -1.5)
 collision_mask = 36
+
+[node name="ViewModel" parent="MainCamera" unique_id=990011001 instance=ExtResource("5_vm")]
+unique_name_in_owner = true
 
 [node name="character" parent="." unique_id=1982335508 instance=ExtResource("2_t61fv")]
 

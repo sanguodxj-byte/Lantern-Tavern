@@ -10,13 +10,13 @@ const ROTATION_SPEED := 10.0
 @onready var player_detection_area: Area3D = %PlayerDetectionArea
 
 func _ready() -> void:
+	PhysicsSetup.setup_rigidbody(self, PhysicsSetup.LAYER_PICKABLE)
+	PhysicsSetup.setup_trigger(player_detection_area)
 	var material := mesh.get_active_material(0).duplicate() as StandardMaterial3D
-	material.albedo_color = Door.COLOR_MAP[color]
-	material.emission_enabled = true
-	material.emission = Door.COLOR_MAP[color]
-	material.emission_energy_multiplier = 3.0
+	material.albedo_color = Door.COLOR_MAP.get(color, Color.WHITE)
+	material.emission_enabled = false
 	mesh.set_surface_override_material(0, material)
-	omni_light_3d.light_color = Door.COLOR_MAP[color]
+	omni_light_3d.visible = false
 	angular_velocity = Vector3.UP * ROTATION_SPEED
 	player_detection_area.body_entered.connect(on_player_entered)
 

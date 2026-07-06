@@ -1,0 +1,254 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/combat_hud.gd" id="1_hud"]
+[ext_resource type="Script" path="res://scenes/ui/minimap.gd" id="2_mini"]
+[ext_resource type="Script" path="res://scenes/ui/pixel_bar.gd" id="3_pbar"]
+[ext_resource type="Script" path="res://scenes/ui/combat_log.gd" id="4_clog"]
+[ext_resource type="Script" path="res://scenes/ui/enemy_health_bar.gd" id="5_ehpb"]
+[ext_resource type="Script" path="res://scenes/ui/crosshair.gd" id="6_cross"]
+[ext_resource type="FontFile" path="res://assets/fonts/ark-pixel-12px-proportional-zh_cn.ttf" id="7_font"]
+[ext_resource type="PackedScene" uid="uid://dbh0cjexla54w" path="res://scenes/ui/stat_indicator.tscn" id="8_stat"]
+[ext_resource type="PackedScene" uid="uid://bes2gjspevsei" path="res://scenes/ui/key_texture.tscn" id="9_key"]
+[ext_resource type="Texture2D" uid="uid://b28rngnslxysr" path="res://assets/textures/tick.png" id="10_tick"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_time_panel"]
+bg_color = Color(0.03529412, 0.02745098, 0.05490196, 0.88)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.86, 0.72, 0.36, 0.95)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_erosion_panel"]
+bg_color = Color(0.055, 0.02, 0.07, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.66, 0.24, 0.84, 0.95)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[node name="CombatHUD" type="CanvasLayer"]
+layer = 15
+script = ExtResource("1_hud")
+
+[node name="Crosshair" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("6_cross")
+
+[node name="MinimapContainer" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -196.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = 244.0
+grow_horizontal = 0
+
+[node name="TimePanel" type="Panel" parent="MinimapContainer"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 24.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_time_panel")
+
+[node name="TimeLabel" type="Label" parent="MinimapContainer/TimePanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 0.88, 0.48, 1)
+theme_override_fonts/font = ExtResource("7_font")
+theme_override_font_sizes/font_size = 18
+text = "10:00 / 18:00"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Minimap" type="Control" parent="MinimapContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 28.0
+offset_right = 0.0
+offset_bottom = -28.0
+script = ExtResource("2_mini")
+
+[node name="DarkErosionPanel" type="Panel" parent="MinimapContainer"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -24.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_erosion_panel")
+
+[node name="DarkErosionLabel" type="Label" parent="MinimapContainer/DarkErosionPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.92, 0.64, 1, 1)
+theme_override_fonts/font = ExtResource("7_font")
+theme_override_font_sizes/font_size = 17
+text = "暗蚀 000%  稳定"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TopLeft" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 372.0
+offset_bottom = 168.0
+
+[node name="CombatLog" type="Control" parent="TopLeft"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("4_clog")
+
+[node name="TopCenter" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -140.0
+offset_top = 8.0
+offset_right = 140.0
+offset_bottom = 60.0
+grow_horizontal = 2
+
+[node name="EnemyHealthBar" type="Control" parent="TopCenter"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("5_ehpb")
+
+[node name="BottomLeft" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -76.0
+offset_right = 212.0
+offset_bottom = -12.0
+grow_vertical = 0
+
+[node name="HPBar" type="Control" parent="BottomLeft"]
+layout_mode = 1
+anchors_preset = 0
+offset_top = 0.0
+offset_right = 200.0
+offset_bottom = 28.0
+script = ExtResource("3_pbar")
+bar_color = Color(0.85, 0.15, 0.12, 1)
+
+[node name="Label" type="Label" parent="BottomLeft/HPBar"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = 192.0
+offset_bottom = 22.0
+text = "HP  100 / 100"
+
+[node name="MPBar" type="Control" parent="BottomLeft"]
+layout_mode = 1
+anchors_preset = 0
+offset_top = 32.0
+offset_right = 200.0
+offset_bottom = 60.0
+script = ExtResource("3_pbar")
+bar_color = Color(0.2, 0.35, 0.9, 1)
+
+[node name="Label" type="Label" parent="BottomLeft/MPBar"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = 192.0
+offset_bottom = 22.0
+text = "MP  100 / 100"
+
+[node name="BottomLeftExtras" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -150.0
+offset_right = 220.0
+offset_bottom = -80.0
+grow_vertical = 0
+
+[node name="WeaponIcon" type="TextureRect" parent="BottomLeftExtras"]
+visible = false
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 32.0
+offset_bottom = 32.0
+texture = ExtResource("10_tick")
+
+[node name="WeaponIndicator" parent="BottomLeftExtras" instance=ExtResource("8_stat")]
+visible = false
+offset_left = 40.0
+offset_top = 8.0
+offset_right = 208.0
+offset_bottom = 24.0
+
+[node name="ShieldIcon" type="TextureRect" parent="BottomLeftExtras"]
+visible = false
+offset_left = 0.0
+offset_top = 36.0
+offset_right = 32.0
+offset_bottom = 68.0
+texture = ExtResource("10_tick")
+
+[node name="ShieldIndicator" parent="BottomLeftExtras" instance=ExtResource("8_stat")]
+visible = false
+offset_left = 40.0
+offset_top = 44.0
+offset_right = 208.0
+offset_bottom = 60.0
+
+[node name="KeyContainer" type="HBoxContainer" parent="."]
+layout_direction = 3
+anchors_preset = 3
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -240.0
+offset_top = -60.0
+offset_right = -12.0
+offset_bottom = -12.0
+

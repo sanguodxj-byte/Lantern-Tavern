@@ -4,8 +4,8 @@ extends Control
 ## 三大操作：下料 / 开缸取酒 / 选择陈酿。
 ## 挂载到 tavern_ui.tscn 的 BrewingPanel 节点区域。
 
-const BD := preload("res://globals/brewing_data.gd")
-const FS := preload("res://globals/fermentation_system.gd")
+const BD := preload("res://globals/tavern/brewing_data.gd")
+const FS := preload("res://globals/tavern/fermentation_system.gd")
 
 # UI 节点引用（由 _ready 动态查找，避免硬编码路径导致场景结构变动时断裂）
 var keg_status_list: ItemList

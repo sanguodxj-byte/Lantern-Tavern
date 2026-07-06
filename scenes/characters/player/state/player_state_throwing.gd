@@ -17,5 +17,7 @@ func _physics_process(delta: float) -> void:
 
 func on_animation_finished(_anim_name: String) -> void:
 	if not has_thrown_furniture and player.equipment.has_weapon():
-		player.equipment.throw_weapon()
+		# 朝准心方向投掷武器
+		var aim_point := player.get_aim_point()
+		player.equipment.throw_weapon(false, aim_point)
 	transition_state(Player.State.MOVING)

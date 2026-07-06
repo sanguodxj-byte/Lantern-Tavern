@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://clmv5y0rh9a7p"]
 
 [ext_resource type="Script" path="res://scenes/ui/character_panel.gd" id="1_cpanel"]
-[ext_resource type="Theme" uid="uid://clmv5y0rh9a7o" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
+[ext_resource type="Theme" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
 
 [node name="CharacterPanel" type="Control"]
 visible = false
@@ -45,7 +45,7 @@ layout_mode = 2
 [node name="Title" type="Label" parent="PanelContainer/VBoxContainer/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 26
+theme_override_font_sizes/font_size = 34
 text = " ADVENTURER INVENTORY & STATUS"
 
 [node name="ReturnBtn" type="Button" parent="PanelContainer/VBoxContainer/Header"]
@@ -122,30 +122,36 @@ layout_mode = 2
 size_flags_horizontal = 3
 stretch = true
 
-[node name="EqSubViewport" type="SubViewport" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/ModelViewer" unique_name_in_owner = true]
+[node name="EqSubViewport" type="SubViewport" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/ModelViewer"]
 unique_name_in_owner = true
 own_world_3d = true
 handle_input_locally = false
-size = Vector2i(304, 498)
-render_target_update_mode = 4
-unique_name_in_owner = true
-own_world_3d = true
-handle_input_locally = false
-size = Vector2i(304, 498)
+size = Vector2i(304, 200)
 render_target_update_mode = 4
 
-[node name="EqCameraPivot" type="Node3D" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/ModelViewer/EqSubViewport" unique_name_in_owner = true]
+[node name="EqCameraPivot" type="Node3D" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/ModelViewer/EqSubViewport"]
 unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 0.939693, 0.34202, 0, -0.34202, 0.939693, 0, 0, 0)
 
 [node name="Camera3D" type="Camera3D" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/ModelViewer/EqSubViewport/EqCameraPivot"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.8)
 
-[node name="EqLight" type="DirectionalLight3D" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/ModelViewer/EqSubViewport" unique_name_in_owner = true]
+[node name="EqLight" type="DirectionalLight3D" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/ModelViewer/EqSubViewport"]
 unique_name_in_owner = true
 transform = Transform3D(0.866025, -0.25, 0.433013, 0, 0.866025, 0.5, -0.5, -0.433013, 0.75, 0, 2, 0)
 light_color = Color(1, 0.768627, 0.521569, 1)
 light_energy = 2.0
+
+[node name="BattleStatsPanel" type="ScrollContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="BattleStatsContainer" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BattleStatsPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
 
 [node name="RightColumn" type="TabContainer" parent="PanelContainer/VBoxContainer/MainLayout"]
 layout_mode = 2
@@ -242,7 +248,7 @@ theme_override_constants/separation = 12
 
 [node name="Label" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightColumn/属性/HBox/DetailsPanel/VBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 26
 text = "Hero Specifications"
 
 [node name="Grid" type="GridContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightColumn/属性/HBox/DetailsPanel/VBox"]
@@ -319,7 +325,7 @@ theme_override_constants/separation = 12
 
 [node name="Label" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightColumn/属性/HBox/DescPanel/VBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 26
 text = "Status Lore"
 
 [node name="DescVal" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightColumn/属性/HBox/DescPanel/VBox" unique_name_in_owner = true]
@@ -364,3 +370,26 @@ layout_mode = 2
 size_flags_vertical = 3
 text = "Select a skill to inspect its parameters..."
 autowrap_mode = 2
+
+[node name="熟练度" type="MarginContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightColumn"]
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+metadata/_tab_index = 3
+
+[node name="VBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightColumn/熟练度"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ProfLabel" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightColumn/熟练度/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Weapon & School Proficiency"
+
+[node name="ProfList" type="ItemList" parent="PanelContainer/VBoxContainer/MainLayout/RightColumn/熟练度/VBox" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3

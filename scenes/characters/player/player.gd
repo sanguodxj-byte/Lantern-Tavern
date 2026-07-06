@@ -6,14 +6,21 @@ const GROUND_FRICTION := 15.0
 const MAX_ANGLE_LOOK_UP := deg_to_rad(70)
 const MAX_ANGLE_LOOK_DOWN := deg_to_rad(-70)
 # 技能/战斗桥接预加载（_on_skill_released 分发用）
-const AS_DB := preload("res://globals/action_skills.gd")
-const SD_DB := preload("res://globals/skill_data.gd")
-const CB_LIB := preload("res://globals/combat_bridge.gd")
-const CE_LIB := preload("res://globals/combat_engine.gd")
-# 夜晚营业阶段酿酒台近距离检测（BrewingStation_Table @ -5,0,-4）
-const BREWING_STATION_POS := Vector3(-5.0, 0.0, -4.0)
-const BREWING_STATION_RANGE := 2.5
-
+const AS_DB := preload("res://globals/combat/action_skills.gd")
+const SD_DB := preload("res://globals/combat/skill_data.gd")
+const CB_LIB := preload("res://globals/combat/combat_bridge.gd")
+const CE_LIB := preload("res://globals/combat/combat_engine.gd")
+const DETAIL_POPUP := preload("res://scenes/ui/equipment_detail_popup.gd")
+const PLAYER_STATE_AIMING := preload("res://scenes/characters/player/state/player_state_aiming.gd")
+const PLAYER_STATE_ATTACK_PREPARING := preload("res://scenes/characters/player/state/player_state_attack_preparing.gd")
+const PLAYER_STATE_SHOOTING := preload("res://scenes/characters/player/state/player_state_shooting.gd")
+const PLAYER_VISION_LIGHT_NAME := "PlayerVisionLight"
+const HITBOX_BUILDER := preload("res://globals/combat/combat_hitbox_builder.gd")
+const SKILL_DISPATCHER := preload("res://scenes/characters/player/player_skill_dispatcher.gd")
+const Service := preload("res://globals/core/service.gd")
+const CHEST_LOOT_PANEL_SCENE := preload("res://scenes/ui/chest_loot_panel.tscn")
+const COMBAT_BUFF_COMPONENT := preload("res://scenes/characters/component/combat_buff_component.gd")
+const AIM_HELPER := preload("res://scenes/characters/player/player_aim_helper.gd")
 @export var acceleration: float
 @export var jump_force: float
 @export var gravity: float
@@ -31,125 +38,211 @@ const BREWING_STATION_RANGE := 2.5
 @onready var select_raycast: RayCast3D = %SelectRaycast
 @onready var vocal_audio_stream_player: AudioStreamPlayer3D = %VocalAudioStreamPlayer
 @onready var weapon_reach_raycast: RayCast3D = %WeaponReachRaycast
+@onready var view_model: Node3D = %ViewModel
 
-enum State {MOVING, PICKING_UP, THROWING, SLASHING, KICKING, BLOCKING, HURT, DYING, GRABBING, CHARGING}
+## 角色身体渲染层（第 10 层），主摄像机 cull_mask=1 不渲染此层
+const CHARACTER_BODY_RENDER_LAYER := 1 << 9
+## 主摄像机渲染层（仅第 1 层）
+const CAMERA_RENDER_MASK := 1
+
+enum State {MOVING, PICKING_UP, THROWING, ATTACK_PREPARING, SLASHING, SHOOTING, AIMING, KICKING, BLOCKING, HURT, DYING, GRABBING, CHARGING}
 
 var chest_interact_time : float = 0.0
 const CHEST_OPEN_DURATION := 5.0
 
+var movement_input_enabled := true
+var interaction_input_enabled := true
+var combat_input_enabled := true
+
 var current_possible_action : String = ""
 var current_pickable_focused_item : PickableItem = null
+## 上一次交互检测命中的 collider，用于跳过未变时的字符串构造与信号发射
+var _last_possible_action_collider: Object = null
 var input_dir := Vector2.ZERO
 var pushback_force := Vector3.ZERO
 var state: State
 var state_node: PlayerState
+## 战斗 buff 管理器（从 player.gd 提取为独立组件）
+var buffs := COMBAT_BUFF_COMPONENT.new()
+
+## 兼容性：combat_buffs 字典直接访问（委托给 buffs 组件）
+var combat_buffs: Dictionary:
+	get:
+		return buffs.get_buffs_dict()
+var is_weapon_aiming := false
+var default_camera_fov := 75.0
+## 瞄准时目标 FOV（望远镜效果），在 _process 中平滑过渡
+var target_camera_fov := 75.0
+## 瞄准 FOV 缩减量（度数越大缩放越强）
+const AIM_FOV_REDUCTION := 25.0
+## 瞄准时鼠标灵敏度倍率（越低越精细）
+const AIM_SENSITIVITY_MULT := 0.35
+## FOV 平滑过渡速度
+const FOV_LERP_SPEED := 12.0
+
+## 当前打开的宝箱战利品面板（null 表示未打开）
+var _chest_loot_panel: Node = null
 
 func _ready() -> void:
+	PhysicsSetup.setup_player(self)
+	if has_meta("equipment_preview"):
+		movement_input_enabled = false
+		interaction_input_enabled = false
+		combat_input_enabled = false
+		_setup_player_light()
+		return
 	if not OS.has_feature("web"):
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	if camera != null:
+		default_camera_fov = camera.fov
+		target_camera_fov = camera.fov
+	# 隐藏角色身体：将角色模型网格设到第 10 渲染层（摄像机 cull_mask=1 不渲染）
+	# 第一人称视角下角色自身身体不可见，避免遮挡武器视图模型
+	_hide_character_body()
+	# 监听武器变更：拾取/切换武器后重新隐藏角色手上武器网格 + 同步 ViewModel
+	GameEvents.weapon_changed.connect(_on_weapon_changed_for_view)
 	var gs = get_node_or_null("/root/GameState")
 	if gs:
 		gs.register_player(self)
 	GameEvents.player_spawned.emit(self)
 	GameEvents.current_keys_changed.connect(on_current_keys_changed)
+	GameEvents.chest_opened.connect(_on_chest_opened)
 	# 连接 SkillRuntime 信号
-	var sr: Node = Engine.get_main_loop().root.get_node_or_null("SkillRuntime")
+	var sr: Node = Service.skill_runtime()
 	if sr != null:
 		sr.skill_released.connect(_on_skill_released)
 	switch_state(State.MOVING)
 	# 角色自身发光——地牢极暗时照亮周围
 	_setup_player_light()
+	# 初始同步：如果已有武器，直接推送到 ViewModel
+	_sync_view_model_weapon()
+
+func _hide_character_body() -> void:
+	var character_node := get_node_or_null("character")
+	if character_node == null:
+		return
+	_set_render_layer_recursive(character_node, CHARACTER_BODY_RENDER_LAYER)
+
+## 武器变更回调：重新隐藏角色手上新创建的武器网格 + 同步 ViewModel
+func _on_weapon_changed_for_view(_weapon_data: Variant) -> void:
+	# 拾取/切换武器后，EquipedItem 会新建 GLB 网格（默认在 layer 1）
+	# 需要重新将这些网格移到第 10 层，使摄像机（cull_mask=1）不渲染它们
+	_hide_character_body()
+	# 同步 ViewModel 武器模型
+	_sync_view_model_weapon()
+
+## 直接将当前装备的武器推送到 ViewModel（不依赖信号）
+func _sync_view_model_weapon() -> void:
+	if view_model == null or not is_instance_valid(view_model):
+		return
+	if not view_model.has_method("set_weapon"):
+		return
+	var weapon := get_active_hand_weapon_data()
+	view_model.set_weapon(weapon)
+
+func _set_render_layer_recursive(node: Node, layer: int) -> void:
+	if node is GeometryInstance3D:
+		node.layers = layer
+	for child in node.get_children():
+		_set_render_layer_recursive(child, layer)
 
 func _setup_player_light() -> void:
+	var existing := get_node_or_null(PLAYER_VISION_LIGHT_NAME) as OmniLight3D
+	if existing != null:
+		existing.visible = true
+		existing.light_energy = 2.4
+		existing.omni_range = 10.0
+		existing.omni_attenuation = 0.45
+		existing.shadow_enabled = false
+		existing.distance_fade_enabled = false
+		existing.position = Vector3(0, 1.5, 0)
+		return
 	var light := OmniLight3D.new()
+	light.name = PLAYER_VISION_LIGHT_NAME
 	light.light_color = Color(1.0, 0.85, 0.6)
-	light.light_energy = 0.8
-	light.omni_range = 8.0
-	light.omni_attenuation = 0.6
+	light.light_energy = 2.4
+	light.omni_range = 10.0
+	light.omni_attenuation = 0.45
+	light.shadow_enabled = false
+	light.distance_fade_enabled = false
 	light.position = Vector3(0, 1.5, 0)
 	add_child(light)
 
-func _process(_delta: float) -> void:
-	input_dir = Input.get_vector("strafe_left", "strafe_right", "backward", "forward")
-	_handle_skill_input()
+func _process(delta: float) -> void:
+	input_dir = Input.get_vector("strafe_left", "strafe_right", "backward", "forward") if movement_input_enabled else Vector2.ZERO
+	if combat_input_enabled:
+		_handle_skill_input()
+	# 平滑过渡摄像机 FOV（望远镜效果）
+	if camera != null and is_instance_valid(camera):
+		camera.fov = lerpf(camera.fov, target_camera_fov, delta * FOV_LERP_SPEED)
 
 ## F/G 键技能释放：F 键动作技能（无媒介限制），G 键武器流派技能（受媒介限制）
 func _handle_skill_input() -> void:
-	var sr: Node = Engine.get_main_loop().root.get_node_or_null("SkillRuntime")
+	var sr: Node = Service.skill_runtime()
 	if sr == null:
 		return
 	# F 键：动作技能（复用现有 kick 输入映射，F 键 physical_keycode 70）
 	if Input.is_action_just_pressed("kick"):
 		var f_skill: String = sr.get_slot_skill(sr.SLOT_F_ACTION)
 		if f_skill != "":
-			var main_type := "one_hand_melee" if equipment.has_weapon() else ""
+			var weapon = equipment.weapon_data if equipment.has_weapon() else null
+			var main_type := CB_LIB.get_weapon_class(weapon)
 			var off_type := "shield" if equipment.has_shield() else ""
-			sr.start_release(f_skill, main_type, off_type)
+			sr.start_release(f_skill, main_type, off_type, self, sr.SLOT_F_ACTION)
 	# G 键：武器流派技能
 	if Input.is_action_just_pressed("skill_g"):
 		var g_skill: String = sr.get_slot_skill(sr.SLOT_G_WEAPON)
 		if g_skill != "":
-			var main_type := "one_hand_melee" if equipment.has_weapon() else ""
+			var weapon = equipment.weapon_data if equipment.has_weapon() else null
+			var main_type := CB_LIB.get_weapon_class(weapon)
 			var off_type := "shield" if equipment.has_shield() else ""
-			sr.start_release(g_skill, main_type, off_type)
+			sr.start_release(g_skill, main_type, off_type, self, sr.SLOT_G_WEAPON)
 
 func _physics_process(delta: float) -> void:
 	process_gravity()
 	process_pushback(delta)
 	move_and_slide()
+	if has_meta("equipment_preview"):
+		return
 	check_for_selection()
 	# 推进技能运行时 CD 与施法前摇
-	var sr: Node = Engine.get_main_loop().root.get_node_or_null("SkillRuntime")
+	var sr: Node = Service.skill_runtime()
 	if sr != null:
 		sr.tick(delta)
-	# 夜晚营业阶段：靠近酿酒台显示 brewing_panel
-	_check_brewing_station_proximity()
+	buffs.tick(delta)
 	# Hold E (use action) for 5 seconds to open Chest interactively
-	if select_raycast.is_colliding() and select_raycast.get_collider() is Chest:
+	# 宝箱战利品面板打开时不处理宝箱交互
+	if _chest_loot_panel != null and is_instance_valid(_chest_loot_panel) and _chest_loot_panel.visible:
+		chest_interact_time = 0.0
+		pass
+	elif _raycast_is_colliding(select_raycast) and select_raycast.get_collider() is Chest:
 		var chest = select_raycast.get_collider() as Chest
 		if Input.is_action_pressed("use"):
 			chest_interact_time += delta
 			if chest_interact_time >= CHEST_OPEN_DURATION:
 				chest_interact_time = 0.0
-				chest.open_chest(true) # true = interactively opened, drops all loot
+				chest.open_chest(true) # true = interactively opened, shows loot panel
 		else:
 			chest_interact_time = 0.0
 	else:
 		chest_interact_time = 0.0
+		if interaction_input_enabled and _raycast_is_colliding(select_raycast):
+			var collider := select_raycast.get_collider()
+			if collider != null and not (collider is PickableItem) and collider.has_method("interact") and Input.is_action_just_pressed("use"):
+				collider.interact(self)
 	check_for_possible_action()
-
-## 夜晚营业阶段靠近酿酒台（BrewingStation_Table @ -5,0,-4）时显示 brewing_panel，离开隐藏。
-## 仅在酒馆场景且夜晚营业阶段生效。
-func _check_brewing_station_proximity() -> void:
-	# 仅夜晚营业阶段生效
-	var tm: Node = Engine.get_main_loop().root.get_node_or_null("TavernManager")
-	if tm == null or tm.current_phase != tm.Phase.NIGHT_TAVERN:
-		return
-	var panel: Control = _find_brewing_panel()
-	if panel == null:
-		return
-	var dist: float = global_position.distance_to(BREWING_STATION_POS)
-	panel.visible = dist < BREWING_STATION_RANGE
-
-## 在 CanvasLayer/HUDLayer/tavern_ui 下查找 BrewingPanel 节点
-func _find_brewing_panel() -> Control:
-	var root: Node = Engine.get_main_loop().root
-	# 遍历场景树查找 BrewingPanel（挂在 CanvasLayer 之下）
-	for child in root.get_children():
-		if child is CanvasLayer:
-			for sub in child.get_children():
-				if sub.has_node("BrewingPanel"):
-					return sub.get_node("BrewingPanel") as Control
-	return null
 
 func process_movement(delta: float, speed_multiplier: float = 1.0) -> void:
 	var input_3d_space := Vector3(input_dir.x, 0, -input_dir.y)
-	var target_speed := run_speed if Input.is_action_pressed("run") else walk_speed
+	var target_speed := run_speed if movement_input_enabled and Input.is_action_pressed("run") else walk_speed
 	target_speed *= speed_multiplier
 	# 里程碑被动：轻捷之行（AGI T2）移速 +10%
-	var ap: Node = Engine.get_main_loop().root.get_node_or_null("AttrPanel")
+	var ap: Node = Service.attr_panel()
 	if ap != null:
 		target_speed *= ap.compute_move_speed_mult()
+	if equipment != null and equipment.has_method("get_armor_move_speed_mult"):
+		target_speed *= equipment.get_armor_move_speed_mult()
+	target_speed *= get_combat_speed_multiplier()
 	var desired_velocity := transform.basis * input_3d_space * target_speed
 	if input_3d_space == Vector3.ZERO:
 		velocity.x = move_toward(velocity.x, 0, acceleration * delta)
@@ -163,20 +256,31 @@ func process_pushback(delta: float) -> void:
 	velocity += pushback_force
 
 func _input(event: InputEvent) -> void:
-	var is_panel_visible := false
-	for node in get_tree().get_nodes_in_group("character_panel"):
-		if node.is_inside_tree() and node.visible:
-			is_panel_visible = true
-			break
+	var is_panel_visible := is_character_panel_visible()
+	# 宝箱战利品面板打开时也视为面板可见，阻止鼠标重新捕获
+	if not is_panel_visible and _chest_loot_panel != null and is_instance_valid(_chest_loot_panel) and _chest_loot_panel.visible:
+		is_panel_visible = true
 
 	if event is InputEventMouseButton and event.pressed:
+		if not is_panel_visible and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
+			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+				equipment.cycle_weapon_slot(-1)
+				get_viewport().set_input_as_handled()
+				return
+			if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				equipment.cycle_weapon_slot(1)
+				get_viewport().set_input_as_handled()
+				return
 		if not is_panel_visible and Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 			return
 			
 	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED and not is_panel_visible:
-		rotate_y(-event.relative.x * mouse_sensitivity) # PI 3.14 => 180 degrees 
-		camera.rotate_x(-event.relative.y * mouse_sensitivity)
+		# 瞄准时降低鼠标灵敏度（望远镜效果），使远距离瞄准更精细
+		var sens_mult := AIM_SENSITIVITY_MULT if is_weapon_aiming else 1.0
+		var sens := mouse_sensitivity * sens_mult
+		rotate_y(-event.relative.x * sens) # PI 3.14 => 180 degrees 
+		camera.rotate_x(-event.relative.y * sens)
 		camera.rotation.x = clampf(camera.rotation.x, MAX_ANGLE_LOOK_DOWN, MAX_ANGLE_LOOK_UP)
 
 func switch_state(new_state: State, data: PlayerStateData = PlayerStateData.new()) -> void:
@@ -191,6 +295,9 @@ func switch_state(new_state: State, data: PlayerStateData = PlayerStateData.new(
 		State.KICKING: PlayerStateKicking,
 		State.MOVING: PlayerStateMoving,
 		State.PICKING_UP: PlayerStatePickingUp,
+		State.ATTACK_PREPARING: PLAYER_STATE_ATTACK_PREPARING,
+		State.AIMING: PLAYER_STATE_AIMING,
+		State.SHOOTING: PLAYER_STATE_SHOOTING,
 		State.SLASHING: PlayerStateSlashing,
 		State.THROWING: PlayerStateThrowing,
 	}
@@ -206,11 +313,26 @@ func process_gravity() -> void:
 
 func check_for_possible_action() -> void:
 	var new_action := ""
-	if select_raycast.is_colliding():
-		var collider = select_raycast.get_collider()
+	var hint_type := ""
+	var hint_screen_pos := Vector2.ZERO
+	var current_collider: Object = null
+	# 宝箱战利品面板打开时不显示交互提示
+	if _chest_loot_panel != null and is_instance_valid(_chest_loot_panel) and _chest_loot_panel.visible:
+		if current_possible_action != "":
+			# 空 hint_type 立即隐藏所有悬浮窗
+			GameEvents.interaction_hint_changed.emit("", "", Vector2.ZERO)
+		current_possible_action = ""
+		_last_possible_action_collider = null
+		return
+	if _raycast_is_colliding(select_raycast):
+		current_collider = select_raycast.get_collider()
+		var collider = current_collider
 		if collider is PickableItem:
-			var item_name = collider.get_item_name()
-			new_action = "%s\n%s" % [item_name, tr("[E] Pick Up")]
+			var item_name := ""
+			if collider.has_method("get_item_name"):
+				item_name = collider.get_item_name()
+			new_action = "[E] %s %s" % [tr("Pick Up"), tr(item_name)]
+			hint_type = "pickup"
 		elif collider is Chest:
 			if Input.is_action_pressed("use"):
 				var progress = int((chest_interact_time / CHEST_OPEN_DURATION) * 100.0)
@@ -218,18 +340,50 @@ func check_for_possible_action() -> void:
 				new_action = "%s\n%s %d%%" % [tr("Chest"), tr("Opening..."), progress]
 			else:
 				new_action = "%s\n%s" % [tr("Chest"), tr("Hold [E] to Open (5s)")]
+			hint_type = "chest"
+		elif collider != null and collider.has_method("interact"):
+			var action_name := tr("Object")
+			if "interaction_name" in collider and String(collider.interaction_name) != "":
+				action_name = tr(String(collider.interaction_name))
+			new_action = "%s\n%s" % [action_name, tr("[E] Interact")]
+			hint_type = "interact"
 		else:
-			new_action = tr("[E] Pick Up")
-	elif kick_raycast.is_colliding() and kick_raycast.get_collider() is Door:
-		new_action = tr("[F] Open")
-		
-	if new_action != current_possible_action:
-		GameEvents.possible_action_changed.emit(new_action)
+			var item_name := ""
+			if collider.has_method("get_item_name"):
+				item_name = collider.get_item_name()
+			new_action = "[E] %s %s" % [tr("Pick Up"), tr(item_name)]
+			hint_type = "pickup"
+		# 计算碰撞点的屏幕坐标用于悬浮窗定位（显示在物体右侧）
+		hint_screen_pos = _get_raycast_screen_position(select_raycast)
+	elif combat_input_enabled and _raycast_is_colliding(kick_raycast) and kick_raycast.get_collider() is Door:
+		current_collider = kick_raycast.get_collider()
+		var door := kick_raycast.get_collider() as Door
+		# 拾取/开门等提示统一显示在物体右侧的悬浮窗（已移除底部提示）
+		new_action = tr(door.get_kick_prompt())
+		hint_type = "door"
+		hint_screen_pos = _get_raycast_screen_position(kick_raycast)
+
+	# 仅当 collider 变化、或宝箱开进度变化（new_action 含百分比）时才 emit
+	var collider_changed := current_collider != _last_possible_action_collider
+	if collider_changed or new_action != current_possible_action:
+		# 唯一的交互提示：显示在物体右侧的悬浮窗（准星离开时 hint_type 为空，立即退出）
+		GameEvents.interaction_hint_changed.emit(hint_type, new_action, hint_screen_pos)
 	current_possible_action = new_action
+	_last_possible_action_collider = current_collider
+
+## 获取射线碰撞点在屏幕上的投影坐标
+func _get_raycast_screen_position(raycast: RayCast3D) -> Vector2:
+	if not _raycast_is_colliding(raycast) or camera == null or not is_instance_valid(camera):
+		var vp := get_viewport()
+		if vp != null:
+			return vp.get_visible_rect().size * 0.5
+		return Vector2(960, 540)
+	var collision_point := raycast.get_collision_point()
+	return camera.unproject_position(collision_point)
 
 func check_for_selection() -> void:
 	var target_node: Node = null
-	if select_raycast.is_colliding():
+	if _raycast_is_colliding(select_raycast):
 		var collider := select_raycast.get_collider()
 		if collider is PickableItem:
 			target_node = collider
@@ -237,8 +391,13 @@ func check_for_selection() -> void:
 		if current_pickable_focused_item:
 			current_pickable_focused_item.unhighlight()
 		current_pickable_focused_item = target_node
-		if current_pickable_focused_item is PickableItem:
-			current_pickable_focused_item.highlight()
+	if current_pickable_focused_item is PickableItem:
+		current_pickable_focused_item.highlight()
+		GameEvents.item_detail_changed.emit(
+			DETAIL_POPUP.detail_for_pickable_item(current_pickable_focused_item),
+			_get_raycast_screen_position(select_raycast))
+	else:
+		GameEvents.item_detail_changed.emit({}, Vector2.ZERO)
 
 func try_receive_hit(source_enemy: Enemy, damage: int) -> void:
 	if state_node.can_get_hurt():
@@ -248,25 +407,31 @@ func try_receive_hit(source_enemy: Enemy, damage: int) -> void:
 		switch_state(State.HURT, data)
 	elif state == State.BLOCKING:
 		AudioManager.play("block", action_audio_stream_player)
-		equipment.apply_shield_damage(damage)
+		# 持盾格挡：0.3s 完美窗口内不消耗盾牌耐久
+		if _is_shield_block() and not _is_in_block_grace_window():
+			equipment.apply_shield_damage(damage)
 		source_enemy.try_stun()
 
 ## ARPG 战斗结算入口：接受 CombatEngine.DamageResult（含向量击退/秒眩晕/最终伤害）
 ## 由 CombatBridge.resolve_enemy_attack 产出，替换原 try_receive_hit 的硬编码 damage
-const CB := preload("res://globals/combat_bridge.gd")
-const ME := preload("res://globals/milestone_effects.gd")
-
+const ME := preload("res://globals/combat/milestone_effects.gd")
 func try_receive_hit_result(source_enemy: Enemy, result) -> void:
 	# 里程碑被动：侧垫步（AGI T1）受近战攻击 10% 概率完全免伤
-	var is_melee: bool = true  # 集成期默认近战，待 DamageResult 携带 attack_type 后精确判定
+	var is_melee: bool = result.attack_type == "melee"
 	if ME.try_sidestep(is_melee):
 		AudioManager.play("dodge", action_audio_stream_player)
 		return  # 完全免伤，跳过伤害结算
-	if state_node.can_get_hurt():
+	# 穿透格挡的攻击无视格挡状态，直接造成伤害
+	var can_hurt: bool = state_node.can_get_hurt() or result.ignores_block
+	if can_hurt:
+		var final_damage: int = result.final_damage
+		final_damage = ME.apply_elemental_aegis(final_damage, result.attack_type == "spell")
+		final_damage = ME.apply_thick_skin(final_damage)
+		final_damage = buffs.consume_damage_absorb(final_damage, health.max_life if health != null else 0)
 		var impact_direction := source_enemy.global_position.direction_to(global_position)
 		if result.knockback_impulse != Vector3.ZERO:
 			impact_direction = result.knockback_impulse.normalized()
-		var data := PlayerStateData.new().set_damage(result.final_damage).set_impact_direction(impact_direction)
+		var data := PlayerStateData.new().set_damage(final_damage).set_impact_direction(impact_direction)
 		# ARPG 实时击退力（米/秒）：写入 pushback_force 直接施加冲量
 		# player_state_hurt.gd 会用 impact_direction * PUSHBACK_FORCE 叠加，这里通过 data 传递击退力
 		data.knockback_force = result.knockback_force
@@ -277,17 +442,153 @@ func try_receive_hit_result(source_enemy: Enemy, result) -> void:
 		_accumulate_defense_exp()
 	elif state == State.BLOCKING:
 		AudioManager.play("block", action_audio_stream_player)
-		equipment.apply_shield_damage(result.final_damage)
+		# 持盾格挡：0.3s 完美窗口内不消耗盾牌耐久；双手武器格挡不消耗耐久
+		if _is_shield_block() and not _is_in_block_grace_window():
+			equipment.apply_shield_damage(result.final_damage)
 		source_enemy.try_stun()
 
 ## 受击后累积体质经验（防御韧性训练）
 func _accumulate_defense_exp() -> void:
-	var ap: Node = Engine.get_main_loop().root.get_node_or_null("AttrPanel")
+	var ap: Node = Service.attr_panel()
 	if ap != null:
 		ap.accumulate_attr("con", 2)  # 每次受击 +2 体质经验
 
+# ============================================================================
+# 动作格挡辅助（动作控制版：格挡由状态机判定，非概率投骰）
+# ============================================================================
+
+## 当前是否处于格挡状态
+func is_currently_blocking() -> bool:
+	return state == State.BLOCKING and state_node != null and is_instance_valid(state_node)
+
+## 当前格挡是否为持盾格挡（否则为双手武器格挡）
+func _is_shield_block() -> bool:
+	if not is_currently_blocking():
+		return false
+	if state_node.has_method("get_block_mode"):
+		# PlayerStateBlocking.BlockMode.SHIELD == 0
+		return state_node.get_block_mode() == 0
+	return equipment != null and equipment.has_shield()
+
+## 当前是否处于完美格挡窗口（进入格挡后 0.3s 内）
+func _is_in_block_grace_window() -> bool:
+	if not is_currently_blocking():
+		return false
+	if state_node.has_method("is_in_grace_window"):
+		return state_node.is_in_grace_window()
+	return false
+
+func set_tutorial_input_enabled(movement_enabled: bool, interaction_enabled: bool, combat_enabled: bool) -> void:
+	movement_input_enabled = movement_enabled
+	interaction_input_enabled = interaction_enabled
+	combat_input_enabled = combat_enabled
+	if not movement_input_enabled:
+		input_dir = Vector2.ZERO
+
 func can_pickup_object() -> bool:
-	return current_pickable_focused_item != null
+	return interaction_input_enabled and current_pickable_focused_item != null
+
+## 以下装备查询方法为薄代理，实际逻辑已下沉到 EquipmentComponent
+func has_active_hand_equipment() -> bool:
+	return equipment != null and equipment.has_hand_equipment()
+
+func get_active_hand_weapon_data() -> WeaponData:
+	if equipment == null:
+		return null
+	return equipment.get_active_weapon_data()
+
+func get_active_weapon_attack_type() -> String:
+	if equipment == null:
+		return ""
+	return equipment.get_active_weapon_attack_type()
+
+func is_active_weapon_ranged() -> bool:
+	return equipment != null and equipment.is_active_weapon_ranged()
+
+func is_active_weapon_two_handed() -> bool:
+	return equipment != null and equipment.is_active_weapon_two_handed()
+
+func can_block_with_active_equipment() -> bool:
+	return equipment != null and equipment.can_block()
+
+func can_dual_wield_attack_with_active_equipment() -> bool:
+	return equipment != null and equipment.can_dual_wield()
+
+func get_primary_weapon_release_state() -> int:
+	if not combat_input_enabled or not has_active_hand_equipment():
+		return -1
+	return State.SHOOTING if is_active_weapon_ranged() else State.SLASHING
+
+func get_primary_weapon_action_state() -> int:
+	if get_primary_weapon_release_state() == -1:
+		return -1
+	return State.ATTACK_PREPARING
+
+func make_primary_weapon_attack_data() -> PlayerStateData:
+	return PlayerStateData.new().set_weapon_attack("action", "primary", get_primary_weapon_release_state())
+
+func get_secondary_weapon_release_state() -> int:
+	if not combat_input_enabled or not has_active_hand_equipment():
+		return -1
+	if can_dual_wield_attack_with_active_equipment():
+		return State.SLASHING
+	return -1
+
+func get_secondary_weapon_action_state() -> int:
+	if not combat_input_enabled or not has_active_hand_equipment():
+		return -1
+	if is_active_weapon_ranged():
+		return State.AIMING
+	if can_block_with_active_equipment():
+		return State.BLOCKING
+	if can_dual_wield_attack_with_active_equipment():
+		return State.ATTACK_PREPARING
+	return -1
+
+func make_secondary_weapon_attack_data() -> PlayerStateData:
+	return PlayerStateData.new().set_weapon_attack("block", "secondary", get_secondary_weapon_release_state())
+
+func set_weapon_aiming(enabled: bool) -> void:
+	is_weapon_aiming = enabled
+	if camera == null:
+		return
+	# 望远镜效果：瞄准时大幅缩减 FOV，由 _process 平滑过渡
+	target_camera_fov = maxf(default_camera_fov - AIM_FOV_REDUCTION, 30.0) if enabled else default_camera_fov
+	if view_model != null and is_instance_valid(view_model) and view_model.has_method("set_aiming"):
+		view_model.set_aiming(enabled)
+
+## 获取准心瞄准的世界坐标点。
+## 从摄像机中心发射射线，命中物体返回命中点；未命中返回远端点。
+## 投射物/投掷武器都朝此点发射。
+## 实现已提取到 PlayerAimHelper，此处为薄代理。
+func get_aim_point(max_distance: float = 100.0) -> Vector3:
+	return AIM_HELPER.get_aim_point(camera, global_position, get_rid(), max_distance)
+
+## 构造朝向准心点的发射变换（-Z 指向目标）。
+## muzzle_pos: 枪口/弓口世界坐标
+## 实现已提取到 PlayerAimHelper，此处为薄代理。
+func get_aim_transform(muzzle_pos: Vector3) -> Transform3D:
+	return AIM_HELPER.get_aim_transform(camera, muzzle_pos, get_rid())
+
+func prepare_attack_hitbox(target_mask: int) -> Area3D:
+	var attach_to := _get_active_attack_hitbox_parent()
+	return HITBOX_BUILDER.ensure_hitbox(self, attach_to, _get_active_attack_reach(), target_mask)
+
+func set_attack_hitbox_active(hitbox: Area3D, active: bool) -> void:
+	HITBOX_BUILDER.set_active(hitbox, active)
+
+func _get_active_attack_hitbox_parent() -> Node3D:
+	if equipment == null or equipment.weapon_placeholder == null:
+		return null
+	if equipment.weapon_placeholder.get_child_count() == 0:
+		return null
+	return equipment.weapon_placeholder.get_child(0) as Node3D
+
+func _get_active_attack_reach() -> float:
+	if weapon_reach_raycast != null:
+		return maxf(absf(weapon_reach_raycast.target_position.z), 0.8)
+	var weapon := get_active_hand_weapon_data()
+	return maxf(weapon.reach, 0.8) if weapon != null else 1.2
 	
 func take_acid_damage() -> void:
 	if state_node.can_die():
@@ -304,110 +605,54 @@ func on_current_keys_changed(color: Door.KeyColor) -> void:
 	else:
 		AudioManager.play("door-locked", vocal_audio_stream_player)
 
+## 宝箱交互开启回调：显示战利品面板
+func _on_chest_opened(chest: Node) -> void:
+	if _chest_loot_panel != null and is_instance_valid(_chest_loot_panel):
+		_chest_loot_panel.queue_free()
+		_chest_loot_panel = null
+	var panel := CHEST_LOOT_PANEL_SCENE.instantiate()
+	get_tree().root.add_child(panel)
+	_chest_loot_panel = panel
+	panel.show_for_chest(chest, self)
+
 
 # ============================================================================
-# 技能释放效果分发（由 SkillRuntime.skill_released 信号驱动）
+# 技能释放效果分发（委托给 PlayerSkillDispatcher）
 # ============================================================================
 
-## 技能释放完成（施法前摇结束）后触发实际游戏内效果。
-## 按技能 id 分发：动作技能→位移/状态切换；武器技能→CombatBridge 结算。
 func _on_skill_released(skill_id: String) -> void:
-	# 动作技能
-	var action_skill: Dictionary = AS_DB.get_skill_by_id(skill_id)
-	if not action_skill.is_empty():
-		_dispatch_action_skill(action_skill)
-		return
-	# 武器流派技能
-	var weapon_skill: Dictionary = SD_DB.get_skill_by_id(skill_id)
-	if not weapon_skill.is_empty():
-		_dispatch_weapon_skill(weapon_skill)
+	SKILL_DISPATCHER.on_skill_released(self, skill_id)
 
-## 动作技能分发：踢击/冲撞/抓取投掷/滑铲/战术滑步
-func _dispatch_action_skill(skill: Dictionary) -> void:
-	var enum_val: int = int(skill.get("enum", -1))
-	match enum_val:
-		AS_DB.ActionSkill.KICK:
-			# 踢击：复用现有 KICKING 状态（含踢门/踢敌逻辑）
-			switch_state(State.KICKING)
-		AS_DB.ActionSkill.CHARGE:
-			# 冲撞：需先按 Shift 跑起来才能释放；锁定方向 + 加速 + 撞敌伤害击退
-			if Input.is_action_pressed("run"):
-				switch_state(State.CHARGING)
-			else:
-				print("[Player] 冲撞需要先按 Shift 跑起来")
-		AS_DB.ActionSkill.GRAB_THROW:
-			# 抓取投掷：前方 raycast 命中敌人 → GRABBING 状态手持 → 左键扔出
-			if kick_raycast.is_colliding():
-				var target := kick_raycast.get_collider() as Enemy
-				if target != null:
-					var data := PlayerStateData.new().set_grabbed_enemy(target)
-					switch_state(State.GRABBING, data)
-				else:
-					print("[Player] 抓取未命中敌人")
-			else:
-				print("[Player] 抓取未命中敌人")
-		AS_DB.ActionSkill.SLIDE:
-			# 滑铲：低位前冲 + 无敌帧
-			_apply_dash(int(skill.get("range_m", 4.0)), 8.0)
-		AS_DB.ActionSkill.TACTICAL_STEP:
-			# 战术滑步：短距侧移 + 闪避帧
-			_apply_dash(int(skill.get("range_m", 3.0)), 6.0)
+func apply_kick_hit(enemy: Enemy) -> void:
+	SKILL_DISPATCHER.apply_kick_hit(self, enemy)
 
-## 武器流派技能分发：通过 CombatBridge 结算前方敌人
-func _dispatch_weapon_skill(skill: Dictionary) -> void:
-	var weapon = equipment.weapon_data if equipment.has_weapon() else null
-	var attrs := _get_player_attrs_inline()
-	var level := _get_player_level_inline()
-	var main_type := "one_hand_melee" if equipment.has_weapon() else ""
-	var off_type := "shield" if equipment.has_shield() else ""
-	if weapon_reach_raycast.is_colliding():
-		var enemy := weapon_reach_raycast.get_collider() as Enemy
-		if enemy != null:
-			var atk_forward := -global_transform.basis.z.normalized()
-			var def_forward := -enemy.global_transform.basis.z.normalized()
-			var is_back: bool = CB_LIB.is_backstab(atk_forward, def_forward)
-			var result = CB_LIB.resolve_player_attack(self, enemy, weapon, main_type, off_type, attrs, level, is_back)
-			if result.hit:
-				enemy.try_receive_hit_result(self, result)
+func apply_action_skill_hit_to_enemy(enemy: Enemy, skill: Dictionary) -> void:
+	SKILL_DISPATCHER.apply_action_skill_hit(self, enemy, skill)
 
-## 向前冲刺位移（冲撞/滑铲/战术滑步通用）
-## distance_m: 冲刺距离（米）；speed_mps: 冲刺速度（米/秒）
-func _apply_dash(distance_m: int, speed_mps: float) -> void:
-	var forward := -global_transform.basis.z.normalized()
-	# 瞬时位移近似：直接施加 pushback_force 持续推动
-	pushback_force += forward * speed_mps
+# ============================================================================
+# 战斗 Buff 代理（实际逻辑已提取到 CombatBuffComponent）
+# ============================================================================
 
-## 对 kick_raycast 命中的敌人施加技能伤害（踢击/冲撞/抓取投掷通用）
-func _apply_skill_hit_to_kick_raycast(skill: Dictionary) -> void:
-	if not kick_raycast.is_colliding():
-		return
-	var enemy := kick_raycast.get_collider() as Enemy
-	if enemy == null:
-		return
-	# 构造简化 DamageResult：动作技能无武器，用徒手基础伤害
-	var knockback_m: float = float(skill.get("knockback_m", 0.0))
-	var stun_sec: float = float(skill.get("stun_sec", 0.0))
-	var forward := -global_transform.basis.z.normalized()
-	var result := CE_LIB.DamageResult.new()
-	result.hit = true
-	result.final_damage = int(max(1, skill.get("damage_mult", 0.5) * 4))
-	result.knockback_force = knockback_m * 2.0
-	result.knockback_impulse = forward * knockback_m
-	result.stun_duration = stun_sec
-	enemy.try_receive_hit_result(self, result)
+func add_combat_buff(buff_type: String, duration_sec: float, value: Variant) -> void:
+	buffs.add(buff_type, duration_sec, value)
 
-## 内联属性获取（避免与状态脚本重复，集成期简化为默认值+AttrPanel 读）
-func _get_player_attrs_inline() -> Dictionary:
-	var ap: Node = Engine.get_main_loop().root.get_node_or_null("AttrPanel")
-	if ap != null:
-		return ap.get_player_attrs()
-	return {"str": 10, "dex": 10, "agi": 10, "con": 10, "per": 10, "mag": 10}
+func get_combat_defense_bonus() -> int:
+	return buffs.get_defense_bonus()
 
-func _get_player_level_inline() -> int:
-	var ap: Node = Engine.get_main_loop().root.get_node_or_null("AttrPanel")
-	if ap != null:
-		return ap.get_level()
-	return 1
+func get_combat_evade_bonus() -> float:
+	return buffs.get_evade_bonus()
+
+func get_combat_speed_multiplier() -> float:
+	return buffs.get_speed_multiplier()
+
+func _raycast_is_colliding(raycast: RayCast3D) -> bool:
+	return raycast != null and is_instance_valid(raycast) and not raycast.is_queued_for_deletion() and raycast.is_colliding()
+
+func is_character_panel_visible() -> bool:
+	for node in get_tree().get_nodes_in_group("character_panel"):
+		if node.is_inside_tree() and node.visible:
+			return true
+	return false
 	
 	
 	

@@ -1,0 +1,112 @@
+{
+  "image": "tavern_material_atlas_32x32.png",
+  "size_px": [
+    1024,
+    1024
+  ],
+  "tile_px": [
+    32,
+    32
+  ],
+  "meters_per_tile": 1.0,
+  "voxel_px_per_meter": 32,
+  "grid": [
+    32,
+    32
+  ],
+  "regions": {
+    "stone_brick_wall": {
+      "tiles": {
+        "x": [
+          0,
+          31
+        ],
+        "y": [
+          0,
+          7
+        ]
+      },
+      "pixel_rect": [
+        0,
+        0,
+        1024,
+        256
+      ]
+    },
+    "wood_floor_planks": {
+      "tiles": {
+        "x": [
+          0,
+          31
+        ],
+        "y": [
+          8,
+          15
+        ]
+      },
+      "pixel_rect": [
+        0,
+        256,
+        1024,
+        256
+      ]
+    },
+    "wood_ceiling_boards": {
+      "tiles": {
+        "x": [
+          0,
+          31
+        ],
+        "y": [
+          16,
+          23
+        ]
+      },
+      "pixel_rect": [
+        0,
+        512,
+        1024,
+        256
+      ]
+    },
+    "bar_counter_polished_wood": {
+      "tiles": {
+        "x": [
+          0,
+          31
+        ],
+        "y": [
+          24,
+          27
+        ]
+      },
+      "pixel_rect": [
+        0,
+        768,
+        1024,
+        128
+      ]
+    },
+    "reinforced_wood_door": {
+      "tiles": {
+        "x": [
+          0,
+          31
+        ],
+        "y": [
+          28,
+          31
+        ]
+      },
+      "pixel_rect": [
+        0,
+        896,
+        1024,
+        128
+      ]
+    }
+  },
+  "shared_sources": {
+    "stone_brick_wall": "res://assets/textures/terrain/level0_dungeon/source_tiles/wall_stone_brick.png"
+  }
+}

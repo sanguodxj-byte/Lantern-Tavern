@@ -1,0 +1,43 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/scripted_dialogue_box.gd" id="1_dialogue"]
+
+[node name="ScriptedDialogueBox" type="Control"]
+layout_mode = 3
+anchors_preset = 10
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_dialogue")
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -420.0
+offset_top = -220.0
+offset_right = 420.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="Margin" type="MarginContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 18
+
+[node name="VBox" type="VBoxContainer" parent="Panel/Margin"]
+layout_mode = 2
+
+[node name="SpeakerName" type="Label" parent="Panel/Margin/VBox" unique_name_in_owner=true]
+layout_mode = 2
+text = "NPC"
+
+[node name="DialogueText" type="Label" parent="Panel/Margin/VBox" unique_name_in_owner=true]
+layout_mode = 2
+autowrap_mode = 3
+text = "..."

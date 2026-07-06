@@ -2,15 +2,48 @@
 class_name TavernStructure
 extends Node3D
 
-## 酒馆建筑结构生成器（@tool 模式编辑器内可见）。
-## 动态构建地板/墙体/天花板/立柱/吧台骨架，使用酒馆专属材质。
-## 所有尺寸常量化，便于设计师在检查器里直接调整而无需手摆网格。
+## 酒馆建筑结构保护脚本。
+## 酒馆结构以 tavern.tscn 中手工编辑的 BuiltStructure 为准，禁止批量重建或合并覆盖。
 
 # ---- 房间尺寸（米）----
-@export var room_width: float = 15.0
-@export var room_depth: float = 15.0
-@export var room_height: float = 3.2
+@export var room_width: float = 13.0
+@export var room_depth: float = 10.0
+@export var room_height: float = 3.0
+@export var room_center_x: float = 1.5
+@export var room_center_z: float = -1.25
 @export var wall_thickness: float = 0.3
+@export var room_door_width: float = 1.5
+@export var rear_door_width: float = 1.5
+@export var rear_door_height: float = 2.2
+@export var rear_door_center_x: float = 0.0
+@export var back_hall_length: float = 4.5
+@export var back_hall_width: float = 1.9
+@export var back_hall_door_width: float = 1.5
+@export var back_hall_center_z: float = -5.25
+@export var dungeon_entry_length: float = 2.7
+@export var spare_room_depth: float = 2.8
+@export var bar_length: float = 3.5
+@export var bar_left_x: float = 4.5
+@export var warehouse_enabled: bool = true
+@export var warehouse_left_x: float = -5.0
+@export var warehouse_right_x: float = 3.0
+@export var warehouse_south_z: float = -6.25
+@export var warehouse_north_z: float = -3.55
+@export var warehouse_door_center_x: float = 2.1
+@export var warehouse_door_width: float = 1.5
+@export var brewery_door_center_x: float = -3.4
+@export var brewery_door_width: float = 1.5
+@export var brewery_left_x: float = -1.0
+@export var brewery_right_x: float = 3.0
+@export var brewery_south_z: float = -8.7
+@export var guest_entry_left_x: float = -5.0
+@export var guest_entry_right_x: float = -1.0
+@export var east_door_center_z: float = 0.25
+@export var east_door_width: float = 2.2
+@export var show_ceiling: bool = false
+
+@export var manual_edit_generated_structure: bool = true
+@export var sync_wall_collision_from_mesh: bool = true
 
 # ---- 材质引用（指向 scenes/tavern/materials/ 下专属材质）----
 @export var floor_mat: Material = preload("res://scenes/tavern/materials/tavern_floor_mat.tres")
@@ -21,150 +54,98 @@ extends Node3D
 
 var _structure: Node3D
 
+
 func _ready() -> void:
-	_build()
+	_structure = get_node_or_null("BuiltStructure") as Node3D
+	if _structure != null:
+		if sync_wall_collision_from_mesh:
+			sync_wall_collision_bodies()
+		return
+	push_warning("TavernStructure: BuiltStructure is missing. Add or repair the exact missing nodes by hand; batch regeneration is disabled.")
 
-func _build() -> void:
-	_clear_existing()
-	_structure = Node3D.new()
-	_structure.name = "BuiltStructure"
-	add_child(_structure, true)
-	_build_floor()
-	_build_walls()
-	_build_ceiling()
-	_build_pillars()
-	_build_bar_counter()
 
-func _clear_existing() -> void:
-	if _structure != null and is_instance_valid(_structure):
-		_structure.queue_free()
-		_structure = null
+func get_built_structure() -> Node3D:
+	return _structure if _structure != null else get_node_or_null("BuiltStructure") as Node3D
 
-func _build_floor() -> void:
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(room_width, 0.2, room_depth)
-	var mi := MeshInstance3D.new()
-	mi.name = "Floor"
-	mi.mesh = mesh
-	mi.material_override = floor_mat
-	mi.position = Vector3(0, -0.1, 0)
-	_structure.add_child(mi, true)
-	# 碰撞体
-	var body := StaticBody3D.new()
-	body.name = "FloorBody"
-	var col := CollisionShape3D.new()
-	var shape := BoxShape3D.new()
-	shape.size = mesh.size
-	col.shape = shape
-	body.add_child(col, true)
-	body.position = mi.position
-	_structure.add_child(body, true)
 
-func _build_walls() -> void:
-	var h := room_height
-	# 北墙 (z = -depth/2)
-	_add_wall("WallNorth", Vector3(room_width, h, wall_thickness), Vector3(0, h/2, -room_depth/2 - wall_thickness/2))
-	# 南墙
-	_add_wall("WallSouth", Vector3(room_width, h, wall_thickness), Vector3(0, h/2, room_depth/2 + wall_thickness/2))
-	# 东墙
-	_add_wall("WallEast", Vector3(wall_thickness, h, room_depth), Vector3(room_width/2 + wall_thickness/2, h/2, 0))
-	# 西墙
-	_add_wall("WallWest", Vector3(wall_thickness, h, room_depth), Vector3(-room_width/2 - wall_thickness/2, h/2, 0))
+func has_manual_built_structure() -> bool:
+	return get_built_structure() != null
 
-func _add_wall(wall_name: String, sz: Vector3, pos: Vector3) -> void:
-	var mesh := BoxMesh.new()
-	mesh.size = sz
-	var mi := MeshInstance3D.new()
-	mi.name = wall_name
-	mi.mesh = mesh
-	mi.material_override = wall_mat
-	mi.position = pos
-	_structure.add_child(mi, true)
-	# 墙体碰撞
-	var body := StaticBody3D.new()
-	body.name = wall_name + "Body"
-	var col := CollisionShape3D.new()
-	var shape := BoxShape3D.new()
-	shape.size = sz
-	col.shape = shape
-	body.add_child(col, true)
-	body.position = pos
-	_structure.add_child(body, true)
 
-func _build_ceiling() -> void:
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(room_width, 0.2, room_depth)
-	var mi := MeshInstance3D.new()
-	mi.name = "Ceiling"
-	mi.mesh = mesh
-	mi.material_override = ceiling_mat
-	mi.position = Vector3(0, room_height, 0)
-	_structure.add_child(mi, true)
+func sync_wall_collision_bodies() -> void:
+	var built := get_built_structure()
+	if built == null:
+		return
+	for child in built.get_children():
+		var mesh_instance := child as MeshInstance3D
+		if mesh_instance == null or not _is_wall_collision_source(mesh_instance):
+			continue
+		_sync_collision_body_to_mesh(built, mesh_instance)
 
-func _build_pillars() -> void:
-	# 四角立柱，距墙 1.5m
-	var offsets := [
-		Vector3(-room_width/2 + 1.5, 0, -room_depth/2 + 1.5),
-		Vector3( room_width/2 - 1.5, 0, -room_depth/2 + 1.5),
-		Vector3(-room_width/2 + 1.5, 0,  room_depth/2 - 1.5),
-		Vector3( room_width/2 - 1.5, 0,  room_depth/2 - 1.5),
+
+func _is_wall_collision_source(mesh_instance: MeshInstance3D) -> bool:
+	var node_name := String(mesh_instance.name)
+	if node_name.ends_with("Body"):
+		return false
+	if not (node_name.contains("Wall") or node_name.contains("Lintel")):
+		return false
+	return mesh_instance.mesh is BoxMesh
+
+
+func _sync_collision_body_to_mesh(built: Node3D, mesh_instance: MeshInstance3D) -> void:
+	var body_name := "%sBody" % mesh_instance.name
+	var body := built.get_node_or_null(body_name) as StaticBody3D
+	if body == null:
+		body = StaticBody3D.new()
+		body.name = body_name
+		body.collision_mask = 0
+		built.add_child(body)
+		if Engine.is_editor_hint():
+			body.owner = owner
+
+	var shape_node := body.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if shape_node == null:
+		shape_node = CollisionShape3D.new()
+		shape_node.name = "CollisionShape3D"
+		body.add_child(shape_node)
+		if Engine.is_editor_hint():
+			shape_node.owner = owner
+
+	var box_shape := shape_node.shape as BoxShape3D
+	if box_shape == null:
+		box_shape = BoxShape3D.new()
+		shape_node.shape = box_shape
+
+	var bounds := _mesh_aabb_in_parent_space(mesh_instance)
+	body.transform = Transform3D(Basis.IDENTITY, bounds.position + bounds.size * 0.5)
+	shape_node.transform = Transform3D.IDENTITY
+	box_shape.size = bounds.size
+
+
+func _mesh_aabb_in_parent_space(mesh_instance: MeshInstance3D) -> AABB:
+	var local := mesh_instance.get_aabb()
+	var initialized := false
+	var result := AABB()
+	for corner in _aabb_corners(local):
+		var point: Vector3 = mesh_instance.transform * corner
+		if initialized:
+			result = result.expand(point)
+		else:
+			result = AABB(point, Vector3.ZERO)
+			initialized = true
+	return result
+
+
+func _aabb_corners(aabb: AABB) -> Array[Vector3]:
+	var min_v := aabb.position
+	var max_v := aabb.position + aabb.size
+	return [
+		Vector3(min_v.x, min_v.y, min_v.z),
+		Vector3(max_v.x, min_v.y, min_v.z),
+		Vector3(min_v.x, max_v.y, min_v.z),
+		Vector3(max_v.x, max_v.y, min_v.z),
+		Vector3(min_v.x, min_v.y, max_v.z),
+		Vector3(max_v.x, min_v.y, max_v.z),
+		Vector3(min_v.x, max_v.y, max_v.z),
+		Vector3(max_v.x, max_v.y, max_v.z),
 	]
-	var i := 0
-	for off in offsets:
-		i += 1
-		var mesh := BoxMesh.new()
-		mesh.size = Vector3(0.8, room_height, 0.8)
-		var mi := MeshInstance3D.new()
-		mi.name = "Pillar%d" % i
-		mi.mesh = mesh
-		mi.material_override = pillar_mat
-		mi.position = Vector3(off.x, room_height/2, off.z)
-		_structure.add_child(mi, true)
-		# 立柱碰撞体
-		_add_box_collision(mi.name + "Body", mi.position, mesh.size)
-
-func _build_bar_counter() -> void:
-	# 吧台沿北墙铺设：台面 + 前挡板
-	var bar_len := room_width - 4.0  # 留 2m 出入口
-	# 台面
-	var top_mesh := BoxMesh.new()
-	top_mesh.size = Vector3(bar_len, 0.15, 1.2)
-	var top := MeshInstance3D.new()
-	top.name = "BarTop"
-	top.mesh = top_mesh
-	top.material_override = bar_mat
-	top.position = Vector3(0, 1.1, -room_depth/2 + 0.9)
-	_structure.add_child(top, true)
-	# 台面碰撞体
-	_add_box_collision("BarTopBody", top.position, top_mesh.size)
-	# 前挡板
-	var front_mesh := BoxMesh.new()
-	front_mesh.size = Vector3(bar_len, 1.0, 0.15)
-	var front := MeshInstance3D.new()
-	front.name = "BarFront"
-	front.mesh = front_mesh
-	front.material_override = pillar_mat
-	front.position = Vector3(0, 0.5, -room_depth/2 + 1.5)
-	_structure.add_child(front, true)
-	# 前挡板碰撞体
-	_add_box_collision("BarFrontBody", front.position, front_mesh.size)
-
-## 统一创建 StaticBody3D + BoxShape3D 碰撞（环境层）
-func _add_box_collision(body_name: String, pos: Vector3, size: Vector3) -> void:
-	var body := StaticBody3D.new()
-	body.name = body_name
-	body.collision_layer = 1  # 环境层
-	body.collision_mask = 0
-	body.position = pos
-	var col := CollisionShape3D.new()
-	var shape := BoxShape3D.new()
-	shape.size = size
-	col.shape = shape
-	body.add_child(col, true)
-	_structure.add_child(body, true)
-
-# 编辑器内属性变化时重建
-func _set(_p: StringName, _v: Variant) -> bool:
-	if Engine.is_editor_hint():
-		_build()
-	return false

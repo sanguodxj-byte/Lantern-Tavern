@@ -1,0 +1,76 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/character_name_prompt.gd" id="1_name"]
+
+[node name="CharacterNamePrompt" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_name")
+
+[node name="LetterPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -620.0
+offset_top = -420.0
+offset_right = -40.0
+offset_bottom = -40.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="Margin" type="MarginContainer" parent="LetterPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="LetterPanel/Margin"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Title" type="Label" parent="LetterPanel/Margin/VBox"]
+layout_mode = 2
+text = "Inheritance Letter"
+
+[node name="Body" type="RichTextLabel" parent="LetterPanel/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+fit_content = false
+text = "To the new keeper of this tavern,\n\nThe former heir has been struck from this record.\nAll rights, debts, barrels, and broken chairs now pass to you.\n\nDear"
+
+[node name="NameRow" type="HBoxContainer" parent="LetterPanel/Margin/VBox"]
+layout_mode = 2
+
+[node name="NameEdit" type="LineEdit" parent="LetterPanel/Margin/VBox/NameRow" unique_name_in_owner=true]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Your permanent name"
+
+[node name="Suffix" type="Label" parent="LetterPanel/Margin/VBox/NameRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = ",\nplease confirm by mark and claim the tavern."
+autowrap_mode = 3
+
+[node name="ErrorLabel" type="Label" parent="LetterPanel/Margin/VBox" unique_name_in_owner=true]
+layout_mode = 2
+text = ""
+
+[node name="ConfirmRow" type="HBoxContainer" parent="LetterPanel/Margin/VBox"]
+layout_mode = 2
+alignment = 2
+
+[node name="Handprint" type="Label" parent="LetterPanel/Margin/VBox/ConfirmRow" unique_name_in_owner=true]
+layout_mode = 2
+text = "[Handprint]"
+
+[node name="ConfirmButton" type="Button" parent="LetterPanel/Margin/VBox/ConfirmRow" unique_name_in_owner=true]
+layout_mode = 2
+text = "Seal"

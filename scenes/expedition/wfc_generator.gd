@@ -80,6 +80,17 @@ static func _make_treasure_corner(w: int, h: int) -> RoomTemplate:
 	_set_cell(g, w - 2, 1,     TileType.LOOT)
 	_set_cell(g, 1,     h - 2, TileType.RESOURCE)
 	_set_cell(g, w - 2, h - 2, TileType.RESOURCE)
+	# 固定内层边框为 FLOOR 回廊，确保四角固定物互相连通（否则 WFC 可能生成断路）
+	for x in range(2, w - 2):
+		if g[1][x] == ANY:
+			_set_cell(g, x, 1, TileType.FLOOR)
+		if g[h - 2][x] == ANY:
+			_set_cell(g, x, h - 2, TileType.FLOOR)
+	for y in range(2, h - 2):
+		if g[y][1] == ANY:
+			_set_cell(g, 1, y, TileType.FLOOR)
+		if g[y][w - 2] == ANY:
+			_set_cell(g, w - 2, y, TileType.FLOOR)
 	return RoomTemplate.new("TreasureCorner", w, h, g, 5)
 
 ## 4. Divided Arena — 中央竖墙将房间一分为二，mid_y 处留通道缺口，两侧各有宝物
@@ -90,6 +101,8 @@ static func _make_divided_arena(w: int, h: int) -> RoomTemplate:
 	for y in range(1, h - 1):
 		if y != gap_y:
 			_set_cell(g, mid_x, y, TileType.WALL)
+	# 固定缺口格为 FLOOR，防止 WFC 将其填成 WALL 导致左右区域断路
+	_set_cell(g, mid_x, gap_y, TileType.FLOOR)
 	_set_cell(g, 1,     1,     TileType.LOOT)
 	_set_cell(g, w - 2, h - 2, TileType.RESOURCE)
 	return RoomTemplate.new("DividedArena", w, h, g, 4)
@@ -124,11 +137,13 @@ static func _make_twin_treasure(w: int, h: int) -> RoomTemplate:
 	for x in range(1, w - 1):
 		if x != gap_x:
 			_set_cell(g, x, mid_y, TileType.WALL)
+	# 固定缺口格为 FLOOR，防止断路
+	_set_cell(g, gap_x, mid_y, TileType.FLOOR)
 	_set_cell(g, gap_x, 1,     TileType.LOOT)
 	_set_cell(g, gap_x, h - 2, TileType.RESOURCE)
 	return RoomTemplate.new("TwinTreasure", w, h, g, 4)
 
-## 8. Fortress Vault — 守卫宝库：中央三面墙保护宝箱，南侧 ANY 作为唯一入口
+## 8. Fortress Vault — 守卫宝库：中央宝箱，直接邻居固定为 FLOOR，外围 2 格外有 WALL 屏障（三面）
 ## 最小 7×7；尺寸不足时降级为 EmptyChamber
 static func _make_fortress_vault(w: int, h: int) -> RoomTemplate:
 	if w < 7 or h < 7:
@@ -136,11 +151,24 @@ static func _make_fortress_vault(w: int, h: int) -> RoomTemplate:
 	var g: Array = _base_grid(w, h)
 	var cx := w / 2
 	var cy := h / 2
-	_set_cell(g, cx,     cy,     TileType.LOOT)  # 中央宝箱
-	_set_cell(g, cx,     cy - 1, TileType.WALL)  # 北侧封墙
-	_set_cell(g, cx - 1, cy,     TileType.WALL)  # 西侧封墙
-	_set_cell(g, cx + 1, cy,     TileType.WALL)  # 东侧封墙
-	# 南侧 (cx, cy+1) 保持 ANY，是唯一可走入口
+	# 中央宝箱
+	_set_cell(g, cx, cy, TileType.LOOT)
+	# LOOT 的 4 个直接邻居固定为 FLOOR（避免 LOOT 直接相邻 WALL 导致约束矛盾）
+	_set_cell(g, cx,     clampi(cy - 1, 1, h - 2), TileType.FLOOR)
+	_set_cell(g, cx,     clampi(cy + 1, 1, h - 2), TileType.FLOOR)
+	_set_cell(g, clampi(cx - 1, 1, w - 2), cy,     TileType.FLOOR)
+	_set_cell(g, clampi(cx + 1, 1, w - 2), cy,     TileType.FLOOR)
+	# 外围屏障：三面 WALL 在距宝箱 2 格外（北、西、东），南侧留通道
+	_set_cell(g, cx,                           clampi(cy - 2, 1, h - 2), TileType.WALL)
+	_set_cell(g, clampi(cx - 2, 1, w - 2), cy,                          TileType.WALL)
+	_set_cell(g, clampi(cx + 2, 1, w - 2), cy,                          TileType.WALL)
+	# 固定南侧纵向通道：从 LOOT 正下方到南内边界，保证宝箱始终可达
+	for y in range(cy + 1, h - 1):
+		_set_cell(g, cx, y, TileType.FLOOR)
+	# 固定南内行横向通道（y=h-2），连接左右区域到南通道
+	for x in range(1, w - 1):
+		if g[h - 2][x] == ANY:
+			_set_cell(g, x, h - 2, TileType.FLOOR)
 	return RoomTemplate.new("FortressVault", w, h, g, 3)
 
 ## 9. Labyrinth Cell — S 形迷宫路径：左段遮挡上半，右段遮挡下半，末端宝箱
@@ -160,6 +188,14 @@ static func _make_labyrinth_cell(w: int, h: int) -> RoomTemplate:
 		_set_cell(g, wx2, y, TileType.WALL)
 	# 末端宝箱固定在右上角
 	_set_cell(g, w - 2, 1, TileType.LOOT)
+	# 固定整个 mid_y 行为 FLOOR，确保 S 路径的连接行始终凌驾
+	for x in range(1, w - 1):
+		if g[mid_y][x] == ANY:
+			_set_cell(g, x, mid_y, TileType.FLOOR)
+	# 固定 LOOT 到 mid_y 的纵向通道为 FLOOR（保证宝箱始终通达）
+	for y in range(2, mid_y):
+		if g[y][w - 2] == ANY:
+			_set_cell(g, w - 2, y, TileType.FLOOR)
 	return RoomTemplate.new("LabyrinthCell", w, h, g, 4)
 
 ## 10. Ring Hall — 十字圣殿：中央宝箱，四正方向等距石柱，古典神庙感
@@ -208,6 +244,10 @@ static func _make_crypt(w: int, h: int) -> RoomTemplate:
 	# 走道两端固定宝箱
 	_set_cell(g, 1,     h / 2, TileType.LOOT)
 	_set_cell(g, w - 2, h / 2, TileType.LOOT)
+	# 固定整条中央走廊行（y=h/2）为 FLOOR（跳过边界和宝箱格），保证完全连通
+	for x in range(2, w - 2):
+		if g[h / 2][x] == ANY:
+			_set_cell(g, x, h / 2, TileType.FLOOR)
 	return RoomTemplate.new("Crypt", w, h, g, 4)
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -305,8 +345,27 @@ func collapse_room(width: int = 10, height: int = 10, template: RoomTemplate = n
 		print("[WFC] Retry %d / %d for template '%s' (%dx%d)..." \
 			% [retries, MAX_RETRIES, template.name, width, height])
 
+	var template_fallback := _make_template_fallback_grid(width, height, template)
+	if validate_grid(template_fallback):
+		print("[WFC] Max retries reached – using template fallback for '%s' (%dx%d)" % [template.name, width, height])
+		return template_fallback
+
 	print("[WFC] Max retries reached – falling back to EmptyChamber for %dx%d" % [width, height])
 	return _make_fallback_grid(width, height)
+
+func _make_template_fallback_grid(width: int, height: int, template: RoomTemplate) -> Array:
+	if template == null or template.layout.is_empty():
+		return []
+	var result: Array = []
+	for y in range(height):
+		var row: Array = []
+		for x in range(width):
+			var cell := _get_template_cell(template, x, y)
+			if cell == ANY:
+				cell = TileType.FLOOR
+			row.append(cell)
+		result.append(row)
+	return result
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Initialization

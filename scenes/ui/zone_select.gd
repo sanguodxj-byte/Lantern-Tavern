@@ -11,6 +11,7 @@ const ZONE_BUTTON_SCENE := "res://scenes/ui/zone_button.tscn"
 var _selected_zone: int = -1
 
 func _ready() -> void:
+	add_to_group("character_panel")
 	title.text = tr("Select Expedition Zone")
 	start_btn.text = tr("Start Expedition")
 	start_btn.disabled = true
@@ -27,7 +28,7 @@ func _populate_zones() -> void:
 		var btn: Button = Button.new()
 		btn.text = "%s\n%s" % [zm.get_zone_name(zone_id), zm.get_zone_desc(zone_id)]
 		btn.custom_minimum_size = Vector2(600, 100)
-		btn.add_theme_font_size_override("font_size", 16)
+		btn.add_theme_font_size_override("font_size", 24)
 		var color: Color = zm.get_zone_color(zone_id)
 		btn.modulate = Color(1, 1, 1)
 		# 用元数据传递 zone_id
@@ -49,9 +50,21 @@ func _on_start_pressed() -> void:
 	if zm != null:
 		zm.set_zone(_selected_zone)
 	if TavernManager:
-		TavernManager.gold = 100
-		TavernManager.inventory.clear()
-	get_tree().change_scene_to_file("res://scenes/expedition/procedural_dungeon.tscn")
+		TavernManager.start_expedition()
+	else:
+		get_tree().change_scene_to_file("res://scenes/world/world.tscn")
 
 func _on_back_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+	var world := _find_world()
+	if world != null and world.has_method("close_overlay"):
+		world.call("close_overlay")
+	else:
+		get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+
+func _find_world() -> Node:
+	var node: Node = self
+	while node != null:
+		if node.has_method("load_space") and node.has_method("open_zone_select"):
+			return node
+		node = node.get_parent()
+	return null

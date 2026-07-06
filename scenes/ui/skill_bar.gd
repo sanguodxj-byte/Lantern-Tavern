@@ -3,9 +3,9 @@ extends Control
 ## 显示已绑定技能图标、CD 径向扇形遮罩、剩余秒数、媒介不匹配置灰。
 ## 由 SkillRuntime autoload 驱动，每帧刷新；图标来自 SkillIcons autoload。
 
-const SR := preload("res://globals/skill_runtime.gd")
-const SD := preload("res://globals/skill_data.gd")
-const AS := preload("res://globals/action_skills.gd")
+const SR := preload("res://globals/combat/skill_runtime.gd")
+const SD := preload("res://globals/combat/skill_data.gd")
+const AS := preload("res://globals/combat/action_skills.gd")
 
 @onready var slot_f_name: Label = $ActiveRow/SlotF/SkillName
 @onready var slot_f_icon: TextureRect = $ActiveRow/SlotF/Icon

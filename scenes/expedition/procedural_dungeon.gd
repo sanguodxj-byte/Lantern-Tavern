@@ -6,20 +6,57 @@ const CRATE_PREFAB := preload("res://scenes/props/crates/small_crate.tscn")
 const BARREL_PREFAB := preload("res://scenes/props/barrel/barrel.tscn")
 const TORCH_PREFAB := preload("res://scenes/props/torch/torch.tscn")
 const CHEST_PREFAB := preload("res://scenes/props/chest/chest.tscn")
+const BOSS_CHEST_PREFAB := preload("res://scenes/props/chest/boss_chest.tscn")
 const PICKABLE_ITEM_PREFAB := preload("res://scenes/equipment/pickable_item.tscn")
+const RUBBLE_PREFAB := preload("res://scenes/props/decor/ruble.tscn")
+const BONES_PREFAB := preload("res://scenes/props/decor/bones.tscn")
+const SPIKES_TRAP_PREFAB := preload("res://scenes/traps/spikes_trap.tscn")
+const FLAME_VENT_TRAP_PREFAB := preload("res://scenes/traps/flame_vent_trap.tscn")
+const SNARE_TRAP_PREFAB := preload("res://scenes/traps/snare_trap.tscn")
+const ACID_TRAP_PATH := "res://scenes/traps/acid_trap.tscn"
+const ISAAC_ROOM_GENERATOR := preload("res://scenes/expedition/isaac_room_dungeon_generator.gd")
+const DUNGEON_DOOR_SCRIPT := preload("res://scenes/expedition/dungeon_door.gd")
+const EXPLORATION_PRESSURE_SCRIPT := preload("res://globals/dungeon/exploration_pressure.gd")
+const SCENE_OBJECT_SCRIPT := preload("res://scenes/props/scene_object.gd")
+const SCENE_OBJECT_LAYER := 64
+const DUNGEON_VISIBLE_LOCAL_LIGHT_BUDGET := 12
+const STREAM_CHUNK_SIZE_CELLS := 8
+const STREAM_LIGHT_CHUNK_RADIUS := 0
+const STREAM_PHYSICS_CHUNK_RADIUS := 0
+const STREAM_TERRAIN_CHUNK_RADIUS := 1
+const STREAM_UPDATE_INTERVAL := 0.25
+const LARGE_ROOM_AREA := 48
+const DOOR_SURROUND_THICKNESS := 0.2
 
-# 地形渲染：一张纹理集 + 一个 Shader
-const DUNGEON_TEX  := preload("res://assets/textures/dungeon-texture.png")
+# 地形渲染：关卡 0 使用 32px/m 的 256x128 纹理集 + 一个 Shader
+const DUNGEON_TEX := preload("res://assets/textures/terrain/level0_dungeon/level0_dungeon_terrain_atlas_32px.png")
 const TERRAIN_SHADER := preload("res://assets/shaders/dungeon_terrain.gdshader")
 
-# 每个地形类型对应纹理集中的图块位置 (col, row)。和 Python 绘制脚本中的布局完全对应。
+# 每个地形类型对应纹理集中的图块位置 (col, row)。和 tools/build_level0_dungeon_atlas.py 完全对应。
+const TILE_ATLAS_GRID := Vector2(8, 4)
 const TILE_LAYOUT := {
-	"WALL":    Vector2(1, 0),  # 石砖墙壁（正面错缝砖块）
-	"FLOOR":   Vector2(2, 0),  # 原石地板（俧视不规则石板）
-	"CEILING": Vector2(3, 1),  # 天花板（暗蓝灰石砖）
-	"LINTEL":  Vector2(3, 0),  # 木梓门眉（棕色木纹）
-	"PILLAR":  Vector2(0, 1),  # 石柱侧面
-	"PORTAL":  Vector2(3, 3),  # 传送门（紫色光晕）
+	"WALL":    Vector2(0, 0),  # 石砖墙面
+	"FLOOR":   Vector2(1, 0),  # 原石地面
+	"CEILING": Vector2(2, 0),  # 暗石板天花
+	"LINTEL":  Vector2(3, 0),  # 切石门楣/高度差收边
+	"PILLAR":  Vector2(4, 0),  # 石柱侧面
+	"DOOR":    Vector2(7, 1),  # 普通门：1m x 2m，占 1x2 个 32px UV 格
+	"BOSS_DOOR": Vector2(0, 2), # Boss 房双开门：2m x 2m，占 2x2 个 32px UV 格
+	"DOOR_SIDE": Vector2(2, 2),
+	"DOOR_TOP": Vector2(3, 2),
+	"PORTAL":  Vector2(7, 0),  # 传送门符文
+}
+const TILE_SPANS := {
+	"WALL":    Vector2(1, 1),
+	"FLOOR":   Vector2(1, 1),
+	"CEILING": Vector2(1, 1),
+	"LINTEL":  Vector2(1, 1),
+	"PILLAR":  Vector2(1, 1),
+	"DOOR":    Vector2(1, 2),
+	"BOSS_DOOR": Vector2(2, 2),
+	"DOOR_SIDE": Vector2(1, 1),
+	"DOOR_TOP": Vector2(1, 1),
+	"PORTAL":  Vector2(1, 1),
 }
 
 const MATERIALS_CONFIG = {
@@ -30,6 +67,9 @@ const MATERIALS_CONFIG = {
 const DECOR_CONFIG = {
 	"res://scenes/props/decor/bones.tscn": 20,
 	"res://scenes/props/decor/lit_candles.tscn": 15,
+	"res://scenes/props/decor/floor_candelabrum.tscn": 9,
+	"res://scenes/props/decor/wall_candelabrum.tscn": 8,
+	"res://scenes/props/decor/iron_bar_grate.tscn": 7,
 	"res://scenes/props/decor/spiderweb.tscn": 15,
 	"res://scenes/props/decor/bench.tscn": 10,
 	"res://scenes/props/decor/chair.tscn": 10,
@@ -39,9 +79,13 @@ const DECOR_CONFIG = {
 }
 
 var _grid: Array = []
+var _rooms: Array[Rect2i] = []
+var _room_roles: Dictionary = {}
 var player_spawn_pos := Vector3.ZERO
 
 const TILE_SIZE := 3.0
+const STANDARD_DOOR_SIZE_METERS := Vector2(1.0, 2.0)
+const BOSS_DOOR_SIZE_METERS := Vector2(2.0, 2.0)
 
 var _shared_floor_mat: ShaderMaterial = null
 var _shared_ceiling_mat: ShaderMaterial = null
@@ -52,6 +96,18 @@ var ceiling_transforms: Array[Transform3D] = []
 # 墙面按高度分组：key=wall_height(float), value=Array[Transform3D]
 # 不同高度的墙需要不同的 tile_repeat.y 才能保证 1m = 1 tile
 var wall_transforms_by_height: Dictionary = {}
+var _exploration_pressure: ExplorationPressure = null
+var _expedition_hud: ExpeditionHUD = null
+var _combat_hud: CombatHUD = null
+var _expedition_finished := false
+var _stream_update_timer := 0.0
+var _last_stream_chunk := Vector2i(999999, 999999)
+var _streamed_environment_lights: Array[Light3D] = []
+var _environment_light_chunks: Dictionary = {}
+var _streamed_physics_bodies: Array[RigidBody3D] = []
+var _physics_body_chunks: Dictionary = {}
+var _terrain_render_chunks: Dictionary = {}
+var _streaming_ready := false
 
 ## 创建地形 ShaderMaterial
 ## tile_name: TILE_LAYOUT 中的键（"WALL"/"FLOOR"/"CEILING"等）
@@ -61,6 +117,8 @@ func _make_terrain_mat(tile_name: String, tile_repeat: Vector2) -> ShaderMateria
 	mat.shader = TERRAIN_SHADER
 	mat.set_shader_parameter("atlas", DUNGEON_TEX)
 	mat.set_shader_parameter("tile_col_row", TILE_LAYOUT.get(tile_name, Vector2(0, 0)))
+	mat.set_shader_parameter("tile_span", TILE_SPANS.get(tile_name, Vector2(1, 1)))
+	mat.set_shader_parameter("atlas_grid", TILE_ATLAS_GRID)
 	mat.set_shader_parameter("tile_repeat", tile_repeat)
 	return mat
 
@@ -68,7 +126,7 @@ var _heights: Array = []
 
 ## 当前地牢所属区域（BrewingData.Zone 枚举值）。
 ## 决定宝箱材料掉落池，由关卡入口或 ExpeditionManager 注入。
-@export var dungeon_zone: int = 0  # 默认森林
+@export var dungeon_zone: int = 0  # 默认地牢
 
 func is_procedural() -> bool:
 	return true
@@ -81,52 +139,341 @@ func _ready() -> void:
 	var zm: Node = get_node_or_null("/root/ZoneManager")
 	if zm != null:
 		dungeon_zone = zm.get_zone()
-	var bsp = BSP_DungeonGenerator.new()
-	add_child(bsp)
-	_grid = bsp.generate_dungeon(30, 30)
-	_heights = bsp.ceiling_heights.duplicate(true)
-	bsp.queue_free()
+	var room_generator := ISAAC_ROOM_GENERATOR.new()
+	_grid = room_generator.generate_dungeon(42, 42)
+	_rooms = room_generator.rooms.duplicate()
+	_room_roles = room_generator.room_roles.duplicate()
+	_heights = room_generator.ceiling_heights.duplicate(true)
+	room_generator.free()
 	_generate_visuals(_grid)
 	player_spawn.global_position = player_spawn_pos
-	spawn_player()
-	_spawn_dungeon_enemies()
+	var spawned_player: Player = spawn_player()
+	_spawn_dungeon_enemies(spawned_player)
+	_spawn_dungeon_items()  # 使用 ItemSpawner 按标签放置物品
+	_stabilize_dungeon_lighting()
 	_mount_expedition_hud()
+	_setup_exploration_pressure()
 	if AudioManager:
 		AudioManager.start_music()
 
+func _process(delta: float) -> void:
+	if not _streaming_ready:
+		return
+	_stream_update_timer += delta
+	if _stream_update_timer < STREAM_UPDATE_INTERVAL:
+		return
+	_stream_update_timer = 0.0
+	_update_streamed_chunks(false)
+
 ## 调用 DungeonSpawner autoload 按区域生成怪物，注入 player 引用
-func _spawn_dungeon_enemies() -> void:
+## spawned_player: 由 spawn_player() 返回的 Player 实例，避免依赖 GameState.current_player
+## 的延迟注册时序问题
+func _spawn_dungeon_enemies(spawned_player: Node3D = null) -> void:
 	var spawner: Node = get_node_or_null("/root/DungeonSpawner")
 	if spawner == null:
 		push_warning("[Dungeon] DungeonSpawner autoload not found, no enemies spawned")
 		return
-	var player_node: Node3D = GameState.current_player
+	var player_node: Node3D = spawned_player
+	if player_node == null:
+		player_node = GameState.current_player
 	if player_node == null:
 		push_warning("[Dungeon] Player not spawned, skip enemy generation")
 		return
-	spawner.spawn_enemies(self, _grid, dungeon_zone, player_node, player_spawn_pos, TILE_SIZE)
+	# 传递房间列表与房间角色，让 Spawner 按房间类型分类生成怪物
+	# BOSS 房间只生成 BOSS 类怪物，普通房间只生成普通怪物，起始房间不生成
+	spawner.spawn_enemies(self, _grid, dungeon_zone, player_node, player_spawn_pos, TILE_SIZE, Vector3.ZERO, _rooms, _room_roles)
+
+## 调用 ItemSpawner autoload 按标签放置所有物品（材料/装饰/容器/宝藏）。
+## 替代旧散落逻辑（_spawn_random_material / _spawn_random_decor），
+## 集中通过 item_placement_config.json 按区域权重控制生成。
+func _spawn_dungeon_items() -> void:
+	var spawner: Node = get_node_or_null("/root/ItemSpawner")
+	if spawner == null:
+		push_warning("[Dungeon] ItemSpawner autoload not found, skipping item placement")
+		return
+	# 重算偏移（与 _generate_visuals 同公式）
+	var grid_width: int = _grid[0].size() if _grid.size() > 0 else 0
+	var grid_height: int = _grid.size()
+	var offset_x: float = -(float(grid_width) * TILE_SIZE) / 2.0
+	var offset_z: float = -(float(grid_height) * TILE_SIZE) / 2.0
+	var offset: Vector3 = Vector3(offset_x, 0, offset_z)
+
+	spawner.spawn_items_for_level(_grid, dungeon_zone, player_spawn_pos,
+		TILE_SIZE, offset, self)
+
+func _stabilize_dungeon_lighting() -> void:
+	var player_node: Node3D = GameState.current_player
+	if player_node != null and is_instance_valid(player_node):
+		if player_node.has_method("_setup_player_light"):
+			player_node._setup_player_light()
+
+	var local_lights: Array[Light3D] = []
+	_collect_local_lights(self, local_lights)
+	_streamed_environment_lights.clear()
+	_environment_light_chunks.clear()
+	for light in local_lights:
+		if _is_player_vision_light(light):
+			_configure_player_vision_light(light)
+			continue
+		if _is_hint_light(light):
+			light.visible = false
+			continue
+		if light is OmniLight3D or light is SpotLight3D:
+			light.visible = false
+			_streamed_environment_lights.append(light)
+			var chunk := _world_to_stream_chunk(light.global_position)
+			if not _environment_light_chunks.has(chunk):
+				_environment_light_chunks[chunk] = []
+			_environment_light_chunks[chunk].append(light)
+
+	_streaming_ready = true
+	_update_streamed_chunks(true)
+
+func _collect_local_lights(node: Node, result: Array[Light3D]) -> void:
+	if node is Light3D and not (node is DirectionalLight3D):
+		result.append(node as Light3D)
+	for child in node.get_children():
+		_collect_local_lights(child, result)
+
+func _is_player_vision_light(light: Light3D) -> bool:
+	return light.name == Player.PLAYER_VISION_LIGHT_NAME
+
+func _configure_player_vision_light(light: Light3D) -> void:
+	var omni := light as OmniLight3D
+	if omni == null:
+		return
+	omni.visible = true
+	omni.light_energy = 2.4
+	omni.omni_range = 10.0
+	omni.omni_attenuation = 0.45
+	omni.shadow_enabled = false
+	omni.distance_fade_enabled = false
+
+func _is_hint_light(light: Light3D) -> bool:
+	if light.name == "PresenceLight":
+		return true
+	var parent := light.get_parent()
+	while parent != null and parent != self:
+		if parent is PickableItem or parent is Enemy or parent is SpikesTrap or parent is AcidTrap or _is_generated_trap_node(parent):
+			return true
+		parent = parent.get_parent()
+	return false
+
+func _is_generated_trap_node(node: Node) -> bool:
+	if node == null:
+		return false
+	if node.has_meta("topdown_kind") and String(node.get_meta("topdown_kind")) == "hazard":
+		return true
+	return String(node.name) == "FlameVentTrap" or String(node.name) == "SnareTrap"
+
+func _update_streamed_chunks(force: bool) -> void:
+	var player_node: Node3D = GameState.current_player
+	var player_pos := player_spawn_pos
+	if player_node != null and is_instance_valid(player_node):
+		player_pos = player_node.global_position
+	var player_chunk := _world_to_stream_chunk(player_pos)
+	if not force and player_chunk == _last_stream_chunk:
+		return
+	_last_stream_chunk = player_chunk
+	_update_streamed_lights(player_chunk, player_pos)
+	_update_streamed_physics(player_chunk)
+	_update_streamed_terrain(player_chunk)
+
+func _update_streamed_lights(player_chunk: Vector2i, player_pos: Vector3) -> void:
+	for light in _streamed_environment_lights:
+		if is_instance_valid(light):
+			light.visible = false
+	var ranked_lights: Array[Dictionary] = []
+	for chunk in _iter_stream_chunks(player_chunk, STREAM_LIGHT_CHUNK_RADIUS):
+		var lights: Array = _environment_light_chunks.get(chunk, [])
+		for light in lights:
+			if light != null and is_instance_valid(light):
+				ranked_lights.append({
+					"light": light,
+					"distance": light.global_position.distance_squared_to(player_pos),
+				})
+	ranked_lights.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a["distance"]) < float(b["distance"])
+	)
+	for i in range(mini(ranked_lights.size(), DUNGEON_VISIBLE_LOCAL_LIGHT_BUDGET)):
+		var light := ranked_lights[i]["light"] as Light3D
+		light.visible = true
+
+func _update_streamed_terrain(player_chunk: Vector2i) -> void:
+	if _terrain_render_chunks.is_empty():
+		return
+	var active := {}
+	for chunk in _iter_stream_chunks(player_chunk, STREAM_TERRAIN_CHUNK_RADIUS):
+		active[chunk] = true
+	for chunk in _terrain_render_chunks.keys():
+		var visible := active.has(chunk)
+		var nodes: Array = _terrain_render_chunks[chunk]
+		for node in nodes:
+			if node != null and is_instance_valid(node):
+				node.visible = visible
+
+func _update_streamed_physics(player_chunk: Vector2i) -> void:
+	if _streamed_physics_bodies.is_empty():
+		return
+	var active := {}
+	for chunk in _iter_stream_chunks(player_chunk, STREAM_PHYSICS_CHUNK_RADIUS):
+		active[chunk] = true
+	for body in _streamed_physics_bodies:
+		if body == null or not is_instance_valid(body):
+			continue
+		var chunk: Vector2i = body.get_meta("stream_physics_chunk", _world_to_stream_chunk(_stream_body_position(body)))
+		_set_streamed_physics_body_active(body, active.has(chunk))
+
+func register_streamed_physics_node(node: Node) -> void:
+	if node == null:
+		return
+	var bodies: Array[RigidBody3D] = []
+	_collect_streamed_physics_bodies(node, bodies)
+	for body in bodies:
+		_register_streamed_physics_body(body)
+	if _streaming_ready and not bodies.is_empty():
+		_update_streamed_chunks(true)
+
+func _collect_streamed_physics_bodies(node: Node, result: Array[RigidBody3D]) -> void:
+	if node is RigidBody3D:
+		result.append(node as RigidBody3D)
+	for child in node.get_children():
+		_collect_streamed_physics_bodies(child, result)
+
+func _register_streamed_physics_body(body: RigidBody3D) -> void:
+	if body.get_meta("stream_physics_registered", false):
+		return
+	var chunk := _world_to_stream_chunk(_stream_body_position(body))
+	body.set_meta("stream_physics_registered", true)
+	body.set_meta("stream_physics_chunk", chunk)
+	body.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
+	_streamed_physics_bodies.append(body)
+	if not _physics_body_chunks.has(chunk):
+		_physics_body_chunks[chunk] = []
+	_physics_body_chunks[chunk].append(body)
+	_set_streamed_physics_body_active(body, false)
+
+func _set_streamed_physics_body_active(body: RigidBody3D, active: bool) -> void:
+	body.freeze = not active
+	body.sleeping = not active
+	if active:
+		body.sleeping = false
+	else:
+		body.linear_velocity = Vector3.ZERO
+		body.angular_velocity = Vector3.ZERO
+
+func _stream_body_position(body: Node3D) -> Vector3:
+	return body.global_position if body.is_inside_tree() else body.position
+
+func _world_to_stream_chunk(pos: Vector3) -> Vector2i:
+	var chunk_size := float(STREAM_CHUNK_SIZE_CELLS) * TILE_SIZE
+	return Vector2i(
+		int(floor(pos.x / chunk_size)),
+		int(floor(pos.z / chunk_size))
+	)
+
+func _iter_stream_chunks(center: Vector2i, radius: int) -> Array[Vector2i]:
+	var chunks: Array[Vector2i] = []
+	for y in range(center.y - radius, center.y + radius + 1):
+		for x in range(center.x - radius, center.x + radius + 1):
+			chunks.append(Vector2i(x, y))
+	return chunks
+
+func _register_terrain_chunk_node(chunk: Vector2i, node: Node3D) -> void:
+	if not _terrain_render_chunks.has(chunk):
+		_terrain_render_chunks[chunk] = []
+	_terrain_render_chunks[chunk].append(node)
 
 func _mount_expedition_hud() -> void:
 	var hud_scene = load("res://scenes/ui/expedition_hud.tscn")
 	if not hud_scene:
 		return
-	var hud = hud_scene.instantiate()
+	var hud := hud_scene.instantiate() as ExpeditionHUD
+	_expedition_hud = hud
 	var layer = CanvasLayer.new()
 	layer.name = "ExpeditionHUDLayer"
 	layer.add_child(hud)
 	add_child(layer)
 
-	# Mount in-game HUD (health bar, death screen, action prompts)
-	var game_ui = load("res://scenes/ui/ui.tscn")
-	if game_ui:
-		var ui_instance = game_ui.instantiate()
-		add_child(ui_instance)
+	# World.tscn owns the shared in-game UI. Standalone dungeon runs keep this fallback.
+	if not _is_running_under_world():
+		var game_ui = load("res://scenes/ui/ui.tscn")
+		if game_ui:
+			var ui_instance = game_ui.instantiate()
+			add_child(ui_instance)
+		var combat_hud_scene = load("res://scenes/ui/combat_hud.tscn")
+		if combat_hud_scene:
+			_combat_hud = combat_hud_scene.instantiate() as CombatHUD
+			add_child(_combat_hud)
+
+func _is_running_under_world() -> bool:
+	var node: Node = get_parent()
+	while node != null:
+		if node.has_method("transition_to_tavern") and node.has_method("transition_to_dungeon"):
+			return true
+		node = node.get_parent()
+	return false
+
+func _setup_exploration_pressure() -> void:
+	_exploration_pressure = EXPLORATION_PRESSURE_SCRIPT.new() as ExplorationPressure
+	_exploration_pressure.name = "ExplorationPressure"
+	_exploration_pressure.pressure_changed.connect(_on_pressure_changed)
+	_exploration_pressure.expedition_overtime.connect(_on_expedition_overtime)
+	add_child(_exploration_pressure)
+	_on_pressure_changed(_exploration_pressure.make_snapshot())
+
+func _on_pressure_changed(snapshot: Dictionary) -> void:
+	if _expedition_hud != null and is_instance_valid(_expedition_hud):
+		_expedition_hud.update_pressure(snapshot)
+	var combat_hud := _get_combat_hud()
+	if combat_hud != null and is_instance_valid(combat_hud):
+		combat_hud.update_pressure(snapshot)
+	_apply_player_vision_pressure(float(snapshot.get("vision_range_multiplier", 1.0)))
+	_apply_environment_activity(float(snapshot.get("environment_activity_multiplier", 1.0)))
+
+func _get_combat_hud() -> CombatHUD:
+	if _combat_hud != null and is_instance_valid(_combat_hud):
+		return _combat_hud
+	var node: Node = self
+	while node != null:
+		var found := node.get_node_or_null("CombatHUD") as CombatHUD
+		if found != null:
+			_combat_hud = found
+			return _combat_hud
+		node = node.get_parent()
+	return null
+
+func _apply_player_vision_pressure(multiplier: float) -> void:
+	var player_node := GameState.current_player
+	if player_node == null or not is_instance_valid(player_node):
+		return
+	var light := player_node.get_node_or_null(Player.PLAYER_VISION_LIGHT_NAME) as OmniLight3D
+	if light == null:
+		return
+	light.omni_range = 10.0 * clampf(multiplier, 0.55, 1.0)
+
+func _apply_environment_activity(multiplier: float) -> void:
+	for node in get_tree().get_nodes_in_group("enemies"):
+		if node == null or not is_instance_valid(node):
+			continue
+		node.set_meta("environment_activity_mult", clampf(multiplier, 1.0, 1.75))
+
+func _on_door_pressure_action(action: String) -> void:
+	if _exploration_pressure == null:
+		return
+	_exploration_pressure.record_door_action(action)
+
+func _on_expedition_overtime(_snapshot: Dictionary) -> void:
+	var player_node := GameState.current_player as Player
+	_finish_expedition(player_node, false)
 
 func _generate_visuals(grid: Array) -> void:
 	# 清空先前收集的 Transform 数组
 	floor_transforms.clear()
 	ceiling_transforms.clear()
 	wall_transforms_by_height.clear()
+	_terrain_render_chunks.clear()
+	_streaming_ready = false
 
 	const TILE_SIZE := 3.0
 	var grid_width = grid[0].size() if grid.size() > 0 else 0
@@ -135,26 +482,66 @@ func _generate_visuals(grid: Array) -> void:
 	var offset_z = -(grid_height * TILE_SIZE) / 2.0
 	var OFFSET := Vector3(offset_x, 0, offset_z)
 
-	# 地牢内部无阳光直射——用极微弱的洞穴底光模拟环境散射
-	var cave_ambient := DirectionalLight3D.new()
-	cave_ambient.rotation_degrees = Vector3(-90, 0, 0)  # 正下方
-	cave_ambient.light_energy = 0.02
-	cave_ambient.light_color = Color(0.3, 0.35, 0.5)   # 冷蓝灰调
-	cave_ambient.shadow_enabled = false
-	add_child(cave_ambient)
+	# 按区域设置环境光与雾效：
+	#   地牢(0): 阴冷微光，潮湿石砌地牢，依赖火把照明
+	#   森林(1): 明亮青绿顶光，模拟树冠筛落的月光（无需火把）
+	#   洞窟(2): 极暗冷紫，依赖火把照明
+	#   墓园(3): 阴冷灰蓝，依赖火把照明
+	#   火山(4): 暖橙辉光，熔岩自发光（无需火把）
+	#   遗迹(5): 灵界蓝白辉光，古代魔力弥漫（无需火把）
+	var zone_ambient_config := _get_zone_ambient_config(dungeon_zone)
+	var ambient_dir := DirectionalLight3D.new()
+	ambient_dir.rotation_degrees = Vector3(-90, 0, 0)
+	ambient_dir.light_energy = zone_ambient_config.light_energy
+	ambient_dir.light_color = zone_ambient_config.light_color
+	ambient_dir.shadow_enabled = false
+	add_child(ambient_dir)
 
 	var env := WorldEnvironment.new()
 	env.environment = Environment.new()
-	# 极暗的地牢环境，主要靠角色自身光源 + 火把照明
-	env.environment.ambient_light_color = Color(0.04, 0.03, 0.06)  # 极暗紫黑
-	env.environment.ambient_light_energy = 0.04
+	env.environment.ambient_light_color = zone_ambient_config.ambient_color
+	env.environment.ambient_light_energy = zone_ambient_config.ambient_energy
 	env.environment.tonemap_mode = Environment.TONE_MAPPER_ACES
-	env.environment.fog_enabled = true
-	env.environment.fog_light_color = Color(0.05, 0.04, 0.06)
-	env.environment.fog_density = 0.02  # 轻微阴槽骎雾
+	env.environment.fog_enabled = zone_ambient_config.fog_enabled
+	env.environment.fog_light_color = zone_ambient_config.fog_color
+	env.environment.fog_density = zone_ambient_config.fog_density
+	# 露天区域添加天空盒
+	var open_sky_zones := [1, 3, 4, 5]  # 森林、墓园、火山、遗迹
+	if dungeon_zone in open_sky_zones:
+		var sky_mat := ProceduralSkyMaterial.new()
+		match dungeon_zone:
+			1:  # 森林 — 深绿夜空
+				sky_mat.sky_top_color = Color(0.05, 0.08, 0.15)
+				sky_mat.sky_horizon_color = Color(0.1, 0.18, 0.12)
+				sky_mat.ground_horizon_color = Color(0.05, 0.1, 0.06)
+				sky_mat.ground_bottom_color = Color(0.02, 0.04, 0.03)
+			3:  # 墓园 — 阴冷灰蓝夜空
+				sky_mat.sky_top_color = Color(0.08, 0.08, 0.15)
+				sky_mat.sky_horizon_color = Color(0.1, 0.12, 0.18)
+				sky_mat.ground_horizon_color = Color(0.08, 0.06, 0.1)
+				sky_mat.ground_bottom_color = Color(0.03, 0.02, 0.05)
+			4:  # 火山 — 暗红橙夜空，熔岩映照
+				sky_mat.sky_top_color = Color(0.12, 0.04, 0.02)
+				sky_mat.sky_horizon_color = Color(0.25, 0.08, 0.03)
+				sky_mat.ground_horizon_color = Color(0.15, 0.05, 0.02)
+				sky_mat.ground_bottom_color = Color(0.08, 0.02, 0.01)
+			5:  # 遗迹 — 灵界紫蓝夜空，星光闪烁
+				sky_mat.sky_top_color = Color(0.06, 0.04, 0.15)
+				sky_mat.sky_horizon_color = Color(0.12, 0.08, 0.25)
+				sky_mat.ground_horizon_color = Color(0.08, 0.05, 0.15)
+				sky_mat.ground_bottom_color = Color(0.03, 0.02, 0.08)
+		var sky := Sky.new()
+		sky.sky_material = sky_mat
+		env.environment.background_mode = Environment.BG_SKY
+		env.environment.sky = sky
 	add_child(env)
 
 	var player_spawned := false
+	var preferred_spawn_cell := Vector2i.ZERO
+	var has_preferred_spawn := false
+	if _room_roles.has("start"):
+		preferred_spawn_cell = _rect_center_cell(_room_roles["start"])
+		has_preferred_spawn = true
 
 	# ── 预计算墙体高度（两遍，消除相邻墙格高度差接缝）──────────────────
 	# 第一遍：每个墙格取所有 4 邻格（含其他墙格）的最大 _heights 值
@@ -228,77 +615,446 @@ func _generate_visuals(grid: Array) -> void:
 					var room_h = _heights[y][x]
 					pillar.scale.y = room_h / 3.0
 					add_child(pillar)
+					_ensure_collision_on_instance(pillar)
+					_configure_scene_object(pillar)
 				3:
-					if randf() < 0.7:
+					var cell := Vector2i(x, y)
+					if _is_boss_reward_chest_cell(cell):
+						_spawn_prefab(BOSS_CHEST_PREFAB, cell_pos)
+					elif randf() < 0.7:
 						_spawn_prefab(CHEST_PREFAB, cell_pos)
 					else:
 						_spawn_random_decor(cell_pos)
 				4:
-					if randf() < 0.5:
-						_spawn_prefab(BARREL_PREFAB, cell_pos)
-					else:
-						_spawn_prefab(CRATE_PREFAB, cell_pos)
+					pass
 
 			if cell_type != 2 and cell_type != 0:
-				if not player_spawned and cell_type == 1:
+				if not player_spawned and cell_type == 1 and (not has_preferred_spawn or Vector2i(x, y) == preferred_spawn_cell):
 					player_spawn_pos = cell_pos + Vector3(0, 0.5, 0)
 					player_spawned = true
-				elif player_spawned:
-					# Wall torches
-					var directions := [
-						Vector2i(0, -1),
-						Vector2i(0, 1),
-						Vector2i(1, 0),
-						Vector2i(-1, 0)
-					]
-					var torch_spawned := false
-					for dir in directions:
-						var nx = x + dir.x
-						var ny = y + dir.y
-						if nx >= 0 and nx < grid_width and ny >= 0 and ny < grid_height:
-							if grid[ny][nx] == 2:
-								if randf() < 0.12:
-									_spawn_torch_on_wall(cell_pos, dir)
-									torch_spawned = true
-									break
-									
-					if not torch_spawned:
-						# 6% probability to spawn gatherable brewing material
-						if randf() < 0.06:
-							var scatter = Vector3(randf_range(-0.6, 0.6), 0, randf_range(-0.6, 0.6))
-							_spawn_random_material(cell_pos + scatter)
-						# 4% probability to spawn random scatter decor
-						elif randf() < 0.04:
+				elif player_spawned and not _is_start_room_cell(Vector2i(x, y)):
+					# 火把仅限地牢(0)、洞窟(2)和墓园(3)，其他区域靠环境光或自发光
+					var torch_zones := [0, 2, 3]  # 地牢、洞窟、墓园
+					if dungeon_zone in torch_zones:
+						# Wall torches
+						var directions := [
+							Vector2i(0, -1),
+							Vector2i(0, 1),
+							Vector2i(1, 0),
+							Vector2i(-1, 0),
+						]
+						var torch_spawned := false
+						for dir in directions:
+							var nx = x + dir.x
+							var ny = y + dir.y
+							if nx >= 0 and nx < grid_width and ny >= 0 and ny < grid_height:
+								if grid[ny][nx] == 2:
+									if randf() < 0.12:
+										var h: float = wall_h_map.get(Vector2i(nx, ny), 3.0)
+										_spawn_torch_on_wall(cell_pos, dir, h)
+										torch_spawned = true
+										break
+
+						if not torch_spawned:
+							# Low density room dressing; materials are handled centrally by ItemSpawner.
+							if randf() < 0.035:
+								var scatter = Vector3(randf_range(-0.6, 0.6), 0, randf_range(-0.6, 0.6))
+								_spawn_random_decor(cell_pos + scatter)
+					else:
+						# 无火把区域：只增加少量装饰，素材不在视觉阶段额外生成。
+						if randf() < 0.055:
 							var scatter = Vector3(randf_range(-0.6, 0.6), 0, randf_range(-0.6, 0.6))
 							_spawn_random_decor(cell_pos + scatter)
 
 	# 一次性构建 MultiMesh 并添加到场景，实现合批极速绘制
 	_build_multi_meshes()
+	# 烘焙导航网格供敌人 NavigationAgent3D 寻路（用地板碰撞体作为可行走面）
+	_build_navigation_mesh()
+	_spawn_room_door_panels(grid, OFFSET, TILE_SIZE)
 
 	# Place extraction portal on a random FLOOR tile far from spawn
 	if player_spawned:
-		_spawn_extraction_portal(grid, OFFSET, TILE_SIZE, player_spawn_pos)
+		_spawn_large_room_terrain_features(grid, OFFSET, TILE_SIZE, player_spawn_pos, _rooms)
+		if _room_roles.has("extraction"):
+			_spawn_extraction_portal(grid, OFFSET, TILE_SIZE, player_spawn_pos)
+		_spawn_downstairs_portal(grid, OFFSET, TILE_SIZE, player_spawn_pos)
+		_spawn_hazard_anchors(grid, OFFSET, TILE_SIZE, player_spawn_pos, _rooms)
 
 	if not player_spawned:
 		player_spawn_pos = Vector3(0, 0.5, 0)
 
+func _spawn_hazard_anchors(grid: Array, offset: Vector3, tile_size: float, spawn_pos: Vector3, rooms: Array[Rect2i] = []) -> void:
+	if grid.is_empty():
+		return
+	var used_cells: Array[Vector2i] = []
+	if rooms.is_empty():
+		rooms = [Rect2i(0, 0, grid[0].size(), grid.size())]
+	for room in rooms:
+		if _room_is_start_room(room):
+			continue
+		var candidates := _collect_hazard_candidates_for_room(grid, room, offset, tile_size, spawn_pos)
+		if candidates.is_empty():
+			continue
+		candidates.shuffle()
+		var room_target_count := _get_hazard_anchor_count_for_room(room, candidates.size())
+		var room_spawned := 0
+		for candidate in candidates:
+			if room_spawned >= room_target_count:
+				break
+			var cell: Vector2i = candidate["cell"]
+			var min_gap := 2 if room.size.x * room.size.y >= LARGE_ROOM_AREA else 3
+			if _is_near_used_hazard_cell(cell, used_cells, min_gap):
+				continue
+			var trap := _pick_hazard_trap_prefab(room, room_spawned).instantiate() as Node3D
+			if trap == null:
+				continue
+			trap.position = candidate["pos"]
+			trap.set_meta("hazard_anchor", true)
+			trap.set_meta("topdown_kind", "hazard")
+			trap.set_meta("hazard_room", room)
+			trap.set_meta("kick_lane_dir", candidate["dir"])
+			trap.set_meta("placement_role", "terrain_damage_anchor")
+			_configure_hazard_trap_placement(trap, grid, cell, room)
+			add_child(trap)
+			used_cells.append(cell)
+			room_spawned += 1
+
+
+func _spawn_large_room_terrain_features(grid: Array, offset: Vector3, tile_size: float, spawn_pos: Vector3, rooms: Array[Rect2i] = []) -> void:
+	if grid.is_empty():
+		return
+	if rooms.is_empty():
+		rooms = [Rect2i(0, 0, grid[0].size(), grid.size())]
+	var used_cells: Array[Vector2i] = []
+	for room in rooms:
+		if _room_is_start_room(room):
+			continue
+		var area := room.size.x * room.size.y
+		if area < LARGE_ROOM_AREA:
+			continue
+		var candidates := _collect_large_room_feature_candidates(grid, room, offset, tile_size, spawn_pos)
+		if candidates.is_empty():
+			continue
+		candidates.shuffle()
+		var target_count := _get_large_room_feature_count(room, candidates.size())
+		var spawned_count := 0
+		for candidate in candidates:
+			if spawned_count >= target_count:
+				break
+			var cell: Vector2i = candidate["cell"]
+			if _is_near_used_hazard_cell(cell, used_cells, 2):
+				continue
+			var feature := _spawn_large_room_feature(candidate["pos"], room, spawned_count)
+			if feature == null:
+				continue
+			used_cells.append(cell)
+			spawned_count += 1
+
+
+func _collect_large_room_feature_candidates(grid: Array, room: Rect2i, offset: Vector3, tile_size: float, spawn_pos: Vector3) -> Array:
+	var candidates: Array = []
+	var entrances := _find_room_entrance_cells(grid, room)
+	var inner := room.grow(-2)
+	if inner.size.x <= 0 or inner.size.y <= 0:
+		return candidates
+	for y in range(inner.position.y, inner.position.y + inner.size.y):
+		for x in range(inner.position.x, inner.position.x + inner.size.x):
+			if int(grid[y][x]) != BSP_DungeonGenerator.TileType.FLOOR:
+				continue
+			var cell := Vector2i(x, y)
+			var pos := offset + Vector3(x * tile_size, 0, y * tile_size)
+			if pos.distance_to(spawn_pos) < tile_size * 4.0:
+				continue
+			if _is_near_room_entrance(cell, entrances, 3):
+				continue
+			if _is_narrow_passage_cell(grid, cell):
+				continue
+			candidates.append({"cell": cell, "pos": pos})
+	return candidates
+
+
+func _get_large_room_feature_count(room: Rect2i, candidate_count: int) -> int:
+	if candidate_count <= 0:
+		return 0
+	var area := room.size.x * room.size.y
+	if area < 80:
+		return min(candidate_count, 2)
+	if area < 110:
+		return min(candidate_count, 3)
+	return min(candidate_count, 4)
+
+
+func _spawn_large_room_feature(pos: Vector3, room: Rect2i, placement_index: int) -> Node3D:
+	var prefab := _pick_large_room_feature_prefab(room, placement_index)
+	var instance := prefab.instantiate()
+	if not (instance is Node3D):
+		instance.queue_free()
+		return null
+	var node := instance as Node3D
+	node.position = pos
+	node.rotation_degrees.y = float(randi_range(0, 3)) * 90.0
+	node.set_meta("topdown_kind", "terrain_feature")
+	node.set_meta("large_room_feature", true)
+	node.set_meta("feature_room", room)
+	add_child(node)
+	_ensure_collision_on_instance(node)
+	_configure_scene_object(node)
+	return node
+
+
+func _pick_large_room_feature_prefab(room: Rect2i, placement_index: int) -> PackedScene:
+	var area := room.size.x * room.size.y
+	var roll := (placement_index + randi_range(0, 5)) % 6
+	if area >= 100 and roll == 0:
+		return PILLAR_PREFAB
+	match roll:
+		1:
+			return CRATE_PREFAB
+		2:
+			return BARREL_PREFAB
+		3:
+			return RUBBLE_PREFAB
+		4:
+			return BONES_PREFAB
+		_:
+			return PILLAR_PREFAB
+
+
+func _collect_hazard_candidates_for_room(grid: Array, room: Rect2i, offset: Vector3, tile_size: float, spawn_pos: Vector3) -> Array:
+	var candidates: Array = []
+	var entrances := _find_room_entrance_cells(grid, room)
+	var inner := room.grow(-1)
+	if inner.size.x <= 0 or inner.size.y <= 0:
+		return candidates
+	for y in range(inner.position.y, inner.position.y + inner.size.y):
+		for x in range(inner.position.x, inner.position.x + inner.size.x):
+			if not _is_walkable_hazard_cell(grid, x, y):
+				continue
+			var cell := Vector2i(x, y)
+			var pos := offset + Vector3(x * tile_size, 0.05, y * tile_size)
+			if pos.distance_to(spawn_pos) < tile_size * 4.0:
+				continue
+			var entrance_padding := 1 if min(room.size.x, room.size.y) <= 5 else 2
+			if _is_near_room_entrance(cell, entrances, entrance_padding):
+				continue
+			if _is_narrow_passage_cell(grid, cell):
+				continue
+			var lane_dir := _find_kick_lane_direction(grid, x, y, 2)
+			if lane_dir != Vector2i.ZERO:
+				candidates.append({"cell": cell, "dir": lane_dir, "pos": pos})
+	return candidates
+
+func _get_hazard_anchor_count_for_room(room: Rect2i, candidate_count: int) -> int:
+	if candidate_count <= 0:
+		return 0
+	var area := room.size.x * room.size.y
+	if area < 20:
+		return min(candidate_count, 1)
+	if area < 48:
+		return min(candidate_count, 1)
+	if area < 80:
+		return min(candidate_count, 3)
+	return min(candidate_count, 4)
+
+func _find_room_entrance_cells(grid: Array, room: Rect2i) -> Array[Vector2i]:
+	var entrances: Array[Vector2i] = []
+	for y in range(room.position.y, room.position.y + room.size.y):
+		for x in range(room.position.x, room.position.x + room.size.x):
+			if not _is_walkable_hazard_cell(grid, x, y):
+				continue
+			var cell := Vector2i(x, y)
+			if not _is_on_room_edge(cell, room):
+				continue
+			for dir in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0)]:
+				var outside: Vector2i = cell + dir
+				if room.has_point(outside):
+					continue
+				if _is_walkable_hazard_cell(grid, outside.x, outside.y):
+					entrances.append(cell)
+					break
+	return entrances
+
+func _is_on_room_edge(cell: Vector2i, room: Rect2i) -> bool:
+	return cell.x == room.position.x \
+		or cell.y == room.position.y \
+		or cell.x == room.position.x + room.size.x - 1 \
+		or cell.y == room.position.y + room.size.y - 1
+
+func _is_near_room_entrance(cell: Vector2i, entrances: Array[Vector2i], padding_cells: int) -> bool:
+	for entrance in entrances:
+		if abs(cell.x - entrance.x) + abs(cell.y - entrance.y) <= padding_cells:
+			return true
+	return false
+
+func _is_narrow_passage_cell(grid: Array, cell: Vector2i) -> bool:
+	var open_neighbors := 0
+	for dir in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0)]:
+		var next: Vector2i = cell + dir
+		if _is_walkable_hazard_cell(grid, next.x, next.y):
+			open_neighbors += 1
+	return open_neighbors <= 2
+
+func _pick_hazard_trap_prefab(room: Rect2i = Rect2i(), placement_index: int = 0) -> PackedScene:
+	var area := room.size.x * room.size.y
+	if area >= LARGE_ROOM_AREA:
+		var roll := (placement_index + randi_range(0, 3)) % 4
+		match roll:
+			0:
+				return SPIKES_TRAP_PREFAB
+			1:
+				return _load_acid_trap_or_spikes()
+			2:
+				return FLAME_VENT_TRAP_PREFAB
+			_:
+				return SNARE_TRAP_PREFAB
+	if dungeon_zone == 4:
+		return _load_acid_trap_or_spikes()
+	if dungeon_zone == 2 and randf() < 0.35:
+		return _load_acid_trap_or_spikes()
+	return SNARE_TRAP_PREFAB if randf() < 0.2 else SPIKES_TRAP_PREFAB
+
+
+func _configure_hazard_trap_placement(trap: Node3D, grid: Array, cell: Vector2i, room: Rect2i) -> void:
+	var trap_name := String(trap.name)
+	match trap_name:
+		"SpikesTrap":
+			_configure_spikes_trap_placement(trap, grid, cell, room)
+		"AcidTrap":
+			_configure_acid_trap_placement(trap)
+		"FlameVentTrap", "SnareTrap":
+			trap.position.y = 0.04
+			trap.rotation_degrees.x = 0.0
+			trap.rotation_degrees.z = 0.0
+			trap.set_meta("trap_mount", "floor")
+		_:
+			trap.position.y = 0.04
+
+
+func _configure_spikes_trap_placement(trap: Node3D, grid: Array, cell: Vector2i, room: Rect2i) -> void:
+	var wall_dir := _find_adjacent_wall_direction(grid, cell)
+	var use_wall_mount := wall_dir != Vector2i.ZERO and randf() < 0.45 and room.size.x * room.size.y >= LARGE_ROOM_AREA
+	if use_wall_mount:
+		trap.set_meta("spike_mount", "wall")
+		trap.set_meta("trap_mount", "wall")
+		trap.set_meta("wall_direction", wall_dir)
+		trap.position += Vector3(wall_dir.x, 0, wall_dir.y) * (TILE_SIZE * 0.42)
+		trap.position.y = 1.05
+		trap.rotation_degrees.x = 0.0
+		trap.rotation.y = atan2(float(wall_dir.x), float(wall_dir.y))
+	else:
+		trap.set_meta("spike_mount", "floor")
+		trap.set_meta("trap_mount", "floor")
+		trap.position.y = 0.08
+		trap.rotation_degrees.x = -90.0
+		trap.rotation_degrees.z = 0.0
+
+
+func _configure_acid_trap_placement(trap: Node3D) -> void:
+	trap.position.y = 0.03
+	trap.rotation_degrees.x = 0.0
+	trap.rotation_degrees.z = 0.0
+	trap.set_meta("trap_mount", "floor")
+	trap.set_meta("acid_ground_only", true)
+	trap.set_meta("acid_pit", true)
+	_add_acid_pit_visual(trap)
+
+
+func _add_acid_pit_visual(trap: Node3D) -> void:
+	if trap.find_child("AcidPit", true, false) != null:
+		return
+	var pit := MeshInstance3D.new()
+	pit.name = "AcidPit"
+	pit.set_meta("topdown_kind", "terrain_feature")
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = 0.9
+	mesh.bottom_radius = 0.75
+	mesh.height = 0.14
+	mesh.radial_segments = 18
+	pit.mesh = mesh
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.02, 0.025, 0.018, 1.0)
+	mat.roughness = 1.0
+	pit.material_override = mat
+	pit.position = Vector3(0.5, -0.24, 0.5)
+	trap.add_child(pit)
+
+
+func _find_adjacent_wall_direction(grid: Array, cell: Vector2i) -> Vector2i:
+	var directions: Array[Vector2i] = [Vector2i(0, -1), Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0)]
+	for dir in directions:
+		var next: Vector2i = cell + dir
+		if next.y < 0 or next.y >= grid.size() or next.x < 0 or next.x >= grid[next.y].size():
+			continue
+		if int(grid[next.y][next.x]) == BSP_DungeonGenerator.TileType.WALL:
+			return dir
+	return Vector2i.ZERO
+
+func _load_acid_trap_or_spikes() -> PackedScene:
+	var acid_scene := load(ACID_TRAP_PATH)
+	if acid_scene is PackedScene:
+		return acid_scene
+	return SPIKES_TRAP_PREFAB
+
+func _find_kick_lane_direction(grid: Array, x: int, y: int, min_lane_cells: int = 2) -> Vector2i:
+	for dir in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0)]:
+		var clear := true
+		for step in range(1, min_lane_cells + 1):
+			var lx: int = x - dir.x * step
+			var ly: int = y - dir.y * step
+			if not _is_walkable_hazard_cell(grid, lx, ly):
+				clear = false
+				break
+		if clear:
+			return dir
+	return Vector2i.ZERO
+
+func _is_walkable_hazard_cell(grid: Array, x: int, y: int) -> bool:
+	if y < 0 or y >= grid.size():
+		return false
+	if x < 0 or x >= grid[y].size():
+		return false
+	var cell_type: int = int(grid[y][x])
+	return cell_type != 0 and cell_type != 2
+
+func _is_near_used_hazard_cell(cell: Vector2i, used_cells: Array[Vector2i], min_distance_cells: int) -> bool:
+	for used in used_cells:
+		if abs(cell.x - used.x) + abs(cell.y - used.y) < min_distance_cells:
+			return true
+	return false
+
 func _spawn_extraction_portal(grid: Array, offset: Vector3, tile_size: float, spawn_pos: Vector3) -> void:
 	var best_dist = 0.0
 	var best_pos = Vector3.ZERO
+	var found_floor := false
+	if not _room_roles.has("extraction"):
+		return
+	var extraction_room: Rect2i = _room_roles["extraction"]
+	var extraction_center := _rect_center_cell(extraction_room)
+	if _is_walkable_hazard_cell(grid, extraction_center.x, extraction_center.y):
+		best_pos = offset + Vector3(extraction_center.x * tile_size, 0.5, extraction_center.y * tile_size)
+		found_floor = true
 	for y in range(grid.size()):
 		for x in range(grid[y].size()):
-			if grid[y][x] == 1:
-				var pos = offset + Vector3(x * tile_size, 0.5, y * tile_size)
-				var dist = pos.distance_to(spawn_pos)
-				if dist > best_dist:
-					best_dist = dist
-					best_pos = pos
+			var cell := Vector2i(x, y)
+			if not extraction_room.has_point(cell):
+				continue
+			if not _is_walkable_hazard_cell(grid, x, y):
+				continue
+			var pos = offset + Vector3(x * tile_size, 0.5, y * tile_size)
+			var dist = Vector2(cell).distance_squared_to(Vector2(extraction_center))
+			if not found_floor or dist < best_dist:
+				found_floor = true
+				best_dist = dist
+				best_pos = pos
 
-	if best_pos == Vector3.ZERO:
+	if not found_floor:
+		push_warning("[Dungeon] No floor tile found for extraction portal")
 		return
 
 	# Extraction portal visual (glowing disc)
 	var portal_mesh := MeshInstance3D.new()
+	portal_mesh.name = "ExtractionPortalVisual"
+	portal_mesh.set_meta("topdown_kind", "extraction")
 	var cylinder := CylinderMesh.new()
 	cylinder.top_radius = 0.5
 	cylinder.bottom_radius = 0.5
@@ -316,6 +1072,7 @@ func _spawn_extraction_portal(grid: Array, offset: Vector3, tile_size: float, sp
 	# Extraction area trigger
 	var area := Area3D.new()
 	area.name = "ExtractionPortal"
+	area.set_meta("topdown_kind", "extraction")
 	area.position = best_pos + Vector3(0, 0.5, 0)
 	var col_shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
@@ -327,16 +1084,100 @@ func _spawn_extraction_portal(grid: Array, offset: Vector3, tile_size: float, sp
 
 	print("[Dungeon] Extraction portal placed at ", best_pos)
 
+func _spawn_downstairs_portal(grid: Array, offset: Vector3, tile_size: float, spawn_pos: Vector3) -> void:
+	var best_dist := 0.0
+	var best_pos := Vector3.ZERO
+	var found_floor := false
+	if _room_roles.has("stairs"):
+		var stairs_center := _rect_center_cell(_room_roles["stairs"])
+		if _is_walkable_hazard_cell(grid, stairs_center.x, stairs_center.y):
+			best_pos = offset + Vector3(stairs_center.x * tile_size, 0.5, stairs_center.y * tile_size)
+			found_floor = true
+	for y in range(grid.size()):
+		for x in range(grid[y].size()):
+			if int(grid[y][x]) != BSP_DungeonGenerator.TileType.FLOOR:
+				continue
+			var pos := offset + Vector3(x * tile_size, 0.5, y * tile_size)
+			var dist := pos.distance_to(spawn_pos)
+			if not found_floor or (not _room_roles.has("stairs") and dist > best_dist):
+				found_floor = true
+				best_dist = dist
+				best_pos = pos
+
+	if not found_floor:
+		push_warning("[Dungeon] No floor tile found for downstairs portal")
+		return
+
+	var root := Node3D.new()
+	root.name = "DownstairsPortal"
+	root.set_meta("topdown_kind", "stairs")
+	root.position = best_pos
+	add_child(root)
+
+	var step_mat := StandardMaterial3D.new()
+	step_mat.albedo_color = Color(0.20, 0.18, 0.16)
+	step_mat.roughness = 0.9
+	for i in range(4):
+		var step := MeshInstance3D.new()
+		step.name = "DownstairsStep%d" % (i + 1)
+		step.set_meta("topdown_kind", "stairs")
+		var box := BoxMesh.new()
+		box.size = Vector3(1.8, 0.14, 0.36)
+		step.mesh = box
+		step.material_override = step_mat
+		step.position = Vector3(0, 0.02 + i * 0.03, -0.54 + i * 0.36)
+		root.add_child(step)
+
+	var area := Area3D.new()
+	area.name = "DownstairsArea"
+	area.set_meta("topdown_kind", "stairs")
+	area.position = Vector3(0, 0.5, 0)
+	var col_shape := CollisionShape3D.new()
+	var box_shape := BoxShape3D.new()
+	box_shape.size = Vector3(2.0, 2.0, 2.0)
+	col_shape.shape = box_shape
+	area.add_child(col_shape)
+	area.body_entered.connect(_on_downstairs_entered)
+	root.add_child(area)
+
+	print("[Dungeon] Downstairs portal placed at ", best_pos)
+
+func _on_downstairs_entered(body: Node3D) -> void:
+	if not body is Player:
+		return
+	print("[Dungeon] Downstairs triggered by player")
+	var world := _find_world_controller()
+	if world != null:
+		world.transition_to_dungeon()
+	elif GameEvents:
+		GameEvents.level_restarted.emit()
+
+func _find_world_controller() -> Node:
+	var node: Node = get_parent()
+	while node != null:
+		if node.has_method("transition_to_dungeon"):
+			return node
+		node = node.get_parent()
+	return null
+
 func _on_extraction_entered(body: Node3D) -> void:
 	if not body is Player:
 		return
 	print("[Dungeon] Extraction triggered by player!")
-	# 撤离结算：携带材料/武器转入酒馆库存
-	_settle_extraction_loot(body as Player)
-	if TavernManager:
-		TavernManager.extract_to_tavern()
+	_finish_expedition(body as Player, true)
 
-## 撤离结算：将玩家拾取的材料/武器转入 TavernManager.inventory
+func _finish_expedition(player: Player, voluntary: bool) -> void:
+	if _expedition_finished:
+		return
+	_expedition_finished = true
+	# 撤离结算：保留随身材料，进入酒馆后可手动存入仓库
+	if player != null and is_instance_valid(player):
+		_settle_extraction_loot(player)
+	if TavernManager:
+		var result := _exploration_pressure.build_extraction_result(voluntary) if _exploration_pressure != null else {}
+		TavernManager.extract_to_tavern(result)
+
+## 撤离结算：本趟材料留在 GameState.carried_materials，进入酒馆后由仓库面板手动存取。
 func _settle_extraction_loot(player: Player) -> void:
 	var tm: Node = get_node_or_null("/root/TavernManager")
 	if tm == null:
@@ -346,8 +1187,7 @@ func _settle_extraction_loot(player: Player) -> void:
 	var carried_weapons: int = GameState.get_carried_weapons()
 	var carried_shields: int = GameState.get_carried_shields()
 	print("[Dungeon] Extraction loot: %d materials, %d weapons, %d shields" % [carried_materials, carried_weapons, carried_shields])
-	# 材料已实时注入 TavernManager.inventory（player_state_picking_up 调用 add_material）
-	# 此处仅打印结算确认，武器/盾已装备到 equipment
+	# 武器/盾已装备到 equipment；后续再接入完整装备仓库数据结构
 	# 注入 TavernManager 统计（若方法存在）
 	if tm.has_method("record_expedition_loot"):
 		tm.record_expedition_loot(carried_materials, carried_weapons, carried_shields)
@@ -366,7 +1206,7 @@ func _spawn_floor(pos: Vector3, tile_size: float) -> void:
 	var t := Transform3D()
 	t.origin = pos - Vector3(0, 0.05, 0)
 	floor_transforms.append(t)
-	_spawn_collision(t.origin, Vector3(tile_size, 0.1, tile_size))
+	# 碰撞由 _build_merged_collisions() 按 chunk 合并，不再每格创建 StaticBody3D
 
 func _spawn_wall(pos: Vector3, tile_size: float, wall_height: float) -> void:
 	var t := Transform3D()
@@ -377,13 +1217,13 @@ func _spawn_wall(pos: Vector3, tile_size: float, wall_height: float) -> void:
 	if not wall_transforms_by_height.has(wall_height):
 		wall_transforms_by_height[wall_height] = []
 	wall_transforms_by_height[wall_height].append(t)
-	_spawn_collision(t.origin, Vector3(tile_size, wall_height, tile_size))
+	# 碰撞由 _build_merged_collisions() 按 chunk 合并，不再每格创建 StaticBody3D
 
 func _spawn_ceiling(pos: Vector3, tile_size: float, ceiling_height: float) -> void:
 	var t := Transform3D()
 	t.origin = pos + Vector3(0, ceiling_height + 0.05, 0)
 	ceiling_transforms.append(t)
-	_spawn_collision(t.origin, Vector3(tile_size, 0.1, tile_size))
+	# 碰撞由 _build_merged_collisions() 按 chunk 合并，不再每格创建 StaticBody3D
 
 func _spawn_prefab(prefab: PackedScene, pos: Vector3) -> void:
 	var instance := prefab.instantiate()
@@ -392,8 +1232,10 @@ func _spawn_prefab(prefab: PackedScene, pos: Vector3) -> void:
 	# 宝箱注入区域属性，决定其材料掉落池
 	if instance is Chest:
 		instance.zone = dungeon_zone
-	# 预制体补全碰撞（若本身无 PhysicsBody 则添加环境层 BoxShape）
+	# 预制体补全碰撞，并标记为场景物体层，避免和地形环境层混淆。
 	_ensure_collision_on_instance(instance)
+	_configure_scene_object(instance)
+	register_streamed_physics_node(instance)
 
 ## 确保实例有物理碰撞：若实例及其子节点无 PhysicsBody3D，则基于 AABB 添加 StaticBody3D。
 func _ensure_collision_on_instance(instance: Node) -> void:
@@ -424,8 +1266,9 @@ func _ensure_collision_on_instance(instance: Node) -> void:
 		return
 	var body := StaticBody3D.new()
 	body.name = instance.name + "Body"
-	body.collision_layer = 1  # 环境层
+	body.collision_layer = SCENE_OBJECT_LAYER
 	body.collision_mask = 0
+	body.set_script(SCENE_OBJECT_SCRIPT)
 	var col := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
 	shape.size = combined_aabb.size
@@ -433,6 +1276,16 @@ func _ensure_collision_on_instance(instance: Node) -> void:
 	col.position = combined_aabb.position + combined_aabb.size * 0.5
 	body.add_child(col, true)
 	node3d.add_child(body, true)
+
+func _configure_scene_object(node: Node) -> void:
+	if node is StaticBody3D:
+		var body := node as StaticBody3D
+		body.collision_layer = SCENE_OBJECT_LAYER
+		body.collision_mask = 0
+		if body.get_script() == null:
+			body.set_script(SCENE_OBJECT_SCRIPT)
+	for c in node.get_children():
+		_configure_scene_object(c)
 
 ## 递归检测节点树是否已含 PhysicsBody3D
 func _has_physics_body(node: Node) -> bool:
@@ -455,43 +1308,146 @@ func _spawn_lintel(pos: Vector3, size: Vector3) -> void:
 	add_child(mesh)
 	_spawn_collision(pos, size)
 
+func _spawn_room_door_panels(grid: Array, offset: Vector3, tile_size: float) -> void:
+	if _rooms.is_empty():
+		return
+	var door_specs := {}
+	for room in _rooms:
+		for spec in _collect_room_door_specs(grid, room):
+			var inside: Vector2i = spec["inside"]
+			var outside: Vector2i = spec["outside"]
+			var key := _door_edge_key(inside, outside)
+			var leads_to_boss := _is_boss_room_cell(inside) or _is_boss_room_cell(outside)
+			if door_specs.has(key):
+				var existing: Dictionary = door_specs[key]
+				existing["boss"] = bool(existing["boss"]) or leads_to_boss
+				door_specs[key] = existing
+			else:
+				var door_spec: Dictionary = spec.duplicate()
+				door_spec["boss"] = leads_to_boss
+				door_specs[key] = door_spec
+
+	var index := 0
+	for key in door_specs.keys():
+		_spawn_door_panel(door_specs[key], offset, tile_size, index)
+		index += 1
+
+func _collect_room_door_specs(grid: Array, room: Rect2i) -> Array:
+	var specs: Array = []
+	for y in range(room.position.y, room.position.y + room.size.y):
+		for x in range(room.position.x, room.position.x + room.size.x):
+			if not _is_walkable_hazard_cell(grid, x, y):
+				continue
+			var cell := Vector2i(x, y)
+			if not _is_on_room_edge(cell, room):
+				continue
+			for dir in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0)]:
+				var outside: Vector2i = cell + dir
+				if room.has_point(outside):
+					continue
+				if _is_walkable_hazard_cell(grid, outside.x, outside.y):
+					specs.append({
+						"inside": cell,
+						"outside": outside,
+						"dir": dir,
+					})
+	return specs
+
+func _spawn_door_panel(spec: Dictionary, offset: Vector3, tile_size: float, index: int) -> void:
+	var inside: Vector2i = spec["inside"]
+	var outside: Vector2i = spec["outside"]
+	var dir: Vector2i = spec["dir"]
+	var boss := bool(spec["boss"])
+	var cell_pos := offset + Vector3(inside.x * tile_size, 0.0, inside.y * tile_size)
+	var panel_pos := cell_pos + Vector3(float(dir.x), 0.0, float(dir.y)) * (tile_size * 0.5)
+
+	var door := DUNGEON_DOOR_SCRIPT.new() as DungeonDoor
+	door.name = ("BossDoor_%03d" if boss else "Door_%03d") % index
+	door.position = panel_pos
+	door.set_meta("inside_cell", inside)
+	door.set_meta("outside_cell", outside)
+	door.set_meta("door_size_m", BOSS_DOOR_SIZE_METERS if boss else STANDARD_DOOR_SIZE_METERS)
+	_spawn_door_wall_surround(door.name + "Surround", panel_pos, inside, outside, dir, boss, tile_size)
+	door.configure(
+		DungeonDoor.KIND_BOSS if boss else DungeonDoor.KIND_STANDARD,
+		dir,
+		_make_terrain_mat("BOSS_DOOR" if boss else "DOOR", Vector2(1.0, 1.0)),
+		_make_terrain_mat("DOOR_SIDE", Vector2(DungeonDoor.THICKNESS, BOSS_DOOR_SIZE_METERS.y if boss else STANDARD_DOOR_SIZE_METERS.y)),
+		_make_terrain_mat("DOOR_TOP", Vector2(BOSS_DOOR_SIZE_METERS.x * 0.5 if boss else STANDARD_DOOR_SIZE_METERS.x, DungeonDoor.THICKNESS))
+	)
+	add_child(door)
+	door.pressure_action.connect(_on_door_pressure_action)
+
+func _spawn_door_wall_surround(base_name: String, panel_pos: Vector3, inside: Vector2i, outside: Vector2i, dir: Vector2i, boss: bool, tile_size: float) -> void:
+	var door_size := BOSS_DOOR_SIZE_METERS if boss else STANDARD_DOOR_SIZE_METERS
+	var wall_height := maxf(maxf(_height_at_cell(inside), _height_at_cell(outside)), door_size.y + 0.5)
+	var side_width := maxf((tile_size - door_size.x) * 0.5, 0.0)
+	if side_width <= 0.01:
+		return
+	var width_axis := Vector3(0, 0, 1) if dir.x != 0 else Vector3(1, 0, 0)
+	var side_size := _door_surround_size(side_width, wall_height, dir)
+	var side_offset := door_size.x * 0.5 + side_width * 0.5
+	_spawn_door_wall_box(base_name + "LeftJamb", panel_pos - width_axis * side_offset + Vector3(0, wall_height * 0.5, 0), side_size)
+	_spawn_door_wall_box(base_name + "RightJamb", panel_pos + width_axis * side_offset + Vector3(0, wall_height * 0.5, 0), side_size)
+
+	var lintel_height := maxf(wall_height - door_size.y, 0.0)
+	if lintel_height > 0.05:
+		var lintel_size := _door_surround_size(door_size.x, lintel_height, dir)
+		var lintel_pos := panel_pos + Vector3(0, door_size.y + lintel_height * 0.5, 0)
+		_spawn_door_wall_box(base_name + "Lintel", lintel_pos, lintel_size)
+
+func _door_surround_size(width: float, height: float, dir: Vector2i) -> Vector3:
+	if dir.x != 0:
+		return Vector3(DOOR_SURROUND_THICKNESS, height, width)
+	return Vector3(width, height, DOOR_SURROUND_THICKNESS)
+
+func _spawn_door_wall_box(name: String, pos: Vector3, size: Vector3) -> MeshInstance3D:
+	var mesh := MeshInstance3D.new()
+	mesh.name = name
+	mesh.set_meta("door_surround", true)
+	mesh.set_meta("topdown_kind", "terrain_feature")
+	var box := BoxMesh.new()
+	box.size = size
+	mesh.mesh = box
+	mesh.position = pos
+	mesh.material_override = _make_terrain_mat("WALL", Vector2(maxf(size.x, size.z), size.y))
+	add_child(mesh)
+	_spawn_collision(pos, size)
+	return mesh
+
+func _height_at_cell(cell: Vector2i) -> float:
+	if cell.y < 0 or cell.y >= _heights.size():
+		return 3.0
+	if cell.x < 0 or cell.x >= _heights[cell.y].size():
+		return 3.0
+	return maxf(float(_heights[cell.y][cell.x]), 3.0)
+
+func _door_edge_key(a: Vector2i, b: Vector2i) -> String:
+	if a.x < b.x or (a.x == b.x and a.y <= b.y):
+		return "%d,%d:%d,%d" % [a.x, a.y, b.x, b.y]
+	return "%d,%d:%d,%d" % [b.x, b.y, a.x, a.y]
+
 func _build_multi_meshes() -> void:
 	# 1. 地板 MultiMesh（FLOOR 图块，平面 TILE_SIZE×TILE_SIZE）
-	if floor_transforms.size() > 0:
-		var mm_instance := MultiMeshInstance3D.new()
-		mm_instance.name = "FloorMultiMesh"
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		var base_mesh := BoxMesh.new()
-		base_mesh.size = Vector3(TILE_SIZE, 0.1, TILE_SIZE)
-		mm.mesh = base_mesh
-		mm.instance_count = floor_transforms.size()
-		for i in range(floor_transforms.size()):
-			mm.set_instance_transform(i, floor_transforms[i])
-		mm_instance.multimesh = mm
-		if _shared_floor_mat == null:
-			# TILE_SIZE=3m → 每轴平铺 3 次（每次 = 1m = 32px）
-			_shared_floor_mat = _make_terrain_mat("FLOOR", Vector2(TILE_SIZE, TILE_SIZE))
-		mm_instance.material_override = _shared_floor_mat
-		add_child(mm_instance)
+	if _shared_floor_mat == null:
+		# TILE_SIZE=3m → 每轴平铺 3 次（每次 = 1m = 32px）
+		_shared_floor_mat = _make_terrain_mat("FLOOR", Vector2(TILE_SIZE, TILE_SIZE))
+	_build_chunked_multi_meshes(
+		"FloorMultiMesh",
+		floor_transforms,
+		Vector3(TILE_SIZE, 0.1, TILE_SIZE),
+		_shared_floor_mat
+	)
 
 	# 2. 天花板 MultiMesh（CEILING 图块）
-	if ceiling_transforms.size() > 0:
-		var mm_instance := MultiMeshInstance3D.new()
-		mm_instance.name = "CeilingMultiMesh"
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		var base_mesh := BoxMesh.new()
-		base_mesh.size = Vector3(TILE_SIZE, 0.1, TILE_SIZE)
-		mm.mesh = base_mesh
-		mm.instance_count = ceiling_transforms.size()
-		for i in range(ceiling_transforms.size()):
-			mm.set_instance_transform(i, ceiling_transforms[i])
-		mm_instance.multimesh = mm
-		if _shared_ceiling_mat == null:
-			_shared_ceiling_mat = _make_terrain_mat("CEILING", Vector2(TILE_SIZE, TILE_SIZE))
-		mm_instance.material_override = _shared_ceiling_mat
-		add_child(mm_instance)
+	if _shared_ceiling_mat == null:
+		_shared_ceiling_mat = _make_terrain_mat("CEILING", Vector2(TILE_SIZE, TILE_SIZE))
+	_build_chunked_multi_meshes(
+		"CeilingMultiMesh",
+		ceiling_transforms,
+		Vector3(TILE_SIZE, 0.1, TILE_SIZE),
+		_shared_ceiling_mat
+	)
 
 	# 3. 墙面 MultiMesh（按高度分组，保证 tile_repeat.y = wall_height）
 	# 每种独特高度建一个 MultiMesh + 独立材质，Draw Call = 高度种类数（通常 2-4 次）
@@ -499,30 +1455,167 @@ func _build_multi_meshes() -> void:
 		var transforms: Array = wall_transforms_by_height[wall_height]
 		if transforms.is_empty():
 			continue
-		var mm_instance := MultiMeshInstance3D.new()
-		mm_instance.name = "WallMultiMesh_h%.1f" % wall_height
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		var base_mesh := BoxMesh.new()
 		# 屏弃缩放，改用正确高度的网格——此旹案保证法线垂直于面，光照计算正确
-		base_mesh.size = Vector3(TILE_SIZE, wall_height, TILE_SIZE)
-		mm.mesh = base_mesh
-		mm.instance_count = transforms.size()
-		for i in range(transforms.size()):
-			mm.set_instance_transform(i, transforms[i])
-		mm_instance.multimesh = mm
 		# tile_repeat.x = TILE_SIZE（横向 3m → 3 格）
 		# tile_repeat.y = wall_height（纵向 Nm → N 格，1m = 1 tile = 32px 锁死）
 		var mat := _make_terrain_mat("WALL", Vector2(TILE_SIZE, wall_height))
-		mm_instance.material_override = mat
-		add_child(mm_instance)
+		_build_chunked_multi_meshes(
+			"WallMultiMesh_h%.1f" % wall_height,
+			transforms,
+			Vector3(TILE_SIZE, wall_height, TILE_SIZE),
+			mat
+		)
 
-func _spawn_torch_on_wall(cell_pos: Vector3, wall_dir: Vector2i) -> void:
+	# 4. 合并碰撞：每 chunk 一个 StaticBody3D + 单个 ConcavePolygonShape3D
+	# 将数千个独立 StaticBody3D 收敛为几十个 body + 几十个 shape，大幅降低 Jolt 宽/窄相位开销
+	_build_merged_collisions()
+
+## 按 chunk 合并地形碰撞为少量 ConcavePolygonShape3D。
+## floor/ceiling 各一组按 chunk 合；墙体按高度+chunk 合。
+## 每个 chunk+类型产出一个 StaticBody3D + 单个 ConcavePolygonShape3D（由若干 Box 面片构成）。
+func _build_merged_collisions() -> void:
+	_build_merged_collision_group("FloorCollisions", floor_transforms, Vector3(TILE_SIZE, 0.1, TILE_SIZE))
+	_build_merged_collision_group("CeilingCollisions", ceiling_transforms, Vector3(TILE_SIZE, 0.1, TILE_SIZE))
+	for wall_height in wall_transforms_by_height:
+		var transforms: Array = wall_transforms_by_height[wall_height]
+		if transforms.is_empty():
+			continue
+		_build_merged_collision_group(
+			"WallCollisions_h%.1f" % wall_height,
+			transforms,
+			Vector3(TILE_SIZE, wall_height, TILE_SIZE)
+		)
+
+## 把一组 Transform3D（每个对应一个 box_size 盒子）按 chunk 合并为少量
+## StaticBody3D + ConcavePolygonShape3D。每个盒子贡献 12 个三角形面片。
+func _build_merged_collision_group(base_name: String, transforms: Array, box_size: Vector3) -> void:
+	if transforms.is_empty():
+		return
+	var by_chunk: Dictionary = _group_transforms_by_stream_chunk(transforms)
+	for chunk in by_chunk.keys():
+		var chunk_transforms: Array = by_chunk[chunk]
+		var body := StaticBody3D.new()
+		body.name = "%s_%d_%d" % [base_name, chunk.x, chunk.y]
+		body.collision_layer = PhysicsSetup.LAYER_ENVIRONMENT
+		body.collision_mask = PhysicsSetup.MASK_ENVIRONMENT
+		var col := CollisionShape3D.new()
+		col.name = "MergedCollision"
+		var shape := ConcavePolygonShape3D.new()
+		var faces: PackedVector3Array = PackedVector3Array()
+		for t in chunk_transforms:
+			var tr := t as Transform3D
+			_append_box_faces(faces, tr.origin, box_size)
+		shape.set_faces(faces)
+		col.shape = shape
+		body.add_child(col, true)
+		add_child(body)
+		_register_terrain_chunk_node(chunk, body)
+
+## 把一个轴对齐盒子的 6 个面（12 三角形）追加到 faces 数组。
+## center: 盒子中心世界坐标；size: 盒子尺寸。
+func _append_box_faces(faces: PackedVector3Array, center: Vector3, size: Vector3) -> void:
+	var hx := size.x * 0.5
+	var hy := size.y * 0.5
+	var hz := size.z * 0.5
+	var p000 := center + Vector3(-hx, -hy, -hz)
+	var p100 := center + Vector3( hx, -hy, -hz)
+	var p110 := center + Vector3( hx,  hy, -hz)
+	var p010 := center + Vector3(-hx,  hy, -hz)
+	var p001 := center + Vector3(-hx, -hy,  hz)
+	var p101 := center + Vector3( hx, -hy,  hz)
+	var p111 := center + Vector3( hx,  hy,  hz)
+	var p011 := center + Vector3(-hx,  hy,  hz)
+	# 6 面，每面 2 三角形（外法线朝外）
+	faces.append_array([p000, p100, p110, p000, p110, p010]) # -Z
+	faces.append_array([p001, p011, p111, p001, p111, p101]) # +Z
+	faces.append_array([p000, p010, p011, p000, p011, p001]) # -X
+	faces.append_array([p100, p101, p111, p100, p111, p110]) # +X
+	faces.append_array([p000, p001, p101, p000, p101, p100]) # -Y
+	faces.append_array([p010, p110, p111, p010, p111, p011]) # +Y
+
+## 烘焙程序化地牢的导航网格。
+## 用地板格子构建临时 source geometry，调用 NavigationServer3D 解析后由 region 烘焙。
+## 烘焙完成后敌人 NavigationAgent3D（默认使用 World3D 默认 map）即可寻路。
+func _build_navigation_mesh() -> void:
+	if floor_transforms.is_empty():
+		return
+	# 1. 用地板格子构建可行走源几何（扁平 BoxMesh 网格）
+	var source_root := Node3D.new()
+	source_root.name = "_NavSourceGeometry"
+	var floor_box := BoxMesh.new()
+	floor_box.size = Vector3(TILE_SIZE, 0.1, TILE_SIZE)
+	for t in floor_transforms:
+		var mi := MeshInstance3D.new()
+		mi.mesh = floor_box
+		mi.transform = t
+		source_root.add_child(mi)
+	add_child(source_root)
+
+	# 2. 创建 NavigationRegion3D 并配置 NavigationMesh
+	var region := NavigationRegion3D.new()
+	region.name = "DungeonNavigationRegion"
+	var nav_mesh := NavigationMesh.new()
+	nav_mesh.agent_radius = 0.4
+	nav_mesh.agent_height = 1.7
+	nav_mesh.cell_size = 0.25
+	nav_mesh.cell_height = 0.2
+	region.navigation_mesh = nav_mesh
+	add_child(region)
+
+	# 3. 同步解析源几何数据（用地板 mesh 作为可行走面），再烘焙
+	var source_geometry_data := NavigationMeshSourceGeometryData3D.new()
+	NavigationServer3D.parse_source_geometry_data(nav_mesh, source_geometry_data, source_root, Callable())
+	region.bake_navigation_mesh(false)
+
+	# 4. 烘焙后释放临时源几何
+	source_root.queue_free()
+
+func _build_chunked_multi_meshes(base_name: String, transforms: Array, mesh_size: Vector3, material: Material) -> void:
+	if transforms.is_empty():
+		return
+	var chunks := _group_transforms_by_stream_chunk(transforms)
+	var first_chunk := true
+	for chunk in chunks.keys():
+		var chunk_transforms: Array = chunks[chunk]
+		var mm_instance := MultiMeshInstance3D.new()
+		mm_instance.name = base_name if first_chunk else "%s_%d_%d" % [base_name, chunk.x, chunk.y]
+		first_chunk = false
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		var base_mesh := BoxMesh.new()
+		base_mesh.size = mesh_size
+		mm.mesh = base_mesh
+		mm.instance_count = chunk_transforms.size()
+		for i in range(chunk_transforms.size()):
+			mm.set_instance_transform(i, chunk_transforms[i])
+		mm_instance.multimesh = mm
+		mm_instance.material_override = material
+		mm_instance.visible = false
+		add_child(mm_instance)
+		_register_terrain_chunk_node(chunk, mm_instance)
+
+func _group_transforms_by_stream_chunk(transforms: Array) -> Dictionary:
+	var chunks := {}
+	for transform in transforms:
+		var t := transform as Transform3D
+		var chunk := _world_to_stream_chunk(t.origin)
+		if not chunks.has(chunk):
+			chunks[chunk] = []
+		chunks[chunk].append(t)
+	return chunks
+
+## 在墙面上生成火把。
+## cell_pos: 相邻地板的格子中心位置
+## wall_dir: 墙体方向
+## wall_height: 墙体高度（米），决定火把的放置高度
+func _spawn_torch_on_wall(cell_pos: Vector3, wall_dir: Vector2i, wall_height: float = 3.0) -> void:
 	var torch := TORCH_PREFAB.instantiate()
 	const TILE_SIZE := 3.0
 	var pos_offset := Vector3(wall_dir.x, 0, wall_dir.y) * (TILE_SIZE / 2.0)
 	var clip_offset := -Vector3(wall_dir.x, 0, wall_dir.y) * 0.1
-	torch.position = cell_pos + pos_offset + clip_offset + Vector3(0, 1.5, 0)
+	# 火把高度 = 墙面高度的 45%，下限 0.8m（低通道），上限距天花板 0.3m
+	var torch_y := clampf(wall_height * 0.45, 0.8, wall_height - 0.3)
+	torch.position = cell_pos + pos_offset + clip_offset + Vector3(0, torch_y, 0)
 	
 	if wall_dir == Vector2i(0, -1):
 		torch.rotation.y = PI
@@ -534,6 +1627,84 @@ func _spawn_torch_on_wall(cell_pos: Vector3, wall_dir: Vector2i) -> void:
 		torch.rotation.y = -PI / 2.0
 		
 	add_child(torch)
+	_ensure_collision_on_instance(torch)
+	_configure_scene_object(torch)
+
+## 按区域返回环境光配置。
+## 返回 Dictionary 含：light_energy, light_color, ambient_color, ambient_energy,
+##                     fog_enabled, fog_color, fog_density
+func _get_zone_ambient_config(zone: int) -> Dictionary:
+	match zone:
+		0:  # 幽暗地牢 — 阴冷石砌地牢，保留阴影但保证基础可视
+			return {
+				light_energy = 0.22,
+				light_color = Color(0.55, 0.52, 0.48),
+				ambient_color = Color(0.18, 0.16, 0.18),
+				ambient_energy = 0.28,
+				fog_enabled = true,
+				fog_color = Color(0.12, 0.10, 0.11),
+				fog_density = 0.008,
+			}
+		1:  # 寂静之森 — 树冠下月光筛落，青绿冷光，无需火把
+			return {
+				light_energy = 0.15,
+				light_color = Color(0.4, 0.6, 0.5),
+				ambient_color = Color(0.15, 0.25, 0.2),
+				ambient_energy = 0.3,
+				fog_enabled = true,
+				fog_color = Color(0.1, 0.18, 0.15),
+				fog_density = 0.008,
+			}
+		2:  # 深邃洞窟 — 暗冷紫光，火把提供主要局部对比
+			return {
+				light_energy = 0.14,
+				light_color = Color(0.38, 0.42, 0.58),
+				ambient_color = Color(0.10, 0.09, 0.14),
+				ambient_energy = 0.20,
+				fog_enabled = true,
+				fog_color = Color(0.08, 0.07, 0.10),
+				fog_density = 0.012,
+			}
+		3:  # 荒芜墓园 — 阴冷灰蓝，保留雾气但不压黑地面
+			return {
+				light_energy = 0.16,
+				light_color = Color(0.45, 0.50, 0.62),
+				ambient_color = Color(0.12, 0.11, 0.16),
+				ambient_energy = 0.22,
+				fog_enabled = true,
+				fog_color = Color(0.10, 0.09, 0.13),
+				fog_density = 0.010,
+			}
+		4:  # 熔岩火山 — 熔岩辉光暖橙，无需火把
+			return {
+				light_energy = 0.12,
+				light_color = Color(0.8, 0.5, 0.2),
+				ambient_color = Color(0.15, 0.08, 0.03),
+				ambient_energy = 0.25,
+				fog_enabled = true,
+				fog_color = Color(0.12, 0.06, 0.02),
+				fog_density = 0.01,
+			}
+		5:  # 古代遗迹 — 灵界蓝白辉光，古代魔力弥漫，无需火把
+			return {
+				light_energy = 0.1,
+				light_color = Color(0.5, 0.6, 0.8),
+				ambient_color = Color(0.1, 0.12, 0.2),
+				ambient_energy = 0.2,
+				fog_enabled = true,
+				fog_color = Color(0.08, 0.1, 0.18),
+				fog_density = 0.008,
+			}
+		_:  # fallback — 洞窟风格
+			return {
+				light_energy = 0.02,
+				light_color = Color(0.3, 0.35, 0.5),
+				ambient_color = Color(0.04, 0.03, 0.06),
+				ambient_energy = 0.04,
+				fog_enabled = true,
+				fog_color = Color(0.05, 0.04, 0.06),
+				fog_density = 0.02,
+			}
 
 func _pick_weighted(weights: Dictionary) -> String:
 	var total_weight := 0
@@ -560,6 +1731,7 @@ func _spawn_random_material(pos: Vector3) -> void:
 		item.material_id = mat_id
 		item.position = pos + Vector3(0, 0.3, 0)
 		add_child(item)
+		register_streamed_physics_node(item)
 
 func _spawn_random_decor(pos: Vector3) -> void:
 	var path = _pick_weighted(DECOR_CONFIG)
@@ -569,5 +1741,27 @@ func _spawn_random_decor(pos: Vector3) -> void:
 			var instance = prefab.instantiate()
 			instance.position = pos
 			add_child(instance)
-			# 装饰物补全碰撞（若预制体本身无 PhysicsBody 则添加环境层 BoxShape）
+			# 装饰物补全碰撞，并统一标记为场景物体层。
 			_ensure_collision_on_instance(instance)
+			_configure_scene_object(instance)
+			register_streamed_physics_node(instance)
+
+func _rect_center_cell(rect: Rect2i) -> Vector2i:
+	return rect.position + Vector2i(rect.size.x / 2, rect.size.y / 2)
+
+func is_start_room_grid_cell(cell: Vector2i) -> bool:
+	return _is_start_room_cell(cell)
+
+func _is_start_room_cell(cell: Vector2i) -> bool:
+	return _room_roles.has("start") and (_room_roles["start"] as Rect2i).has_point(cell)
+
+func _is_boss_room_cell(cell: Vector2i) -> bool:
+	return _room_roles.has("boss") and (_room_roles["boss"] as Rect2i).has_point(cell)
+
+func _is_boss_reward_chest_cell(cell: Vector2i) -> bool:
+	if _room_roles.has("reward") and (_room_roles["reward"] as Rect2i).has_point(cell):
+		return true
+	return _is_boss_room_cell(cell)
+
+func _room_is_start_room(room: Rect2i) -> bool:
+	return _room_roles.has("start") and room == (_room_roles["start"] as Rect2i)

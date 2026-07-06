@@ -7,6 +7,13 @@ extends StaticBody3D
 
 var is_opened := false
 
+## 交互开启时生成的战利品数据（由 chest_loot_panel 读取）。
+## 结构: { "weapon": WeaponData|null, "materials": Array[Dictionary], "runes": Array[Dictionary] }
+var loot_data: Dictionary = {}
+
+## 宝箱是否已展示战利品面板（面板关闭后销毁宝箱）。
+var _loot_panel_open := false
+
 func try_receive_hit(_source_player: Node, _damage: int) -> void:
 	open_chest()
 
@@ -26,13 +33,93 @@ func open_chest(by_interact: bool = false) -> void:
 	if audio_mgr:
 		audio_mgr.play("barrel-destroy", null)
 
-	# Spawn loot via LootTable autoload (统一掉落表，对接 WeaponRegistry + BrewingData)
-	_spawn_loot(by_interact)
+	if by_interact:
+		# 交互开启：生成战利品数据，显示 UI 面板，不生成物理掉落物
+		_generate_loot_data()
+		_loot_panel_open = true
+		GameEvents.chest_opened.emit(self)
+	else:
+		# 攻击破坏：保留原行为，直接生成物理掉落物
+		_spawn_loot_physical()
+		queue_free()
 
-	# Destroy chest instance
+## 生成战利品数据（存储到 loot_data 供 UI 读取）
+func _generate_loot_data() -> void:
+	var loot_table: Node = get_tree().root.get_node_or_null("LootTable") if is_inside_tree() else null
+	if loot_table == null:
+		push_warning("[Chest] LootTable autoload not found, no loot dropped")
+		loot_data = {"weapon": null, "materials": [], "runes": []}
+		return
+	var drop = loot_table.generate_loot(zone)
+	var weapon_data = null
+	if not drop.weapon.is_empty():
+		weapon_data = drop.weapon.get("weapon_data", null)
+		if weapon_data:
+			var affix_str := ""
+			if weapon_data.affixes.size() > 0:
+				affix_str = " [%s]" % ", ".join(weapon_data.affixes)
+			print("[Chest] Loot equipment: %s (tier %d: %s)%s" % [
+				drop.weapon.get("id", "?"),
+				drop.weapon.get("tier_index", 0),
+				drop.weapon.get("tier_name", "?"),
+				affix_str,
+			])
+	loot_data = {
+		"weapon": weapon_data,
+		"materials": drop.materials.duplicate(),
+		"runes": drop.runes.duplicate(true),
+	}
+
+## 战利品面板关闭时调用：如果还有剩余物品则丢弃到地面，然后销毁宝箱
+func close_loot_panel() -> void:
+	_loot_panel_open = false
+	# 将未取走的物品生成为物理掉落物
+	if not loot_data.is_empty():
+		_spawn_remaining_loot()
 	queue_free()
 
-func _spawn_loot(by_interact: bool) -> void:
+## 将剩余战利品生成为物理掉落物（面板关闭时未取走的物品）
+func _spawn_remaining_loot() -> void:
+	var pickable_scene = load("res://scenes/equipment/pickable_item.tscn")
+	if pickable_scene == null:
+		return
+	# 剩余装备
+	var weapon_data = loot_data.get("weapon", null)
+	if weapon_data != null:
+		var p_item = pickable_scene.instantiate()
+		p_item.weapon_data = weapon_data
+		p_item.global_position = global_position + Vector3(0, 0.4, 0)
+		if get_parent():
+			get_parent().add_child(p_item)
+	# 剩余材料
+	var remaining_materials: Array = loot_data.get("materials", [])
+	for mat_entry in remaining_materials:
+		var mat_id: String = mat_entry.get("material_id", "")
+		if mat_id == "":
+			continue
+		var p_item = pickable_scene.instantiate()
+		p_item.material_id = mat_id
+		var offset = Vector3(randf_range(-0.5, 0.5), 0.3, randf_range(-0.5, 0.5))
+		p_item.global_position = global_position + offset
+		if get_parent():
+			get_parent().add_child(p_item)
+		print("[Chest] Dropped remaining material: %s" % mat_id)
+	# 剩余符文
+	var remaining_runes: Array = loot_data.get("runes", [])
+	for rune_entry in remaining_runes:
+		var rune_id: String = rune_entry.get("id", "")
+		if rune_id == "":
+			continue
+		var p_item = pickable_scene.instantiate()
+		p_item.rune_id = rune_id
+		var offset = Vector3(randf_range(-0.5, 0.5), 0.3, randf_range(-0.5, 0.5))
+		p_item.global_position = global_position + offset
+		if get_parent():
+			get_parent().add_child(p_item)
+		print("[Chest] Dropped remaining rune: %s" % rune_id)
+
+## 攻击破坏时直接生成物理掉落物（保留原行为）
+func _spawn_loot_physical() -> void:
 	var loot_table: Node = get_tree().root.get_node_or_null("LootTable") if is_inside_tree() else null
 	if loot_table == null:
 		push_warning("[Chest] LootTable autoload not found, no loot dropped")
@@ -43,7 +130,7 @@ func _spawn_loot(by_interact: bool) -> void:
 		push_warning("[Chest] pickable_item.tscn not found")
 		return
 
-	# 1. 武器掉落（含 tier 阶位，攻击与交互均掉）
+	# 1. 装备掉落（含 tier 阶位 + 词缀，攻击与交互均掉）
 	if not drop.weapon.is_empty():
 		var weapon_data = drop.weapon.get("weapon_data", null)
 		if weapon_data:
@@ -51,23 +138,25 @@ func _spawn_loot(by_interact: bool) -> void:
 			p_item.weapon_data = weapon_data
 			p_item.global_position = global_position + Vector3(0, 0.4, 0)
 			get_parent().add_child(p_item)
-			print("[Chest] Dropped weapon: %s (tier %d: %s)" % [
+			var affix_str := ""
+			if weapon_data.affixes.size() > 0:
+				affix_str = " [%s]" % ", ".join(weapon_data.affixes)
+			print("[Chest] Dropped equipment: %s (tier %d: %s)%s" % [
 				drop.weapon.get("id", "?"),
 				drop.weapon.get("tier_index", 0),
 				drop.weapon.get("tier_name", "?"),
+				affix_str,
 			])
 
 	# 2. 材料掉落：仅交互开启时掉落（攻击破坏会毁损材料，保留原设计语义）
-	if by_interact:
-		for mat_entry in drop.materials:
-			var mat_id: String = mat_entry.get("material_id", "")
-			if mat_id == "":
-				continue
-			var p_item = pickable_scene.instantiate()
-			p_item.material_id = mat_id
-			var offset = Vector3(randf_range(-0.5, 0.5), 0.3, randf_range(-0.5, 0.5))
-			p_item.global_position = global_position + offset
+	print("[Chest] Melee attack destroyed all brewing materials! (Only weapon dropped)")
+	for rune_entry in drop.runes:
+		var rune_id: String = rune_entry.get("id", "")
+		if rune_id == "":
+			continue
+		var p_item = pickable_scene.instantiate()
+		p_item.rune_id = rune_id
+		p_item.global_position = global_position + Vector3(randf_range(-0.4, 0.4), 0.4, randf_range(-0.4, 0.4))
+		if get_parent():
 			get_parent().add_child(p_item)
-			print("[Chest] Dropped material: %s (%s)" % [mat_id, mat_entry.get("name", "")])
-	else:
-		print("[Chest] Melee attack destroyed all brewing materials! (Only weapon dropped)")
+		print("[Chest] Dropped rune: %s" % rune_id)

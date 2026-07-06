@@ -45,6 +45,25 @@ weapons.json (JSON)  ──→  WeaponRegistry (autoload)  ──→  model_view
 Add a new weapon: edit `weapons.json` → restart game → appears everywhere.  
 Add a new weapon via Pipeline: write asset spec → run pipeline → `godot_import` auto-writes to `weapons.json`.
 
+## 🚨 MANDATORY RULE: Manual Tavern Scene Edits Only
+
+The tavern scene and tavern materials are hand-authored. Do **not** run, recreate, add, or use any tavern baking/generation/merge/bulk-rewrite workflow.
+
+- Never run or reintroduce tavern bake scripts, material atlas generators, structure merge scripts, generated BuiltStructure replacement scripts, or broad scene rewrite tools.
+- Never overwrite `scenes/tavern/tavern.tscn` or `Structure/BuiltStructure` wholesale to apply a localized change.
+- All tavern edits must be target-only: modify exactly the requested node, material, script, or small resource needed for the task.
+- If a tavern change would require batch regeneration or atlas baking, stop and ask the user instead of generating or applying it.
+- Tests and automation must preserve hand-authored tavern geometry/materials and must not assert that baked tavern assets are regenerated.
+
+## 🚨 MANDATORY RULE: Voxel Modeling Workflow
+
+All voxel models must follow `docs/17-体素建模工作流.md`.
+
+- The scale is fixed: `1m = 32px`, `1px = 1/32m`. Write dimensions in pixels first, then convert to meters.
+- Every static voxel box must be attached to the model by face contact or intentional overlap. Floating, corner-only, or visually detached parts are forbidden.
+- New or changed voxel models must pass the voxel attachment/unit tests and produce front/side/top screenshots with `tools/voxel_prop_three_view_capture.gd`.
+- Dynamic effects such as fire are separate from the static voxel body; they still need correct attachment/origin placement relative to the body.
+
 ## 🚨 MANDATORY RULE: Unit Tests for All Modifications
 
 **All code changes MUST include corresponding unit tests using gdUnit4.**
@@ -89,8 +108,14 @@ Use the gdUnit4 assert chain:
 
 ### 5. Running Tests
 ```bash
-# CLI (headless)
-godot --headless --script tests/gdunit4_runner.gd
+# CLI (headless) — Godot executable at D:\123\Godot_v4.7-stable_mono_win64.exe
+"D:/123/Godot_v4.7-stable_mono_win64.exe" --headless -s tests/gdunit4_runner.gd -- --ignoreHeadlessMode -a <test_file_or_directory>
+
+# Run a single test file:
+"D:/123/Godot_v4.7-stable_mono_win64.exe" --headless -s tests/gdunit4_runner.gd -- --ignoreHeadlessMode -a tests/gdunit/<test_file>.gd
+
+# Run all tests:
+"D:/123/Godot_v4.7-stable_mono_win64.exe" --headless -s tests/gdunit4_runner.gd -- --ignoreHeadlessMode -a tests/gdunit/
 
 # Or from Godot editor: Project → Tools → gdUnit4 → Run All Tests
 ```

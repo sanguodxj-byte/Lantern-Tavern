@@ -1,7 +1,9 @@
-[gd_scene format=3 uid="uid://bkpg2xudqtdpm"]
+[gd_scene load_steps=2 format=3 uid="uid://bkpg2xudqtdpm"]
 
-[ext_resource type="PackedScene" uid="uid://cs51ujpa0h5t3" path="res://assets/meshes/props/chair/plank.glb" id="1_w8nde"]
+[ext_resource type="Script" path="res://scenes/props/voxel_prop.gd" id="1_voxel"]
 
-[node name="Plank" type="Node3D" unique_id=401978218]
-
-[node name="plank" parent="." unique_id=2093367641 instance=ExtResource("1_w8nde")]
+[node name="Plank" type="StaticBody3D"]
+script = ExtResource("1_voxel")
+prop_kind = "plank"
+metadata/topdown_kind = "terrain_feature"
+metadata/decor_kind = "plank"

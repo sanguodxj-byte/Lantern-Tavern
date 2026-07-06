@@ -1,7 +1,13 @@
-[gd_resource type="StandardMaterial3D" format=3]
+[gd_resource type="ShaderMaterial" load_steps=3 format=3]
+
+[ext_resource type="Shader" path="res://scenes/tavern/materials/tavern_atlas_world_32px.gdshader" id="1_shader"]
+[ext_resource type="Texture2D" path="res://assets/textures/tavern/tavern_material_atlas_32x32.png" id="2_atlas"]
 
 [resource]
-albedo_color = Color(0.50, 0.32, 0.16, 1)
-metallic = 0.05
-roughness = 0.55
-emission_enabled = false
+shader = ExtResource("1_shader")
+shader_parameter/atlas_texture = ExtResource("2_atlas")
+shader_parameter/atlas_region_tiles = Vector4(0, 24, 32, 4)
+shader_parameter/meters_per_tile = 1.0
+shader_parameter/albedo_tint = Color(1, 1, 1, 1)
+shader_parameter/material_roughness = 0.55
+shader_parameter/material_metallic = 0.03

@@ -4,7 +4,7 @@ extends PlayerState
 const DURATION_HURT := 200
 const PUSHBACK_FORCE := 2.5
 
-const ME := preload("res://globals/milestone_effects.gd")
+const ME := preload("res://globals/combat/milestone_effects.gd")
 
 var time_start_hurt := Time.get_ticks_msec()
 

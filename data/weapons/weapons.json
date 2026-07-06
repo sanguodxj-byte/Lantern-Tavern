@@ -14,9 +14,26 @@
       "name": "Shortsword",
       "name_zh": "短剑",
       "category": "weapons",
+      "item_tag": "weapon",
+      "tags": [
+        "weapon",
+        "melee",
+        "one_hand",
+        "blade",
+        "one_hand_sword"
+      ],
+      "weapon_class": "one_hand_melee",
+      "attack_type": "melee",
+      "skill_school": "one_hand_sword",
+      "combat_styles": [
+        "one_hand",
+        "one_hand_shield",
+        "dual_wield"
+      ],
+      "proficiency_key": "one_hand_melee",
       "hands": "one_hand",
-      "glb_path": "res://assets/meshes/weapons/shortsword.glb",
-      "icon": "res://assets/textures/icons/icon-weapon.png",
+      "glb_path": "res://assets/meshes/weapons/weapons_shortsword.glb",
+      "icon": "res://assets/textures/icons/equipment/weapons_shortsword.png",
       "tiers": [
         {
           "name": "青铜短剑",
@@ -64,9 +81,25 @@
       "name": "Greatsword",
       "name_zh": "双手大剑",
       "category": "weapons",
+      "item_tag": "weapon",
+      "tags": [
+        "weapon",
+        "melee",
+        "two_hand",
+        "blade",
+        "two_hand_sword",
+        "heavy"
+      ],
+      "weapon_class": "two_hand",
+      "attack_type": "melee",
+      "skill_school": "two_hand_sword",
+      "combat_styles": [
+        "two_hand"
+      ],
+      "proficiency_key": "two_hand",
       "hands": "two_hand",
-      "glb_path": "res://assets/meshes/weapons/greatsword.glb",
-      "icon": "res://assets/textures/icons/icon-weapon.png",
+      "glb_path": "res://assets/meshes/weapons/weapons_greatsword.glb",
+      "icon": "res://assets/textures/icons/equipment/weapons_greatsword.png",
       "tiers": [
         {
           "name": "锈铁大剑",
@@ -117,9 +150,25 @@
       "name": "Axe",
       "name_zh": "双手斧",
       "category": "weapons",
+      "item_tag": "weapon",
+      "tags": [
+        "weapon",
+        "melee",
+        "two_hand",
+        "axe",
+        "two_hand_axe",
+        "heavy"
+      ],
+      "weapon_class": "two_hand",
+      "attack_type": "melee",
+      "skill_school": "two_hand_axe",
+      "combat_styles": [
+        "two_hand"
+      ],
+      "proficiency_key": "two_hand",
       "hands": "two_hand",
-      "glb_path": "res://assets/meshes/weapons/axe.glb",
-      "icon": "res://assets/textures/icons/icon-weapon.png",
+      "glb_path": "res://assets/meshes/weapons/weapons_axe.glb",
+      "icon": "res://assets/textures/icons/equipment/weapons_axe.png",
       "tiers": [
         {
           "name": "木柄伐木斧",
@@ -167,9 +216,26 @@
       "name": "Warhammer",
       "name_zh": "战锤",
       "category": "weapons",
+      "item_tag": "weapon",
+      "tags": [
+        "weapon",
+        "melee",
+        "two_hand",
+        "hammer",
+        "war_hammer",
+        "blunt",
+        "heavy"
+      ],
+      "weapon_class": "two_hand",
+      "attack_type": "melee",
+      "skill_school": "war_hammer",
+      "combat_styles": [
+        "two_hand"
+      ],
+      "proficiency_key": "two_hand",
       "hands": "two_hand",
       "glb_path": "res://assets/meshes/weapons/weapons_warhammer.glb",
-      "icon": "res://assets/textures/icons/icon-weapon.png",
+      "icon": "res://assets/textures/icons/equipment/weapons_warhammer.png",
       "tiers": [
         {
           "name": "采石木槌",
@@ -221,9 +287,25 @@
       "name": "Spear",
       "name_zh": "长枪",
       "category": "weapons",
+      "item_tag": "weapon",
+      "tags": [
+        "weapon",
+        "melee",
+        "two_hand",
+        "polearm",
+        "spear",
+        "reach"
+      ],
+      "weapon_class": "two_hand",
+      "attack_type": "melee",
+      "skill_school": "spear",
+      "combat_styles": [
+        "two_hand"
+      ],
+      "proficiency_key": "two_hand",
       "hands": "two_hand",
       "glb_path": "res://assets/meshes/weapons/weapons_spear.glb",
-      "icon": "res://assets/textures/icons/icon-weapon.png",
+      "icon": "res://assets/textures/icons/equipment/weapons_spear.png",
       "tiers": [
         {
           "name": "竹尖长枪",
@@ -271,9 +353,27 @@
       "name": "Dagger",
       "name_zh": "匕首",
       "category": "weapons",
+      "item_tag": "weapon",
+      "tags": [
+        "weapon",
+        "melee",
+        "one_hand",
+        "dagger",
+        "blade",
+        "dual_wield"
+      ],
+      "weapon_class": "one_hand_melee",
+      "attack_type": "melee",
+      "skill_school": "one_hand_sword",
+      "combat_styles": [
+        "one_hand",
+        "one_hand_shield",
+        "dual_wield"
+      ],
+      "proficiency_key": "one_hand_melee",
       "hands": "one_hand",
       "glb_path": "res://assets/meshes/weapons/weapons_dagger.glb",
-      "icon": "res://assets/textures/icons/icon-weapon.png",
+      "icon": "res://assets/textures/icons/equipment/weapons_dagger.png",
       "tiers": [
         {
           "name": "骨质飞刃",
@@ -320,9 +420,24 @@
       "name": "Longbow",
       "name_zh": "长弓",
       "category": "weapons",
+      "item_tag": "weapon",
+      "tags": [
+        "weapon",
+        "ranged",
+        "two_hand",
+        "bow",
+        "longbow"
+      ],
+      "weapon_class": "longbow",
+      "attack_type": "ranged",
+      "skill_school": "longbow",
+      "combat_styles": [
+        "ranged"
+      ],
+      "proficiency_key": "longbow",
       "hands": "two_hand",
       "glb_path": "res://assets/meshes/weapons/weapons_longbow.glb",
-      "icon": "res://assets/textures/icons/icon-weapon.png",
+      "icon": "res://assets/textures/icons/equipment/weapons_longbow.png",
       "tiers": [
         {
           "name": "猎人木弓",
@@ -370,9 +485,24 @@
       "name": "Crossbow",
       "name_zh": "轻弩",
       "category": "weapons",
+      "item_tag": "weapon",
+      "tags": [
+        "weapon",
+        "ranged",
+        "two_hand",
+        "crossbow",
+        "light_crossbow"
+      ],
+      "weapon_class": "crossbow",
+      "attack_type": "ranged",
+      "skill_school": "light_crossbow",
+      "combat_styles": [
+        "ranged"
+      ],
+      "proficiency_key": "crossbow",
       "hands": "two_hand",
       "glb_path": "res://assets/meshes/weapons/weapons_crossbow.glb",
-      "icon": "res://assets/textures/icons/icon-weapon.png",
+      "icon": "res://assets/textures/icons/equipment/weapons_crossbow.png",
       "tiers": [
         {
           "name": "木制轻弩",
@@ -421,9 +551,26 @@
       "name": "Staff",
       "name_zh": "法杖",
       "category": "weapons",
+      "item_tag": "weapon",
+      "tags": [
+        "weapon",
+        "spell",
+        "two_hand",
+        "magic",
+        "wand",
+        "enchant_wand"
+      ],
+      "weapon_class": "wand",
+      "attack_type": "spell",
+      "skill_school": "enchant_wand",
+      "combat_styles": [
+        "two_hand",
+        "spell"
+      ],
+      "proficiency_key": "wand",
       "hands": "two_hand",
       "glb_path": "res://assets/meshes/weapons/weapons_staff.glb",
-      "icon": "res://assets/textures/icons/icon-weapon.png",
+      "icon": "res://assets/textures/icons/equipment/weapons_staff.png",
       "tiers": [
         {
           "name": "学徒橡木棒",
@@ -472,9 +619,24 @@
       "name": "Shield",
       "name_zh": "盾牌",
       "category": "shields",
+      "item_tag": "shield",
+      "tags": [
+        "shield",
+        "off_hand",
+        "defense",
+        "one_hand_shield",
+        "shield_style"
+      ],
+      "weapon_class": "shield",
+      "attack_type": "shield",
+      "skill_school": "",
+      "combat_styles": [
+        "one_hand_shield"
+      ],
+      "proficiency_key": "shield",
       "hands": "off_hand",
       "glb_path": "res://assets/meshes/weapons/weapons_shield.glb",
-      "icon": "res://assets/textures/icons/icon-shield.png",
+      "icon": "res://assets/textures/icons/equipment/weapons_shield.png",
       "tiers": [
         {
           "name": "破圆木盾",
@@ -519,88 +681,203 @@
         ],
         "impale_local_rotation": 0.0
       }
+    },
+    {
+      "id": "sword",
+      "name": "Sword",
+      "name_zh": "长剑",
+      "category": "weapons",
+      "item_tag": "weapon",
+      "tags": [
+        "weapon",
+        "melee",
+        "one_hand",
+        "blade",
+        "one_hand_sword"
+      ],
+      "weapon_class": "one_hand_melee",
+      "attack_type": "melee",
+      "skill_school": "one_hand_sword",
+      "combat_styles": [
+        "one_hand",
+        "one_hand_shield",
+        "dual_wield"
+      ],
+      "proficiency_key": "one_hand_melee",
+      "hands": "one_hand",
+      "glb_path": "res://assets/meshes/weapons/weapons_sword.glb",
+      "icon": "res://assets/textures/icons/equipment/weapons_sword.png",
+      "tiers": [
+        {
+          "name": "铁制长剑",
+          "damage_dice": "1d8+3",
+          "reach": 3.0,
+          "condition": 20,
+          "hit_bonus": 0.04
+        },
+        {
+          "name": "精钢长剑",
+          "damage_dice": "2d8+8",
+          "reach": 3.0,
+          "condition": 28,
+          "hit_bonus": 0.08
+        },
+        {
+          "name": "骑士誓约剑",
+          "damage_dice": "3d8+18",
+          "reach": 3.0,
+          "condition": 35,
+          "hit_bonus": 0.12,
+          "crit_bonus": 0.04
+        }
+      ],
+      "stats": {
+        "condition": 20,
+        "max_condition": 20,
+        "damage_min": 1,
+        "damage_max": 3,
+        "reach": 3.0,
+        "throw_rotation_speed": 40.0,
+        "throw_movement_speed": 10.0,
+        "impale_local_translation": [
+          0,
+          0,
+          0.7
+        ],
+        "impale_local_rotation": 0.0
+      }
     }
   ],
   "armor": [
     {
-      "id": "light_armor",
-      "name": "Light Armor",
-      "name_zh": "轻型铠甲",
+      "id": "cloth_armor",
+      "name": "Cloth Armor",
+      "name_zh": "布甲",
       "category": "armor_light",
-      "icon": "res://assets/textures/icons/icon-armor.png",
+      "item_tag": "armor",
+      "tags": [
+        "armor",
+        "cloth",
+        "light",
+        "body"
+      ],
+      "armor_slot": "body",
+      "glb_path": "res://assets/meshes/armor/armor_cloth_armor.glb",
+      "icon": "res://assets/textures/icons/equipment/armor_cloth_armor.png",
       "tiers": [
         {
-          "name": "粗糙皮甲",
-          "phys_def": 2,
-          "evade_bonus": 0.02,
-          "condition": 15
-        },
-        {
-          "name": "野性革甲",
-          "phys_def": 6,
-          "evade_bonus": 0.05,
-          "condition": 25
-        },
-        {
-          "name": "暗影刺客装",
-          "phys_def": 15,
-          "evade_bonus": 0.1,
-          "condition": 35
+          "name": "粗麻布甲",
+          "phys_def": 1,
+          "evade_bonus": 0.04,
+          "move_speed_mult": 1.0,
+          "condition": 14
         }
       ],
       "proficiency_perks": [
         {
-          "name": "轻盈步法",
-          "effect": "闪避率+2%"
-        },
-        {
-          "name": "侧身闪避",
-          "effect": "闪避率+4%，侧击命中减半"
-        },
-        {
-          "name": "疾风闪跃",
-          "effect": "闪避率+6%，暴击率-5%，闪避后Tick-15%"
+          "name": "轻盈布料",
+          "effect": "几乎不影响移动，提供最低基础防护"
         }
       ]
     },
     {
-      "id": "heavy_armor",
-      "name": "Heavy Armor",
-      "name_zh": "重型铠甲",
-      "category": "armor_heavy",
-      "icon": "res://assets/textures/icons/icon-armor.png",
+      "id": "leather_armor",
+      "name": "Leather Armor",
+      "name_zh": "皮甲",
+      "category": "armor_light",
+      "item_tag": "armor",
+      "tags": [
+        "armor",
+        "leather",
+        "light",
+        "body"
+      ],
+      "armor_slot": "body",
+      "glb_path": "res://assets/meshes/armor/armor_leather_armor.glb",
+      "icon": "res://assets/textures/icons/equipment/armor_leather_armor.png",
       "tiers": [
         {
-          "name": "生铁锁子甲",
-          "phys_def": 5,
-          "evade_penalty": -0.05,
-          "condition": 25
+          "name": "硬化皮甲",
+          "phys_def": 3,
+          "evade_bonus": 0.02,
+          "move_speed_mult": 0.98,
+          "condition": 20
+        }
+      ],
+      "proficiency_perks": [
+        {
+          "name": "贴身护具",
+          "effect": "轻微降低移动速度，换取稳定防护"
         },
+        {
+          "name": "侧身闪避",
+          "effect": "轻甲熟练后更适合闪避和游走"
+        }
+      ]
+    },
+    {
+      "id": "chain_armor",
+      "name": "Chain Armor",
+      "name_zh": "链甲",
+      "category": "armor_heavy",
+      "item_tag": "armor",
+      "tags": [
+        "armor",
+        "chainmail",
+        "heavy",
+        "body"
+      ],
+      "armor_slot": "body",
+      "glb_path": "res://assets/meshes/armor/armor_chain_armor.glb",
+      "icon": "res://assets/textures/icons/equipment/armor_chain_armor.png",
+      "tiers": [
+        {
+          "name": "生铁链甲",
+          "phys_def": 6,
+          "evade_penalty": -0.03,
+          "move_speed_mult": 0.94,
+          "condition": 28
+        }
+      ],
+      "proficiency_perks": [
+        {
+          "name": "环甲缓冲",
+          "effect": "中等防御，明显降低移动速度"
+        }
+      ]
+    },
+    {
+      "id": "plate_armor",
+      "name": "Plate Armor",
+      "name_zh": "板甲",
+      "category": "armor_heavy",
+      "item_tag": "armor",
+      "tags": [
+        "armor",
+        "plate",
+        "heavy",
+        "body"
+      ],
+      "armor_slot": "body",
+      "glb_path": "res://assets/meshes/armor/armor_plate_armor.glb",
+      "icon": "res://assets/textures/icons/equipment/armor_plate_armor.png",
+      "tiers": [
         {
           "name": "钢板半身铠",
-          "phys_def": 14,
-          "evade_penalty": -0.08,
-          "condition": 35
-        },
-        {
-          "name": "巨神兵全身甲",
-          "phys_def": 30,
+          "phys_def": 10,
           "evade_penalty": -0.12,
-          "condition": 45
+          "move_speed_mult": 0.88,
+          "condition": 38
         }
       ],
       "proficiency_perks": [
         {
           "name": "装甲加固",
-          "effect": "物理防御+2"
-        },
-        {
-          "name": "冲击缓冲",
-          "effect": "物理防御+5，20%概率不消耗耐久"
+          "effect": "最高基础防御，显著降低移动速度"
         },
         {
           "name": "不屈壁垒",
-          "effect": "物理防御+10，免疫击退，15%反震50%防御真伤"
+          "effect": "重甲熟练后更适合抗击退和正面对抗"
         }
       ]
     },

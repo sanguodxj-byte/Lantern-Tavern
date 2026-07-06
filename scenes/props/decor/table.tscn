@@ -1,15 +1,9 @@
-[gd_scene format=3 uid="uid://dylwsspdhk0un"]
+[gd_scene load_steps=2 format=3 uid="uid://dylwsspdhk0un"]
 
-[ext_resource type="PackedScene" uid="uid://32arum1sd6in" path="res://assets/meshes/props/chair/table.glb" id="1_oelqc"]
+[ext_resource type="Script" path="res://scenes/props/voxel_prop.gd" id="1_voxel"]
 
-[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_oelqc"]
-points = PackedVector3Array(0.33379084, 0.77424026, -0.6924806, 0.32877415, 0.9705051, -0.66971695, 0.9757425, 0.98806137, -0.662267, 0.9763214, 0.7930143, -0.67330396, 0.87695104, -0.004730469, -0.42483526, -0.8924197, -0.002193436, -0.40910766, -0.97191596, 0.71974474, -0.6466774, -0.98561555, 0.91174746, -0.6390895, 0.30947894, 1.0015584, -0.63936543, 0.985583, 0.9667503, 0.6370546, 0.9417829, 1.025305, -0.61094534, 0.9826887, 0.76064175, 0.6250519, 0.9417829, 0.41682297, 0.45701486, 0.8804242, -0.00706454, -0.19361174, -0.72416544, -0.011428237, -0.40552065, -0.88894653, -0.0043245438, -0.17843598, -0.967864, 0.68757516, 0.64795357, -0.9813706, 0.8825208, 0.6569211, -0.9510771, 0.9514266, -0.5932863, 0.3278094, 0.9722303, 0.5786969, -0.516549, 0.89814895, 0.7169344, -0.51211107, 0.70584184, 0.7098983, 0.94351953, 0.99080133, 0.6014605, -0.50381416, 0.92768, 0.6850652, 0.8460787, -0.00939861, 0.4007265, 0.84492093, -0.010108979, 0.16163921, -0.82006264, -0.009906017, 0.17722887, -0.81369525, -0.0076734275, 0.42169672, -0.943359, 0.9191556, 0.61415297)
-
-[node name="Table" type="StaticBody3D" unique_id=637275370]
-
-[node name="table" parent="." unique_id=2076679342 instance=ExtResource("1_oelqc")]
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=890972365]
-shape = SubResource("ConvexPolygonShape3D_oelqc")
-
-[editable path="table"]
+[node name="Table" type="StaticBody3D"]
+script = ExtResource("1_voxel")
+prop_kind = "table"
+metadata/topdown_kind = "terrain_feature"
+metadata/decor_kind = "table"

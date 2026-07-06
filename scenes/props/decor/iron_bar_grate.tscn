@@ -1,0 +1,78 @@
+[gd_scene load_steps=6 format=3]
+
+[sub_resource type="StandardMaterial3D" id="IronMat"]
+albedo_color = Color(0.045, 0.047, 0.046, 1)
+roughness = 0.74
+metallic = 0.85
+
+[sub_resource type="BoxMesh" id="VerticalBarMesh"]
+size = Vector3(0.09375, 1.96875, 0.09375)
+
+[sub_resource type="BoxMesh" id="HorizontalBarMesh"]
+size = Vector3(2.03125, 0.09375, 0.09375)
+
+[sub_resource type="BoxMesh" id="FootPlateMesh"]
+size = Vector3(2.09375, 0.09375, 0.15625)
+
+[sub_resource type="BoxShape3D" id="CollisionShape"]
+size = Vector3(2.09375, 2.0, 0.21875)
+
+[node name="IronBarGrate" type="Node3D"]
+metadata/topdown_kind = "terrain_feature"
+metadata/decor_kind = "iron_bar_grate"
+metadata/voxel_style = "level0_dungeon"
+metadata/voxel_unit_px = 1
+metadata/voxel_px_per_meter = 32
+
+[node name="BottomPlate" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.046875, 0)
+mesh = SubResource("FootPlateMesh")
+surface_material_override/0 = SubResource("IronMat")
+
+[node name="TopPlate" type="MeshInstance3D" parent="."]
+position = Vector3(0, 1.953125, 0)
+mesh = SubResource("FootPlateMesh")
+surface_material_override/0 = SubResource("IronMat")
+
+[node name="Bar0" type="MeshInstance3D" parent="."]
+position = Vector3(-0.75, 1.0, 0)
+mesh = SubResource("VerticalBarMesh")
+surface_material_override/0 = SubResource("IronMat")
+
+[node name="Bar1" type="MeshInstance3D" parent="."]
+position = Vector3(-0.375, 1.0, 0)
+mesh = SubResource("VerticalBarMesh")
+surface_material_override/0 = SubResource("IronMat")
+
+[node name="Bar2" type="MeshInstance3D" parent="."]
+position = Vector3(0, 1.0, 0)
+mesh = SubResource("VerticalBarMesh")
+surface_material_override/0 = SubResource("IronMat")
+
+[node name="Bar3" type="MeshInstance3D" parent="."]
+position = Vector3(0.375, 1.0, 0)
+mesh = SubResource("VerticalBarMesh")
+surface_material_override/0 = SubResource("IronMat")
+
+[node name="Bar4" type="MeshInstance3D" parent="."]
+position = Vector3(0.75, 1.0, 0)
+mesh = SubResource("VerticalBarMesh")
+surface_material_override/0 = SubResource("IronMat")
+
+[node name="CrossbarLow" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.65625, 0)
+mesh = SubResource("HorizontalBarMesh")
+surface_material_override/0 = SubResource("IronMat")
+
+[node name="CrossbarHigh" type="MeshInstance3D" parent="."]
+position = Vector3(0, 1.34375, 0)
+mesh = SubResource("HorizontalBarMesh")
+surface_material_override/0 = SubResource("IronMat")
+
+[node name="SceneObjectBody" type="StaticBody3D" parent="."]
+collision_layer = 64
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SceneObjectBody"]
+position = Vector3(0, 1.0, 0)
+shape = SubResource("CollisionShape")

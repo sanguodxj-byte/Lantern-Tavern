@@ -3,7 +3,7 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://bl1yulwbre6l1"
+uid="uid://cf4s24yn8gqy1"
 path="res://.godot/imported/weapons_spear.glb-ba7e373e2f24e1830a790c3964f47416.scn"
 
 [deps]
@@ -42,4 +42,4 @@ materials/extract_path=""
 _subresources={}
 gltf/naming_version=2
 gltf/embedded_image_handling=1
-gltf/texture_map_mode=0
+gltf/texture_map_mode=1

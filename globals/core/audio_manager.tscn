@@ -1,0 +1,42 @@
+[gd_scene format=3 uid="uid://dwadgjvfoh431"]
+
+[ext_resource type="Script" uid="uid://cep4bt2n00pne" path="res://globals/core/audio_manager.gd" id="1_exsf0"]
+[ext_resource type="AudioStream" uid="uid://cwabkhykjmkcw" path="res://assets/sounds/barrel-destroy.wav" id="2_sc5em"]
+[ext_resource type="AudioStream" uid="uid://2psmvmppv4f4" path="res://assets/sounds/block.wav" id="3_8cial"]
+[ext_resource type="AudioStream" uid="uid://ronjbgv5vj8n" path="res://assets/sounds/boil.wav" id="4_dww4r"]
+[ext_resource type="AudioStream" uid="uid://dsokj52eb0ywd" path="res://assets/sounds/click.wav" id="5_k6y0g"]
+[ext_resource type="AudioStream" uid="uid://dvo1wj3rlbn6k" path="res://assets/sounds/door-kick.wav" id="6_mexhl"]
+[ext_resource type="AudioStream" uid="uid://cw60dh8j6ixjn" path="res://assets/sounds/door-locked.wav" id="7_bankh"]
+[ext_resource type="AudioStream" uid="uid://bt271mvn51c0v" path="res://assets/sounds/door-open.wav" id="8_aflrn"]
+[ext_resource type="AudioStream" uid="uid://d12bv381cywix" path="res://assets/sounds/fire.wav" id="9_22wdt"]
+[ext_resource type="AudioStream" uid="uid://cjob1wejth3hc" path="res://assets/sounds/footstep.wav" id="10_beban"]
+[ext_resource type="AudioStream" uid="uid://dvr6meedxslw8" path="res://assets/sounds/hit-kill.wav" id="11_yjite"]
+[ext_resource type="AudioStream" uid="uid://b0axs7jfqp4fx" path="res://assets/sounds/hurt.wav" id="12_7m7tt"]
+[ext_resource type="AudioStream" uid="uid://djrbwahj7n4og" path="res://assets/sounds/impale.wav" id="13_o3mrh"]
+[ext_resource type="AudioStream" uid="uid://cx1x542bi386v" path="res://assets/sounds/jump.wav" id="14_83pdm"]
+[ext_resource type="AudioStream" uid="uid://xmf55yyxvu6q" path="res://assets/sounds/key-pickup.wav" id="15_341wv"]
+[ext_resource type="AudioStream" uid="uid://byl1wbjtvyopi" path="res://assets/sounds/kick-swoosh.wav" id="16_sew4i"]
+[ext_resource type="AudioStream" uid="uid://bucistq3ph6r8" path="res://assets/sounds/kick.wav" id="17_ra3r3"]
+[ext_resource type="AudioStream" uid="uid://dkgcea03bvs14" path="res://assets/sounds/lift.wav" id="18_nwqlb"]
+[ext_resource type="AudioStream" uid="uid://d1k66rwcgiiw3" path="res://assets/sounds/orc-die.wav" id="19_w33nu"]
+[ext_resource type="AudioStream" uid="uid://cvbrjkp0ivlw0" path="res://assets/sounds/pick-up.wav" id="20_bkfmr"]
+[ext_resource type="AudioStream" uid="uid://cjfna7jj07mmn" path="res://assets/sounds/player-death.wav" id="21_jje7d"]
+[ext_resource type="AudioStream" uid="uid://bsu6og4ahuvxf" path="res://assets/sounds/shield-break.wav" id="22_0nod6"]
+[ext_resource type="AudioStream" uid="uid://u7y4kysfvl80" path="res://assets/sounds/slash-hit.wav" id="23_jmwet"]
+[ext_resource type="AudioStream" uid="uid://cjayjoa6xrliv" path="res://assets/sounds/slash.wav" id="24_op2sv"]
+[ext_resource type="AudioStream" uid="uid://1aeq1qadooam" path="res://assets/sounds/spikes.wav" id="25_3nons"]
+[ext_resource type="AudioStream" uid="uid://cvgpt2278b7xv" path="res://assets/sounds/sword-break.wav" id="26_lmimt"]
+[ext_resource type="AudioStream" uid="uid://dei8vb2tayahd" path="res://assets/sounds/sword-fly.wav" id="27_q8s0e"]
+[ext_resource type="AudioStream" uid="uid://udd5lewo2222" path="res://assets/sounds/sword-hit-wall.wav" id="28_a885w"]
+[ext_resource type="AudioStream" uid="uid://c10gb80pq3uge" path="res://assets/sounds/sword-pickup.wav" id="29_4c7ce"]
+[ext_resource type="AudioStream" uid="uid://cbdu5imgwo2ej" path="res://assets/music/dungeon-theme-01.mp3" id="30_8cial"]
+
+[node name="AudioManager" type="Node3D" unique_id=1204255329]
+process_mode = 3
+script = ExtResource("1_exsf0")
+sound_files = Array[AudioStream]([ExtResource("2_sc5em"), ExtResource("3_8cial"), ExtResource("4_dww4r"), ExtResource("5_k6y0g"), ExtResource("6_mexhl"), ExtResource("7_bankh"), ExtResource("8_aflrn"), ExtResource("9_22wdt"), ExtResource("10_beban"), ExtResource("11_yjite"), ExtResource("12_7m7tt"), ExtResource("13_o3mrh"), ExtResource("14_83pdm"), ExtResource("15_341wv"), ExtResource("16_sew4i"), ExtResource("17_ra3r3"), ExtResource("18_nwqlb"), ExtResource("19_w33nu"), ExtResource("20_bkfmr"), ExtResource("21_jje7d"), ExtResource("22_0nod6"), ExtResource("23_jmwet"), ExtResource("24_op2sv"), ExtResource("25_3nons"), ExtResource("26_lmimt"), ExtResource("27_q8s0e"), ExtResource("28_a885w"), ExtResource("29_4c7ce")])
+
+[node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="." unique_id=471466190]
+unique_name_in_owner = true
+stream = ExtResource("30_8cial")
+attenuation_model = 3
