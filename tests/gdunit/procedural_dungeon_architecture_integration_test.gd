@@ -123,6 +123,25 @@ func test_streaming_controller_added_as_child() -> void:
 	var ready_block := _extract_ready_block(src)
 	assert_bool(ready_block.contains("add_child(streaming_controller)")).is_true()
 
+func test_spawn_enemies_uses_layout_not_legacy_arrays() -> void:
+	# 阶段 9 条 3：_spawn_dungeon_enemies 应调 spawn_enemies_from_layout 接 layout.enemy_spawn_specs，
+	# 不再 9 参数重读 _grid/_rooms/_room_roles。
+	var src := _pd_source()
+	var spawn_block := _extract_func_block(src, "_spawn_dungeon_enemies")
+	assert_bool(spawn_block.contains("spawn_enemies_from_layout(layout")) \
+		.override_failure_message("_spawn_dungeon_enemies 应调 spawn_enemies_from_layout").is_true()
+	# 旧 9 参数调用应不在活跃代码里
+	var active_legacy := _count_active_calls(spawn_block, "spawn_enemies(self, _grid")
+	assert_int(active_legacy).is_equal(0)
+	# 敌人应挂到 build_result.spawn_root 集中管理
+	assert_bool(spawn_block.contains("build_result.spawn_root")).is_true()
+
+func test_dungeon_spawner_provides_layout_interface() -> void:
+	# DungeonSpawner autoload 应提供 spawn_enemies_from_layout 接口
+	var spawner_src := (load("res://globals/dungeon/dungeon_spawner.gd") as GDScript).source_code
+	assert_bool(spawner_src.contains("func spawn_enemies_from_layout(layout: DungeonLayout")) \
+		.override_failure_message("DungeonSpawner 应新增 spawn_enemies_from_layout 接口").is_true()
+
 
 # ── helpers ──────────────────────────────────────────────────
 func _pd_source() -> String:

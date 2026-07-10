@@ -171,10 +171,14 @@ func _ready() -> void:
 
 	if config.enable_connectivity_check:
 		var connectivity_report := DungeonConnectivityValidator.new().validate(layout)
-		# 阶段 4 集成测试锚：isaac 不保 100% 全连通，reachable 90%+ 即放行；missing 必含点不应含 player_spawn/boss
+		# 阶段 9 条 7：阈值代码落实（reachable_ratio_threshold 默认 0.9 在 validator 内），
+		# 不再把"90%+"写注释；必命中点 player_spawn/boss 仍必须可达。
 		var missing: Array = connectivity_report["missing_required_points"]
 		if missing.has("player_spawn_cell") or missing.has("boss_cell"):
 			push_warning("[Dungeon] connectivity missing required points: %s" % str(missing))
+			return
+		if bool(connectivity_report["ratio_below_threshold"]):
+			push_warning("[Dungeon] connectivity reachable ratio %.2f below threshold" % float(connectivity_report["reachable_ratio"]))
 			return
 
 	if config.enable_hazards:
@@ -259,9 +263,11 @@ func _spawn_dungeon_enemies(spawned_player: Node3D = null) -> void:
 	if player_node == null:
 		push_warning("[Dungeon] Player not spawned, skip enemy generation")
 		return
-	# 传递房间列表与房间角色，让 Spawner 按房间类型分类生成怪物
-	# BOSS 房间只生成 BOSS 类怪物，普通房间只生成普通怪物，起始房间不生成
-	var spawned_enemies: Array = spawner.spawn_enemies(self, _grid, dungeon_zone, player_node, player_spawn_pos, TILE_SIZE, Vector3.ZERO, _rooms, _room_roles)
+	# 阶段 9 接线：调 spawn_enemies_from_layout 接 layout.enemy_spawn_specs，
+	# 不再 9 参数重读 _grid/_rooms/_room_roles（DungeonSpawnPlanner 已规划 spec）。
+	# 敌人挂到 build_result.spawn_root 集中管理，不再散 add 到本类根。
+	var spawn_root: Node = build_result.spawn_root if build_result != null else self
+	var spawned_enemies: Array = spawner.spawn_enemies_from_layout(layout, spawn_root, player_node)
 	for enemy in spawned_enemies:
 		register_streamed_physics_node(enemy)
 

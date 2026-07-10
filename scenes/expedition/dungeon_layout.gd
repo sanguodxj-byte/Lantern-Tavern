@@ -182,7 +182,39 @@ func validate() -> Dictionary:
 		if _spec_contains_node_ref(spec):
 			report["valid"] = false
 			errors.append("hazard_anchor contains Node/PackedScene reference")
+	# 阶段 9 条 8：spawn spec 完整性校验（字段完备、cell 在格内、不含 Node/PackedScene 引用）
+	for spec in enemy_spawn_specs:
+		var es_err := _check_spawn_spec(spec, ["enemy_type", "cell", "room_index", "is_elite", "zone"])
+		if not es_err.is_empty():
+			report["valid"] = false
+			errors.append("enemy_spawn_spec: %s" % es_err)
+	for spec in item_spawn_specs:
+		var is_err := _check_spawn_spec(spec, ["item_type", "item_id", "cell", "room_index"])
+		if not is_err.is_empty():
+			report["valid"] = false
+			errors.append("item_spawn_spec: %s" % is_err)
+	for spec in chest_spawn_specs:
+		var cs_err := _check_spawn_spec(spec, ["chest_type", "cell", "room_index"])
+		if not cs_err.is_empty():
+			report["valid"] = false
+			errors.append("chest_spawn_spec: %s" % cs_err)
 	return report
+
+## 校验单个 spawn spec 的字段完备性 + cell 在格内 + 不含 Node/PackedScene 引用。
+## 返回空 String 表示通过；否则返回错误描述。
+func _check_spawn_spec(spec: Dictionary, required_keys: Array) -> String:
+	if _spec_contains_node_ref(spec):
+		return "contains Node/PackedScene reference"
+	for k in required_keys:
+		if not spec.has(k):
+			return "missing required field '%s'" % k
+	if spec.has("cell"):
+		var cell: Vector2i = spec["cell"]
+		if not (cell is Vector2i):
+			return "'cell' is not Vector2i"
+		if cell.x < 0 or cell.y < 0 or cell.x >= width or cell.y >= height:
+			return "cell %s out of grid bounds (w=%d, h=%d)" % [str(cell), width, height]
+	return ""
 
 ## 检查 spec Dictionary 是否含被禁止的 Node/PackedScene 引用（生成阶段不允许）
 func _spec_contains_node_ref(spec: Dictionary) -> bool:

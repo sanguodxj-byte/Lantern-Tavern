@@ -8,9 +8,12 @@ extends Node
 ## - rat      (voxel_rat_12px)      — 弱怪，速度快
 ## - skeleton (voxel_skeleton_48px) — 中等，持剑
 ## - slime    (voxel_slime_18px)    — 弱怪，近战
-## - troll    (voxel_troll_64x)     — BOSS 级，高血量
+## - troll    (voxel_troll_64x)     — 普通怪，高血量大体型
 ## - necrolord(voxel_necrolord_80px)— BOSS 级，法系
-## - dragon   (voxel_dragon_256px)  — BOSS 级，最终区域
+## - dragon   (voxel_dragon_256px)  — BOSS 级，龙息
+##
+## BOSS 房间：龙和死灵领主二选一随机刷新
+## 普通房间：所有 5 种普通怪按区域权重出现
 
 const GOBLIN_PREFAB := preload("res://scenes/characters/enemies/goblin.tscn")
 const RAT_PREFAB := preload("res://scenes/characters/enemies/rat.tscn")
@@ -20,10 +23,10 @@ const TROLL_PREFAB := preload("res://scenes/characters/enemies/troll.tscn")
 const NECROLORD_PREFAB := preload("res://scenes/characters/enemies/necrolord.tscn")
 const DRAGON_PREFAB := preload("res://scenes/characters/enemies/dragon.tscn")
 
-# BOSS 类怪物：只允许在 BOSS 房间生成
-const BOSS_TYPES := ["troll", "necrolord", "dragon"]
-# 普通类怪物：可在任何非起始房间生成
-const NORMAL_TYPES := ["goblin", "rat", "skeleton", "slime"]
+# BOSS 类怪物：只允许在 BOSS 房间生成（龙和死灵领主二选一）
+const BOSS_TYPES := ["necrolord", "dragon"]
+# 普通类怪物：可在任何非起始房间生成（巨魔降为普通怪）
+const NORMAL_TYPES := ["goblin", "rat", "skeleton", "slime", "troll"]
 const BODY_SIZE_BY_TYPE: Dictionary = {
 	"rat": "small",
 	"slime": "small",
@@ -38,40 +41,40 @@ const BODY_SIZE_BY_TYPE: Dictionary = {
 # BOSS 房间使用 BOSS_ZONE_CONFIG
 const ZONE_ENEMY_CONFIG: Dictionary = {
 	0: {  # 幽暗地牢 — 最弱，适合初始
-		"types": {"rat": 40, "slime": 35, "skeleton": 25},
+		"types": {"rat": 30, "slime": 25, "skeleton": 20, "goblin": 15, "troll": 10},
 		"count_per_room": 1.5,
 		"hp_mult": 0.8, "speed_mult": 0.9, "dmg_mult": 0.8,
-		"boss": {"troll": 100},
+		"boss": {"necrolord": 50, "dragon": 50},
 	},
 	1: {  # 寂静之森
-		"types": {"rat": 30, "slime": 25, "skeleton": 25, "elite_goblin": 20},
+		"types": {"rat": 25, "slime": 20, "skeleton": 20, "goblin": 20, "troll": 15},
 		"count_per_room": 2.0,
 		"hp_mult": 1.0, "speed_mult": 1.0, "dmg_mult": 1.0,
-		"boss": {"troll": 60, "necrolord": 40},
+		"boss": {"necrolord": 50, "dragon": 50},
 	},
 	2: {  # 深邃洞窟
-		"types": {"slime": 25, "skeleton": 30, "rat": 20, "elite_goblin": 25},
+		"types": {"slime": 20, "skeleton": 25, "rat": 15, "goblin": 20, "troll": 20},
 		"count_per_room": 2.5,
 		"hp_mult": 1.2, "speed_mult": 1.1, "dmg_mult": 1.1,
-		"boss": {"troll": 50, "necrolord": 50},
+		"boss": {"necrolord": 50, "dragon": 50},
 	},
 	3: {  # 荒芜墓园
-		"types": {"skeleton": 35, "rat": 15, "slime": 20, "elite_goblin": 30},
+		"types": {"skeleton": 25, "rat": 10, "slime": 15, "goblin": 25, "troll": 25},
 		"count_per_room": 3.0,
 		"hp_mult": 1.4, "speed_mult": 1.15, "dmg_mult": 1.3,
-		"boss": {"necrolord": 60, "troll": 40},
+		"boss": {"necrolord": 50, "dragon": 50},
 	},
-	4: {  # 熔岩火山 — 普通房间只有非 BOSS 类，BOSS 房间出 necrolord/dragon
-		"types": {"skeleton": 20, "slime": 15, "rat": 10, "elite_goblin": 55},
+	4: {  # 熔岩火山
+		"types": {"skeleton": 15, "slime": 10, "rat": 5, "goblin": 30, "troll": 40},
 		"count_per_room": 3.5,
 		"hp_mult": 1.8, "speed_mult": 1.25, "dmg_mult": 1.5,
 		"boss": {"necrolord": 50, "dragon": 50},
 	},
-	5: {  # 古代遗迹 — 普通房间精英哥布林密集，BOSS 房间出 dragon/necrolord
-		"types": {"skeleton": 15, "rat": 10, "elite_goblin": 75},
+	5: {  # 古代遗迹
+		"types": {"skeleton": 10, "rat": 5, "slime": 5, "goblin": 35, "troll": 45},
 		"count_per_room": 4.0,
 		"hp_mult": 2.2, "speed_mult": 1.3, "dmg_mult": 1.8,
-		"boss": {"dragon": 60, "necrolord": 40},
+		"boss": {"necrolord": 50, "dragon": 50},
 	},
 }
 
@@ -135,6 +138,34 @@ func spawn_enemies(parent: Node, grid: Array, zone: int, player: Node, spawn_pos
 	print("[DungeonSpawner] Spawned %d enemies (zone %d, rooms %d, boss_room %s)" % [spawned.size(), zone, rooms.size(), boss_room != Rect2i()])
 	return spawned
 
+## 阶段 9 接线：按 DungeonLayout.enemy_spawn_specs 实例化怪物，不再重读 grid/rooms/room_roles。
+## layout: 已规划 enemy_spawn_specs 的 DungeonLayout（DungeonSpawnPlanner.plan_enemy_spawns 产出）
+## spawn_root: 敌人节点容器（DungeonBuildResult.spawn_root）
+## player: Player 实例，注入敌人 AI
+## 倍率从 layout.zone 查 ZONE_ENEMY_CONFIG；boss 类型 spec.is_elite=true 走 elite 倍率。
+func spawn_enemies_from_layout(layout: DungeonLayout, spawn_root: Node, player: Node) -> Array:
+	var spawned: Array = []
+	if layout == null or layout.is_empty() or spawn_root == null or not is_instance_valid(spawn_root):
+		return spawned
+	var zone_cfg: Dictionary = ZONE_ENEMY_CONFIG.get(layout.zone, ZONE_ENEMY_CONFIG[0])
+	for spec in layout.enemy_spawn_specs:
+		var enemy_type: String = spec["enemy_type"]
+		var cell: Vector2i = spec["cell"]
+		# 格坐标 → 世界坐标（与 procedural 的 OFFSET 公式一致：居中）
+		var offset_x: float = -(float(layout.width) * layout.tile_size) / 2.0
+		var offset_z: float = -(float(layout.height) * layout.tile_size) / 2.0
+		var pos: Vector3 = Vector3(offset_x, 0.5, offset_z) + Vector3(cell.x * layout.tile_size, 0.0, cell.y * layout.tile_size)
+		# boss 类型走 elite_ 前缀，触 _instantiate_enemy 的 is_elite 倍率链
+		var instantiate_type: String = enemy_type
+		if bool(spec.get("is_elite", false)) and not enemy_type.begins_with("elite_"):
+			instantiate_type = "elite_" + enemy_type
+		var enemy: Node = _instantiate_enemy(instantiate_type, pos, player, zone_cfg)
+		spawn_root.add_child(enemy)
+		enemy.global_position = pos
+		spawned.append(enemy)
+	print("[DungeonSpawner] Spawned %d enemies from layout specs (zone %d, specs %d)" % [spawned.size(), layout.zone, layout.enemy_spawn_specs.size()])
+	return spawned
+
 ## 收集房间内所有地板格的世界坐标
 func _collect_room_floor_cells(grid: Array, room: Rect2i, tile_size: float, offset: Vector3, spawn_pos: Vector3) -> Array:
 	var positions: Array = []
@@ -156,10 +187,10 @@ func _spawn_in_room(parent: Node, cell_positions: Array, config: Dictionary, zon
 		return spawned
 
 	var count_per_room: float = float(config.get("count_per_room", 1.5))
-	# BOSS 房间数量少但强（1-2 只）
+	# BOSS 房间：龙和死灵领主二选一，固定 1 只
 	var count: int
 	if is_boss_room:
-		count = 1 if zone < 3 else 2  # 低区域 1 只 BOSS，高区域 2 只
+		count = 1
 	else:
 		count = int(cell_positions.size() * count_per_room * 0.25)
 		count = clampi(count, 1, 5)  # 每个普通房间 1-5 只
@@ -225,9 +256,9 @@ func _pick_enemy_type(types: Dictionary) -> String:
 			return k
 	return types.keys()[0]
 
-## 按权重随机选择 BOSS 类怪物种类
+## 按权重随机选择 BOSS 类怪物种类（龙和死灵领主二选一）
 func _pick_boss_type(config: Dictionary) -> String:
-	var boss_config: Dictionary = config.get("boss", {"troll": 100})
+	var boss_config: Dictionary = config.get("boss", {"necrolord": 50, "dragon": 50})
 	var total: float = 0.0
 	for k in boss_config.keys():
 		total += float(boss_config[k])

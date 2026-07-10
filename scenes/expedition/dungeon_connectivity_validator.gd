@@ -6,10 +6,15 @@
 class_name DungeonConnectivityValidator
 extends RefCounted
 
+# 阶段 9 条 7：可达比阈值代码落实（原 _ready 里只写注释"isaac 不保 100% 连通，reachable 90%+ 即放行"）。
+# 调用方可覆写；默认 0.9 与 procedural_dungeon.gd._ready 的放行契约一致。
+var reachable_ratio_threshold: float = 0.9
+
 ## 完整验证，返回报告 Dictionary：
 ## {valid:bool, reachable_floor_count:int, floor_count:int,
 ##  unreachable_cells:Array[Vector2i], unreachable_rooms:Array[Rect2i],
-##  missing_required_points:Array[String], main_path_uses_hazard:bool}
+##  missing_required_points:Array[String], main_path_uses_hazard:bool,
+##  reachable_ratio:float, ratio_below_threshold:bool}
 func validate(layout: DungeonLayout) -> Dictionary:
 	var report := {
 		"valid": true,
@@ -19,6 +24,8 @@ func validate(layout: DungeonLayout) -> Dictionary:
 		"unreachable_rooms": [],
 		"missing_required_points": [],
 		"main_path_uses_hazard": false,
+		"reachable_ratio": 0.0,
+		"ratio_below_threshold": false,
 	}
 	if layout.is_empty():
 		report["valid"] = false
@@ -45,6 +52,12 @@ func validate(layout: DungeonLayout) -> Dictionary:
 		if not reachable_set.has(f):
 			unreachable.append(f)
 	report["unreachable_cells"] = unreachable
+	# 阶段 9 条 7：可达比代码落实（不再只写注释）
+	var ratio: float = 0.0
+	if report["floor_count"] > 0:
+		ratio = float(reachable.size()) / float(report["floor_count"])
+	report["reachable_ratio"] = ratio
+	report["ratio_below_threshold"] = ratio < reachable_ratio_threshold
 	# 关键点可达
 	var missing: Array = []
 	for label in ["player_spawn_cell", "extraction_cell", "boss_cell", "stairs_cell", "reward_cell"]:
