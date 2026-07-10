@@ -17,6 +17,7 @@ const FLAME_VENT_TRAP_PREFAB := preload("res://scenes/traps/flame_vent_trap.tscn
 const ACID_TRAP_PATH := "res://scenes/traps/acid_trap.tscn"
 const CHEST_PREFAB := preload("res://scenes/props/chest/chest.tscn")
 const BOSS_CHEST_PREFAB := preload("res://scenes/props/chest/boss_chest.tscn")
+const EXTRACTION_PORTAL_PREFAB := preload("res://scenes/expedition/extraction_portal.tscn")
 
 ## 构建：按 layout instantiate hazard/chest 节点，挂到 build_result 的分 root。
 ## parent: ProceduralDungeon 或同等 Node3D 容器；调用方持 build_result 引用。
@@ -35,9 +36,11 @@ func build(layout: DungeonLayout, parent: Node3D) -> DungeonBuildResult:
 	result.interaction_root = _new_root("InteractionRoot", parent)
 	result.streamed_visual_root = _new_root("StreamedVisualRoot", parent)
 	result.streamed_physics_root = _new_root("StreamedPhysicsRoot", parent)
-	# 第一版只实例化 hazard + chest（敌人由 DungeonSpawner autoload 旧路径生成，阶段 10 再迁）
+	# 第一版只实例化 hazard + chest + extraction portal（敌人由 DungeonSpawner autoload 旧路径生成，阶段 10 再迁；
+	# downstairs portal 是手工 MeshInstance3D 拼装，属 terrain 类，暂留 procedural）
 	_build_hazards(layout, result)
 	_build_chests(layout, result)
+	_build_extraction_portal(layout, result)
 	return result
 
 # ── hazard prefab 映射 ───────────────────────────────────────────
@@ -93,6 +96,21 @@ func _chest_prefab_for(chest_type: String) -> PackedScene:
 			return CHEST_PREFAB
 		_:
 			return null
+
+# ── extraction portal prefab 映射 ───────────────────────────────
+## 撤离传送门 instantiate。信号接线（extraction_requested.connect）属 runtime 阶段 9 聃畴，
+## builder 只 instantiate 节点 + set_meta，不接信号。
+func _build_extraction_portal(layout: DungeonLayout, result: DungeonBuildResult) -> void:
+	if layout.is_key_cell_missing(layout.extraction_cell):
+		return  # extraction 是 0.2 概率 role，未命中不放
+	var instance := EXTRACTION_PORTAL_PREFAB.instantiate() as Node3D
+	if instance == null:
+		return
+	instance.position = _cell_to_world(layout.extraction_cell, layout.tile_size)
+	instance.name = "ExtractionPortal"
+	instance.set_meta("topdown_kind", "extraction")
+	result.interaction_root.add_child(instance)
+	result.streamed_physics_nodes.append(instance)
 
 # ── helpers ──────────────────────────────────────────────────────
 func _new_root(name: String, parent: Node3D) -> Node3D:
