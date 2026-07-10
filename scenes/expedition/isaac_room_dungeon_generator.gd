@@ -26,6 +26,41 @@ var room_roles: Dictionary = {}
 var room_metadata: Array[Dictionary] = []
 var ceiling_heights: Array = []
 
+# 阶段 9 条 6：可控随机源。set_rng 注入后所有 rand* 走 _rng，使生成可复现；
+# 未注入时 fallback 全局 _randi()/_randf()（保旧行为，不破现 procedural 路径）。
+var _rng: RandomNumberGenerator = null
+
+## 注入可控随机源。rng.seed 由调用方设；DungeonGenerator 用 config.seed 配 rng 后注入。
+func set_rng(rng: RandomNumberGenerator) -> void:
+	_rng = rng
+
+func _randi() -> int:
+	return _rng.randi() if _rng != null else randi()
+
+func _randf() -> float:
+	return _rng.randf() if _rng != null else randf()
+
+func _randi_range(from: int, to: int) -> int:
+	return _rng.randi_range(from, to) if _rng != null else randi_range(from, to)
+
+func _randf_range(from: float, to: float) -> float:
+	return _rng.randf_range(from, to) if _rng != null else randf_range(from, to)
+
+## 受控 shuffle：_rng 注入时用 Fisher-Yates 走 _rng.randi_range，否则 fallback 全局 Array.shuffle()。
+## Godot 4 的 Array.shuffle() 用全局随机源不受 _rng 控制，导致同 seed 不复现 —— 必须走本 wrapper。
+func _shuffle(arr: Array) -> Array:
+	if _rng == null:
+		arr.shuffle()
+		return arr
+	# Fisher-Yates 用 _rng.randi_range 控序
+	var n := arr.size()
+	for i in range(n - 1, 0, -1):
+		var j: int = _rng.randi_range(0, i)
+		var tmp = arr[i]
+		arr[i] = arr[j]
+		arr[j] = tmp
+	return arr
+
 var _macro_rooms: Array[Vector2i] = []
 var _macro_room_set: Dictionary = {}
 var _shortcut_macro_connections: Array[Dictionary] = []
@@ -133,7 +168,7 @@ func _generate_room_graph(target_room_count: int) -> void:
 			break
 		for candidate in candidates:
 			var loop_bonus := 5.0 if int(candidate["neighbors"]) >= 2 else 0.0
-			candidate["score"] = float(candidate["distance"]) + loop_bonus + randf() * 0.75
+			candidate["score"] = float(candidate["distance"]) + loop_bonus + _randf() * 0.75
 		candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 			return float(a["score"]) > float(b["score"])
 		)
@@ -184,7 +219,7 @@ func _ensure_terminal_count(min_count: int) -> void:
 
 func _ensure_shortcut_connection_count(min_count: int) -> void:
 	var candidates := _collect_shortcut_candidates()
-	candidates.shuffle()
+	candidates = _shuffle(candidates)
 	candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return int(a["distance"]) < int(b["distance"])
 	)
@@ -199,7 +234,7 @@ func _ensure_shortcut_connection_count(min_count: int) -> void:
 
 func _ensure_merged_room_connection_count(min_count: int) -> void:
 	var candidates := _collect_adjacent_merge_candidates()
-	candidates.shuffle()
+	candidates = _shuffle(candidates)
 	candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return int(a["score"]) > int(b["score"])
 	)
@@ -291,7 +326,7 @@ func _assign_room_roles() -> void:
 	var fallback: Vector2i = terminals[0] if not terminals.is_empty() else _fallback_non_start_macro()
 	var boss: Vector2i = _take_terminal_role(terminals, fallback)
 	room_roles["boss"] = _room_rect_for_macro(boss)
-	if randf() < EXTRACTION_ROOM_PROBABILITY:
+	if _randf() < EXTRACTION_ROOM_PROBABILITY:
 		room_roles["extraction"] = _room_rect_for_macro(boss)
 	var stairs: Vector2i = _take_terminal_role(terminals, boss)
 	room_roles["stairs"] = _room_rect_for_macro(stairs)
@@ -312,7 +347,7 @@ func _pick_start_macro() -> Vector2i:
 				candidates.append(macro)
 	if candidates.is_empty():
 		return Vector2i.ZERO
-	candidates.shuffle()
+	candidates = _shuffle(candidates)
 	return candidates[0]
 
 
@@ -448,7 +483,7 @@ func _build_shape_queue() -> Array[String]:
 	var queue: Array[String] = []
 	for shape in GUARANTEED_ROOM_SHAPES:
 		queue.append(String(shape))
-	queue.shuffle()
+	queue = _shuffle(queue)
 	var distinctive_extras: Array[String] = []
 	var rectilinear_extras: Array[String] = []
 	for shape in ROOM_SHAPES:
@@ -459,8 +494,8 @@ func _build_shape_queue() -> Array[String]:
 			rectilinear_extras.append(shape_name)
 		else:
 			distinctive_extras.append(shape_name)
-	distinctive_extras.shuffle()
-	rectilinear_extras.shuffle()
+	distinctive_extras = _shuffle(distinctive_extras)
+	rectilinear_extras = _shuffle(rectilinear_extras)
 	queue.append_array(distinctive_extras)
 	queue.append_array(rectilinear_extras)
 	return queue
@@ -507,7 +542,7 @@ func _shape_family(shape: String) -> String:
 
 
 func _pick_start_room_shape(macro: Vector2i) -> String:
-	var index := absi(macro.x * 17 + macro.y * 31 + randi()) % START_ROOM_SHAPES.size()
+	var index := absi(macro.x * 17 + macro.y * 31 + _randi()) % START_ROOM_SHAPES.size()
 	return START_ROOM_SHAPES[index]
 
 
@@ -536,14 +571,14 @@ func _size_for_room_shape(shape: String, macro: Vector2i) -> Vector2i:
 		"broken_ring": Vector2i(11, 11),
 	}
 	var size: Vector2i = base_sizes.get(shape, Vector2i(5, 5))
-	if shape != "compact" and randf() < 0.45:
-		var axis_roll := randi_range(0, 2)
+	if shape != "compact" and _randf() < 0.45:
+		var axis_roll := _randi_range(0, 2)
 		if axis_roll != 1:
 			size.x += 2
 		if axis_roll != 0:
 			size.y += 2
-	if shape in ["double_chamber", "jagged_cavern", "broken_ring"] and randf() < 0.35:
-		size += Vector2i(2, 0) if randf() < 0.5 else Vector2i(0, 2)
+	if shape in ["double_chamber", "jagged_cavern", "broken_ring"] and _randf() < 0.35:
+		size += Vector2i(2, 0) if _randf() < 0.5 else Vector2i(0, 2)
 	size.x = clampi(size.x, 3, 13)
 	size.y = clampi(size.y, 3, 13)
 	if size.x % 2 == 0:
@@ -587,7 +622,7 @@ func _relaxed_room_center(macro: Vector2i, size: Vector2i) -> Vector2i:
 		max_x = 0
 	if size.y >= ROOM_SPACING - 1:
 		max_y = 0
-	var jitter := Vector2i(randi_range(-max_x, max_x), randi_range(-max_y, max_y))
+	var jitter := Vector2i(_randi_range(-max_x, max_x), _randi_range(-max_y, max_y))
 	var center := base + jitter
 	var half_size := Vector2i(size.x / 2, size.y / 2)
 	center.x = clampi(center.x, 1 + half_size.x, _width - half_size.x - 2)
@@ -696,7 +731,7 @@ func _carve_noise_cavern_room(grid: Array, rect: Rect2i, macro: Vector2i) -> voi
 	var radius_y := maxf(float(rect.size.y - 1) * 0.5, 1.0)
 	var noise := FastNoiseLite.new()
 	noise.noise_type = FastNoiseLite.TYPE_PERLIN
-	noise.seed = randi()
+	noise.seed = _randi()
 	noise.frequency = 0.42
 	noise.fractal_octaves = 2
 	for y in range(rect.position.y, rect.position.y + rect.size.y):
@@ -715,7 +750,7 @@ func _carve_jagged_cavern_room(grid: Array, rect: Rect2i, macro: Vector2i) -> vo
 	var radius_y := maxf(float(rect.size.y - 1) * 0.5, 1.0)
 	var noise := FastNoiseLite.new()
 	noise.noise_type = FastNoiseLite.TYPE_PERLIN
-	noise.seed = randi()
+	noise.seed = _randi()
 	noise.frequency = 0.72
 	noise.fractal_octaves = 3
 	for y in range(rect.position.y, rect.position.y + rect.size.y):
@@ -833,7 +868,7 @@ func _carve_broken_ring_room(grid: Array, rect: Rect2i, macro: Vector2i) -> void
 		_carve_rect(grid, inner, BSP_DungeonGenerator.TileType.WALL)
 	var center := _rect_center(rect)
 	_carve_rect(grid, Rect2i(center - Vector2i(1, 1), Vector2i(3, 3)), BSP_DungeonGenerator.TileType.FLOOR)
-	var gap_side := absi(macro.x * 3 + macro.y * 5 + randi()) % 4
+	var gap_side := absi(macro.x * 3 + macro.y * 5 + _randi()) % 4
 	match gap_side:
 		0:
 			_carve_rect(grid, Rect2i(Vector2i(center.x - 1, rect.position.y), Vector2i(3, rect.size.y / 2 + 1)), BSP_DungeonGenerator.TileType.FLOOR)
@@ -954,7 +989,7 @@ func _carve_corridor(grid: Array, from_cell: Vector2i, to_cell: Vector2i) -> voi
 		var move_y := delta.y != 0
 		if move_x and move_y:
 			var x_weight := 0.62 if absi(delta.x) >= absi(delta.y) else 0.38
-			if randf() < x_weight:
+			if _randf() < x_weight:
 				current.x += signi(delta.x)
 			else:
 				current.y += signi(delta.y)
@@ -1082,7 +1117,7 @@ func _is_boss_macro(macro: Vector2i) -> bool:
 func _relaxed_connector_center(macro: Vector2i, corridor_dir: Vector2i) -> Vector2i:
 	var base := _macro_to_grid_center(macro)
 	var perpendicular := Vector2i(-corridor_dir.y, corridor_dir.x)
-	var offset := randi_range(-ROOM_CENTER_JITTER, ROOM_CENTER_JITTER)
+	var offset := _randi_range(-ROOM_CENTER_JITTER, ROOM_CENTER_JITTER)
 	var center := base + perpendicular * offset
 	var half := SHORTCUT_CONNECTOR_SIZE / 2
 	center.x = clampi(center.x, 1 + half, _width - half - 2)

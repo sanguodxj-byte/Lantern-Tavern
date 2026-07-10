@@ -35,12 +35,15 @@ func generate(config: DungeonGenerationConfig) -> DungeonLayout:
 # ── isaac 包装 ──────────────────────────────────────────────
 func _generate_with_isaac(config: DungeonGenerationConfig) -> DungeonLayout:
 	var gen: Node = load(ISAAC_PATH).new()
-	# isaac 当前无 seed 字段、用全局 randi()/randf() —— 本包装层不修改其内部，
-	# 阶段 11 再给 isaac 补 RandomNumberGenerator 注入能力。
-	# 这里把 config.seed 仅记入 layout.seed 供追溯，不能真正固定复现。
+	# 阶段 9 条 6：注入可控 RandomNumberGenerator，使 isaac 生成可复现。
+	# config.seed=0 表示随机选种子——但 layout.seed 仍记实际值供追溯。
+	var rng := RandomNumberGenerator.new()
+	if config.seed != 0:
+		rng.seed = config.seed
+	gen.set_rng(rng)
 	var grid: Array = gen.generate_dungeon(config.width, config.height, config.target_room_count)
 	var layout := DungeonLayout.new()
-	layout.seed = config.seed
+	layout.seed = rng.seed  # 记实际种子（config.seed=0 时 rng 随机选了某值）
 	layout.zone = config.zone
 	layout.tile_size = config.tile_size
 	layout.width = config.width
