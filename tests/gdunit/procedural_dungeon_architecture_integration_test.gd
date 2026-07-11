@@ -142,6 +142,25 @@ func test_dungeon_spawner_provides_layout_interface() -> void:
 	assert_bool(spawner_src.contains("func spawn_enemies_from_layout(layout: DungeonLayout")) \
 		.override_failure_message("DungeonSpawner 应新增 spawn_enemies_from_layout 接口").is_true()
 
+func test_spawn_items_uses_layout_not_legacy_grid() -> void:
+	# 阶段 9 条 4：_spawn_dungeon_items 应调 spawn_items_from_layout 接 layout.item_spawn_specs，
+	# 不再 spawn_items_for_level(_grid, ...) 6 参数重读 grid 盲扫。
+	var src := _pd_source()
+	var items_block := _extract_func_block(src, "_spawn_dungeon_items")
+	assert_bool(items_block.contains("spawn_items_from_layout(layout")) \
+		.override_failure_message("_spawn_dungeon_items 应调 spawn_items_from_layout").is_true()
+	# 旧 6 参数调用应不在活跃代码里
+	var active_legacy := _count_active_calls(items_block, "spawn_items_for_level(_grid")
+	assert_int(active_legacy).is_equal(0)
+	# 物品应挂到 build_result.spawn_root 集中管理
+	assert_bool(items_block.contains("build_result.spawn_root")).is_true()
+
+func test_item_spawner_provides_layout_interface() -> void:
+	# ItemSpawner autoload 应提供 spawn_items_from_layout 接口
+	var spawner_src := (load("res://globals/equipment/item_spawner.gd") as GDScript).source_code
+	assert_bool(spawner_src.contains("func spawn_items_from_layout(layout: DungeonLayout")) \
+		.override_failure_message("ItemSpawner 应新增 spawn_items_from_layout 接口").is_true()
+
 
 # ── helpers ──────────────────────────────────────────────────
 func _pd_source() -> String:

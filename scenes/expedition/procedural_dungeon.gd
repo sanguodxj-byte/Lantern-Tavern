@@ -271,23 +271,16 @@ func _spawn_dungeon_enemies(spawned_player: Node3D = null) -> void:
 	for enemy in spawned_enemies:
 		register_streamed_physics_node(enemy)
 
-## 调用 ItemSpawner autoload 按标签放置所有物品（材料/装饰/容器/宝藏）。
-## 替代旧散落逻辑（_spawn_random_material / _spawn_random_decor），
-## 集中通过 item_placement_config.json 按区域权重控制生成。
+## 调用 ItemSpawner autoload 按 layout.item_spawn_specs 放置物品（材料）。
+## 阶段 9 条 4 接线：不再 spawn_items_for_level(_grid, ...) 6 参数重读 grid 盲扫，
+## 改调 spawn_items_from_layout 接 layout.item_spawn_specs 实例化，物挂 build_result.spawn_root。
 func _spawn_dungeon_items() -> void:
 	var spawner: Node = Service.item_spawner()
 	if spawner == null:
 		push_warning("[Dungeon] ItemSpawner autoload not found, skipping item placement")
 		return
-	# 重算偏移（与 _generate_visuals 同公式）
-	var grid_width: int = _grid[0].size() if _grid.size() > 0 else 0
-	var grid_height: int = _grid.size()
-	var offset_x: float = -(float(grid_width) * TILE_SIZE) / 2.0
-	var offset_z: float = -(float(grid_height) * TILE_SIZE) / 2.0
-	var offset: Vector3 = Vector3(offset_x, 0, offset_z)
-
-	spawner.spawn_items_for_level(_grid, dungeon_zone, player_spawn_pos,
-		TILE_SIZE, offset, self)
+	var spawn_root: Node = build_result.spawn_root if build_result != null else self
+	spawner.spawn_items_from_layout(layout, spawn_root)
 	_build_batched_decor_multi_meshes()
 
 func _stabilize_dungeon_lighting() -> void:

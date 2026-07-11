@@ -14,6 +14,8 @@ extends Node
 ##   get_tag_config(tag) → ItemPlacementData
 ##       — 查询某个标签的放置配置
 
+const Service := preload("res://globals/core/service.gd")
+
 const PICKABLE_ITEM_PREFAB := preload("res://scenes/equipment/pickable_item.tscn")
 const PLACEMENT_DATA := preload("res://data/item_placement_data.gd")
 const TAGS := preload("res://data/item_tags.gd")
@@ -243,6 +245,39 @@ func spawn_items_for_level(grid_data: Array, zone: int, player_spawn_pos: Vector
 	return spawned
 
 
+## 阶段 9 条 4：按 DungeonLayout.item_spawn_specs 实例化物品，不再重读 grid 盲扫。
+## layout: 已规划 item_spawn_specs 的 DungeonLayout（DungeonSpawnPlanner.plan_item_spawns 产出）
+## spawn_root: 物品节点容器（DungeonBuildResult.spawn_root）
+## player: Player 实例（供 proximity/streaming 注册；本接口暂不直接用，预留）
+## spec 字段：{item_type:"material", item_id:String, cell:Vector2i, room_index:int}
+## 当前仅处理 item_type=="material"（planner 只规划材料）；其余类型跳过并告警。
+func spawn_items_from_layout(layout: DungeonLayout, spawn_root: Node, player: Node = null) -> Array:
+	var spawned: Array = []
+	if layout == null or layout.is_empty() or spawn_root == null or not is_instance_valid(spawn_root):
+		return spawned
+	# 重算偏移（与 procedural 的 OFFSET 公式一致：居中）
+	var offset_x: float = -(float(layout.width) * layout.tile_size) / 2.0
+	var offset_z: float = -(float(layout.height) * layout.tile_size) / 2.0
+	var offset: Vector3 = Vector3(offset_x, 0, offset_z)
+	for spec in layout.item_spawn_specs:
+		var item_type: String = spec.get("item_type", "")
+		match item_type:
+			"material":
+				var mat_id: String = spec.get("item_id", "")
+				if mat_id.is_empty():
+					continue
+				var cell: Vector2i = spec["cell"]
+				var cell_pos: Vector3 = offset + Vector3(cell.x * layout.tile_size, 0.5, cell.y * layout.tile_size)
+				# wall_direction 不从 grid 重推（planner 已选 cell）；用 ZERO 让 _spawn_material_instance 走 random yaw
+				var instance = _spawn_material_instance(mat_id, cell_pos, spawn_root, layout.zone, Vector3.ZERO)
+				if instance != null:
+					spawned.append(instance)
+			_:
+				push_warning("[ItemSpawner] spawn_items_from_layout: unsupported item_type '%s'" % item_type)
+	print("[ItemSpawner] Spawned %d items from layout specs (zone %d, specs %d)" % [spawned.size(), layout.zone, layout.item_spawn_specs.size()])
+	return spawned
+
+
 func _is_start_room_grid_cell(parent: Node, x: int, y: int) -> bool:
 	if parent != null and parent.has_method("is_start_room_grid_cell"):
 		return bool(parent.is_start_room_grid_cell(Vector2i(x, y)))
@@ -301,6 +336,13 @@ func _spawn_item_internal(tag: String, pos: Vector3, parent: Node, zone: int) ->
 				return _spawn_treasure_fallback(pos, parent, zone)
 			_:
 				return null
+
+	var scene_path := String(prefab.resource_path)
+	if tag == TAGS.DECOR or tag == TAGS.CONTAINER:
+		var batched_instance := _spawn_batched_static_scene(scene_path, pos, parent)
+		if batched_instance != null:
+			_set_tag_meta(batched_instance, tag, cfg, zone)
+			return batched_instance
 
 	var instance: Node = prefab.instantiate()
 	instance.position = pos
@@ -442,7 +484,7 @@ func _spawn_scatter_items(spawned: Array, cell_pos: Vector3, zone: int,
 
 ## 在地面生成一件随机装备（武器/盾牌/防具/饰品），使用 LootTable 掉落表。
 func _spawn_scatter_equipment(pos: Vector3, parent: Node, zone: int) -> Node:
-	var loot_table: Node = get_node_or_null("/root/LootTable")
+	var loot_table: Node = Service.loot_table()
 	if loot_table == null:
 		return null
 	var drop_dict: Dictionary = loot_table.roll_weapon()
@@ -476,7 +518,7 @@ func _spawn_material_fallback(pos: Vector3, parent: Node, zone: int) -> Node:
 func _pick_material_id(zone: int) -> String:
 	# 从 ZoneManager 取当前区域材料池
 	var pool: Dictionary = MATERIALS_FALLBACK
-	var zm: Node = get_node_or_null("/root/ZoneManager") if is_inside_tree() else null
+	var zm: Node = Service.zone_manager() if is_inside_tree() else null
 	if zm != null:
 		pool = zm.get_scatter_materials(zone)
 	return _pick_weighted(pool)
@@ -535,6 +577,9 @@ func _spawn_decor_fallback(pos: Vector3, parent: Node) -> Node:
 	var path: String = _pick_weighted_from_dict(DECOR_CONFIG_FALLBACK)
 	if path.is_empty():
 		return null
+	var batched_instance := _spawn_batched_static_scene(path, pos, parent)
+	if batched_instance != null:
+		return batched_instance
 	var prefab: PackedScene = _decor_scenes.get(path)
 	if prefab == null:
 		return null
@@ -552,6 +597,10 @@ func _spawn_container_fallback(pos: Vector3, parent: Node) -> Node:
 		"res://scenes/props/crates/small_crate.tscn"
 	]
 	var path: String = paths[randi() % paths.size()]
+	var batched_instance := _spawn_batched_static_scene(path, pos, parent)
+	if batched_instance != null:
+		_set_tag_meta(batched_instance, TAGS.CONTAINER, null, 0)
+		return batched_instance
 	var prefab: PackedScene = load(path)
 	if prefab == null:
 		return null
@@ -575,6 +624,16 @@ func _spawn_treasure_fallback(pos: Vector3, parent: Node, zone: int) -> Node:
 	_notify_streamed_physics_parent(instance, parent)
 	return instance
 
+func _spawn_batched_static_scene(scene_path: String, pos: Vector3, parent: Node) -> Node:
+	if scene_path.is_empty() or parent == null or not parent.has_method("_spawn_batched_decor"):
+		return null
+	var child_count := parent.get_child_count()
+	if not bool(parent._spawn_batched_decor(scene_path, Transform3D(Basis.IDENTITY, pos))):
+		return null
+	if parent.get_child_count() <= child_count:
+		return null
+	return parent.get_child(parent.get_child_count() - 1)
+
 func _notify_streamed_physics_parent(instance: Node, parent: Node) -> void:
 	if parent != null and parent.has_method("register_streamed_physics_node"):
 		parent.register_streamed_physics_node(instance)
@@ -597,7 +656,7 @@ func _ensure_scene_object_collision(instance: Node) -> void:
 	var has_aabb: bool = false
 	for m in meshes:
 		var mi: MeshInstance3D = m
-		var aabb: AABB = mi.get_aabb()
+		var aabb: AABB = _mesh_aabb_in_node_space(node3d, mi)
 		if aabb.size != Vector3.ZERO:
 			if not has_aabb:
 				combined_aabb = aabb
@@ -618,6 +677,17 @@ func _ensure_scene_object_collision(instance: Node) -> void:
 	col.position = combined_aabb.position + combined_aabb.size * 0.5
 	body.add_child(col, true)
 	node3d.add_child(body, true)
+
+func _mesh_aabb_in_node_space(root: Node3D, mesh_instance: MeshInstance3D) -> AABB:
+	var relative := Transform3D.IDENTITY
+	var current: Node = mesh_instance
+	while current != null and current != root:
+		if current is Node3D:
+			relative = (current as Node3D).transform * relative
+		current = current.get_parent()
+	if current != root:
+		return mesh_instance.get_aabb()
+	return relative * mesh_instance.get_aabb()
 
 func _has_physics_body(node: Node) -> bool:
 	if node is PhysicsBody3D:
