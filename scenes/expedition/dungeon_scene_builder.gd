@@ -45,6 +45,7 @@ func build(layout: DungeonLayout, parent: Node3D) -> DungeonBuildResult:
 	_build_multi_meshes(layout, result)
 	_build_collisions(layout, result)
 	_build_wall_occluders(layout, result)
+	_build_downstairs_portal(layout, result)
 	_build_hazards(layout, result)
 	_build_chests(layout, result)
 	_build_extraction_portal(layout, result)
@@ -291,6 +292,58 @@ func _physics_setup() -> Node:
 	if tree == null or tree.root == null:
 		return null
 	return tree.root.get_node_or_null("PhysicsSetup")
+
+# ── downstairs portal（阶段 B3：迁自 procedural._spawn_downstairs_portal 纯 Mesh 拼装部分） ──
+## 产 DownstairsPortal Node3D + 4 级 DownstairsStep MeshInstance3D，挂 build_result.interaction_root。
+## 信号接线（area.body_entered.connect）属 runtime 范畴，builder 只 instantiate 不接——procedural 后续接。
+func _build_downstairs_portal(layout: DungeonLayout, result: DungeonBuildResult) -> void:
+	if result == null or result.interaction_root == null:
+		return
+	if not layout.room_roles.has("stairs"):
+		return  # downstairs 仅在含 stairs role 的布局生成
+	var grid: Array = layout.grid
+	var tile_size: float = layout.tile_size
+	var offset_x: float = -(float(layout.width) * tile_size) / 2.0
+	var offset_z: float = -(float(layout.height) * tile_size) / 2.0
+	var offset: Vector3 = Vector3(offset_x, 0, offset_z)
+	# stairs 房中心格作 downstairs 位
+	var stairs_center := _rect_center_cell(layout.room_roles["stairs"])
+	var best_pos := offset + Vector3(stairs_center.x * tile_size, 0.5, stairs_center.y * tile_size)
+	var root := Node3D.new()
+	root.name = "DownstairsPortal"
+	root.set_meta("topdown_kind", "stairs")
+	root.position = best_pos
+	result.interaction_root.add_child(root)
+	result.streamed_visual_nodes.append(root)
+	# 4 级下楼台阶
+	var step_mat := StandardMaterial3D.new()
+	step_mat.albedo_color = Color(0.20, 0.18, 0.16)
+	step_mat.roughness = 0.9
+	for i in range(4):
+		var step := MeshInstance3D.new()
+		step.name = "DownstairsStep%d" % (i + 1)
+		step.set_meta("topdown_kind", "stairs")
+		var box := BoxMesh.new()
+		box.size = Vector3(1.8, 0.14, 0.36)
+		step.mesh = box
+		step.material_override = step_mat
+		step.position = Vector3(0, 0.02 + i * 0.03, -0.54 + i * 0.36)
+		root.add_child(step)
+	# Area3D 节点也 instantiate（信号接线留 runtime）
+	var area := Area3D.new()
+	area.name = "DownstairsArea"
+	area.set_meta("topdown_kind", "stairs")
+	area.position = Vector3(0, 0.5, 0)
+	var col_shape := CollisionShape3D.new()
+	var box_shape := BoxShape3D.new()
+	box_shape.size = Vector3(2.0, 2.0, 2.0)
+	col_shape.shape = box_shape
+	area.add_child(col_shape)
+	root.add_child(area)
+	print("[DungeonSceneBuilder] Downstairs portal placed at ", best_pos)
+
+func _rect_center_cell(rect: Rect2i) -> Vector2i:
+	return rect.position + Vector2i(rect.size.x / 2, rect.size.y / 2)
 
 
 # ── hazard prefab 映射 ───────────────────────────────────────────
