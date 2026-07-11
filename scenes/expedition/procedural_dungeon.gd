@@ -186,7 +186,8 @@ func _ready() -> void:
 
 	# 阶段 9 条 2：_grid/layout.rooms/layout.room_roles/layout.heights 退役，统一读 layout.*
 	# （terrain floor/wall/ceiling/door 重型几何暂留 procedural，条 1 再迁入 DungeonSceneBuilder）
-	_generate_visuals(layout.grid)
+	_setup_zone_ambient()
+	_build_terrain_geometry(layout.grid)
 	player_spawn.global_position = player_spawn_pos
 	var spawned_player: Player = spawn_player()
 	_spawn_dungeon_enemies(spawned_player)
@@ -410,20 +411,10 @@ func _on_expedition_overtime(_snapshot: Dictionary) -> void:
 	var player_node := GameState.current_player as Player
 	_finish_expedition(player_node, false)
 
-func _generate_visuals(grid: Array) -> void:
+func _setup_zone_ambient() -> void:
 	# 清空先前收集的 Transform 数组
-	floor_transforms.clear()
-	ceiling_transforms.clear()
-	wall_transforms_by_height.clear()
-	batched_decor_transforms.clear()
 
 
-	const TILE_SIZE := 3.0
-	var grid_width = grid[0].size() if grid.size() > 0 else 0
-	var grid_height = grid.size()
-	var offset_x = -(grid_width * TILE_SIZE) / 2.0
-	var offset_z = -(grid_height * TILE_SIZE) / 2.0
-	var OFFSET := Vector3(offset_x, 0, offset_z)
 
 	# 按区域设置环境光与雾效：
 	#   地牢(0): 阴冷微光，潮湿石砌地牢，依赖火把照明
@@ -479,6 +470,19 @@ func _generate_visuals(grid: Array) -> void:
 		env.environment.sky = sky
 	add_child(env)
 
+
+func _build_terrain_geometry(grid: Array) -> void:
+	# 阶段 9 条 1 拆分：地形几何段（wall_h_map 预计算 + floor/wall/ceiling/lintel/pillar/torch/chest 主循环）
+	# 暂留 procedural 内独立成函数，下回合真迁 DungeonSceneBuilder
+	floor_transforms.clear()
+	ceiling_transforms.clear()
+	wall_transforms_by_height.clear()
+	batched_decor_transforms.clear()
+	var grid_width = grid[0].size() if grid.size() > 0 else 0
+	var grid_height = grid.size()
+	var offset_x = -(grid_width * TILE_SIZE) / 2.0
+	var offset_z = -(grid_height * TILE_SIZE) / 2.0
+	var OFFSET := Vector3(offset_x, 0, offset_z)
 	var player_spawned := false
 	var preferred_spawn_cell := Vector2i.ZERO
 	var has_preferred_spawn := false

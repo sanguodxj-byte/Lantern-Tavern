@@ -74,7 +74,7 @@ func test_generate_visuals_keeps_downstairs_portal() -> void:
 	# downstairs portal 是手工 MeshInstance3D 拼装（属 terrain 类），builder 第二版未接，暂留 procedural。
 	# 这条断言锚定"暂留"契约——阶段 10 terrain 迁移时再迁，本阶段不该误删。
 	var src := _pd_source()
-	var visuals_block := _extract_func_block(src, "_generate_visuals")
+	var visuals_block := _extract_func_block(src, "_build_terrain_geometry")
 	var active_downstairs := _count_active_calls(visuals_block, "_spawn_downstairs_portal(grid")
 	assert_int(active_downstairs).is_equal(1)
 
@@ -83,7 +83,7 @@ func test_ready_still_runs_legacy_visuals_for_terrain() -> void:
 	# 阶段 9 条 2：_ready() 调 _generate_visuals(layout.grid) 喂地形（旧 _grid 已退役读 layout.grid）。
 	var src := _pd_source()
 	var ready_block := _extract_ready_block(src)
-	assert_bool(ready_block.contains("_generate_visuals(layout.grid)")) \
+	assert_bool(ready_block.contains("_build_terrain_geometry(layout.grid)")) \
 		.override_failure_message("_ready() 应调 _generate_visuals(layout.grid) 喂地形（terrain 暂留 procedural）").is_true()
 
 func test_extraction_portal_signal_wired_in_runtime() -> void:
