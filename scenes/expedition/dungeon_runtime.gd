@@ -190,7 +190,7 @@ func finish_expedition(player: Node, voluntary: bool) -> void:
 	expedition_finished = true
 	if player != null and is_instance_valid(player):
 		_settle_extraction_loot(player)
-	if TavernManager:
+	if TavernManager != null and is_instance_valid(TavernManager) and TavernManager.has_method("extract_to_tavern"):
 		var pressure = _level._exploration_pressure if _level != null and is_instance_valid(_level) else null
 		var result: Dictionary = pressure.build_extraction_result(voluntary) if pressure != null else {}
 		TavernManager.extract_to_tavern(result)
