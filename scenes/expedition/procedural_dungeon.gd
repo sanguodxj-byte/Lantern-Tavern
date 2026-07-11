@@ -1,4 +1,4 @@
-extends BaseLevel
+﻿extends BaseLevel
 class_name ProceduralDungeon
 
 const PILLAR_PREFAB := preload("res://scenes/props/structures/pillar.tscn")
@@ -161,12 +161,11 @@ func _ready() -> void:
 	_player_spawn = GameState.current_player
 	player_spawn.global_position = player_spawn_pos
 
-## D 步4：extraction 信号接线已真迁入 DungeonRuntime.wire_extraction_portal_signal（runtime.start 内调），
-## 本类旧体已删。保 wrapper 占位避破其他引用点（无活跃调用）。
-func _wire_extraction_portal_signal() -> void:
-	pass  # runtime.wire_extraction_portal_signal 已接管
 
 func _process(delta: float) -> void:
+	var network_manager := Service.network_manager()
+	if network_manager != null and network_manager.has_method("tick"):
+		network_manager.tick(delta)
 	# 阶段 9 接线：streaming 唯一由 DungeonStreamingController 实现（controller 是子 Node，自带 _process 节流）。
 	# terrain streaming 注册转调 controller（见 register_streamed_physics_node / register_streamed_visual_node）。
 	if streaming_controller == null or not is_instance_valid(streaming_controller):
@@ -174,21 +173,8 @@ func _process(delta: float) -> void:
 	# controller._process 自跑节流；本类 _process 仅留作未来 runtime 需要帧驱动时用，现无操作。
 	return
 
-## 调用 DungeonSpawner autoload 按区域生成怪物，注入 player 引用
-## D 步5：spawn_enemies 已真迁入 DungeonRuntime.spawn_enemies（runtime.start 内调），本类旧体暂留 wrapper。
-func _spawn_dungeon_enemies(spawned_player: Node3D = null) -> void:
-	pass  # runtime.spawn_enemies 已接管
 
-## 调用 ItemSpawner autoload 按 layout.item_spawn_specs 放置物品（材料）。
-## 阶段 9 条 4 接线：不再 spawn_items_for_level(_grid, ...) 6 参数重读 grid 盲扫，
-## 改调 spawn_items_from_layout 接 layout.item_spawn_specs 实例化，物挂 build_result.spawn_root。
-## D 步5：spawn_items 已真迁入 DungeonRuntime.spawn_items（runtime.start 内调），本类旧体已删。
-func _spawn_dungeon_items() -> void:
-	pass  # runtime.spawn_items 已接管
 
-## D 步7：stabilize_lighting 已真迁入 DungeonRuntime.stabilize_lighting（runtime.start 内调），本类旧体已删。
-func _stabilize_dungeon_lighting() -> void:
-	pass  # runtime.stabilize_lighting 已接管
 
 # 阶段 9 条 5：terrain chunk 注册 / chunk 计算转调 DungeonStreamingController（删旧实现后唯一路径）
 func _register_terrain_chunk_node(chunk: Vector2i, node: Node3D) -> void:
@@ -226,37 +212,16 @@ func register_streamed_physics_node(node: Node) -> void:
 	if streaming_controller != null and is_instance_valid(streaming_controller):
 		streaming_controller.register_physics_node(node)
 
-## D 步10：mount_expedition_hud + _is_running_under_world + setup_exploration_pressure 已真迁入 DungeonRuntime。
-func _mount_expedition_hud() -> void:
-	pass  # runtime.mount_expedition_hud 已接管
 
-## D 步10：is_running_under_world 已真迁入 DungeonRuntime._is_running_under_world。
-func _is_running_under_world() -> bool:
-	return false  # runtime._is_running_under_world 已接管
 
-## D 步10：setup_exploration_pressure 已真迁入 DungeonRuntime。
-func _setup_exploration_pressure() -> void:
-	pass  # runtime.setup_exploration_pressure 已接管
 
-## D 步9：on_pressure_changed + _get_combat_hud + _apply_*_pressure + on_door_pressure 已真迁入 DungeonRuntime。
-func _on_pressure_changed(snapshot: Dictionary) -> void:
-	pass  # runtime.on_pressure_changed 已接管
 
 ## D 步9：get_combat_hud 已真迁入 DungeonRuntime._get_combat_hud。
 func _get_combat_hud() -> CombatHUD:
 	return null  # runtime._get_combat_hud 已接管
 
-## D 步9：apply_player_vision_pressure 已真迁入 DungeonRuntime。
-func _apply_player_vision_pressure(_multiplier: float) -> void:
-	pass  # runtime.apply_player_vision_pressure 已接管
 
-## D 步9：apply_environment_activity 已真迁入 DungeonRuntime。
-func _apply_environment_activity(_multiplier: float) -> void:
-	pass  # runtime.apply_environment_activity 已接管
 
-## D 步9：apply_monster_hunt_pressure 已真迁入 DungeonRuntime。
-func _apply_monster_hunt_pressure(_force_hunt: bool) -> void:
-	pass  # runtime.apply_monster_hunt_pressure 已接管
 
 ## D 步9：on_door_pressure_action 已真迁入 DungeonRuntime。
 func _on_door_pressure_action(action: String) -> void:
@@ -970,29 +935,9 @@ func _ceiling_transition_lintel_spec(cell_pos: Vector3, offset_pos: Vector3, def
 func _should_spawn_ceiling_transition_lintel(cell: Vector2i, neighbor: Vector2i, door_edge_keys: Dictionary) -> bool:
 	return not door_edge_keys.has(_door_edge_key(cell, neighbor))
 
+## B3 第二版：door panels 已由 builder._build_door_panels 真接管（不再转调本类），旧体已删。
 func _spawn_room_door_panels(grid: Array, offset: Vector3, tile_size: float) -> void:
-	if layout.rooms.is_empty():
-		return
-	var door_specs := {}
-	for room in layout.rooms:
-		for spec in _collect_room_door_specs(grid, room):
-			var inside: Vector2i = spec["inside"]
-			var outside: Vector2i = spec["outside"]
-			var key := _door_edge_key(inside, outside)
-			var leads_to_boss := _is_boss_room_cell(inside) or _is_boss_room_cell(outside)
-			if door_specs.has(key):
-				var existing: Dictionary = door_specs[key]
-				existing["boss"] = bool(existing["boss"]) or leads_to_boss
-				door_specs[key] = existing
-			else:
-				var door_spec: Dictionary = spec.duplicate()
-				door_spec["boss"] = leads_to_boss
-				door_specs[key] = door_spec
-
-	var index := 0
-	for key in door_specs.keys():
-		_spawn_door_panel(door_specs[key], offset, tile_size, index)
-		index += 1
+	pass  # builder._build_door_panels 已接管
 
 func _collect_room_door_edge_keys(grid: Array) -> Dictionary:
 	var result := {}
