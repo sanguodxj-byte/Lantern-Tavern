@@ -1553,13 +1553,17 @@ func _wall_boundary_key(walkable_cell: Vector2i, blocked_cell: Vector2i) -> Stri
 	return "%d,%d:%d,%d" % [walkable_cell.x, walkable_cell.y, blocked_cell.x, blocked_cell.y]
 
 func _build_multi_meshes() -> void:
+	# 阶段 9 条 1 步2：批渲染改读 build_result.*（builder 已产），旧类字段回退
+	var ft_arr = build_result.floor_transforms if build_result != null else floor_transforms
+	var ct_arr = build_result.ceiling_transforms if build_result != null else ceiling_transforms
+	var wt_map = build_result.wall_transforms_by_height if build_result != null else wall_transforms_by_height
 	# 1. 地板 MultiMesh（FLOOR 图块，平面 TILE_SIZE×TILE_SIZE）
 	if _shared_floor_mat == null:
 		# TILE_SIZE=3m → 每轴平铺 3 次（每次 = 1m = 32px）
 		_shared_floor_mat = _make_terrain_mat("FLOOR", Vector2(TILE_SIZE, TILE_SIZE))
 	_build_chunked_multi_meshes(
 		"FloorMultiMesh",
-		floor_transforms,
+		ft_arr,
 		Vector3(TILE_SIZE, 0.1, TILE_SIZE),
 		_shared_floor_mat
 	)
@@ -1569,14 +1573,14 @@ func _build_multi_meshes() -> void:
 		_shared_ceiling_mat = _make_terrain_mat("CEILING", Vector2(TILE_SIZE, TILE_SIZE))
 	_build_chunked_multi_meshes(
 		"CeilingMultiMesh",
-		ceiling_transforms,
+		ct_arr,
 		Vector3(TILE_SIZE, CEILING_THICKNESS, TILE_SIZE),
 		_shared_ceiling_mat
 	)
 
 	# 3. 墙面 MultiMesh（按尺寸分组，保证横向/纵向纹理重复与物理尺寸一致）
-	for wall_key in wall_transforms_by_height:
-		var group: Dictionary = wall_transforms_by_height[wall_key]
+	for wall_key in wt_map:
+		var group: Dictionary = wt_map[wall_key]
 		var transforms: Array = group.get("transforms", [])
 		if transforms.is_empty():
 			continue
@@ -1608,11 +1612,12 @@ func _build_multi_meshes() -> void:
 func _build_wall_occluders() -> void:
 	if not ProjectSettings.get_setting("rendering/occlusion_culling/use_occlusion_culling", false):
 		return
+	var wt_map = build_result.wall_transforms_by_height if build_result != null else wall_transforms_by_height
 	var container := Node3D.new()
 	container.name = "WallOccluders"
 	add_child(container)
-	for wall_key in wall_transforms_by_height:
-		var group: Dictionary = wall_transforms_by_height[wall_key]
+	for wall_key in wt_map:
+		var group: Dictionary = wt_map[wall_key]
 		var transforms: Array = group.get("transforms", [])
 		if transforms.is_empty():
 			continue
@@ -1627,10 +1632,14 @@ func _build_wall_occluders() -> void:
 			container.add_child(occ)
 
 func _build_merged_collisions() -> void:
-	_build_merged_collision_group("FloorCollisions", floor_transforms, Vector3(TILE_SIZE, 0.1, TILE_SIZE))
-	_build_merged_collision_group("CeilingCollisions", ceiling_transforms, Vector3(TILE_SIZE, CEILING_THICKNESS, TILE_SIZE))
-	for wall_key in wall_transforms_by_height:
-		var group: Dictionary = wall_transforms_by_height[wall_key]
+	# 阶段 9 条 1 步2：批渲染改读 build_result.*（builder 已产），旧类字段回退
+	var ft_arr = build_result.floor_transforms if build_result != null else floor_transforms
+	var ct_arr = build_result.ceiling_transforms if build_result != null else ceiling_transforms
+	var wt_map = build_result.wall_transforms_by_height if build_result != null else wall_transforms_by_height
+	_build_merged_collision_group("FloorCollisions", ft_arr, Vector3(TILE_SIZE, 0.1, TILE_SIZE))
+	_build_merged_collision_group("CeilingCollisions", ct_arr, Vector3(TILE_SIZE, CEILING_THICKNESS, TILE_SIZE))
+	for wall_key in wt_map:
+		var group: Dictionary = wt_map[wall_key]
 		var transforms: Array = group.get("transforms", [])
 		if transforms.is_empty():
 			continue

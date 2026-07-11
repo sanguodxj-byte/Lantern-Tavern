@@ -38,10 +38,83 @@ func build(layout: DungeonLayout, parent: Node3D) -> DungeonBuildResult:
 	result.streamed_physics_root = _new_root("StreamedPhysicsRoot", parent)
 	# 第一版只实例化 hazard + chest + extraction portal（敌人由 DungeonSpawner autoload 旧路径生成，阶段 10 再迁；
 	# downstairs portal 是手工 MeshInstance3D 拼装，属 terrain 类，暂留 procedural）
+	# 阶段 9 条 1 步2：地形 Transform 收集迁入 builder（wall_h_map 两遍预计算 + floor/wall/ceiling），
+	# 产出填 build_result.floor_transforms/ceiling_transforms/wall_transforms_by_height/wall_h_map。
+	# MultiMesh 批渲染 + merged collisions 暂留 procedural（步3-4 再迁），改读 build_result.* 而非旧类字段。
+	_build_terrain(layout, result)
 	_build_hazards(layout, result)
 	_build_chests(layout, result)
 	_build_extraction_portal(layout, result)
 	return result
+
+# ── terrain Transform 收集（阶段 9 条 1 步2） ─────────────────────
+## 收集 floor/wall/ceiling Transform 到 build_result，并预计算 wall_h_map（两遍消除相邻墙格高度差接缝）。
+## 不创建 MultiMesh/碰撞体（步3-4 再迁）；procedural 的 _build_multi_meshes/_build_merged_collisions 改读 build_result.*。
+func _build_terrain(layout: DungeonLayout, result: DungeonBuildResult) -> void:
+	if layout.is_empty():
+		return
+	var grid: Array = layout.grid
+	var grid_width: int = grid[0].size() if grid.size() > 0 else 0
+	var grid_height: int = grid.size()
+	var tile_size: float = layout.tile_size
+	var offset_x: float = -(float(grid_width) * tile_size) / 2.0
+	var offset_z: float = -(float(grid_height) * tile_size) / 2.0
+	var OFFSET := Vector3(offset_x, 0, offset_z)
+	# ── wall_h_map 两遍预计算（消除相邻墙格高度差接缝）──
+	# 第一遍：每个墙格取所有 4 邻格（含其他墙格）的最大 layout.heights 值
+	var wall_h_map: Dictionary = {}
+	for wy in range(grid_height):
+		for wx in range(grid_width):
+			if int(grid[wy][wx]) == 2:
+				var best: float = float(layout.heights[wy][wx])
+				for d in [Vector2i(0,-1), Vector2i(0,1), Vector2i(1,0), Vector2i(-1,0)]:
+					var nx2 = wx + d.x
+					var ny2 = wy + d.y
+					if nx2 >= 0 and nx2 < grid_width and ny2 >= 0 and ny2 < grid_height:
+						best = maxf(best, float(layout.heights[ny2][nx2]))
+				wall_h_map[Vector2i(wx, wy)] = best if best > 0.0 else 3.0
+	# 第二遍：相邻墙格互相传播最大值（消除"隔一格"仍存在的高度差）
+	for wy in range(grid_height):
+		for wx in range(grid_width):
+			if int(grid[wy][wx]) == 2:
+				var key := Vector2i(wx, wy)
+				var cur: float = wall_h_map[key]
+				for d in [Vector2i(0,-1), Vector2i(0,1), Vector2i(1,0), Vector2i(-1,0)]:
+					var nk := Vector2i(wx + d.x, wy + d.y)
+					if wall_h_map.has(nk) and float(wall_h_map[nk]) > cur:
+						cur = float(wall_h_map[nk])
+				wall_h_map[key] = cur
+	result.wall_h_map = wall_h_map
+	# ── floor/wall/ceiling Transform 收集 ──
+	var CEILING_THICKNESS: float = 0.2  # 与 procedural 类顶 const 一致
+	for y in range(grid_height):
+		for x in range(grid_width):
+			var cell_type: int = int(grid[y][x])
+			var cell_pos := OFFSET + Vector3(x * tile_size, 0, y * tile_size)
+			# floor（所有非 void 格都铺地板）
+			var ft := Transform3D()
+			ft.origin = cell_pos - Vector3(0, 0.05, 0)
+			result.floor_transforms.append(ft)
+			# wall
+			if cell_type == 2:
+				var wall_height: float = float(wall_h_map.get(Vector2i(x, y), 3.0))
+				var wt := Transform3D()
+				wt.origin = cell_pos
+				wt.origin.y += wall_height / 2.0
+				var size := Vector3(tile_size, wall_height, tile_size)
+				var key := _wall_segment_key(size)
+				if not result.wall_transforms_by_height.has(key):
+					result.wall_transforms_by_height[key] = {"size": size, "transforms": []}
+				(result.wall_transforms_by_height[key]["transforms"] as Array).append(wt)
+			elif cell_type != 0:
+				# ceiling
+				var ceiling_height: float = float(layout.heights[y][x])
+				var ct := Transform3D()
+				ct.origin = cell_pos + Vector3(0, ceiling_height + CEILING_THICKNESS * 0.5, 0)
+				result.ceiling_transforms.append(ct)
+
+func _wall_segment_key(size: Vector3) -> String:
+	return "%d,%d,%d" % [int(size.x), int(size.y), int(size.z)]
 
 # ── hazard prefab 映射 ───────────────────────────────────────────
 func _build_hazards(layout: DungeonLayout, result: DungeonBuildResult) -> void:

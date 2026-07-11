@@ -93,13 +93,16 @@ func test_extraction_portal_signal_wired_in_runtime() -> void:
 	assert_bool(src.contains("extraction_requested.connect(_on_extraction_requested)")).is_true()
 
 func test_layout_grid_feeds_legacy_visuals() -> void:
-	# _ready() 应把 layout.grid 喂给 _grid（供 _generate_visuals），不再单独调 isaac generate_dungeon。
+	# 阶段 9 条 2 后：_ready() 不再拷贝 _grid/_rooms/_room_roles 旧字段，直接调 _build_terrain_geometry(layout.grid)。
+	# 不再单独调 isaac generate_dungeon。
 	var src := _pd_source()
 	var ready_block := _extract_ready_block(src)
-	assert_bool(ready_block.contains("_grid = layout.grid")) \
-		.override_failure_message("_ready() 应把 layout.grid 喂给 _grid").is_true()
-	assert_bool(ready_block.contains("_rooms = layout.rooms")).is_true()
-	assert_bool(ready_block.contains("_room_roles =")).is_true()
+	assert_bool(ready_block.contains("_build_terrain_geometry(layout.grid)")) \
+		.override_failure_message("_ready() 应调 _build_terrain_geometry(layout.grid)").is_true()
+	# 旧拷贝行应已删
+	assert_bool(ready_block.contains("_grid = layout.grid")).is_false()
+	assert_bool(ready_block.contains("_rooms = layout.rooms")).is_false()
+	assert_bool(ready_block.contains("_room_roles =")).is_false()
 
 func test_process_delegates_to_streaming_controller() -> void:
 	# 验收门槛：DungeonStreamingController 唯一 streaming 实现。

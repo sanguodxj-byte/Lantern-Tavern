@@ -21,6 +21,13 @@ var streamed_visual_nodes: Array[Node3D] = []
 var streamed_physics_nodes: Array[Node] = []
 var terrain_chunks: Dictionary = {}  # Vector2i chunk -> Array[Node3D]
 
+# 阶段 9 条 1 步2：地形 Transform 收集产物（builder 产出，procedural 批渲染复用）
+# procedural 的 _build_multi_meshes/_build_merged_collisions 改读这些字段而非旧类字段
+var floor_transforms: Array = []
+var ceiling_transforms: Array = []
+var wall_transforms_by_height: Dictionary = {}  # key="{wx},{wy},{wz}" -> {size:Vector3, transforms:Array}
+var wall_h_map: Dictionary = {}  # Vector2i cell -> float wall_height（预计算，供 torch/lintel 复用）
+
 ## 是否已构建（至少 terrain_root 非空）
 func is_built() -> bool:
 	return terrain_root != null
