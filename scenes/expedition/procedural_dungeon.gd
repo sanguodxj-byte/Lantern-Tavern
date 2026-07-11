@@ -217,28 +217,9 @@ func _spawn_dungeon_enemies(spawned_player: Node3D = null) -> void:
 func _spawn_dungeon_items() -> void:
 	pass  # runtime.spawn_items 已接管
 
+## D 步7：stabilize_lighting 已真迁入 DungeonRuntime.stabilize_lighting（runtime.start 内调），本类旧体已删。
 func _stabilize_dungeon_lighting() -> void:
-	var player_node: Node3D = GameState.current_player
-	if player_node != null and is_instance_valid(player_node):
-		if player_node.has_method("_setup_player_light"):
-			player_node._setup_player_light()
-	# 阶段 9 条 5：灯光收集转调 DungeonStreamingController.register_light，
-	# 不再 procedural 持有 _streamed_environment_lights/_environment_light_chunks 旧 streaming 状态。
-	var local_lights: Array[Light3D] = []
-	_collect_local_lights(self, local_lights)
-	for light in local_lights:
-		if _is_player_vision_light(light):
-			_configure_player_vision_light(light)
-			continue
-		if _is_hint_light(light):
-			light.visible = false
-			continue
-		if light is OmniLight3D or light is SpotLight3D:
-			light.visible = false
-			if streaming_controller != null and is_instance_valid(streaming_controller):
-				streaming_controller.register_light(light)
-	if streaming_controller != null and is_instance_valid(streaming_controller):
-		streaming_controller.update_streaming(true)
+	pass  # runtime.stabilize_lighting 已接管
 
 # 阶段 9 条 5：terrain chunk 注册 / chunk 计算转调 DungeonStreamingController（删旧实现后唯一路径）
 func _register_terrain_chunk_node(chunk: Vector2i, node: Node3D) -> void:

@@ -39,13 +39,41 @@ func start() -> void:
 	# D 步5：spawn_enemies 已真迁入本模块（不转调 procedural）
 	spawn_enemies(spawned_player)
 	spawn_items()
-	_level._stabilize_dungeon_lighting()
+	# D 步7：stabilize_lighting 已真迁入本模块（转调 procedural 工具 + streaming_controller）
+	stabilize_lighting()
 	_level._mount_expedition_hud()
 	_level._setup_exploration_pressure()
 	# D 步4：extraction 信号接线已真迁入本模块（不转调 procedural）
 	wire_extraction_portal_signal()
 	if AudioManager:
 		AudioManager.start_music()
+
+func stabilize_lighting() -> void:
+	# D 步7 真迁：把 procedural._stabilize_dungeon_lighting 逻辑搬入本模块，
+	# 4 工具（collect/is_player_vision/is_hint/configure）转调 procedural（保路径不破）。
+	if _level == null or not is_instance_valid(_level):
+		return
+	var player_node: Node3D = GameState.current_player
+	if player_node != null and is_instance_valid(player_node):
+		if player_node.has_method("_setup_player_light"):
+			player_node._setup_player_light()
+	var local_lights: Array[Light3D] = []
+	_level._collect_local_lights(_level, local_lights)
+	for light in local_lights:
+		if _level._is_player_vision_light(light):
+			_level._configure_player_vision_light(light)
+			continue
+		if _level._is_hint_light(light):
+			light.visible = false
+			continue
+		if light is OmniLight3D or light is SpotLight3D:
+			light.visible = false
+			var sc = _level.streaming_controller
+			if sc != null and is_instance_valid(sc):
+				sc.register_light(light)
+	var sc2 = _level.streaming_controller
+	if sc2 != null and is_instance_valid(sc2):
+		sc2.update_streaming(true)
 
 ## 停止 runtime：handle extraction/overtime 收尾。
 func stop() -> void:
