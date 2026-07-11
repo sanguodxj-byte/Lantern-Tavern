@@ -42,6 +42,7 @@ func build(layout: DungeonLayout, parent: Node3D) -> DungeonBuildResult:
 	# 产出填 build_result.floor_transforms/ceiling_transforms/wall_transforms_by_height/wall_h_map。
 	# MultiMesh 批渲染 + merged collisions 暂留 procedural（步3-4 再迁），改读 build_result.* 而非旧类字段。
 	_build_terrain(layout, result)
+	_build_multi_meshes(layout, result)
 	_build_hazards(layout, result)
 	_build_chests(layout, result)
 	_build_extraction_portal(layout, result)
@@ -115,6 +116,81 @@ func _build_terrain(layout: DungeonLayout, result: DungeonBuildResult) -> void:
 
 func _wall_segment_key(size: Vector3) -> String:
 	return "%d,%d,%d" % [int(size.x), int(size.y), int(size.z)]
+
+# ── MultiMesh 创建（阶段 B1：迁自 procedural._build_multi_meshes/_build_chunked_multi_meshes） ──
+const STREAM_CHUNK_SIZE_CELLS := 8
+const CEILING_THICKNESS := 0.1
+const DOOR_SURROUND_THICKNESS := 0.2
+
+## 按 layout + build_result.* 产出 floor/wall/ceiling MultiMesh，挂 build_result.terrain_root。
+## procedural 的 _build_multi_meshes 改调本接口，不再自创 MultiMesh。
+func _build_multi_meshes(layout: DungeonLayout, result: DungeonBuildResult) -> void:
+	if result == null or result.terrain_root == null:
+		return
+	var tile_size: float = layout.tile_size
+	# 1. 地板
+	var floor_mat := _make_terrain_mat("FLOOR", Vector2(tile_size, tile_size))
+	_build_chunked_multi_meshes(result, "FloorMultiMesh", result.floor_transforms,
+		Vector3(tile_size, 0.1, tile_size), floor_mat)
+	# 2. 天花板
+	var ceiling_mat := _make_terrain_mat("CEILING", Vector2(tile_size, tile_size))
+	_build_chunked_multi_meshes(result, "CeilingMultiMesh", result.ceiling_transforms,
+		Vector3(tile_size, CEILING_THICKNESS, tile_size), ceiling_mat)
+	# 3. 墙面（按尺寸分组）
+	for wall_key in result.wall_transforms_by_height:
+		var group: Dictionary = result.wall_transforms_by_height[wall_key]
+		var transforms: Array = group.get("transforms", [])
+		if transforms.is_empty():
+			continue
+		var size: Vector3 = group.get("size", Vector3(tile_size, 3.0, DOOR_SURROUND_THICKNESS))
+		var mat := _make_terrain_mat("WALL", Vector2(maxf(size.x, size.z), size.y))
+		_build_chunked_multi_meshes(result, "WallMultiMesh_%s" % wall_key.replace(",", "_"),
+			transforms, size, mat)
+
+func _build_chunked_multi_meshes(result: DungeonBuildResult, base_name: String,
+		transforms: Array, mesh_size: Vector3, material: Material) -> void:
+	if transforms.is_empty():
+		return
+	var chunks := _group_transforms_by_stream_chunk(transforms, result.tile_size)
+	var first_chunk := true
+	for chunk in chunks.keys():
+		var chunk_transforms: Array = chunks[chunk]
+		var mm_instance := MultiMeshInstance3D.new()
+		mm_instance.name = base_name if first_chunk else "%s_%d_%d" % [base_name, chunk.x, chunk.y]
+		first_chunk = false
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		var base_mesh := BoxMesh.new()
+		base_mesh.size = mesh_size
+		mm.mesh = base_mesh
+		mm.instance_count = chunk_transforms.size()
+		for i in range(chunk_transforms.size()):
+			mm.set_instance_transform(i, chunk_transforms[i])
+		mm_instance.multimesh = mm
+		mm_instance.material_override = material
+		mm_instance.visible = false
+		result.terrain_root.add_child(mm_instance)
+		# terrain chunk 注册（streaming 用）—— procedural 路径暂保，builder 产节点挂 terrain_root
+		if not result.terrain_chunks.has(chunk):
+			result.terrain_chunks[chunk] = []
+		(result.terrain_chunks[chunk] as Array).append(mm_instance)
+
+func _group_transforms_by_stream_chunk(transforms: Array, tile_size: float) -> Dictionary:
+	var by_chunk: Dictionary = {}
+	var chunk_size := float(STREAM_CHUNK_SIZE_CELLS) * tile_size
+	for t in transforms:
+		var tr := t as Transform3D
+		var chunk := Vector2i(int(tr.origin.x / chunk_size), int(tr.origin.z / chunk_size))
+		if not by_chunk.has(chunk):
+			by_chunk[chunk] = []
+		(by_chunk[chunk] as Array).append(t)
+	return by_chunk
+
+const TERRAIN_CFG := preload("res://scenes/expedition/dungeon_terrain_config.gd")
+
+func _make_terrain_mat(tile_name: String, tile_repeat: Vector2) -> ShaderMaterial:
+	return TERRAIN_CFG.make_terrain_mat(tile_name, tile_repeat)
+
 
 # ── hazard prefab 映射 ───────────────────────────────────────────
 func _build_hazards(layout: DungeonLayout, result: DungeonBuildResult) -> void:
