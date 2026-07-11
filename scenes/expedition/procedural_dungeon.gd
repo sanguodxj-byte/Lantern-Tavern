@@ -295,62 +295,29 @@ func _setup_exploration_pressure() -> void:
 	add_child(_exploration_pressure)
 	_on_pressure_changed(_exploration_pressure.make_snapshot())
 
+## D 步9：on_pressure_changed + _get_combat_hud + _apply_*_pressure + on_door_pressure 已真迁入 DungeonRuntime。
 func _on_pressure_changed(snapshot: Dictionary) -> void:
-	if _expedition_hud != null and is_instance_valid(_expedition_hud):
-		_expedition_hud.update_pressure(snapshot)
-	var combat_hud := _get_combat_hud()
-	if combat_hud != null and is_instance_valid(combat_hud):
-		combat_hud.update_pressure(snapshot)
-	_apply_player_vision_pressure(float(snapshot.get("vision_range_multiplier", 1.0)))
-	_apply_environment_activity(float(snapshot.get("environment_activity_multiplier", 1.0)))
-	_apply_monster_hunt_pressure(bool(snapshot.get("force_monster_hunt", false)))
+	pass  # runtime.on_pressure_changed 已接管
 
+## D 步9：get_combat_hud 已真迁入 DungeonRuntime._get_combat_hud。
 func _get_combat_hud() -> CombatHUD:
-	if _combat_hud != null and is_instance_valid(_combat_hud):
-		return _combat_hud
-	var node: Node = self
-	while node != null:
-		var found := node.get_node_or_null("CombatHUD") as CombatHUD
-		if found != null:
-			_combat_hud = found
-			return _combat_hud
-		node = node.get_parent()
-	return null
+	return null  # runtime._get_combat_hud 已接管
 
-func _apply_player_vision_pressure(multiplier: float) -> void:
-	var player_node := GameState.current_player
-	if player_node == null or not is_instance_valid(player_node):
-		return
-	var light := player_node.get_node_or_null(Player.PLAYER_VISION_LIGHT_NAME) as OmniLight3D
-	if light == null:
-		return
-	var light_multiplier := clampf(multiplier, 0.0, 1.0)
-	light.visible = light_multiplier > 0.0
-	light.light_energy = PLAYER_VISION_BASE_ENERGY * light_multiplier
-	light.omni_range = PLAYER_VISION_BASE_RANGE * light_multiplier
+## D 步9：apply_player_vision_pressure 已真迁入 DungeonRuntime。
+func _apply_player_vision_pressure(_multiplier: float) -> void:
+	pass  # runtime.apply_player_vision_pressure 已接管
 
-func _apply_environment_activity(multiplier: float) -> void:
-	for node in get_tree().get_nodes_in_group("enemies"):
-		if node == null or not is_instance_valid(node):
-			continue
-		node.set_meta("environment_activity_mult", clampf(multiplier, 1.0, 1.75))
+## D 步9：apply_environment_activity 已真迁入 DungeonRuntime。
+func _apply_environment_activity(_multiplier: float) -> void:
+	pass  # runtime.apply_environment_activity 已接管
 
-func _apply_monster_hunt_pressure(force_hunt: bool) -> void:
-	var player_node := GameState.current_player as Player
-	if player_node == null or not is_instance_valid(player_node):
-		return
-	for node in get_tree().get_nodes_in_group("enemies"):
-		var enemy := node as Enemy
-		if enemy == null or not is_instance_valid(enemy):
-			continue
-		enemy.set_meta("dark_erosion_hunt", force_hunt)
-		if force_hunt:
-			enemy.player = player_node
+## D 步9：apply_monster_hunt_pressure 已真迁入 DungeonRuntime。
+func _apply_monster_hunt_pressure(_force_hunt: bool) -> void:
+	pass  # runtime.apply_monster_hunt_pressure 已接管
 
+## D 步9：on_door_pressure_action 已真迁入 DungeonRuntime。
 func _on_door_pressure_action(action: String) -> void:
-	if _exploration_pressure == null:
-		return
-	_exploration_pressure.record_door_action(action)
+	pass  # runtime.on_door_pressure_action 已接管
 
 func _on_expedition_overtime(_snapshot: Dictionary) -> void:
 	var player_node := GameState.current_player as Player

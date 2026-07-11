@@ -173,17 +173,71 @@ func on_expedition_overtime(_snapshot: Dictionary) -> void:
 	var player_node := GameState.current_player as Player
 	finish_expedition(player_node, false)
 
-func on_pressure_changed(_snapshot: Dictionary) -> void:
-	pass  # TODO D 步6: 迁自 procedural._on_pressure_changed
+func on_pressure_changed(snapshot: Dictionary) -> void:
+	# D 步9 真迁：把 procedural._on_pressure_changed 逻辑搬入本模块
+	if _level == null or not is_instance_valid(_level):
+		return
+	if _level._expedition_hud != null and is_instance_valid(_level._expedition_hud):
+		_level._expedition_hud.update_pressure(snapshot)
+	var combat_hud := _get_combat_hud()
+	if combat_hud != null and is_instance_valid(combat_hud):
+		combat_hud.update_pressure(snapshot)
+	apply_player_vision_pressure(float(snapshot.get("vision_range_multiplier", 1.0)))
+	apply_environment_activity(float(snapshot.get("environment_activity_multiplier", 1.0)))
+	apply_monster_hunt_pressure(bool(snapshot.get("force_monster_hunt", false)))
+
+func _get_combat_hud() -> CombatHUD:
+	# D 步9 真迁：把 procedural._get_combat_hud 逻辑搬入本模块
+	if _level == null or not is_instance_valid(_level):
+		return null
+	if _level._combat_hud != null and is_instance_valid(_level._combat_hud):
+		return _level._combat_hud
+	var node: Node = _level
+	while node != null:
+		var found := node.get_node_or_null("CombatHUD") as CombatHUD
+		if found != null:
+			_level._combat_hud = found
+			return _level._combat_hud
+		node = node.get_parent()
+	return null
 
 func on_door_pressure_action(action: String) -> void:
-	pass  # TODO D 步2: 迁自 procedural._on_door_pressure_action
+	# D 步9 真迁：把 procedural._on_door_pressure_action 逻辑搬入本模块
+	if _level == null or not is_instance_valid(_level):
+		return
+	if _level._exploration_pressure == null:
+		return
+	_level._exploration_pressure.record_door_action(action)
 
-func apply_player_vision_pressure(_multiplier: float) -> void:
-	pass  # TODO D 步2: 迁自 procedural._apply_player_vision_pressure
+func apply_player_vision_pressure(multiplier: float) -> void:
+	# D 步9 真迁：把 procedural._apply_player_vision_pressure 逻辑搬入本模块
+	var player_node := GameState.current_player
+	if player_node == null or not is_instance_valid(player_node):
+		return
+	var light := player_node.get_node_or_null(Player.PLAYER_VISION_LIGHT_NAME) as OmniLight3D
+	if light == null:
+		return
+	var light_multiplier := clampf(multiplier, 0.0, 1.0)
+	light.visible = light_multiplier > 0.0
+	light.light_energy = _level.PLAYER_VISION_BASE_ENERGY * light_multiplier
+	light.omni_range = _level.PLAYER_VISION_BASE_RANGE * light_multiplier
 
-func apply_environment_activity(_multiplier: float) -> void:
-	pass  # TODO D 步2: 迁自 procedural._apply_environment_activity
+func apply_environment_activity(multiplier: float) -> void:
+	# D 步9 真迁：把 procedural._apply_environment_activity 逻辑搬入本模块
+	for node in get_tree().get_nodes_in_group("enemies"):
+		if node == null or not is_instance_valid(node):
+			continue
+		node.set_meta("environment_activity_mult", clampf(multiplier, 1.0, 1.75))
 
-func apply_monster_hunt_pressure(_force_hunt: bool) -> void:
-	pass  # TODO D 步2: 迁自 procedural._apply_monster_hunt_pressure
+func apply_monster_hunt_pressure(force_hunt: bool) -> void:
+	# D 步9 真迁：把 procedural._apply_monster_hunt_pressure 逻辑搬入本模块
+	var player_node := GameState.current_player as Player
+	if player_node == null or not is_instance_valid(player_node):
+		return
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var enemy := node as Enemy
+		if enemy == null or not is_instance_valid(enemy):
+			continue
+		enemy.set_meta("dark_erosion_hunt", force_hunt)
+		if force_hunt:
+			enemy.player = player_node
