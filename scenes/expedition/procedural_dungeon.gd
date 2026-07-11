@@ -196,15 +196,10 @@ func _ready() -> void:
 	_player_spawn = GameState.current_player
 	player_spawn.global_position = player_spawn_pos
 
-## 把 ExtractionPortal 的 extraction_requested 信号接到本类的 _on_extraction_requested。
-## builder 阶段不接信号（只 instantiate 节点）；runtime 范畴在此接。
+## D 步4：extraction 信号接线已真迁入 DungeonRuntime.wire_extraction_portal_signal（runtime.start 内调），
+## 本类旧体已删。保 wrapper 占位避破其他引用点（无活跃调用）。
 func _wire_extraction_portal_signal() -> void:
-	if build_result == null or build_result.interaction_root == null:
-		return
-	for child in build_result.interaction_root.get_children():
-		if String(child.get_meta("topdown_kind", "")) == "extraction" and child.has_signal("extraction_requested"):
-			child.extraction_requested.connect(_on_extraction_requested)
-			break  # 唯一 ExtractionPortal
+	pass  # runtime.wire_extraction_portal_signal 已接管
 
 func _process(delta: float) -> void:
 	# 阶段 9 接线：streaming 唯一由 DungeonStreamingController 实现（controller 是子 Node，自带 _process 节流）。

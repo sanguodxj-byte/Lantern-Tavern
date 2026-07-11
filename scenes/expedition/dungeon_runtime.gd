@@ -41,7 +41,8 @@ func start() -> void:
 	_level._stabilize_dungeon_lighting()
 	_level._mount_expedition_hud()
 	_level._setup_exploration_pressure()
-	_level._wire_extraction_portal_signal()
+	# D 步4：extraction 信号接线已真迁入本模块（不转调 procedural）
+	wire_extraction_portal_signal()
 	if AudioManager:
 		AudioManager.start_music()
 
@@ -69,7 +70,14 @@ func setup_exploration_pressure() -> void:
 	pass  # TODO D 步2: 迁自 procedural._setup_exploration_pressure
 
 func wire_extraction_portal_signal() -> void:
-	pass  # TODO D 步2: 迁自 procedural._wire_extraction_portal_signal
+	# D 步4 真迁：把 procedural._wire_extraction_portal_signal 逻辑搬入本模块，
+	# 信号接 runtime.on_extraction_requested（不转调 procedural，真接管）。
+	if build_result == null or build_result.interaction_root == null:
+		return
+	for child in build_result.interaction_root.get_children():
+		if String(child.get_meta("topdown_kind", "")) == "extraction" and child.has_signal("extraction_requested"):
+			child.extraction_requested.connect(on_extraction_requested)
+			break  # 唯一 ExtractionPortal
 
 func finish_expedition(player: Node, voluntary: bool) -> void:
 	expedition_finished = true  # TODO D 步2: 迁自 procedural._finish_expedition 完整逻辑
