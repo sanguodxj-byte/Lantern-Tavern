@@ -88,13 +88,10 @@ const BATCHED_DECOR_SCENES := {
 const DECOR_VISIBILITY_RANGE_END := 60.0
 const TORCH_VISIBILITY_RANGE_END := 35.0
 
-var _grid: Array = []
-var _rooms: Array[Rect2i] = []
-var _room_roles: Dictionary = {}
 var player_spawn_pos := Vector3.ZERO
 
 # 阶段 9 接线：新生产链持有引用（供生产集成测试断言 level.layout / level.build_result / level.streaming_controller）
-# 旧字段 _grid/_rooms/_room_roles/_heights 暂保留为 _generate_visuals() 的输入，阶段 10 缩减时迁为 layout.grid 等。
+# 阶段 9 条 2：旧字段 _grid/layout.rooms/layout.room_roles/layout.heights 已退役，统一读 layout.*
 var layout: DungeonLayout = null
 var build_result: DungeonBuildResult = null
 var streaming_controller: DungeonStreamingController = null
@@ -124,8 +121,6 @@ var _streamed_physics_bodies: Array[PhysicsBody3D] = []  # 阶段 9 条 5 后仅
 ## tile_repeat: 每轴平铺次数， = 该面的物理尺寸（米），1m = 1次 = 32px
 func _make_terrain_mat(tile_name: String, tile_repeat: Vector2) -> ShaderMaterial:
 	return TERRAIN_CFG.make_terrain_mat(tile_name, tile_repeat)
-
-var _heights: Array = []
 
 ## 当前地牢所属区域（BrewingData.Zone 枚举值）。
 ## 决定宝箱材料掉落池，由关卡入口或 ExpeditionManager 注入。
@@ -189,18 +184,9 @@ func _ready() -> void:
 	add_child(streaming_controller)
 	streaming_controller.configure(layout, build_result)
 
-	# 旧 isaac 生成器仍调一次拿 _grid/_rooms/_room_roles/_heights 喂 _generate_visuals()
-	# （terrain floor/wall/ceiling/door 重型几何暂留 procedural，阶段 10 再迁入 DungeonSceneBuilder）
-	var room_generator := ISAAC_ROOM_GENERATOR.new()
-	_grid = layout.grid
-	_rooms = layout.rooms.duplicate()
-	_room_roles = {}
-	for k in layout.room_roles.keys():
-		_room_roles[k] = layout.room_roles[k]
-	_heights = layout.heights.duplicate(true)
-	room_generator.free()
-	# OFFSET 与 procedural 旧公式一致：居中
-	_generate_visuals(_grid)
+	# 阶段 9 条 2：_grid/layout.rooms/layout.room_roles/layout.heights 退役，统一读 layout.*
+	# （terrain floor/wall/ceiling/door 重型几何暂留 procedural，条 1 再迁入 DungeonSceneBuilder）
+	_generate_visuals(layout.grid)
 	player_spawn.global_position = player_spawn_pos
 	var spawned_player: Player = spawn_player()
 	_spawn_dungeon_enemies(spawned_player)
@@ -247,7 +233,7 @@ func _spawn_dungeon_enemies(spawned_player: Node3D = null) -> void:
 		push_warning("[Dungeon] Player not spawned, skip enemy generation")
 		return
 	# 阶段 9 接线：调 spawn_enemies_from_layout 接 layout.enemy_spawn_specs，
-	# 不再 9 参数重读 _grid/_rooms/_room_roles（DungeonSpawnPlanner 已规划 spec）。
+	# 不再 9 参数重读 _grid/layout.rooms/layout.room_roles（DungeonSpawnPlanner 已规划 spec）。
 	# 敌人挂到 build_result.spawn_root 集中管理，不再散 add 到本类根。
 	var spawn_root: Node = build_result.spawn_root if build_result != null else self
 	var spawned_enemies: Array = spawner.spawn_enemies_from_layout(layout, spawn_root, player_node)
@@ -496,22 +482,22 @@ func _generate_visuals(grid: Array) -> void:
 	var player_spawned := false
 	var preferred_spawn_cell := Vector2i.ZERO
 	var has_preferred_spawn := false
-	if _room_roles.has("start"):
-		preferred_spawn_cell = _rect_center_cell(_room_roles["start"])
+	if layout.room_roles.has("start"):
+		preferred_spawn_cell = _rect_center_cell(layout.room_roles["start"])
 		has_preferred_spawn = true
 
 	# ── 预计算墙体高度（两遍，消除相邻墙格高度差接缝）──────────────────
-	# 第一遍：每个墙格取所有 4 邻格（含其他墙格）的最大 _heights 值
+	# 第一遍：每个墙格取所有 4 邻格（含其他墙格）的最大 layout.heights 值
 	var wall_h_map: Dictionary = {}
 	for wy in range(grid_height):
 		for wx in range(grid_width):
 			if grid[wy][wx] == 2:
-				var best: float = _heights[wy][wx]
+				var best: float = layout.heights[wy][wx]
 				for d in [Vector2i(0,-1), Vector2i(0,1), Vector2i(1,0), Vector2i(-1,0)]:
 					var nx2 = wx + d.x
 					var ny2 = wy + d.y
 					if nx2 >= 0 and nx2 < grid_width and ny2 >= 0 and ny2 < grid_height:
-						best = max(best, _heights[ny2][nx2])
+						best = max(best, layout.heights[ny2][nx2])
 				wall_h_map[Vector2i(wx, wy)] = best if best > 0.0 else 3.0
 
 	# 第二遍：相邻墙格互相传播最大值（消除"隔一格"仍存在的高度差）
@@ -538,7 +524,7 @@ func _generate_visuals(grid: Array) -> void:
 				var wall_height: float = wall_h_map.get(Vector2i(x, y), 3.0)
 				_spawn_wall(cell_pos, TILE_SIZE, wall_height)
 			elif cell_type != 0:
-				_spawn_ceiling(cell_pos, TILE_SIZE, _heights[y][x])
+				_spawn_ceiling(cell_pos, TILE_SIZE, layout.heights[y][x])
 
 				# Generate lintels for ceiling height mismatches between adjacent floors
 				var adj_dirs := [
@@ -547,7 +533,7 @@ func _generate_visuals(grid: Array) -> void:
 					[Vector2i(1, 0), Vector3(TILE_SIZE / 2.0, 0, 0), Vector3(0.2, 1.0, TILE_SIZE)],
 					[Vector2i(-1, 0), Vector3(-TILE_SIZE / 2.0, 0, 0), Vector3(0.2, 1.0, TILE_SIZE)]
 				]
-				var current_h: float = _heights[y][x]
+				var current_h: float = layout.heights[y][x]
 				for adj in adj_dirs:
 					var d: Vector2i = adj[0]
 					var offset_pos: Vector3 = adj[1]
@@ -557,7 +543,7 @@ func _generate_visuals(grid: Array) -> void:
 					if nx >= 0 and nx < grid_width and ny >= 0 and ny < grid_height:
 						var n_type = grid[ny][nx]
 						if n_type != 2 and n_type != 0:
-							var n_h: float = _heights[ny][nx]
+							var n_h: float = layout.heights[ny][nx]
 							if current_h > n_h:
 								var current_cell := Vector2i(x, y)
 								var neighbor_cell := Vector2i(nx, ny)
@@ -568,7 +554,7 @@ func _generate_visuals(grid: Array) -> void:
 
 			match cell_type:
 				5:
-					var room_h = _heights[y][x]
+					var room_h = layout.heights[y][x]
 					var pillar_t := Transform3D(Basis.IDENTITY.scaled(Vector3(1.0, room_h / 3.0, 1.0)), cell_pos)
 					if not _spawn_batched_decor(PILLAR_PREFAB.resource_path, pillar_t):
 						# 兜底：prefab 加载失败时仍按旧逻辑逐个实例化（柱子为纯静态，无拾取逻辑）。
@@ -640,11 +626,11 @@ func _generate_visuals(grid: Array) -> void:
 		# 旧 _spawn_large_room_terrain_features / _spawn_extraction_portal / _spawn_hazard_anchors
 		# 调用注释掉避免双份实例化（验收门槛：新旧路径不存在重复实例化）。
 		# downstairs portal 是手工 MeshInstance3D 拼装（属 terrain 类），builder 第二版未接，暂留此处。
-		#_spawn_large_room_terrain_features(grid, OFFSET, TILE_SIZE, player_spawn_pos, _rooms)
-		#if _room_roles.has("extraction"):
+		#_spawn_large_room_terrain_features(grid, OFFSET, TILE_SIZE, player_spawn_pos, layout.rooms)
+		#if layout.room_roles.has("extraction"):
 		#	_spawn_extraction_portal(grid, OFFSET, TILE_SIZE, player_spawn_pos)
 		_spawn_downstairs_portal(grid, OFFSET, TILE_SIZE, player_spawn_pos)
-		#_spawn_hazard_anchors(grid, OFFSET, TILE_SIZE, player_spawn_pos, _rooms)
+		#_spawn_hazard_anchors(grid, OFFSET, TILE_SIZE, player_spawn_pos, layout.rooms)
 
 	if not player_spawned:
 		player_spawn_pos = Vector3(0, 0.5, 0)
@@ -761,8 +747,8 @@ func _spawn_large_room_feature(pos: Vector3, room: Rect2i, placement_index: int,
 		var t := Transform3D(Basis.IDENTITY.rotated(Vector3.UP, deg_to_rad(rot_y)), pos)
 		if path == PILLAR_PREFAB.resource_path:
 			var room_h := 3.0
-			if cell.x >= 0 and cell.y >= 0 and cell.y < _heights.size() and cell.x < _heights[cell.y].size():
-				room_h = maxf(float(_heights[cell.y][cell.x]), 3.0)
+			if cell.x >= 0 and cell.y >= 0 and cell.y < layout.heights.size() and cell.x < layout.heights[cell.y].size():
+				room_h = maxf(float(layout.heights[cell.y][cell.x]), 3.0)
 			t = Transform3D(Basis.IDENTITY.scaled(Vector3(1.0, room_h / 3.0, 1.0)), pos)
 		if _spawn_batched_decor(path, t):
 			var body := get_child(get_child_count() - 1) as Node3D
@@ -1010,9 +996,9 @@ func _spawn_extraction_portal(grid: Array, offset: Vector3, tile_size: float, sp
 	var best_dist = 0.0
 	var best_pos = Vector3.ZERO
 	var found_floor := false
-	if not _room_roles.has("extraction"):
+	if not layout.room_roles.has("extraction"):
 		return
-	var extraction_room: Rect2i = _room_roles["extraction"]
+	var extraction_room: Rect2i = layout.room_roles["extraction"]
 	var extraction_center := _rect_center_cell(extraction_room)
 	if _is_walkable_hazard_cell(grid, extraction_center.x, extraction_center.y):
 		best_pos = offset + Vector3(extraction_center.x * tile_size, 0.5, extraction_center.y * tile_size)
@@ -1056,8 +1042,8 @@ func _spawn_downstairs_portal(grid: Array, offset: Vector3, tile_size: float, sp
 	var best_dist := 0.0
 	var best_pos := Vector3.ZERO
 	var found_floor := false
-	if _room_roles.has("stairs"):
-		var stairs_center := _rect_center_cell(_room_roles["stairs"])
+	if layout.room_roles.has("stairs"):
+		var stairs_center := _rect_center_cell(layout.room_roles["stairs"])
 		if _is_walkable_hazard_cell(grid, stairs_center.x, stairs_center.y):
 			best_pos = offset + Vector3(stairs_center.x * tile_size, 0.5, stairs_center.y * tile_size)
 			found_floor = true
@@ -1067,7 +1053,7 @@ func _spawn_downstairs_portal(grid: Array, offset: Vector3, tile_size: float, sp
 				continue
 			var pos := offset + Vector3(x * tile_size, 0.5, y * tile_size)
 			var dist := pos.distance_to(spawn_pos)
-			if not found_floor or (not _room_roles.has("stairs") and dist > best_dist):
+			if not found_floor or (not layout.room_roles.has("stairs") and dist > best_dist):
 				found_floor = true
 				best_dist = dist
 				best_pos = pos
@@ -1304,10 +1290,10 @@ func _should_spawn_ceiling_transition_lintel(cell: Vector2i, neighbor: Vector2i,
 	return not door_edge_keys.has(_door_edge_key(cell, neighbor))
 
 func _spawn_room_door_panels(grid: Array, offset: Vector3, tile_size: float) -> void:
-	if _rooms.is_empty():
+	if layout.rooms.is_empty():
 		return
 	var door_specs := {}
-	for room in _rooms:
+	for room in layout.rooms:
 		for spec in _collect_room_door_specs(grid, room):
 			var inside: Vector2i = spec["inside"]
 			var outside: Vector2i = spec["outside"]
@@ -1329,9 +1315,9 @@ func _spawn_room_door_panels(grid: Array, offset: Vector3, tile_size: float) -> 
 
 func _collect_room_door_edge_keys(grid: Array) -> Dictionary:
 	var result := {}
-	if _rooms.is_empty():
+	if layout.rooms.is_empty():
 		return result
-	for room in _rooms:
+	for room in layout.rooms:
 		for spec in _collect_room_door_specs(grid, room):
 			result[_door_edge_key(spec["inside"], spec["outside"])] = true
 	return result
@@ -1480,11 +1466,11 @@ func _spawn_door_wall_box(name: String, pos: Vector3, size: Vector3) -> MeshInst
 	return mesh
 
 func _height_at_cell(cell: Vector2i) -> float:
-	if cell.y < 0 or cell.y >= _heights.size():
+	if cell.y < 0 or cell.y >= layout.heights.size():
 		return 3.0
-	if cell.x < 0 or cell.x >= _heights[cell.y].size():
+	if cell.x < 0 or cell.x >= layout.heights[cell.y].size():
 		return 3.0
-	return maxf(float(_heights[cell.y][cell.x]), 3.0)
+	return maxf(float(layout.heights[cell.y][cell.x]), 3.0)
 
 func _door_edge_key(a: Vector2i, b: Vector2i) -> String:
 	if a.x < b.x or (a.x == b.x and a.y <= b.y):
@@ -2140,15 +2126,15 @@ func is_start_room_grid_cell(cell: Vector2i) -> bool:
 	return _is_start_room_cell(cell)
 
 func _is_start_room_cell(cell: Vector2i) -> bool:
-	return _room_roles.has("start") and (_room_roles["start"] as Rect2i).has_point(cell)
+	return layout.room_roles.has("start") and (layout.room_roles["start"] as Rect2i).has_point(cell)
 
 func _is_boss_room_cell(cell: Vector2i) -> bool:
-	return _room_roles.has("boss") and (_room_roles["boss"] as Rect2i).has_point(cell)
+	return layout.room_roles.has("boss") and (layout.room_roles["boss"] as Rect2i).has_point(cell)
 
 func _is_boss_reward_chest_cell(cell: Vector2i) -> bool:
-	if _room_roles.has("reward") and (_room_roles["reward"] as Rect2i).has_point(cell):
+	if layout.room_roles.has("reward") and (layout.room_roles["reward"] as Rect2i).has_point(cell):
 		return true
 	return _is_boss_room_cell(cell)
 
 func _room_is_start_room(room: Rect2i) -> bool:
-	return _room_roles.has("start") and room == (_room_roles["start"] as Rect2i)
+	return layout.room_roles.has("start") and room == (layout.room_roles["start"] as Rect2i)

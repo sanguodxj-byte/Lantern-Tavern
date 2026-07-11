@@ -79,12 +79,12 @@ func test_generate_visuals_keeps_downstairs_portal() -> void:
 	assert_int(active_downstairs).is_equal(1)
 
 func test_ready_still_runs_legacy_visuals_for_terrain() -> void:
-	# terrain floor/wall/ceiling/door 重型几何暂留 procedural（阶段 10 再迁）。
-	# _ready() 应仍调 _generate_visuals(_grid) 喂地形；hazard/chest/portal 已由 builder 接管不重复。
+	# terrain floor/wall/ceiling/door 重型几何暂留 procedural（条 1 再迁）。
+	# 阶段 9 条 2：_ready() 调 _generate_visuals(layout.grid) 喂地形（旧 _grid 已退役读 layout.grid）。
 	var src := _pd_source()
 	var ready_block := _extract_ready_block(src)
-	assert_bool(ready_block.contains("_generate_visuals(_grid)")) \
-		.override_failure_message("_ready() 应仍调 _generate_visuals 喂地形（terrain 暂留 procedural）").is_true()
+	assert_bool(ready_block.contains("_generate_visuals(layout.grid)")) \
+		.override_failure_message("_ready() 应调 _generate_visuals(layout.grid) 喂地形（terrain 暂留 procedural）").is_true()
 
 func test_extraction_portal_signal_wired_in_runtime() -> void:
 	# builder 只 instantiate 节点不接信号；信号接线属 runtime 范畴，_ready 后由 _wire_extraction_portal_signal 接。
