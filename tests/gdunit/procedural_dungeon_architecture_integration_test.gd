@@ -108,8 +108,9 @@ func test_process_delegates_to_streaming_controller() -> void:
 	var proc_block := _extract_func_block(src, "_process")
 	var active_old := _count_active_calls(proc_block, "_update_streamed_chunks(false)")
 	assert_int(active_old).is_equal(0)
-	# 旧实现应被注释为死代码
-	assert_bool(proc_block.contains("# _update_streamed_chunks(false)")).is_true()
+	# 阶段 9 条 5：旧死代码注释块已删，_process 体唯剩 controller 委派 + return
+	assert_bool(proc_block.contains("streaming_controller")).is_true()
+	assert_bool(proc_block.contains("_update_streamed_chunks")).is_false()
 
 func test_register_streamed_delegates_to_controller() -> void:
 	# register_streamed_visual_node / register_streamed_physics_node 应转调 controller

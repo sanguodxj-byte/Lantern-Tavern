@@ -117,16 +117,7 @@ var _exploration_pressure: ExplorationPressure = null
 var _expedition_hud: ExpeditionHUD = null
 var _combat_hud: CombatHUD = null
 var _expedition_finished := false
-var _stream_update_timer := 0.0
-var _last_stream_chunk := Vector2i(999999, 999999)
-var _last_active_physics_chunks: Dictionary = {}  # 上次激活的物理 chunk 集合（增量更新用）
-var _streamed_environment_lights: Array[Light3D] = []
-var _environment_light_chunks: Dictionary = {}
-var _streamed_physics_bodies: Array[PhysicsBody3D] = []
-var _physics_body_chunks: Dictionary = {}
-var _visual_stream_chunks: Dictionary = {}
-var _terrain_render_chunks: Dictionary = {}
-var _streaming_ready := false
+var _streamed_physics_bodies: Array[PhysicsBody3D] = []  # 阶段 9 条 5 后仅留作注释参考；实际 streaming 路径 controller 持
 
 ## 创建地形 ShaderMaterial
 ## tile_name: TILE_LAYOUT 中的键（"WALL"/"FLOOR"/"CEILING"等）
@@ -240,14 +231,6 @@ func _process(delta: float) -> void:
 		return
 	# controller._process 自跑节流；本类 _process 仅留作未来 runtime 需要帧驱动时用，现无操作。
 	return
-	# 旧实现（保留作死代码，阶段 11 删）：
-	# if not _streaming_ready:
-	# 	return
-	# _stream_update_timer += delta
-	# if _stream_update_timer < STREAM_UPDATE_INTERVAL:
-	# 	return
-	# _stream_update_timer = 0.0
-	# _update_streamed_chunks(false)
 
 ## 调用 DungeonSpawner autoload 按区域生成怪物，注入 player 引用
 ## spawned_player: 由 spawn_player() 返回的 Player 实例，避免依赖 GameState.current_player
@@ -288,11 +271,10 @@ func _stabilize_dungeon_lighting() -> void:
 	if player_node != null and is_instance_valid(player_node):
 		if player_node.has_method("_setup_player_light"):
 			player_node._setup_player_light()
-
+	# 阶段 9 条 5：灯光收集转调 DungeonStreamingController.register_light，
+	# 不再 procedural 持有 _streamed_environment_lights/_environment_light_chunks 旧 streaming 状态。
 	var local_lights: Array[Light3D] = []
 	_collect_local_lights(self, local_lights)
-	_streamed_environment_lights.clear()
-	_environment_light_chunks.clear()
 	for light in local_lights:
 		if _is_player_vision_light(light):
 			_configure_player_vision_light(light)
@@ -302,14 +284,21 @@ func _stabilize_dungeon_lighting() -> void:
 			continue
 		if light is OmniLight3D or light is SpotLight3D:
 			light.visible = false
-			_streamed_environment_lights.append(light)
-			var chunk := _world_to_stream_chunk(light.global_position)
-			if not _environment_light_chunks.has(chunk):
-				_environment_light_chunks[chunk] = []
-			_environment_light_chunks[chunk].append(light)
+			if streaming_controller != null and is_instance_valid(streaming_controller):
+				streaming_controller.register_light(light)
+	if streaming_controller != null and is_instance_valid(streaming_controller):
+		streaming_controller.update_streaming(true)
 
-	_streaming_ready = true
-	_update_streamed_chunks(true)
+# 阶段 9 条 5：terrain chunk 注册 / chunk 计算转调 DungeonStreamingController（删旧实现后唯一路径）
+func _register_terrain_chunk_node(chunk: Vector2i, node: Node3D) -> void:
+	if streaming_controller != null and is_instance_valid(streaming_controller):
+		streaming_controller.register_terrain_chunk(chunk, node)
+
+func _world_to_stream_chunk(pos: Vector3) -> Vector2i:
+	# layout 未就绪时用默认 tile_size=3.0 估算（与 controller 一致公式）
+	var tile_size: float = layout.tile_size if layout != null else 3.0
+	var chunk_size := float(STREAM_CHUNK_SIZE_CELLS) * tile_size
+	return Vector2i(int(floor(pos.x / chunk_size)), int(floor(pos.z / chunk_size)))
 
 func _collect_local_lights(node: Node, result: Array[Light3D]) -> void:
 	LIGHTING_HELPER.collect_local_lights(node, result)
@@ -326,229 +315,15 @@ func _is_hint_light(light: Light3D) -> bool:
 func _is_generated_trap_node(node: Node) -> bool:
 	return LIGHTING_HELPER.is_generated_trap_node(node)
 
-func _update_streamed_chunks(force: bool) -> void:
-	var player_node: Node3D = GameState.current_player
-	var player_pos := player_spawn_pos
-	if player_node != null and is_instance_valid(player_node):
-		player_pos = player_node.global_position
-	var player_chunk := _world_to_stream_chunk(player_pos)
-	if not force and player_chunk == _last_stream_chunk:
-		return
-	_last_stream_chunk = player_chunk
-	if force:
-		# 强制更新时清空上次状态，使所有激活 chunk 重新处理
-		_last_active_physics_chunks = {}
-	_update_streamed_lights(player_chunk, player_pos)
-	_update_streamed_physics(player_chunk)
-	_update_streamed_visuals(player_chunk)
-	_update_streamed_terrain(player_chunk)
-
-func _update_streamed_lights(player_chunk: Vector2i, player_pos: Vector3) -> void:
-	for light in _streamed_environment_lights:
-		if is_instance_valid(light):
-			light.visible = false
-	var ranked_lights: Array[Dictionary] = []
-	for chunk in _iter_stream_chunks(player_chunk, STREAM_LIGHT_CHUNK_RADIUS):
-		var lights: Array = _environment_light_chunks.get(chunk, [])
-		for light in lights:
-			if light != null and is_instance_valid(light):
-				ranked_lights.append({
-					"light": light,
-					"distance": light.global_position.distance_squared_to(player_pos),
-				})
-	ranked_lights.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return float(a["distance"]) < float(b["distance"])
-	)
-	for i in range(mini(ranked_lights.size(), DUNGEON_VISIBLE_LOCAL_LIGHT_BUDGET)):
-		var light := ranked_lights[i]["light"] as Light3D
-		light.visible = true
-
-func _update_streamed_terrain(player_chunk: Vector2i) -> void:
-	if _terrain_render_chunks.is_empty():
-		return
-	var active := {}
-	for chunk in _iter_stream_chunks(player_chunk, STREAM_TERRAIN_CHUNK_RADIUS):
-		active[chunk] = true
-	for chunk in _terrain_render_chunks.keys():
-		var visible := active.has(chunk)
-		var nodes: Array = _terrain_render_chunks[chunk]
-		for node in nodes:
-			if node != null and is_instance_valid(node):
-				node.visible = visible
-
-func _update_streamed_physics(player_chunk: Vector2i) -> void:
-	# 增量更新：仅处理状态变化的 chunk，而非遍历全部物理体
-	var active := {}
-	for chunk in _iter_stream_chunks(player_chunk, STREAM_PHYSICS_CHUNK_RADIUS):
-		active[chunk] = true
-	# 新激活的 chunk：激活其中所有物理体
-	for chunk in active.keys():
-		if _last_active_physics_chunks.has(chunk):
-			continue  # 上次已激活，跳过
-		var bodies: Array = _physics_body_chunks.get(chunk, [])
-		for body in bodies:
-			if body != null and is_instance_valid(body):
-				_set_streamed_physics_body_active(body, true)
-	# 新失活的 chunk：停用其中所有物理体
-	for chunk in _last_active_physics_chunks.keys():
-		if active.has(chunk):
-			continue  # 仍然激活，跳过
-		var bodies: Array = _physics_body_chunks.get(chunk, [])
-		for body in bodies:
-			if body != null and is_instance_valid(body):
-				_set_streamed_physics_body_active(body, false)
-	_last_active_physics_chunks = active
-
-func _update_streamed_visuals(player_chunk: Vector2i) -> void:
-	if _visual_stream_chunks.is_empty():
-		return
-	var active := {}
-	for chunk in _iter_stream_chunks(player_chunk, STREAM_VISUAL_CHUNK_RADIUS):
-		active[chunk] = true
-	for chunk in _visual_stream_chunks.keys():
-		var visible := active.has(chunk)
-		var nodes: Array = _visual_stream_chunks[chunk]
-		for node in nodes:
-			if node != null and is_instance_valid(node):
-				node.visible = visible
-
 func register_streamed_visual_node(node: Node3D) -> void:
-	# 阶段 9 接线：转调 DungeonStreamingController 唯一接管（旧实现作死代码留至阶段 11 删）
+	# 阶段 9 条 5：纯转调 DungeonStreamingController，删旧兜底（controller 在 _ready add_child 后永就绪）
 	if streaming_controller != null and is_instance_valid(streaming_controller):
 		streaming_controller.register_visual_node(node)
-		return
-	# 旧兜底（controller 未就绪时不应触，但保 terrain 路径不破）
-	if node == null or node.get_meta("stream_visual_registered", false):
-		return
-	var chunk := _world_to_stream_chunk(_stream_node_position(node))
-	node.set_meta("stream_visual_registered", true)
-	node.set_meta("stream_visual_chunk", chunk)
-	if not _visual_stream_chunks.has(chunk):
-		_visual_stream_chunks[chunk] = []
-	_visual_stream_chunks[chunk].append(node)
-	node.visible = false
-	if _streaming_ready:
-		_update_streamed_chunks(true)
 
 func register_streamed_physics_node(node: Node) -> void:
-	# 阶段 9 接线：转调 DungeonStreamingController 唯一接管
+	# 阶段 9 条 5：纯转调 DungeonStreamingController，删旧兜底
 	if streaming_controller != null and is_instance_valid(streaming_controller):
 		streaming_controller.register_physics_node(node)
-		return
-	# 旧兜底
-	if node == null:
-		return
-	var bodies: Array[Dictionary] = []
-	_collect_streamed_physics_bodies(node, bodies)
-	for entry in bodies:
-		_register_streamed_physics_body(entry["body"], entry["visual_root"])
-	if _streaming_ready and not bodies.is_empty():
-		_update_streamed_chunks(true)
-
-func _collect_streamed_physics_bodies(node: Node, result: Array[Dictionary], visual_root: Node = null) -> void:
-	if visual_root == null:
-		visual_root = node
-	if node is CharacterBody3D:
-		result.append({"body": node as CharacterBody3D, "visual_root": visual_root})
-		return
-	if node is RigidBody3D:
-		result.append({"body": node as RigidBody3D, "visual_root": visual_root})
-		return
-	if node is StaticBody3D:
-		result.append({"body": node as StaticBody3D, "visual_root": visual_root})
-		return
-	for child in node.get_children():
-		_collect_streamed_physics_bodies(child, result, visual_root)
-
-func _register_streamed_physics_body(body: PhysicsBody3D, visual_root: Node = null) -> void:
-	if body.get_meta("stream_physics_registered", false):
-		return
-	var stream_position := _stream_body_position(body)
-	if visual_root is Node3D:
-		stream_position = _stream_node_position(visual_root as Node3D)
-	var chunk := _world_to_stream_chunk(stream_position)
-	body.set_meta("stream_physics_registered", true)
-	body.set_meta("stream_physics_chunk", chunk)
-	body.set_meta("stream_collision_layer", body.collision_layer)
-	body.set_meta("stream_collision_mask", body.collision_mask)
-	if visual_root is Node3D:
-		body.set_meta("stream_visual_root_id", (visual_root as Node3D).get_instance_id())
-	if body is RigidBody3D:
-		(body as RigidBody3D).freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
-	_streamed_physics_bodies.append(body)
-	if not _physics_body_chunks.has(chunk):
-		_physics_body_chunks[chunk] = []
-	_physics_body_chunks[chunk].append(body)
-	_set_streamed_physics_body_active(body, false)
-
-func _set_streamed_physics_body_active(body: PhysicsBody3D, active: bool) -> void:
-	if body.has_meta("stream_physics_active") and bool(body.get_meta("stream_physics_active", false)) == active:
-		return
-	body.set_meta("stream_physics_active", active)
-	body.visible = active
-	_set_streamed_visual_root_active(body, active)
-	body.collision_layer = int(body.get_meta("stream_collision_layer", body.collision_layer)) if active else 0
-	body.collision_mask = int(body.get_meta("stream_collision_mask", body.collision_mask)) if active else 0
-	if body is RigidBody3D:
-		var rigid := body as RigidBody3D
-		rigid.freeze = not active
-		rigid.sleeping = not active
-		if active:
-			rigid.sleeping = false
-		else:
-			rigid.linear_velocity = Vector3.ZERO
-			rigid.angular_velocity = Vector3.ZERO
-	elif body is CharacterBody3D and not active:
-		(body as CharacterBody3D).velocity = Vector3.ZERO
-	if body is CharacterBody3D:
-		_set_character_stream_callbacks(body as CharacterBody3D, active)
-
-func _set_streamed_visual_root_active(body: PhysicsBody3D, active: bool) -> void:
-	var root_id := int(body.get_meta("stream_visual_root_id", 0))
-	if root_id == 0:
-		return
-	var root_obj := instance_from_id(root_id)
-	var root := root_obj as Node3D
-	if root == null or not is_instance_valid(root):
-		return
-	root.visible = active
-
-func _set_character_stream_callbacks(body: CharacterBody3D, active: bool) -> void:
-	body.set_process(active)
-	body.set_physics_process(active)
-	for child in body.get_children():
-		_set_node_stream_callbacks_recursive(child, active)
-
-func _set_node_stream_callbacks_recursive(node: Node, active: bool) -> void:
-	node.set_process(active)
-	node.set_physics_process(active)
-	for child in node.get_children():
-		_set_node_stream_callbacks_recursive(child, active)
-
-func _stream_body_position(body: Node3D) -> Vector3:
-	return _stream_node_position(body)
-
-func _stream_node_position(node: Node3D) -> Vector3:
-	return node.global_position if node.is_inside_tree() else node.position
-
-func _world_to_stream_chunk(pos: Vector3) -> Vector2i:
-	var chunk_size := float(STREAM_CHUNK_SIZE_CELLS) * TILE_SIZE
-	return Vector2i(
-		int(floor(pos.x / chunk_size)),
-		int(floor(pos.z / chunk_size))
-	)
-
-func _iter_stream_chunks(center: Vector2i, radius: int) -> Array[Vector2i]:
-	var chunks: Array[Vector2i] = []
-	for y in range(center.y - radius, center.y + radius + 1):
-		for x in range(center.x - radius, center.x + radius + 1):
-			chunks.append(Vector2i(x, y))
-	return chunks
-
-func _register_terrain_chunk_node(chunk: Vector2i, node: Node3D) -> void:
-	if not _terrain_render_chunks.has(chunk):
-		_terrain_render_chunks[chunk] = []
-	_terrain_render_chunks[chunk].append(node)
 
 func _mount_expedition_hud() -> void:
 	var hud_scene = load("res://scenes/ui/expedition_hud.tscn")
@@ -655,9 +430,7 @@ func _generate_visuals(grid: Array) -> void:
 	ceiling_transforms.clear()
 	wall_transforms_by_height.clear()
 	batched_decor_transforms.clear()
-	_visual_stream_chunks.clear()
-	_terrain_render_chunks.clear()
-	_streaming_ready = false
+
 
 	const TILE_SIZE := 3.0
 	var grid_width = grid[0].size() if grid.size() > 0 else 0
