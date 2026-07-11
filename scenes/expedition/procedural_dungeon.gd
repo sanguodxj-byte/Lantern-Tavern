@@ -943,31 +943,13 @@ func _find_world_controller() -> Node:
 		node = node.get_parent()
 	return null
 
+## D 步8：finish_expedition + _settle_extraction_loot 已真迁入 DungeonRuntime，本类旧体已删。
 func _finish_expedition(player: Player, voluntary: bool) -> void:
-	if _expedition_finished:
-		return
-	_expedition_finished = true
-	# 撤离结算：保留随身材料，进入酒馆后可手动存入仓库
-	if player != null and is_instance_valid(player):
-		_settle_extraction_loot(player)
-	if TavernManager:
-		var result := _exploration_pressure.build_extraction_result(voluntary) if _exploration_pressure != null else {}
-		TavernManager.extract_to_tavern(result)
+	pass  # runtime.finish_expedition 已接管
 
-## 撤离结算：本趟材料留在 GameState.carried_materials，进入酒馆后由仓库面板手动存取。
+## D 步8：settle_extraction_loot 已真迁入 DungeonRuntime._settle_extraction_loot，本类旧体已删。
 func _settle_extraction_loot(player: Player) -> void:
-	var tm: Node = Service.tavern_manager()
-	if tm == null:
-		return
-	# 统计本局地牢拾取物（由 GameState 记录）
-	var carried_materials: int = GameState.get_carried_materials()
-	var carried_weapons: int = GameState.get_carried_weapons()
-	var carried_shields: int = GameState.get_carried_shields()
-	print("[Dungeon] Extraction loot: %d materials, %d weapons, %d shields" % [carried_materials, carried_weapons, carried_shields])
-	# 武器/盾已装备到 equipment；后续再接入完整装备仓库数据结构
-	# 注入 TavernManager 统计（若方法存在）
-	if tm.has_method("record_expedition_loot"):
-		tm.record_expedition_loot(carried_materials, carried_weapons, carried_shields)
+	pass  # runtime._settle_extraction_loot 已接管
 
 func _spawn_collision(pos: Vector3, size: Vector3) -> void:
 	var body := StaticBody3D.new()

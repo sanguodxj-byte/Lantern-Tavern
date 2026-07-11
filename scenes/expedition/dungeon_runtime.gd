@@ -139,7 +139,29 @@ func wire_extraction_portal_signal() -> void:
 			break  # 唯一 ExtractionPortal
 
 func finish_expedition(player: Node, voluntary: bool) -> void:
-	expedition_finished = true  # TODO D 步2: 迁自 procedural._finish_expedition 完整逻辑
+	# D 步8 真迁：把 procedural._finish_expedition 逻辑搬入本模块，
+	# _exploration_pressure 转调 _level（保路径不破），TavernManager autoload 直调。
+	if expedition_finished:
+		return
+	expedition_finished = true
+	if player != null and is_instance_valid(player):
+		_settle_extraction_loot(player)
+	if TavernManager:
+		var pressure = _level._exploration_pressure if _level != null and is_instance_valid(_level) else null
+		var result: Dictionary = pressure.build_extraction_result(voluntary) if pressure != null else {}
+		TavernManager.extract_to_tavern(result)
+
+func _settle_extraction_loot(player: Node) -> void:
+	# D 步8 真迁：把 procedural._settle_extraction_loot 逻辑搬入本模块
+	var tm: Node = Service.tavern_manager() if Service != null else null
+	if tm == null:
+		return
+	var carried_materials: int = GameState.get_carried_materials()
+	var carried_weapons: int = GameState.get_carried_weapons()
+	var carried_shields: int = GameState.get_carried_shields()
+	print("[DungeonRuntime] Extraction loot: %d materials, %d weapons, %d shields" % [carried_materials, carried_weapons, carried_shields])
+	if tm.has_method("record_expedition_loot"):
+		tm.record_expedition_loot(carried_materials, carried_weapons, carried_shields)
 
 func on_extraction_requested(player: Node) -> void:
 	# D 步6 真迁：把 procedural._on_extraction_requested 逻辑搬入本模块
