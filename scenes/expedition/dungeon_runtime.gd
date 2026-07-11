@@ -34,10 +34,10 @@ func configure(p_layout: DungeonLayout, p_build_result: DungeonBuildResult, p_le
 func start() -> void:
 	if _level == null or not is_instance_valid(_level):
 		return
-	# spawn 序（转调 procedural 旧路径）
+	# spawn 序（余下转调 procedural 旧路径，下步真迁）
 	var spawned_player = _level.spawn_player()
-	_level._spawn_dungeon_enemies(spawned_player)
-	# D 步5：spawn_items 已真迁入本模块（不转调 procedural）
+	# D 步5：spawn_enemies 已真迁入本模块（不转调 procedural）
+	spawn_enemies(spawned_player)
 	spawn_items()
 	_level._stabilize_dungeon_lighting()
 	_level._mount_expedition_hud()
@@ -59,7 +59,26 @@ func spawn_player() -> Node3D:
 	return null  # TODO D 步2: 迁自 procedural.spawn_player
 
 func spawn_enemies(spawned_player: Node3D = null) -> void:
-	pass  # TODO D 步2: 迁自 procedural._spawn_dungeon_enemies
+	# D 步5 真迁：把 procedural._spawn_dungeon_enemies 逻辑搬入本模块，
+	# 调 DungeonSpawner.spawn_enemies_from_layout 接 layout.enemy_spawn_specs，敌人挂 build_result.spawn_root。
+	if layout == null or layout.is_empty() or build_result == null:
+		return
+	var spawner: Node = Service.dungeon_spawner() if Service != null else null
+	if spawner == null:
+		push_warning("[DungeonRuntime] DungeonSpawner autoload not found, no enemies spawned")
+		return
+	var player_node: Node3D = spawned_player
+	if player_node == null:
+		player_node = GameState.current_player
+		if player_node == null:
+			push_warning("[DungeonRuntime] Player not spawned, skip enemy generation")
+			return
+	var spawn_root: Node = build_result.spawn_root if build_result.spawn_root != null else _level
+	var spawned_enemies: Array = spawner.spawn_enemies_from_layout(layout, spawn_root, player_node)
+	# streaming 注册转调 procedural.register_streamed_physics_node（它转调 controller，保路径）
+	if _level != null and is_instance_valid(_level):
+		for enemy in spawned_enemies:
+			_level.register_streamed_physics_node(enemy)
 
 func spawn_items() -> void:
 	# D 步5 真迁：把 procedural._spawn_dungeon_items 逻辑搬入本模块，

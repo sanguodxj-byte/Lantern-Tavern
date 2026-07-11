@@ -206,26 +206,9 @@ func _process(delta: float) -> void:
 	return
 
 ## 调用 DungeonSpawner autoload 按区域生成怪物，注入 player 引用
-## spawned_player: 由 spawn_player() 返回的 Player 实例，避免依赖 GameState.current_player
-## 的延迟注册时序问题
+## D 步5：spawn_enemies 已真迁入 DungeonRuntime.spawn_enemies（runtime.start 内调），本类旧体暂留 wrapper。
 func _spawn_dungeon_enemies(spawned_player: Node3D = null) -> void:
-	var spawner: Node = Service.dungeon_spawner()
-	if spawner == null:
-		push_warning("[Dungeon] DungeonSpawner autoload not found, no enemies spawned")
-		return
-	var player_node: Node3D = spawned_player
-	if player_node == null:
-		player_node = GameState.current_player
-	if player_node == null:
-		push_warning("[Dungeon] Player not spawned, skip enemy generation")
-		return
-	# 阶段 9 接线：调 spawn_enemies_from_layout 接 layout.enemy_spawn_specs，
-	# 不再 9 参数重读 _grid/layout.rooms/layout.room_roles（DungeonSpawnPlanner 已规划 spec）。
-	# 敌人挂到 build_result.spawn_root 集中管理，不再散 add 到本类根。
-	var spawn_root: Node = build_result.spawn_root if build_result != null else self
-	var spawned_enemies: Array = spawner.spawn_enemies_from_layout(layout, spawn_root, player_node)
-	for enemy in spawned_enemies:
-		register_streamed_physics_node(enemy)
+	pass  # runtime.spawn_enemies 已接管
 
 ## 调用 ItemSpawner autoload 按 layout.item_spawn_specs 放置物品（材料）。
 ## 阶段 9 条 4 接线：不再 spawn_items_for_level(_grid, ...) 6 参数重读 grid 盲扫，
