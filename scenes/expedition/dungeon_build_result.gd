@@ -26,6 +26,7 @@ var terrain_chunks: Dictionary = {}  # Vector2i chunk -> Array[Node3D]
 var floor_transforms: Array = []
 var ceiling_transforms: Array = []
 var wall_transforms_by_height: Dictionary = {}  # key="{wx},{wy},{wz}" -> {size:Vector3, transforms:Array}
+var batched_decor_transforms: Dictionary = {}  # path -> Array[Transform3D]（pillar 等 batched decor 收集）
 var wall_h_map: Dictionary = {}  # Vector2i cell -> float wall_height（预计算，供 torch/lintel 复用）
 
 ## 是否已构建（至少 terrain_root 非空）

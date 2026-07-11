@@ -104,12 +104,8 @@ var _shared_floor_mat: ShaderMaterial = null
 var _shared_ceiling_mat: ShaderMaterial = null
 
 # 用于收集 GPU 实例坐标，优化渲染性能
-var floor_transforms: Array[Transform3D] = []
-var ceiling_transforms: Array[Transform3D] = []
 # 墙面按尺寸分组：key=rounded size, value={size, transforms}
 # 不同高度/方向的薄墙段需要不同的 mesh 和 tile_repeat，避免整格墙体重合闪烁。
-var wall_transforms_by_height: Dictionary = {}
-var batched_decor_transforms: Dictionary = {}
 var _exploration_pressure: ExplorationPressure = null
 var _expedition_hud: ExpeditionHUD = null
 var _combat_hud: CombatHUD = null
@@ -557,7 +553,6 @@ func _build_terrain_geometry(grid: Array) -> void:
 							_spawn_random_decor(cell_pos + scatter)
 
 	# 一次性构建 MultiMesh 并添加到场景，实现合批极速绘制
-	_build_multi_meshes()
 	# 烘焙导航网格供敌人 NavigationAgent3D 寻路（用地板碰撞体作为可行走面）
 	_build_navigation_mesh()
 	_spawn_room_door_panels(grid, OFFSET, TILE_SIZE)
@@ -571,8 +566,8 @@ func _build_terrain_geometry(grid: Array) -> void:
 		#_spawn_large_room_terrain_features(grid, OFFSET, TILE_SIZE, player_spawn_pos, layout.rooms)
 		#if layout.room_roles.has("extraction"):
 		#	_spawn_extraction_portal(grid, OFFSET, TILE_SIZE, player_spawn_pos)
-		_spawn_downstairs_portal(grid, OFFSET, TILE_SIZE, player_spawn_pos)
 		#_spawn_hazard_anchors(grid, OFFSET, TILE_SIZE, player_spawn_pos, layout.rooms)
+		pass
 
 	if not player_spawned:
 		player_spawn_pos = Vector3(0, 0.5, 0)
@@ -980,65 +975,6 @@ func _on_extraction_requested(player: Player) -> void:
 	print("[Dungeon] Extraction triggered by player!")
 	_finish_expedition(player, true)
 
-func _spawn_downstairs_portal(grid: Array, offset: Vector3, tile_size: float, spawn_pos: Vector3) -> void:
-	var best_dist := 0.0
-	var best_pos := Vector3.ZERO
-	var found_floor := false
-	if layout.room_roles.has("stairs"):
-		var stairs_center := _rect_center_cell(layout.room_roles["stairs"])
-		if _is_walkable_hazard_cell(grid, stairs_center.x, stairs_center.y):
-			best_pos = offset + Vector3(stairs_center.x * tile_size, 0.5, stairs_center.y * tile_size)
-			found_floor = true
-	for y in range(grid.size()):
-		for x in range(grid[y].size()):
-			if int(grid[y][x]) != BSP_DungeonGenerator.TileType.FLOOR:
-				continue
-			var pos := offset + Vector3(x * tile_size, 0.5, y * tile_size)
-			var dist := pos.distance_to(spawn_pos)
-			if not found_floor or (not layout.room_roles.has("stairs") and dist > best_dist):
-				found_floor = true
-				best_dist = dist
-				best_pos = pos
-
-	if not found_floor:
-		push_warning("[Dungeon] No floor tile found for downstairs portal")
-		return
-
-	var root := Node3D.new()
-	root.name = "DownstairsPortal"
-	root.set_meta("topdown_kind", "stairs")
-	root.position = best_pos
-	add_child(root)
-	register_streamed_visual_node(root)
-
-	var step_mat := StandardMaterial3D.new()
-	step_mat.albedo_color = Color(0.20, 0.18, 0.16)
-	step_mat.roughness = 0.9
-	for i in range(4):
-		var step := MeshInstance3D.new()
-		step.name = "DownstairsStep%d" % (i + 1)
-		step.set_meta("topdown_kind", "stairs")
-		var box := BoxMesh.new()
-		box.size = Vector3(1.8, 0.14, 0.36)
-		step.mesh = box
-		step.material_override = step_mat
-		step.position = Vector3(0, 0.02 + i * 0.03, -0.54 + i * 0.36)
-		root.add_child(step)
-
-	var area := Area3D.new()
-	area.name = "DownstairsArea"
-	area.set_meta("topdown_kind", "stairs")
-	area.position = Vector3(0, 0.5, 0)
-	var col_shape := CollisionShape3D.new()
-	var box_shape := BoxShape3D.new()
-	box_shape.size = Vector3(2.0, 2.0, 2.0)
-	col_shape.shape = box_shape
-	area.add_child(col_shape)
-	area.body_entered.connect(_on_downstairs_entered)
-	root.add_child(area)
-
-	print("[Dungeon] Downstairs portal placed at ", best_pos)
-
 func _on_downstairs_entered(body: Node3D) -> void:
 	if not body is Player:
 		return
@@ -1093,32 +1029,6 @@ func _spawn_collision(pos: Vector3, size: Vector3) -> void:
 	body.position = pos
 	add_child(body)
 	register_streamed_physics_node(body)
-
-func _spawn_floor(pos: Vector3, tile_size: float) -> void:
-	var t := Transform3D()
-	t.origin = pos - Vector3(0, 0.05, 0)
-	floor_transforms.append(t)
-	# 碰撞由 _build_merged_collisions() 按 chunk 合并，不再每格创建 StaticBody3D
-
-func _spawn_wall(pos: Vector3, tile_size: float, wall_height: float) -> void:
-	var t := Transform3D()
-	t.origin = pos
-	t.origin.y += wall_height / 2.0
-	var size := Vector3(tile_size, wall_height, tile_size)
-	var key := _wall_segment_key(size)
-	if not wall_transforms_by_height.has(key):
-		wall_transforms_by_height[key] = {
-			"size": size,
-			"transforms": [],
-		}
-	(wall_transforms_by_height[key]["transforms"] as Array).append(t)
-	# 碰撞由 _build_merged_collisions() 按 chunk 合并，不再每格创建 StaticBody3D
-
-func _spawn_ceiling(pos: Vector3, tile_size: float, ceiling_height: float) -> void:
-	var t := Transform3D()
-	t.origin = pos + Vector3(0, ceiling_height + CEILING_THICKNESS * 0.5, 0)
-	ceiling_transforms.append(t)
-	# 碰撞由 _build_merged_collisions() 按 chunk 合并，不再每格创建 StaticBody3D
 
 func _spawn_prefab(prefab: PackedScene, pos: Vector3) -> void:
 	var instance := prefab.instantiate()
@@ -1201,19 +1111,6 @@ func _has_physics_body(node: Node) -> bool:
 		if _has_physics_body(c):
 			return true
 	return false
-
-func _spawn_lintel(pos: Vector3, size: Vector3) -> void:
-	var mesh := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = size
-	mesh.mesh = box
-	mesh.position = pos
-	# 门楣宽/高按物理尺寸平铺，1m = 1次 = 32px
-	var mat := _make_terrain_mat("LINTEL", Vector2(size.x, size.y))
-	mesh.material_override = mat
-	add_child(mesh)
-	register_streamed_visual_node(mesh)
-	_spawn_collision(pos, size)
 
 func _ceiling_transition_lintel_spec(cell_pos: Vector3, offset_pos: Vector3, default_size: Vector3, lower_height: float, upper_height: float) -> Dictionary:
 	var bottom := lower_height + CEILING_THICKNESS + CEILING_TRANSITION_GAP
@@ -1490,106 +1387,6 @@ func _wall_boundary_run_key(walkable_cell: Vector2i, dir: Vector2i) -> String:
 func _wall_boundary_key(walkable_cell: Vector2i, blocked_cell: Vector2i) -> String:
 	return "%d,%d:%d,%d" % [walkable_cell.x, walkable_cell.y, blocked_cell.x, blocked_cell.y]
 
-func _build_multi_meshes() -> void:
-	# 阶段 9 条 1 步2：批渲染改读 build_result.*（builder 已产），旧类字段回退
-	var ft_arr = build_result.floor_transforms if build_result != null else floor_transforms
-	var ct_arr = build_result.ceiling_transforms if build_result != null else ceiling_transforms
-	var wt_map = build_result.wall_transforms_by_height if build_result != null else wall_transforms_by_height
-	# 1. 地板 MultiMesh（FLOOR 图块，平面 TILE_SIZE×TILE_SIZE）
-	if _shared_floor_mat == null:
-		# TILE_SIZE=3m → 每轴平铺 3 次（每次 = 1m = 32px）
-		_shared_floor_mat = _make_terrain_mat("FLOOR", Vector2(TILE_SIZE, TILE_SIZE))
-	_build_chunked_multi_meshes(
-		"FloorMultiMesh",
-		ft_arr,
-		Vector3(TILE_SIZE, 0.1, TILE_SIZE),
-		_shared_floor_mat
-	)
-
-	# 2. 天花板 MultiMesh（CEILING 图块）
-	if _shared_ceiling_mat == null:
-		_shared_ceiling_mat = _make_terrain_mat("CEILING", Vector2(TILE_SIZE, TILE_SIZE))
-	_build_chunked_multi_meshes(
-		"CeilingMultiMesh",
-		ct_arr,
-		Vector3(TILE_SIZE, CEILING_THICKNESS, TILE_SIZE),
-		_shared_ceiling_mat
-	)
-
-	# 3. 墙面 MultiMesh（按尺寸分组，保证横向/纵向纹理重复与物理尺寸一致）
-	for wall_key in wt_map:
-		var group: Dictionary = wt_map[wall_key]
-		var transforms: Array = group.get("transforms", [])
-		if transforms.is_empty():
-			continue
-		var size: Vector3 = group.get("size", Vector3(TILE_SIZE, 3.0, DOOR_SURROUND_THICKNESS))
-		# 屏弃缩放，改用正确尺寸的网格——此方案保证法线垂直于面，光照计算正确。
-		var mat := _make_terrain_mat("WALL", Vector2(maxf(size.x, size.z), size.y))
-		_build_chunked_multi_meshes(
-			"WallMultiMesh_%s" % wall_key.replace(",", "_"),
-			transforms,
-			size,
-			mat
-		)
-
-	_build_wall_occluders()
-	_build_batched_decor_multi_meshes()
-
-	# 4. 合并碰撞：每 chunk 一个 StaticBody3D + 单个 ConcavePolygonShape3D
-	# 将数千个独立 StaticBody3D 收敛为几十个 body + 几十个 shape，大幅降低 Jolt 宽/窄相位开销
-	_build_merged_collisions()
-
-## 按 chunk 合并地形碰撞为少量 ConcavePolygonShape3D。
-## floor/ceiling 各一组按 chunk 合；墙体按高度+chunk 合。
-## 每个 chunk+类型产出一个 StaticBody3D + 单个 ConcavePolygonShape3D（由若干 Box 面片构成）。
-## 为每个墙段生成 BoxOccluder3D 遮挡体。
-## 配合 project.godot 的 rendering/occlusion_culling/use_occlusion_culling=true，
-## 让 Godot 在运行时跳过“处于视锥内但被墙挡住”的网格/道具绘制，直接砍掉 draw call
-## （实测最差视角 yaw=180 有 582 个被墙遮挡却照画的单体网格）。
-## 盒尺寸对齐墙段并轻微外扩，避免盒边缘与墙几何不齐导致漏剔（墙缝里的物体被误隐藏）。
-func _build_wall_occluders() -> void:
-	if not ProjectSettings.get_setting("rendering/occlusion_culling/use_occlusion_culling", false):
-		return
-	var wt_map = build_result.wall_transforms_by_height if build_result != null else wall_transforms_by_height
-	var container := Node3D.new()
-	container.name = "WallOccluders"
-	add_child(container)
-	for wall_key in wt_map:
-		var group: Dictionary = wt_map[wall_key]
-		var transforms: Array = group.get("transforms", [])
-		if transforms.is_empty():
-			continue
-		var size: Vector3 = group.get("size", Vector3(TILE_SIZE, 3.0, DOOR_SURROUND_THICKNESS))
-		for t in transforms:
-			var tr := t as Transform3D
-			var occ := OccluderInstance3D.new()
-			var box := BoxOccluder3D.new()
-			box.size = size + Vector3(0.06, 0.06, 0.06)
-			occ.occluder = box
-			occ.transform = tr
-			container.add_child(occ)
-
-func _build_merged_collisions() -> void:
-	# 阶段 9 条 1 步2：批渲染改读 build_result.*（builder 已产），旧类字段回退
-	var ft_arr = build_result.floor_transforms if build_result != null else floor_transforms
-	var ct_arr = build_result.ceiling_transforms if build_result != null else ceiling_transforms
-	var wt_map = build_result.wall_transforms_by_height if build_result != null else wall_transforms_by_height
-	_build_merged_collision_group("FloorCollisions", ft_arr, Vector3(TILE_SIZE, 0.1, TILE_SIZE))
-	_build_merged_collision_group("CeilingCollisions", ct_arr, Vector3(TILE_SIZE, CEILING_THICKNESS, TILE_SIZE))
-	for wall_key in wt_map:
-		var group: Dictionary = wt_map[wall_key]
-		var transforms: Array = group.get("transforms", [])
-		if transforms.is_empty():
-			continue
-		var size: Vector3 = group.get("size", Vector3(TILE_SIZE, 3.0, DOOR_SURROUND_THICKNESS))
-		_build_merged_collision_group(
-			"WallCollisions_%s" % wall_key.replace(",", "_"),
-			transforms,
-			size
-		)
-
-## 把一组 Transform3D（每个对应一个 box_size 盒子）按 chunk 合并为少量
-## StaticBody3D + ConcavePolygonShape3D。每个盒子贡献 12 个三角形面片。
 func _build_merged_collision_group(base_name: String, transforms: Array, box_size: Vector3) -> void:
 	if transforms.is_empty():
 		return
@@ -1640,7 +1437,7 @@ func _append_box_faces(faces: PackedVector3Array, center: Vector3, size: Vector3
 ## 完全绕过 RenderingServer，避免 GPU → CPU 几何回传阻塞渲染管线。
 ## 烘焙完成后敌人 NavigationAgent3D（默认使用 World3D 默认 map）即可寻路。
 func _build_navigation_mesh() -> void:
-	if floor_transforms.is_empty():
+	if (build_result.floor_transforms if build_result != null else []).is_empty():
 		return
 	# 1. 创建 NavigationRegion3D 并配置 NavigationMesh
 	var region := NavigationRegion3D.new()
@@ -1659,7 +1456,7 @@ func _build_navigation_mesh() -> void:
 	var source_geometry_data := NavigationMeshSourceGeometryData3D.new()
 	var floor_size := Vector3(TILE_SIZE, 0.1, TILE_SIZE)
 	var floor_faces := PackedVector3Array()
-	for t in floor_transforms:
+	for t in (build_result.floor_transforms if build_result != null else []):
 		_append_floor_top_face(floor_faces, t.origin, floor_size)
 	source_geometry_data.add_faces(floor_faces, Transform3D.IDENTITY)
 
@@ -1668,8 +1465,8 @@ func _build_navigation_mesh() -> void:
 	#    使用 has_method 做兼容检查；不支持时仅靠地板面片烘焙（墙体不在
 	#    add_faces 中故不会成为可行走区域，不影响基本寻路正确性）。
 	var wall_faces := PackedVector3Array()
-	for wall_key in wall_transforms_by_height:
-		var group: Dictionary = wall_transforms_by_height[wall_key]
+	for wall_key in (build_result.wall_transforms_by_height if build_result != null else {}):
+		var group: Dictionary = (build_result.wall_transforms_by_height if build_result != null else {})[wall_key]
 		var transforms: Array = group.get("transforms", [])
 		var size: Vector3 = group.get("size", Vector3(TILE_SIZE, 3.0, DOOR_SURROUND_THICKNESS))
 		for t in transforms:
@@ -1717,8 +1514,8 @@ func _build_chunked_multi_meshes(base_name: String, transforms: Array, mesh_size
 		_register_terrain_chunk_node(chunk, mm_instance)
 
 func _build_batched_decor_multi_meshes() -> void:
-	var pending_batches := batched_decor_transforms.duplicate()
-	batched_decor_transforms.clear()
+	var pending_batches: Dictionary = (build_result.batched_decor_transforms if build_result != null else Dictionary()).duplicate()
+	(build_result.batched_decor_transforms if build_result != null else Dictionary()).clear()
 	for path in pending_batches.keys():
 		var root_transforms: Array = pending_batches[path]
 		if root_transforms.is_empty():
@@ -2050,9 +1847,10 @@ func _spawn_batched_decor(path: String, transform: Transform3D) -> bool:
 	body.add_child(collision, true)
 	add_child(body)
 	register_streamed_physics_node(body)
-	if not batched_decor_transforms.has(path):
-		batched_decor_transforms[path] = []
-	(batched_decor_transforms[path] as Array).append(transform)
+	var bt_map = build_result.batched_decor_transforms if build_result != null else {}
+	if not bt_map.has(path):
+		bt_map[path] = []
+	(bt_map[path] as Array).append(transform)
 	return true
 
 func _combined_batched_mesh_aabb(root: Node3D) -> AABB:
