@@ -51,6 +51,14 @@ func test_dispose_nulls_all_roots_and_clears_registries() -> void:
 			"decor_root", "spawn_root", "interaction_root", "streamed_visual_root",
 			"streamed_physics_root"]:
 		parent.add_child(result.get(field))
+	# 注册表内模拟节点也入树（避 orphan：dispose 只清字段不 free 节点，生命周期归 parent）
+	for node in result.streamed_visual_nodes:
+		parent.add_child(node)
+	for node in result.streamed_physics_nodes:
+		parent.add_child(node)
+	for chunk_nodes in result.terrain_chunks.values():
+		for node in chunk_nodes:
+			parent.add_child(node)
 	result.dispose()
 	# dispose 后全 root 应置 null
 	for field in ["terrain_root", "collision_root", "doors_root", "hazards_root",
@@ -62,8 +70,7 @@ func test_dispose_nulls_all_roots_and_clears_registries() -> void:
 	assert_array(result.streamed_visual_nodes).has_size(0)
 	assert_array(result.streamed_physics_nodes).has_size(0)
 	assert_bool(result.terrain_chunks.is_empty()).is_true()
-	# 等 queue_free 生效
-	await Engine.get_main_loop().process_frame
+	# dispose 后字段已置 null，parent.free() 同步释放（queue_free 的子随 parent free 一起释放，不需等帧）
 	parent.free()
 
 func test_is_built_requires_terrain_root() -> void:
