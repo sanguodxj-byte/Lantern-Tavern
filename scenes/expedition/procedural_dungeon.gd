@@ -474,10 +474,8 @@ func _setup_zone_ambient() -> void:
 func _build_terrain_geometry(grid: Array) -> void:
 	# 阶段 9 条 1 拆分：地形几何段（wall_h_map 预计算 + floor/wall/ceiling/lintel/pillar/torch/chest 主循环）
 	# 暂留 procedural 内独立成函数，下回合真迁 DungeonSceneBuilder
-	floor_transforms.clear()
-	ceiling_transforms.clear()
-	wall_transforms_by_height.clear()
-	batched_decor_transforms.clear()
+	# 阶段 9 条 1 步3：builder 已产 floor/wall/ceiling/lintel Transform（build_result.*），
+	# 本函数只跑 pillar/torch/chest/player_spawn/downstairs_portal + MultiMesh/nav/door 批渲染。
 	var grid_width = grid[0].size() if grid.size() > 0 else 0
 	var grid_height = grid.size()
 	var offset_x = -(grid_width * TILE_SIZE) / 2.0
@@ -489,73 +487,14 @@ func _build_terrain_geometry(grid: Array) -> void:
 	if layout.room_roles.has("start"):
 		preferred_spawn_cell = _rect_center_cell(layout.room_roles["start"])
 		has_preferred_spawn = true
+	# builder 已产 wall_h_map（torch 用）
+	var wall_h_map := build_result.wall_h_map if build_result != null else {}
 
-	# ── 预计算墙体高度（两遍，消除相邻墙格高度差接缝）──────────────────
-	# 第一遍：每个墙格取所有 4 邻格（含其他墙格）的最大 layout.heights 值
-	var wall_h_map: Dictionary = {}
-	for wy in range(grid_height):
-		for wx in range(grid_width):
-			if grid[wy][wx] == 2:
-				var best: float = layout.heights[wy][wx]
-				for d in [Vector2i(0,-1), Vector2i(0,1), Vector2i(1,0), Vector2i(-1,0)]:
-					var nx2 = wx + d.x
-					var ny2 = wy + d.y
-					if nx2 >= 0 and nx2 < grid_width and ny2 >= 0 and ny2 < grid_height:
-						best = max(best, layout.heights[ny2][nx2])
-				wall_h_map[Vector2i(wx, wy)] = best if best > 0.0 else 3.0
-
-	# 第二遍：相邻墙格互相传播最大值（消除"隔一格"仍存在的高度差）
-	for wy in range(grid_height):
-		for wx in range(grid_width):
-			if grid[wy][wx] == 2:
-				var key := Vector2i(wx, wy)
-				var cur: float = wall_h_map[key]
-				for d in [Vector2i(0,-1), Vector2i(0,1), Vector2i(1,0), Vector2i(-1,0)]:
-					var nk := Vector2i(wx + d.x, wy + d.y)
-					if wall_h_map.has(nk) and wall_h_map[nk] > cur:
-						cur = wall_h_map[nk]
-				wall_h_map[key] = cur
-	# ─────────────────────────────────────────────────────────────────────
-	var door_edge_keys := _collect_room_door_edge_keys(grid)
-
+	# pillar/torch/chest/player_spawn 主循环（floor/wall/ceiling/lintel 由 builder 产，不再这里收集）
 	for y in range(grid.size()):
 		for x in range(grid[y].size()):
 			var cell_type: int = grid[y][x]
 			var cell_pos := OFFSET + Vector3(x * TILE_SIZE, 0, y * TILE_SIZE)
-			_spawn_floor(cell_pos, TILE_SIZE)
-
-			if cell_type == 2:
-				var wall_height: float = wall_h_map.get(Vector2i(x, y), 3.0)
-				_spawn_wall(cell_pos, TILE_SIZE, wall_height)
-			elif cell_type != 0:
-				_spawn_ceiling(cell_pos, TILE_SIZE, layout.heights[y][x])
-
-				# Generate lintels for ceiling height mismatches between adjacent floors
-				var adj_dirs := [
-					[Vector2i(0, -1), Vector3(0, 0, -TILE_SIZE / 2.0), Vector3(TILE_SIZE, 1.0, 0.2)],
-					[Vector2i(0, 1), Vector3(0, 0, TILE_SIZE / 2.0), Vector3(TILE_SIZE, 1.0, 0.2)],
-					[Vector2i(1, 0), Vector3(TILE_SIZE / 2.0, 0, 0), Vector3(0.2, 1.0, TILE_SIZE)],
-					[Vector2i(-1, 0), Vector3(-TILE_SIZE / 2.0, 0, 0), Vector3(0.2, 1.0, TILE_SIZE)]
-				]
-				var current_h: float = layout.heights[y][x]
-				for adj in adj_dirs:
-					var d: Vector2i = adj[0]
-					var offset_pos: Vector3 = adj[1]
-					var default_size: Vector3 = adj[2]
-					var nx = x + d.x
-					var ny = y + d.y
-					if nx >= 0 and nx < grid_width and ny >= 0 and ny < grid_height:
-						var n_type = grid[ny][nx]
-						if n_type != 2 and n_type != 0:
-							var n_h: float = layout.heights[ny][nx]
-							if current_h > n_h:
-								var current_cell := Vector2i(x, y)
-								var neighbor_cell := Vector2i(nx, ny)
-								if _should_spawn_ceiling_transition_lintel(current_cell, neighbor_cell, door_edge_keys):
-									var transition_spec := _ceiling_transition_lintel_spec(cell_pos, offset_pos, default_size, n_h, current_h)
-									if not transition_spec.is_empty():
-										_spawn_lintel(transition_spec["position"], transition_spec["size"])
-
 			match cell_type:
 				5:
 					var room_h = layout.heights[y][x]
@@ -602,7 +541,7 @@ func _build_terrain_geometry(grid: Array) -> void:
 							if nx >= 0 and nx < grid_width and ny >= 0 and ny < grid_height:
 								if grid[ny][nx] == 2:
 									if randf() < 0.12:
-										var h: float = wall_h_map.get(Vector2i(nx, ny), 3.0)
+										var h: float = build_result.wall_h_map.get(Vector2i(nx, ny), 3.0) if build_result != null else 3.0
 										_spawn_torch_on_wall(cell_pos, dir, h)
 										torch_spawned = true
 										break
