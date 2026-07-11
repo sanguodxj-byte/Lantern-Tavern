@@ -47,3 +47,16 @@ func test_runtime_does_not_create_terrain_or_streaming() -> void:
 	# 不应含 streaming chunk 管理（那是 controller 范畴）
 	for forbidden in ["register_visual_node", "register_physics_node", "update_streaming", "_world_to_stream_chunk"]:
 		assert_bool(src.contains(forbidden)).override_failure_message("DungeonRuntime 不应含 %s（controller 范畴）" % forbidden).is_false()
+
+func test_runtime_has_full_runtime_interface_set() -> void:
+	# D 步2：DungeonRuntime 应具备 runtime 范畴的全套接口名（真迁移放下回合，框架版占位）
+	var src := (load("res://scenes/expedition/dungeon_runtime.gd") as GDScript).source_code
+	for iface in ["func spawn_player()", "func spawn_enemies(", "func spawn_items()",
+			"func mount_expedition_hud()", "func setup_exploration_pressure()",
+			"func wire_extraction_portal_signal()", "func finish_expedition(",
+			"func on_extraction_requested(", "func on_expedition_overtime(",
+			"func on_pressure_changed(", "func on_door_pressure_action(",
+			"func apply_player_vision_pressure(", "func apply_environment_activity(",
+			"func apply_monster_hunt_pressure("]:
+		assert_bool(src.contains(iface)) \
+			.override_failure_message("DungeonRuntime 缺接口 %s" % iface).is_true()
