@@ -31,15 +31,13 @@ const DungeonSceneBuilder := preload("res://scenes/expedition/dungeon_scene_buil
 const DungeonBuildResult := preload("res://scenes/expedition/dungeon_build_result.gd")
 const DungeonStreamingController := preload("res://scenes/expedition/dungeon_streaming_controller.gd")
 const DungeonStreamingConfig := preload("res://scenes/expedition/dungeon_streaming_config.gd")
-const LARGE_ROOM_AREA := 48
-const DOOR_SURROUND_THICKNESS := 0.2
-const CEILING_THICKNESS := 0.1
-const CEILING_TRANSITION_GAP := 0.015
-const PLAYER_VISION_BASE_ENERGY := 2.4
-const PLAYER_VISION_BASE_RANGE := 10.0
+# 阶段 E 步5：rendering const 迁入 DungeonRenderingConfig，顶 const 已删改读 _rendering_cfg.*
+const DungeonRenderingConfig := preload("res://scenes/expedition/dungeon_rendering_config.gd")
 
 # 阶段 E 步4：streaming const 迁入 DungeonStreamingConfig，顶 const 已删改读 _streaming_cfg.*
 var _streaming_cfg: DungeonStreamingConfig = DungeonStreamingConfig.default()
+var _rendering_cfg: DungeonRenderingConfig = DungeonRenderingConfig.default()
+var _runtime_cfg: DungeonRuntimeConfig = DungeonRuntimeConfig.default()
 # runtime.spawn_player() 的返回（玩家节点）缓存，供后续清理/引用。
 var _player_spawn
 
@@ -48,39 +46,10 @@ const VOXEL_LIGHTING := preload("res://globals/visual/voxel_lighting_adapter.gd"
 const TERRAIN_CFG := preload("res://scenes/expedition/dungeon_terrain_config.gd")
 const LIGHTING_HELPER := preload("res://scenes/expedition/dungeon_lighting_helper.gd")
 
-const MATERIALS_CONFIG = {
-	"blackberry": 15, "glowshroom": 12, "moongrass": 10, "goblin_nail": 8,
-	"mistflower": 8, "wolfear_herb": 8, "pixie_dust": 5, "poison_berry": 4
-}
+# 阶段 E 步5：runtime const 迁入 DungeonRuntimeConfig
+const DungeonRuntimeConfig := preload("res://scenes/expedition/dungeon_runtime_config.gd")
 
-const DECOR_CONFIG = {
-	"res://scenes/props/decor/bones.tscn": 20,
-	"res://scenes/props/decor/lit_candles.tscn": 15,
-	"res://scenes/props/decor/floor_candelabrum.tscn": 9,
-	"res://scenes/props/decor/wall_candelabrum.tscn": 8,
-	"res://scenes/props/decor/iron_bar_grate.tscn": 7,
-	"res://scenes/props/decor/spiderweb.tscn": 15,
-	"res://scenes/props/decor/bench.tscn": 10,
-	"res://scenes/props/decor/chair.tscn": 10,
-	"res://scenes/props/decor/table.tscn": 10,
-	"res://scenes/props/crates/small_crate.tscn": 10,
-	"res://scenes/props/barrel/barrel.tscn": 10
-}
 
-const BATCHED_DECOR_SCENES := {
-	"res://scenes/props/decor/bones.tscn": true,
-	"res://scenes/props/decor/bench.tscn": true,
-	"res://scenes/props/decor/chair.tscn": true,
-	"res://scenes/props/decor/table.tscn": true,
-	"res://scenes/props/crates/small_crate.tscn": true,
-	# iron_bar_grate：纯静态 MeshInstance3D（10 根铁栏），无 Light/Particle/脚本/拾取行为，
-	# 可安全并入 MultiMesh 批处理，单实例 10 个 draw call → 整批 1 个。
-	"res://scenes/props/decor/iron_bar_grate.tscn": true,
-	# pillar：纯静态体素石柱，但按房间高度 scale.y，需逐实例 Transform 合批（见 _spawn_batched_decor）。
-	"res://scenes/props/structures/pillar.tscn": true,
-	# ruble：纯静态体素瓦砾，大房间随机旋转，需逐实例旋转 Transform 合批。
-	"res://scenes/props/decor/ruble.tscn": true,
-}
 
 # 散落装饰/材料的距离剔除阈值（米）：超过该距离不再渲染，减少远处 draw call。
 # 结构几何体（地板/墙/天花板）不应用此剔除，避免远处穿洞。
@@ -239,7 +208,7 @@ func _is_player_vision_light(light: Light3D) -> bool:
 	return LIGHTING_HELPER.is_player_vision_light(light, Player.PLAYER_VISION_LIGHT_NAME)
 
 func _configure_player_vision_light(light: Light3D) -> void:
-	LIGHTING_HELPER.configure_player_vision_light(light, PLAYER_VISION_BASE_ENERGY, PLAYER_VISION_BASE_RANGE)
+	LIGHTING_HELPER.configure_player_vision_light(light, _rendering_cfg.player_vision_base_energy, _rendering_cfg.player_vision_base_range)
 
 func _is_hint_light(light: Light3D) -> bool:
 	return LIGHTING_HELPER.is_hint_light(light, self)
@@ -482,7 +451,7 @@ func _spawn_hazard_anchors(grid: Array, offset: Vector3, tile_size: float, spawn
 			if room_spawned >= room_target_count:
 				break
 			var cell: Vector2i = candidate["cell"]
-			var min_gap := 2 if room.size.x * room.size.y >= LARGE_ROOM_AREA else 3
+			var min_gap := 2 if room.size.x * room.size.y >= _rendering_cfg.large_room_area else 3
 			if _is_near_used_hazard_cell(cell, used_cells, min_gap):
 				continue
 			var trap := _pick_hazard_trap_prefab(room, room_spawned).instantiate() as Node3D
@@ -511,7 +480,7 @@ func _spawn_large_room_terrain_features(grid: Array, offset: Vector3, tile_size:
 		if _room_is_start_room(room):
 			continue
 		var area := room.size.x * room.size.y
-		if area < LARGE_ROOM_AREA:
+		if area < _rendering_cfg.large_room_area:
 			continue
 		var candidates := _collect_large_room_feature_candidates(grid, room, offset, tile_size, spawn_pos)
 		if candidates.is_empty():
@@ -570,7 +539,7 @@ func _spawn_large_room_feature(pos: Vector3, room: Rect2i, placement_index: int,
 	var path := prefab.resource_path
 	# 静态体素道具（箱/骨/柱/瓦砾）并入 MultiMesh 批处理：逐实例 Transform（含旋转/缩放）
 	# 经硬件实例化一次绘制；碰撞壳与流式注册仍保留。交互类（桶=PickableItem）跳过批处理。
-	if BATCHED_DECOR_SCENES.has(path):
+	if _runtime_cfg.batched_decor_scenes.has(path):
 		var rot_y := float(randi_range(0, 3)) * 90.0
 		var t := Transform3D(Basis.IDENTITY.rotated(Vector3.UP, deg_to_rad(rot_y)), pos)
 		if path == PILLAR_PREFAB.resource_path:
@@ -696,7 +665,7 @@ func _is_narrow_passage_cell(grid: Array, cell: Vector2i) -> bool:
 
 func _pick_hazard_trap_prefab(room: Rect2i = Rect2i(), placement_index: int = 0) -> PackedScene:
 	var area := room.size.x * room.size.y
-	if area >= LARGE_ROOM_AREA:
+	if area >= _rendering_cfg.large_room_area:
 		var roll := (placement_index + randi_range(0, 2)) % 3
 		match roll:
 			0:
@@ -730,7 +699,7 @@ func _configure_hazard_trap_placement(trap: Node3D, grid: Array, cell: Vector2i,
 
 func _configure_spikes_trap_placement(trap: Node3D, grid: Array, cell: Vector2i, room: Rect2i) -> void:
 	var wall_dir := _find_adjacent_wall_direction(grid, cell)
-	var use_wall_mount := wall_dir != Vector2i.ZERO and randf() < 0.45 and room.size.x * room.size.y >= LARGE_ROOM_AREA
+	var use_wall_mount := wall_dir != Vector2i.ZERO and randf() < 0.45 and room.size.x * room.size.y >= _rendering_cfg.large_room_area
 	if use_wall_mount:
 		trap.set_meta("spike_mount", "wall")
 		trap.set_meta("trap_mount", "wall")
@@ -986,8 +955,8 @@ func _has_physics_body(node: Node) -> bool:
 	return false
 
 func _ceiling_transition_lintel_spec(cell_pos: Vector3, offset_pos: Vector3, default_size: Vector3, lower_height: float, upper_height: float) -> Dictionary:
-	var bottom := lower_height + CEILING_THICKNESS + CEILING_TRANSITION_GAP
-	var top := upper_height - CEILING_TRANSITION_GAP
+	var bottom := lower_height + _rendering_cfg.ceiling_thickness + _rendering_cfg.ceiling_transition_gap
+	var top := upper_height - _rendering_cfg.ceiling_transition_gap
 	if top <= bottom:
 		return {}
 	var size := Vector3(default_size.x, top - bottom, default_size.z)
@@ -1159,8 +1128,8 @@ func _spawn_door_wall_surround(base_name: String, panel_pos: Vector3, inside: Ve
 
 func _door_surround_size(width: float, height: float, dir: Vector2i) -> Vector3:
 	if dir.x != 0:
-		return Vector3(DOOR_SURROUND_THICKNESS, height, width)
-	return Vector3(width, height, DOOR_SURROUND_THICKNESS)
+		return Vector3(_rendering_cfg.door_surround_thickness, height, width)
+	return Vector3(width, height, _rendering_cfg.door_surround_thickness)
 
 func _spawn_door_wall_box(name: String, pos: Vector3, size: Vector3) -> MeshInstance3D:
 	var mesh := MeshInstance3D.new()
@@ -1341,7 +1310,7 @@ func _build_navigation_mesh() -> void:
 	for wall_key in (build_result.wall_transforms_by_height if build_result != null else {}):
 		var group: Dictionary = (build_result.wall_transforms_by_height if build_result != null else {})[wall_key]
 		var transforms: Array = group.get("transforms", [])
-		var size: Vector3 = group.get("size", Vector3(TILE_SIZE, 3.0, DOOR_SURROUND_THICKNESS))
+		var size: Vector3 = group.get("size", Vector3(TILE_SIZE, 3.0, _rendering_cfg.door_surround_thickness))
 		for t in transforms:
 			_append_box_faces(wall_faces, (t as Transform3D).origin, size)
 	if source_geometry_data.has_method("add_obstruction_faces"):
@@ -1655,7 +1624,7 @@ func _apply_distance_culling(node: Node3D, range_end: float = DECOR_VISIBILITY_R
 
 func _spawn_random_material(pos: Vector3) -> void:
 	# 按当前区域从 ZoneManager 获取散落材料池（替换旧虚构材料）
-	var scatter_pool: Dictionary = MATERIALS_CONFIG  # fallback
+	var scatter_pool: Dictionary = _runtime_cfg.materials_config  # fallback
 	var zm: Node = Service.zone_manager()
 	if zm != null:
 		scatter_pool = zm.get_scatter_materials(dungeon_zone)
@@ -1669,7 +1638,7 @@ func _spawn_random_material(pos: Vector3) -> void:
 		register_streamed_physics_node(item)
 
 func _spawn_random_decor(pos: Vector3) -> void:
-	var path = _pick_weighted(DECOR_CONFIG)
+	var path = _pick_weighted(_runtime_cfg.decor_config)
 	if path != "":
 		if _spawn_batched_decor(path, Transform3D(Basis.IDENTITY, pos)):
 			return
@@ -1685,7 +1654,7 @@ func _spawn_random_decor(pos: Vector3) -> void:
 			register_streamed_physics_node(instance)
 
 func _spawn_batched_decor(path: String, transform: Transform3D) -> bool:
-	if not BATCHED_DECOR_SCENES.has(path):
+	if not _runtime_cfg.batched_decor_scenes.has(path):
 		return false
 	var prefab := load(path)
 	if not prefab is PackedScene:
