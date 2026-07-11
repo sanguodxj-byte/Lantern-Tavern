@@ -292,10 +292,9 @@ func _setup_zone_ambient() -> void:
 
 
 func _build_terrain_geometry(grid: Array) -> void:
-	# 阶段 9 条 1 拆分：地形几何段（wall_h_map 预计算 + floor/wall/ceiling/lintel/pillar/torch/chest 主循环）
-	# 暂留 procedural 内独立成函数，下回合真迁 DungeonSceneBuilder
-	# 阶段 9 条 1 步3：builder 已产 floor/wall/ceiling/lintel Transform（build_result.*），
-	# 本函数只跑 pillar/torch/chest/player_spawn/downstairs_portal + MultiMesh/nav/door 批渲染。
+	# 阶段 9 条 1 拆分：地形几何段（pillar/torch/chest/player_spawn/downstairs_portal + MultiMesh/nav 批渲染）。
+	# builder 已真接管 floor/wall/ceiling/lintel MultiMesh + collisions + occluders + door panels + downstairs portal；
+	# 本函数只跑 procedural 持有的 decor scatter + 批渲染触发（builder 产 Transform，procedural 实例化 MultiMesh 节点）。
 	var grid_width = grid[0].size() if grid.size() > 0 else 0
 	var grid_height = grid.size()
 	var offset_x = -(grid_width * TILE_SIZE) / 2.0
