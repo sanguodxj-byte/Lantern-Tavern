@@ -18,6 +18,9 @@ const ACID_TRAP_PATH := "res://scenes/traps/acid_trap.tscn"
 const CHEST_PREFAB := preload("res://scenes/props/chest/chest.tscn")
 const BOSS_CHEST_PREFAB := preload("res://scenes/props/chest/boss_chest.tscn")
 const EXTRACTION_PORTAL_PREFAB := preload("res://scenes/expedition/extraction_portal.tscn")
+const DUNGEON_DOOR_SCRIPT := preload("res://scenes/expedition/dungeon_door.gd")
+const STANDARD_DOOR_SIZE_METERS := Vector2(1.0, 2.0)
+const BOSS_DOOR_SIZE_METERS := Vector2(2.0, 2.0)
 
 ## 构建：按 layout instantiate hazard/chest 节点，挂到 build_result 的分 root。
 ## parent: ProceduralDungeon 或同等 Node3D 容器；调用方持 build_result 引用。
@@ -365,6 +368,37 @@ func _build_door_panels(layout: DungeonLayout, result: DungeonBuildResult, paren
 		var offset_z: float = -(float(layout.height) * tile_size) / 2.0
 		var offset: Vector3 = Vector3(offset_x, 0, offset_z)
 		parent._spawn_room_door_panels(layout.grid, offset, tile_size)
+
+# ── door wall box（B3 第二版步2：迁自 procedural._spawn_door_wall_box） ──
+## 产 MeshInstance3D + BoxShape3D 门包围结构，挂 build_result.doors_root。
+## streaming 注册转调 parent.register_streamed_visual_node（保路径不破）。
+func _spawn_door_wall_box(name: String, pos: Vector3, size: Vector3, result: DungeonBuildResult, parent: Node3D) -> MeshInstance3D:
+	var mesh := MeshInstance3D.new()
+	mesh.name = name
+	mesh.set_meta("door_surround", true)
+	mesh.set_meta("topdown_kind", "terrain_feature")
+	var box := BoxMesh.new()
+	box.size = size
+	mesh.mesh = box
+	mesh.position = pos
+	mesh.material_override = _make_terrain_mat("WALL", Vector2(maxf(size.x, size.z), size.y))
+	if result.doors_root != null:
+		result.doors_root.add_child(mesh)
+	if parent != null and parent.has_method("register_streamed_visual_node"):
+		parent.register_streamed_visual_node(mesh)
+	# 碰撞体（StaticBody3D + BoxShape3D）挂 collision_root
+	if result.collision_root != null:
+		var body := StaticBody3D.new()
+		var col := CollisionShape3D.new()
+		var shape := BoxShape3D.new()
+		shape.size = size
+		col.shape = shape
+		body.add_child(col)
+		body.position = pos
+		result.collision_root.add_child(body)
+		if parent != null and parent.has_method("register_streamed_physics_node"):
+			parent.register_streamed_physics_node(body)
+	return mesh
 
 
 # ── hazard prefab 映射 ───────────────────────────────────────────
