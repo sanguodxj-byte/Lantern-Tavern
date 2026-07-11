@@ -137,11 +137,11 @@ func _build_multi_meshes(layout: DungeonLayout, result: DungeonBuildResult) -> v
 	var tile_size: float = layout.tile_size
 	# 1. 地板
 	var floor_mat := _make_terrain_mat("FLOOR", Vector2(tile_size, tile_size))
-	_build_chunked_multi_meshes(result, "FloorMultiMesh", result.floor_transforms,
+	_build_chunked_multi_meshes(layout, result, "FloorMultiMesh", result.floor_transforms,
 		Vector3(tile_size, 0.1, tile_size), floor_mat)
 	# 2. 天花板
 	var ceiling_mat := _make_terrain_mat("CEILING", Vector2(tile_size, tile_size))
-	_build_chunked_multi_meshes(result, "CeilingMultiMesh", result.ceiling_transforms,
+	_build_chunked_multi_meshes(layout, result, "CeilingMultiMesh", result.ceiling_transforms,
 		Vector3(tile_size, CEILING_THICKNESS, tile_size), ceiling_mat)
 	# 3. 墙面（按尺寸分组）
 	for wall_key in result.wall_transforms_by_height:
@@ -151,14 +151,14 @@ func _build_multi_meshes(layout: DungeonLayout, result: DungeonBuildResult) -> v
 			continue
 		var size: Vector3 = group.get("size", Vector3(tile_size, 3.0, DOOR_SURROUND_THICKNESS))
 		var mat := _make_terrain_mat("WALL", Vector2(maxf(size.x, size.z), size.y))
-		_build_chunked_multi_meshes(result, "WallMultiMesh_%s" % wall_key.replace(",", "_"),
+		_build_chunked_multi_meshes(layout, result, "WallMultiMesh_%s" % wall_key.replace(",", "_"),
 			transforms, size, mat)
 
-func _build_chunked_multi_meshes(result: DungeonBuildResult, base_name: String,
+func _build_chunked_multi_meshes(layout: DungeonLayout, result: DungeonBuildResult, base_name: String,
 		transforms: Array, mesh_size: Vector3, material: Material) -> void:
 	if transforms.is_empty():
 		return
-	var chunks := _group_transforms_by_stream_chunk(transforms, result.tile_size)
+	var chunks := _group_transforms_by_stream_chunk(transforms, layout.tile_size)
 	var first_chunk := true
 	for chunk in chunks.keys():
 		var chunk_transforms: Array = chunks[chunk]
@@ -205,9 +205,9 @@ func _build_collisions(layout: DungeonLayout, result: DungeonBuildResult) -> voi
 	if result == null or result.collision_root == null:
 		return
 	var tile_size: float = layout.tile_size
-	_build_merged_collision_group(result, "FloorCollisions", result.floor_transforms,
+	_build_merged_collision_group(layout, result, "FloorCollisions", result.floor_transforms,
 		Vector3(tile_size, 0.1, tile_size))
-	_build_merged_collision_group(result, "CeilingCollisions", result.ceiling_transforms,
+	_build_merged_collision_group(layout, result, "CeilingCollisions", result.ceiling_transforms,
 		Vector3(tile_size, CEILING_THICKNESS, tile_size))
 	for wall_key in result.wall_transforms_by_height:
 		var group: Dictionary = result.wall_transforms_by_height[wall_key]
@@ -215,14 +215,14 @@ func _build_collisions(layout: DungeonLayout, result: DungeonBuildResult) -> voi
 		if transforms.is_empty():
 			continue
 		var size: Vector3 = group.get("size", Vector3(tile_size, 3.0, DOOR_SURROUND_THICKNESS))
-		_build_merged_collision_group(result, "WallCollisions_%s" % wall_key.replace(",", "_"),
+		_build_merged_collision_group(layout, result, "WallCollisions_%s" % wall_key.replace(",", "_"),
 			transforms, size)
 
-func _build_merged_collision_group(result: DungeonBuildResult, base_name: String,
+func _build_merged_collision_group(layout: DungeonLayout, result: DungeonBuildResult, base_name: String,
 		transforms: Array, box_size: Vector3) -> void:
 	if transforms.is_empty():
 		return
-	var by_chunk := _group_transforms_by_stream_chunk(transforms, result.tile_size)
+	var by_chunk := _group_transforms_by_stream_chunk(transforms, layout.tile_size)
 	var physics := _physics_setup()
 	for chunk in by_chunk.keys():
 		var chunk_transforms: Array = by_chunk[chunk]
