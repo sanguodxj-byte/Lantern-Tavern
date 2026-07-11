@@ -30,13 +30,7 @@ const DungeonSpawnPlanner := preload("res://scenes/expedition/dungeon_spawn_plan
 const DungeonSceneBuilder := preload("res://scenes/expedition/dungeon_scene_builder.gd")
 const DungeonBuildResult := preload("res://scenes/expedition/dungeon_build_result.gd")
 const DungeonStreamingController := preload("res://scenes/expedition/dungeon_streaming_controller.gd")
-const DUNGEON_VISIBLE_LOCAL_LIGHT_BUDGET := 12
-const STREAM_CHUNK_SIZE_CELLS := 8
-const STREAM_LIGHT_CHUNK_RADIUS := 2
-const STREAM_PHYSICS_CHUNK_RADIUS := 1
-const STREAM_VISUAL_CHUNK_RADIUS := 1
-const STREAM_TERRAIN_CHUNK_RADIUS := 1
-const STREAM_UPDATE_INTERVAL := 0.25
+const DungeonStreamingConfig := preload("res://scenes/expedition/dungeon_streaming_config.gd")
 const LARGE_ROOM_AREA := 48
 const DOOR_SURROUND_THICKNESS := 0.2
 const CEILING_THICKNESS := 0.1
@@ -44,6 +38,8 @@ const CEILING_TRANSITION_GAP := 0.015
 const PLAYER_VISION_BASE_ENERGY := 2.4
 const PLAYER_VISION_BASE_RANGE := 10.0
 
+# 阶段 E 步4：streaming const 迁入 DungeonStreamingConfig，顶 const 已删改读 _streaming_cfg.*
+var _streaming_cfg: DungeonStreamingConfig = DungeonStreamingConfig.default()
 # runtime.spawn_player() 的返回（玩家节点）缓存，供后续清理/引用。
 var _player_spawn
 
@@ -274,7 +270,7 @@ func _register_terrain_chunk_node(chunk: Vector2i, node: Node3D) -> void:
 func _world_to_stream_chunk(pos: Vector3) -> Vector2i:
 	# layout 未就绪时用默认 tile_size=3.0 估算（与 controller 一致公式）
 	var tile_size: float = layout.tile_size if layout != null else 3.0
-	var chunk_size := float(STREAM_CHUNK_SIZE_CELLS) * tile_size
+	var chunk_size := float(_streaming_cfg.chunk_size_cells) * tile_size
 	return Vector2i(int(floor(pos.x / chunk_size)), int(floor(pos.z / chunk_size)))
 
 func _collect_local_lights(node: Node, result: Array[Light3D]) -> void:
