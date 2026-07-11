@@ -46,6 +46,7 @@ func build(layout: DungeonLayout, parent: Node3D) -> DungeonBuildResult:
 	_build_collisions(layout, result)
 	_build_wall_occluders(layout, result)
 	_build_downstairs_portal(layout, result)
+	_build_door_panels(layout, result, parent)
 	_build_hazards(layout, result)
 	_build_chests(layout, result)
 	_build_extraction_portal(layout, result)
@@ -344,6 +345,26 @@ func _build_downstairs_portal(layout: DungeonLayout, result: DungeonBuildResult)
 
 func _rect_center_cell(rect: Rect2i) -> Vector2i:
 	return rect.position + Vector2i(rect.size.x / 2, rect.size.y / 2)
+
+
+# ── door panels（阶段 B3 第二版：迁自 procedural._spawn_room_door_panels） ──
+## 产 DungeonDoor Node3D + 墙包围结构，挂 build_result.doors_root。
+## 信号接线（door.pressure_action.connect）属 runtime 范畴，builder 只 instantiate 不接——runtime 后续接。
+## 本骨架版转调 procedural 旧路径通过 parent 引用（保信号接线不破），下回合真迁节点拼装逻辑入此。
+func _build_door_panels(layout: DungeonLayout, result: DungeonBuildResult, parent: Node3D) -> void:
+	if result == null or result.doors_root == null:
+		return
+	if layout.rooms.is_empty():
+		return
+	if parent == null or not is_instance_valid(parent):
+		return
+	# 转调 procedural 旧路径（含信号接线 _on_door_pressure_action）——下回合真迁拼装逻辑入此
+	if parent.has_method("_spawn_room_door_panels"):
+		var tile_size: float = layout.tile_size
+		var offset_x: float = -(float(layout.width) * tile_size) / 2.0
+		var offset_z: float = -(float(layout.height) * tile_size) / 2.0
+		var offset: Vector3 = Vector3(offset_x, 0, offset_z)
+		parent._spawn_room_door_panels(layout.grid, offset, tile_size)
 
 
 # ── hazard prefab 映射 ───────────────────────────────────────────

@@ -415,7 +415,7 @@ func _build_terrain_geometry(grid: Array) -> void:
 	# 一次性构建 MultiMesh 并添加到场景，实现合批极速绘制
 	# 烘焙导航网格供敌人 NavigationAgent3D 寻路（用地板碰撞体作为可行走面）
 	_build_navigation_mesh()
-	_spawn_room_door_panels(grid, OFFSET, TILE_SIZE)
+	# B3 第二版：door panels 已由 builder._build_door_panels 转调本类 _spawn_room_door_panels（build() 序内），删此处避免双份
 
 	# Place extraction portal on a random FLOOR tile far from spawn
 	if player_spawned:
