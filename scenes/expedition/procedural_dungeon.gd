@@ -212,7 +212,6 @@ func _wire_extraction_portal_signal() -> void:
 
 func _process(delta: float) -> void:
 	# 阶段 9 接线：streaming 唯一由 DungeonStreamingController 实现（controller 是子 Node，自带 _process 节流）。
-	# 本类不再包一层定时器，旧 _update_streamed_chunks 调用注释掉。
 	# terrain streaming 注册转调 controller（见 register_streamed_physics_node / register_streamed_visual_node）。
 	if streaming_controller == null or not is_instance_valid(streaming_controller):
 		return

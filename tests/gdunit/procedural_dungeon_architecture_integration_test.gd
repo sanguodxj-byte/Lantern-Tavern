@@ -57,15 +57,13 @@ func test_ready_does_not_directly_instantiate_isaac() -> void:
 		.override_failure_message("_ready() 不应直接调 isaac 生成器，应走 DungeonGenerator").is_true()
 
 func test_generate_visuals_does_not_double_instantiate_hazards() -> void:
-	# 验收门槛：新旧路径不存在重复实例化。
-	# _generate_visuals() 里的 _spawn_hazard_anchors / _spawn_extraction_portal / _spawn_large_room_terrain_features
-	# 应已被注释掉（由 DungeonSceneBuilder 唯一接管）。
+	# 阶段 A2：删源码注释扫描依赖，验真约束——builder 唯一实例化 hazard/extraction/large_room，
+	# procedural 的 _build_terrain_geometry 不活跃调这些旧函数（builder._build_hazards 已接管）。
 	var src := _pd_source()
-	var visuals_block := _extract_func_block(src, "_generate_visuals")
-	# 注释行以 # 开头才算关闭；活跃调用（无 # 前缀）不应存在
-	var active_hazard := _count_active_calls(visuals_block, "_spawn_hazard_anchors(grid")
-	var active_extraction := _count_active_calls(visuals_block, "_spawn_extraction_portal(grid")
-	var active_large_room := _count_active_calls(visuals_block, "_spawn_large_room_terrain_features(grid")
+	var terrain_block := _extract_func_block(src, "_build_terrain_geometry")
+	var active_hazard := _count_active_calls(terrain_block, "_spawn_hazard_anchors(grid")
+	var active_extraction := _count_active_calls(terrain_block, "_spawn_extraction_portal(grid")
+	var active_large_room := _count_active_calls(terrain_block, "_spawn_large_room_terrain_features(grid")
 	assert_int(active_hazard).is_equal(0)
 	assert_int(active_extraction).is_equal(0)
 	assert_int(active_large_room).is_equal(0)
