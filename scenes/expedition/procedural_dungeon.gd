@@ -184,8 +184,8 @@ func _ready() -> void:
 	add_child(streaming_controller)
 	streaming_controller.configure(layout, build_result)
 
-	# 阶段 9 条 2：_grid/layout.rooms/layout.room_roles/layout.heights 退役，统一读 layout.*
-	# （terrain floor/wall/ceiling/door 重型几何暂留 procedural，条 1 再迁入 DungeonSceneBuilder）
+	# 阶段 9 条 1 步4：builder.build(layout, self) 已产 floor/wall/ceiling/lintel Transform（build_result.*），
+	# _build_terrain_geometry 只跑 pillar/torch/chest/player_spawn/downstairs_portal + MultiMesh/nav/door 批渲染。
 	_setup_zone_ambient()
 	_build_terrain_geometry(layout.grid)
 	player_spawn.global_position = player_spawn_pos
