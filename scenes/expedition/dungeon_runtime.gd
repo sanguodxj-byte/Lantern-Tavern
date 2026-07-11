@@ -114,15 +114,17 @@ func finish_expedition(player: Node, voluntary: bool) -> void:
 	expedition_finished = true  # TODO D 步2: 迁自 procedural._finish_expedition 完整逻辑
 
 func on_extraction_requested(player: Node) -> void:
-	finish_expedition(player, true)  # TODO D 步2: 迁自 procedural._on_extraction_requested
+	# D 步6 真迁：把 procedural._on_extraction_requested 逻辑搬入本模块
+	print("[DungeonRuntime] Extraction triggered by player!")
+	finish_expedition(player, true)
 
 func on_expedition_overtime(_snapshot: Dictionary) -> void:
-	# TODO D 步2: 迁自 procedural._on_expedition_overtime
+	# D 步6 真迁：把 procedural._on_expedition_overtime 逻辑搬入本模块
 	var player_node := GameState.current_player as Player
 	finish_expedition(player_node, false)
 
 func on_pressure_changed(_snapshot: Dictionary) -> void:
-	pass  # TODO D 步2: 迁自 procedural._on_pressure_changed
+	pass  # TODO D 步6: 迁自 procedural._on_pressure_changed
 
 func on_door_pressure_action(action: String) -> void:
 	pass  # TODO D 步2: 迁自 procedural._on_door_pressure_action
