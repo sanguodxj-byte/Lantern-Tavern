@@ -43,6 +43,8 @@ func build(layout: DungeonLayout, parent: Node3D) -> DungeonBuildResult:
 	# MultiMesh 批渲染 + merged collisions 暂留 procedural（步3-4 再迁），改读 build_result.* 而非旧类字段。
 	_build_terrain(layout, result)
 	_build_multi_meshes(layout, result)
+	_build_collisions(layout, result)
+	_build_wall_occluders(layout, result)
 	_build_hazards(layout, result)
 	_build_chests(layout, result)
 	_build_extraction_portal(layout, result)
@@ -190,6 +192,105 @@ const TERRAIN_CFG := preload("res://scenes/expedition/dungeon_terrain_config.gd"
 
 func _make_terrain_mat(tile_name: String, tile_repeat: Vector2) -> ShaderMaterial:
 	return TERRAIN_CFG.make_terrain_mat(tile_name, tile_repeat)
+
+# ── 碰撞 + occluder（阶段 B2：迁自 procedural._build_merged_collisions/_build_wall_occluders） ──
+## 按 chunk 合并地形碰撞为少量 ConcavePolygonShape3D，挂 build_result.collision_root。
+## floor/ceiling 各一组按 chunk 合；墙体按高度+chunk 合。产出 streamed_physics_nodes + terrain_chunks。
+func _build_collisions(layout: DungeonLayout, result: DungeonBuildResult) -> void:
+	if result == null or result.collision_root == null:
+		return
+	var tile_size: float = layout.tile_size
+	_build_merged_collision_group(result, "FloorCollisions", result.floor_transforms,
+		Vector3(tile_size, 0.1, tile_size))
+	_build_merged_collision_group(result, "CeilingCollisions", result.ceiling_transforms,
+		Vector3(tile_size, CEILING_THICKNESS, tile_size))
+	for wall_key in result.wall_transforms_by_height:
+		var group: Dictionary = result.wall_transforms_by_height[wall_key]
+		var transforms: Array = group.get("transforms", [])
+		if transforms.is_empty():
+			continue
+		var size: Vector3 = group.get("size", Vector3(tile_size, 3.0, DOOR_SURROUND_THICKNESS))
+		_build_merged_collision_group(result, "WallCollisions_%s" % wall_key.replace(",", "_"),
+			transforms, size)
+
+func _build_merged_collision_group(result: DungeonBuildResult, base_name: String,
+		transforms: Array, box_size: Vector3) -> void:
+	if transforms.is_empty():
+		return
+	var by_chunk := _group_transforms_by_stream_chunk(transforms, result.tile_size)
+	var physics := _physics_setup()
+	for chunk in by_chunk.keys():
+		var chunk_transforms: Array = by_chunk[chunk]
+		var body := StaticBody3D.new()
+		body.name = "%s_%d_%d" % [base_name, chunk.x, chunk.y]
+		if physics != null:
+			body.collision_layer = physics.LAYER_ENVIRONMENT
+			body.collision_mask = physics.MASK_ENVIRONMENT
+		var col := CollisionShape3D.new()
+		col.name = "MergedCollision"
+		var shape := ConcavePolygonShape3D.new()
+		var faces: PackedVector3Array = PackedVector3Array()
+		for t in chunk_transforms:
+			var tr := t as Transform3D
+			_append_box_faces(faces, tr.origin, box_size)
+		shape.set_faces(faces)
+		col.shape = shape
+		body.add_child(col, true)
+		result.collision_root.add_child(body)
+		result.streamed_physics_nodes.append(body)
+		if not result.terrain_chunks.has(chunk):
+			result.terrain_chunks[chunk] = []
+		(result.terrain_chunks[chunk] as Array).append(body)
+
+func _append_box_faces(faces: PackedVector3Array, center: Vector3, size: Vector3) -> void:
+	var hx := size.x * 0.5
+	var hy := size.y * 0.5
+	var hz := size.z * 0.5
+	var p000 := center + Vector3(-hx, -hy, -hz)
+	var p100 := center + Vector3( hx, -hy, -hz)
+	var p110 := center + Vector3( hx,  hy, -hz)
+	var p010 := center + Vector3(-hx,  hy, -hz)
+	var p001 := center + Vector3(-hx, -hy,  hz)
+	var p101 := center + Vector3( hx, -hy,  hz)
+	var p111 := center + Vector3( hx,  hy,  hz)
+	var p011 := center + Vector3(-hx,  hy,  hz)
+	faces.append_array([p000, p100, p110, p000, p110, p010])
+	faces.append_array([p001, p011, p111, p001, p111, p101])
+	faces.append_array([p000, p010, p011, p000, p011, p001])
+	faces.append_array([p100, p101, p111, p100, p111, p110])
+	faces.append_array([p000, p001, p101, p000, p101, p100])
+	faces.append_array([p010, p110, p111, p010, p111, p011])
+
+## 墙体 BoxOccluder3D 遮挡体，挂 build_result.terrain_root（属 terrain 视觉剔除）。
+func _build_wall_occluders(layout: DungeonLayout, result: DungeonBuildResult) -> void:
+	if not ProjectSettings.get_setting("rendering/occlusion_culling/use_occlusion_culling", false):
+		return
+	if result == null or result.terrain_root == null:
+		return
+	var container := Node3D.new()
+	container.name = "WallOccluders"
+	result.terrain_root.add_child(container)
+	for wall_key in result.wall_transforms_by_height:
+		var group: Dictionary = result.wall_transforms_by_height[wall_key]
+		var transforms: Array = group.get("transforms", [])
+		if transforms.is_empty():
+			continue
+		var size: Vector3 = group.get("size", Vector3(layout.tile_size, 3.0, DOOR_SURROUND_THICKNESS))
+		for t in transforms:
+			var tr := t as Transform3D
+			var occ := OccluderInstance3D.new()
+			var box := BoxOccluder3D.new()
+			box.size = size + Vector3(0.06, 0.06, 0.06)
+			occ.occluder = box
+			occ.transform = tr
+			container.add_child(occ)
+
+func _physics_setup() -> Node:
+	# autoload singleton 走 /root/<name> 路径（builder 是 RefCounted 非节点，无 get_tree）
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return null
+	return tree.root.get_node_or_null("PhysicsSetup")
 
 
 # ── hazard prefab 映射 ───────────────────────────────────────────
