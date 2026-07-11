@@ -230,14 +230,9 @@ func _spawn_dungeon_enemies(spawned_player: Node3D = null) -> void:
 ## 调用 ItemSpawner autoload 按 layout.item_spawn_specs 放置物品（材料）。
 ## 阶段 9 条 4 接线：不再 spawn_items_for_level(_grid, ...) 6 参数重读 grid 盲扫，
 ## 改调 spawn_items_from_layout 接 layout.item_spawn_specs 实例化，物挂 build_result.spawn_root。
+## D 步5：spawn_items 已真迁入 DungeonRuntime.spawn_items（runtime.start 内调），本类旧体已删。
 func _spawn_dungeon_items() -> void:
-	var spawner: Node = Service.item_spawner()
-	if spawner == null:
-		push_warning("[Dungeon] ItemSpawner autoload not found, skipping item placement")
-		return
-	var spawn_root: Node = build_result.spawn_root if build_result != null else self
-	spawner.spawn_items_from_layout(layout, spawn_root)
-	_build_batched_decor_multi_meshes()
+	pass  # runtime.spawn_items 已接管
 
 func _stabilize_dungeon_lighting() -> void:
 	var player_node: Node3D = GameState.current_player

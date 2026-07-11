@@ -37,7 +37,8 @@ func start() -> void:
 	# spawn 序（转调 procedural 旧路径）
 	var spawned_player = _level.spawn_player()
 	_level._spawn_dungeon_enemies(spawned_player)
-	_level._spawn_dungeon_items()
+	# D 步5：spawn_items 已真迁入本模块（不转调 procedural）
+	spawn_items()
 	_level._stabilize_dungeon_lighting()
 	_level._mount_expedition_hud()
 	_level._setup_exploration_pressure()
@@ -61,7 +62,18 @@ func spawn_enemies(spawned_player: Node3D = null) -> void:
 	pass  # TODO D 步2: 迁自 procedural._spawn_dungeon_enemies
 
 func spawn_items() -> void:
-	pass  # TODO D 步2: 迁自 procedural._spawn_dungeon_items
+	# D 步5 真迁：把 procedural._spawn_dungeon_items 逻辑搬入本模块，
+	# 调 ItemSpawner.spawn_items_from_layout 接 layout.item_spawn_specs，物挂 build_result.spawn_root。
+	if layout == null or layout.is_empty() or build_result == null:
+		return
+	var spawner: Node = Service.item_spawner() if Service != null else null
+	if spawner == null:
+		push_warning("[DungeonRuntime] ItemSpawner autoload not found, skipping item placement")
+		return
+	var spawn_root: Node = build_result.spawn_root if build_result.spawn_root != null else _level
+	spawner.spawn_items_from_layout(layout, spawn_root)
+	if _level != null and is_instance_valid(_level):
+		_level._build_batched_decor_multi_meshes()
 
 func mount_expedition_hud() -> void:
 	pass  # TODO D 步2: 迁自 procedural._mount_expedition_hud
