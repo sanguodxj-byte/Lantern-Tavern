@@ -21,16 +21,29 @@ extends Node
 var layout: DungeonLayout = null
 var build_result: DungeonBuildResult = null
 var expedition_finished: bool = false
+var _level: Node = null  # ProceduralDungeon 引用（转调其 spawn_player/HUD/pressure 旧路径，下回合真迁）
 
-## 配置：注入 layout + build_result，准备 runtime 启动。
-func configure(p_layout: DungeonLayout, p_build_result: DungeonBuildResult) -> void:
+## 配置：注入 layout + build_result + level（ProceduralDungeon 引用，转调旧路径暂保）。
+func configure(p_layout: DungeonLayout, p_build_result: DungeonBuildResult, p_level: Node = null) -> void:
 	layout = p_layout
 	build_result = p_build_result
+	_level = p_level
 
-## 启动 runtime：spawn player/enemies/items + mount HUD + setup pressure + connect extraction。
-## 真迁移放下回合——本框架版暂空，procedural 仍持旧路径。
+## 启动 runtime：spawn player/enemies/items + mount HUD + setup pressure + connect extraction + music。
+## D 步3 真迁移：本版转调 procedural 旧路径（通过 _level 引用），下回合把函数体真搬入本模块。
 func start() -> void:
-	pass
+	if _level == null or not is_instance_valid(_level):
+		return
+	# spawn 序（转调 procedural 旧路径）
+	var spawned_player = _level.spawn_player()
+	_level._spawn_dungeon_enemies(spawned_player)
+	_level._spawn_dungeon_items()
+	_level._stabilize_dungeon_lighting()
+	_level._mount_expedition_hud()
+	_level._setup_exploration_pressure()
+	_level._wire_extraction_portal_signal()
+	if AudioManager:
+		AudioManager.start_music()
 
 ## 停止 runtime：handle extraction/overtime 收尾。
 func stop() -> void:

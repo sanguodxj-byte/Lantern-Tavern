@@ -44,6 +44,9 @@ const CEILING_TRANSITION_GAP := 0.015
 const PLAYER_VISION_BASE_ENERGY := 2.4
 const PLAYER_VISION_BASE_RANGE := 10.0
 
+# runtime.spawn_player() 的返回（玩家节点）缓存，供后续清理/引用。
+var _player_spawn
+
 # 地形渲染配置已提取至 DungeonTerrainConfig
 const VOXEL_LIGHTING := preload("res://globals/visual/voxel_lighting_adapter.gd")
 const TERRAIN_CFG := preload("res://scenes/expedition/dungeon_terrain_config.gd")
@@ -184,17 +187,14 @@ func _ready() -> void:
 	# _build_terrain_geometry 只跑 pillar/torch/chest/player_spawn/downstairs_portal + MultiMesh/nav/door 批渲染。
 	_setup_zone_ambient()
 	_build_terrain_geometry(layout.grid)
+	# D 步3：runtime 接管 spawn/HUD/pressure/extraction/music 启动序（转调本类旧路径，下步真迁函数体）
+	var runtime := DungeonRuntime.new()
+	add_child(runtime)
+	runtime.configure(layout, build_result, self)
+	runtime.start()
+	# spawn_player 由 runtime.start() 内调（转 procedural.spawn_player）；procedural 暂用 GameState.current_player 夔 reference
+	_player_spawn = GameState.current_player
 	player_spawn.global_position = player_spawn_pos
-	var spawned_player: Player = spawn_player()
-	_spawn_dungeon_enemies(spawned_player)
-	_spawn_dungeon_items()  # 使用 ItemSpawner 按标签放置物品
-	_stabilize_dungeon_lighting()
-	_mount_expedition_hud()
-	_setup_exploration_pressure()
-	# extraction portal 信号接线（builder 只 instantiate，信号属 runtime 范畴）
-	_wire_extraction_portal_signal()
-	if AudioManager:
-		AudioManager.start_music()
 
 ## 把 ExtractionPortal 的 extraction_requested 信号接到本类的 _on_extraction_requested。
 ## builder 阶段不接信号（只 instantiate 节点）；runtime 范畴在此接。
