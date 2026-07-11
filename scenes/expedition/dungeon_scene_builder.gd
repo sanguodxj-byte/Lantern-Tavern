@@ -352,8 +352,9 @@ func _rect_center_cell(rect: Rect2i) -> Vector2i:
 
 # ── door panels（阶段 B3 第二版：迁自 procedural._spawn_room_door_panels） ──
 ## 产 DungeonDoor Node3D + 墙包围结构，挂 build_result.doors_root。
-## 信号接线（door.pressure_action.connect）属 runtime 范畴，builder 只 instantiate 不接——runtime 后续接。
-## 本骨架版转调 procedural 旧路径通过 parent 引用（保信号接线不破），下回合真迁节点拼装逻辑入此。
+## 信号接线（door.pressure_action.connect）转调 parent._on_door_pressure_action（runtime 范畴，下步真迁 runtime）。
+## 步3 真迁体已补 _spawn_door_panel/_spawn_door_wall_surround/_spawn_door_wall_box/_door_surround_size/_height_at_cell_in_layout，
+## 但 _collect_room_door_specs 等 8 工具链深，暂转调 procedural 旧路径保编译；下回合补工具链后激活真迁体。
 func _build_door_panels(layout: DungeonLayout, result: DungeonBuildResult, parent: Node3D) -> void:
 	if result == null or result.doors_root == null:
 		return
@@ -361,13 +362,81 @@ func _build_door_panels(layout: DungeonLayout, result: DungeonBuildResult, paren
 		return
 	if parent == null or not is_instance_valid(parent):
 		return
-	# 转调 procedural 旧路径（含信号接线 _on_door_pressure_action）——下回合真迁拼装逻辑入此
+	# 暂转调 procedural 旧路径（含信号接线 _on_door_pressure_action + 8 工具链）
 	if parent.has_method("_spawn_room_door_panels"):
 		var tile_size: float = layout.tile_size
 		var offset_x: float = -(float(layout.width) * tile_size) / 2.0
 		var offset_z: float = -(float(layout.height) * tile_size) / 2.0
 		var offset: Vector3 = Vector3(offset_x, 0, offset_z)
 		parent._spawn_room_door_panels(layout.grid, offset, tile_size)
+
+# ── door panel（B3 第二版步3：迁自 procedural._spawn_door_panel） ──
+## 产 DungeonDoor Node3D + 墙包围结构，挂 doors_root。信号接线转调 parent._on_door_pressure_action。
+func _spawn_door_panel(spec: Dictionary, offset: Vector3, tile_size: float, index: int, result: DungeonBuildResult, parent: Node3D) -> void:
+	var inside: Vector2i = spec["inside"]
+	var outside: Vector2i = spec["outside"]
+	var dir: Vector2i = spec["dir"]
+	var boss := bool(spec["boss"])
+	var cell_pos := offset + Vector3(inside.x * tile_size, 0.0, inside.y * tile_size)
+	var panel_pos := cell_pos + Vector3(float(dir.x), 0.0, float(dir.y)) * (tile_size * 0.5)
+	var door := DUNGEON_DOOR_SCRIPT.new() as DungeonDoor
+	door.name = ("BossDoor_%03d" if boss else "Door_%03d") % index
+	door.position = panel_pos
+	door.set_meta("inside_cell", inside)
+	door.set_meta("outside_cell", outside)
+	door.set_meta("door_size_m", BOSS_DOOR_SIZE_METERS if boss else STANDARD_DOOR_SIZE_METERS)
+	_spawn_door_wall_surround(door.name + "Surround", panel_pos, inside, outside, dir, boss, tile_size, result, parent)
+	door.configure(
+		DungeonDoor.KIND_BOSS if boss else DungeonDoor.KIND_STANDARD,
+		dir,
+		_make_terrain_mat("BOSS_DOOR" if boss else "DOOR", Vector2(1.0, 1.0)),
+		_make_terrain_mat("DOOR_SIDE", Vector2(DungeonDoor.THICKNESS, BOSS_DOOR_SIZE_METERS.y if boss else STANDARD_DOOR_SIZE_METERS.y)),
+		_make_terrain_mat("DOOR_TOP", Vector2(BOSS_DOOR_SIZE_METERS.x * 0.5 if boss else STANDARD_DOOR_SIZE_METERS.x, DungeonDoor.THICKNESS))
+	)
+	if result.doors_root != null:
+		result.doors_root.add_child(door)
+	if parent != null and parent.has_method("register_streamed_visual_node"):
+		parent.register_streamed_visual_node(door)
+	if parent != null and parent.has_method("_on_door_pressure_action"):
+		door.pressure_action.connect(parent._on_door_pressure_action)
+
+# ── door wall surround（B3 第二版步3：迁自 procedural._spawn_door_wall_surround） ──
+func _spawn_door_wall_surround(base_name: String, panel_pos: Vector3, inside: Vector2i, outside: Vector2i, dir: Vector2i, boss: bool, tile_size: float, result: DungeonBuildResult, parent: Node3D) -> void:
+	var door_size := BOSS_DOOR_SIZE_METERS if boss else STANDARD_DOOR_SIZE_METERS
+	# 注：_height_at_cell 需要 layout，由 _build_door_panels 传 layout 到 _spawn_door_panel 再传 parent
+	# parent 持 layout（ProceduralDungeon.layout 字段），通过 parent.layout 读
+	var p_layout: DungeonLayout = parent.layout if parent != null and parent.has_method("get") else null
+	var wall_height := maxf(maxf(_height_at_cell_in_layout(inside, p_layout), _height_at_cell_in_layout(outside, p_layout)), door_size.y + 0.5)
+	var side_width := maxf((tile_size - door_size.x) * 0.5, 0.0)
+	if side_width <= 0.01:
+		return
+	var width_axis := Vector3(0, 0, 1) if dir.x != 0 else Vector3(1, 0, 0)
+	var side_size := _door_surround_size(side_width, wall_height, dir, parent)
+	var side_offset := door_size.x * 0.5 + side_width * 0.5
+	_spawn_door_wall_box(base_name + "LeftJamb", panel_pos - width_axis * side_offset + Vector3(0, wall_height * 0.5, 0), side_size, result, parent)
+	_spawn_door_wall_box(base_name + "RightJamb", panel_pos + width_axis * side_offset + Vector3(0, wall_height * 0.5, 0), side_size, result, parent)
+	var lintel_height := maxf(wall_height - door_size.y, 0.0)
+	if lintel_height > 0.05:
+		var lintel_size := _door_surround_size(door_size.x, lintel_height, dir, parent)
+		var lintel_pos := panel_pos + Vector3(0, door_size.y + lintel_height * 0.5, 0)
+		_spawn_door_wall_box(base_name + "Lintel", lintel_pos, lintel_size, result, parent)
+
+func _door_surround_size(width: float, height: float, dir: Vector2i, parent: Node3D) -> Vector3:
+	# 迁自 procedural._door_surround_size（rendering_cfg 通过 parent 引用读）
+	var thickness: float = 0.2
+	if parent != null and "_rendering_cfg" in parent:
+		thickness = parent._rendering_cfg.door_surround_thickness
+	if dir.x != 0:
+		return Vector3(thickness, height, width)
+	return Vector3(width, height, thickness)
+
+func _height_at_cell_in_layout(cell: Vector2i, layout: DungeonLayout) -> float:
+	# 迁自 procedural._height_at_cell
+	if cell.y < 0 or cell.y >= layout.heights.size():
+		return 3.0
+	if cell.x < 0 or cell.x >= layout.heights[cell.y].size():
+		return 3.0
+	return maxf(float(layout.heights[cell.y][cell.x]), 3.0)
 
 # ── door wall box（B3 第二版步2：迁自 procedural._spawn_door_wall_box） ──
 ## 产 MeshInstance3D + BoxShape3D 门包围结构，挂 build_result.doors_root。
