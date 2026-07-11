@@ -362,13 +362,30 @@ func _build_door_panels(layout: DungeonLayout, result: DungeonBuildResult, paren
 		return
 	if parent == null or not is_instance_valid(parent):
 		return
-	# 暂转调 procedural 旧路径（含信号接线 _on_door_pressure_action + 8 工具链）
-	if parent.has_method("_spawn_room_door_panels"):
-		var tile_size: float = layout.tile_size
-		var offset_x: float = -(float(layout.width) * tile_size) / 2.0
-		var offset_z: float = -(float(layout.height) * tile_size) / 2.0
-		var offset: Vector3 = Vector3(offset_x, 0, offset_z)
-		parent._spawn_room_door_panels(layout.grid, offset, tile_size)
+	# B3 第二版步4：真迁拼装逻辑——收集 door specs + 逐 instantiate DungeonDoor + 墝包围
+	var tile_size: float = layout.tile_size
+	var offset_x: float = -(float(layout.width) * tile_size) / 2.0
+	var offset_z: float = -(float(layout.height) * tile_size) / 2.0
+	var offset: Vector3 = Vector3(offset_x, 0, offset_z)
+	var door_specs := {}
+	for room in layout.rooms:
+		for spec in _collect_room_door_specs(layout, room):
+			var inside: Vector2i = spec["inside"]
+			var outside: Vector2i = spec["outside"]
+			var key := _door_edge_key(inside, outside)
+			var leads_to_boss := _is_boss_room_cell(layout, inside) or _is_boss_room_cell(layout, outside)
+			if door_specs.has(key):
+				var existing: Dictionary = door_specs[key]
+				existing["boss"] = bool(existing["boss"]) or leads_to_boss
+				door_specs[key] = existing
+			else:
+				var door_spec: Dictionary = spec.duplicate()
+				door_spec["boss"] = leads_to_boss
+				door_specs[key] = door_spec
+	var index := 0
+	for key in door_specs.keys():
+		_spawn_door_panel(door_specs[key], offset, tile_size, index, result, parent)
+		index += 1
 
 # ── door panel（B3 第二版步3：迁自 procedural._spawn_door_panel） ──
 ## 产 DungeonDoor Node3D + 墙包围结构，挂 doors_root。信号接线转调 parent._on_door_pressure_action。
@@ -437,6 +454,101 @@ func _height_at_cell_in_layout(cell: Vector2i, layout: DungeonLayout) -> float:
 	if cell.x < 0 or cell.x >= layout.heights[cell.y].size():
 		return 3.0
 	return maxf(float(layout.heights[cell.y][cell.x]), 3.0)
+
+# ── door 工具链（B3 第二版步4：迁自 procedural） ──
+func _collect_room_door_specs(layout: DungeonLayout, room: Rect2i) -> Array:
+	var candidates: Array = []
+	var grid: Array = layout.grid
+	for y in range(room.position.y, room.position.y + room.size.y):
+		for x in range(room.position.x, room.position.x + room.size.x):
+			if not _is_walkable_hazard_cell(grid, x, y):
+				continue
+			var cell := Vector2i(x, y)
+			if not _is_on_room_edge(cell, room):
+				continue
+			for dir in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0)]:
+				var outside: Vector2i = cell + dir
+				if room.has_point(outside):
+					continue
+				if _is_walkable_hazard_cell(grid, outside.x, outside.y):
+					if _is_door_location_supported(grid, cell, dir):
+						candidates.append({"inside": cell, "outside": outside, "dir": dir})
+	return _collapse_door_specs_by_contiguous_entry(candidates)
+
+func _collapse_door_specs_by_contiguous_entry(candidates: Array) -> Array:
+	var groups := {}
+	for spec in candidates:
+		var inside: Vector2i = spec["inside"]
+		var dir: Vector2i = spec["dir"]
+		var axis_value := inside.x if dir.x != 0 else inside.y
+		var run_value := inside.y if dir.x != 0 else inside.x
+		var key := "%d,%d:%d" % [dir.x, dir.y, axis_value]
+		if not groups.has(key):
+			groups[key] = []
+		(groups[key] as Array).append({"sort": run_value, "spec": spec})
+	var collapsed: Array = []
+	for key in groups.keys():
+		var entries: Array = groups[key]
+		entries.sort_custom(func(a, b): return int(a["sort"]) < int(b["sort"]))
+		var run: Array = []
+		var previous := -999999
+		for entry in entries:
+			var value := int(entry["sort"])
+			if not run.is_empty() and value != previous + 1:
+				collapsed.append(_pick_middle_door_spec(run))
+				run = []
+			run.append(entry["spec"])
+			previous = value
+		if not run.is_empty():
+			collapsed.append(_pick_middle_door_spec(run))
+	return collapsed
+
+func _pick_middle_door_spec(run: Array) -> Dictionary:
+	if run.is_empty():
+		return {}
+	var index := int(run.size() / 2)
+	return (run[index] as Dictionary).duplicate()
+
+func _is_walkable_hazard_cell(grid: Array, x: int, y: int) -> bool:
+	if y < 0 or y >= grid.size():
+		return false
+	if x < 0 or x >= grid[y].size():
+		return false
+	var cell_type: int = int(grid[y][x])
+	return cell_type != 0 and cell_type != 2
+
+func _is_on_room_edge(cell: Vector2i, room: Rect2i) -> bool:
+	return cell.x == room.position.x or cell.y == room.position.y or cell.x == room.position.x + room.size.x - 1 or cell.y == room.position.y + room.size.y - 1
+
+func _is_door_location_supported(grid: Array, cell: Vector2i, dir: Vector2i) -> bool:
+	var side_dir_1: Vector2i
+	var side_dir_2: Vector2i
+	if dir.x != 0:
+		side_dir_1 = Vector2i(0, -1)
+		side_dir_2 = Vector2i(0, 1)
+	else:
+		side_dir_1 = Vector2i(-1, 0)
+		side_dir_2 = Vector2i(1, 0)
+	var inside_side_1 := cell + side_dir_1
+	var inside_side_2 := cell + side_dir_2
+	var has_wall_1 := _is_grid_wall(grid, inside_side_1.x, inside_side_1.y)
+	var has_wall_2 := _is_grid_wall(grid, inside_side_2.x, inside_side_2.y)
+	return has_wall_1 or has_wall_2
+
+func _is_grid_wall(grid: Array, x: int, y: int) -> bool:
+	if y < 0 or y >= grid.size():
+		return true
+	if x < 0 or x >= grid[y].size():
+		return true
+	return int(grid[y][x]) == 2
+
+func _door_edge_key(a: Vector2i, b: Vector2i) -> String:
+	if a.x < b.x or (a.x == b.x and a.y <= b.y):
+		return "%d,%d:%d,%d" % [a.x, a.y, b.x, b.y]
+	return "%d,%d:%d,%d" % [b.x, b.y, a.x, a.y]
+
+func _is_boss_room_cell(layout: DungeonLayout, cell: Vector2i) -> bool:
+	return layout.room_roles.has("boss") and (layout.room_roles["boss"] as Rect2i).has_point(cell)
 
 # ── door wall box（B3 第二版步2：迁自 procedural._spawn_door_wall_box） ──
 ## 产 MeshInstance3D + BoxShape3D 门包围结构，挂 build_result.doors_root。
