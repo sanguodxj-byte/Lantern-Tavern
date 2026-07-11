@@ -257,43 +257,17 @@ func register_streamed_physics_node(node: Node) -> void:
 	if streaming_controller != null and is_instance_valid(streaming_controller):
 		streaming_controller.register_physics_node(node)
 
+## D 步10：mount_expedition_hud + _is_running_under_world + setup_exploration_pressure 已真迁入 DungeonRuntime。
 func _mount_expedition_hud() -> void:
-	var hud_scene = load("res://scenes/ui/expedition_hud.tscn")
-	if not hud_scene:
-		return
-	var hud := hud_scene.instantiate() as ExpeditionHUD
-	_expedition_hud = hud
-	var layer = CanvasLayer.new()
-	layer.name = "ExpeditionHUDLayer"
-	layer.add_child(hud)
-	add_child(layer)
+	pass  # runtime.mount_expedition_hud 已接管
 
-	# World.tscn owns the shared in-game UI. Standalone dungeon runs keep this fallback.
-	if not _is_running_under_world():
-		var game_ui = load("res://scenes/ui/ui.tscn")
-		if game_ui:
-			var ui_instance = game_ui.instantiate()
-			add_child(ui_instance)
-		var combat_hud_scene = load("res://scenes/ui/combat_hud.tscn")
-		if combat_hud_scene:
-			_combat_hud = combat_hud_scene.instantiate() as CombatHUD
-			add_child(_combat_hud)
-
+## D 步10：is_running_under_world 已真迁入 DungeonRuntime._is_running_under_world。
 func _is_running_under_world() -> bool:
-	var node: Node = get_parent()
-	while node != null:
-		if node.has_method("transition_to_tavern") and node.has_method("transition_to_dungeon"):
-			return true
-		node = node.get_parent()
-	return false
+	return false  # runtime._is_running_under_world 已接管
 
+## D 步10：setup_exploration_pressure 已真迁入 DungeonRuntime。
 func _setup_exploration_pressure() -> void:
-	_exploration_pressure = EXPLORATION_PRESSURE_SCRIPT.new() as ExplorationPressure
-	_exploration_pressure.name = "ExplorationPressure"
-	_exploration_pressure.pressure_changed.connect(_on_pressure_changed)
-	_exploration_pressure.expedition_overtime.connect(_on_expedition_overtime)
-	add_child(_exploration_pressure)
-	_on_pressure_changed(_exploration_pressure.make_snapshot())
+	pass  # runtime.setup_exploration_pressure 已接管
 
 ## D 步9：on_pressure_changed + _get_combat_hud + _apply_*_pressure + on_door_pressure 已真迁入 DungeonRuntime。
 func _on_pressure_changed(snapshot: Dictionary) -> void:

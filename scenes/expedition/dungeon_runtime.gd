@@ -17,6 +17,8 @@
 class_name DungeonRuntime
 extends Node
 
+const EXPLORATION_PRESSURE_SCRIPT := preload("res://globals/dungeon/exploration_pressure.gd")
+
 # 配置（由 ProceduralDungeon._ready 注入）
 var layout: DungeonLayout = null
 var build_result: DungeonBuildResult = null
@@ -41,12 +43,60 @@ func start() -> void:
 	spawn_items()
 	# D 步7：stabilize_lighting 已真迁入本模块（转调 procedural 工具 + streaming_controller）
 	stabilize_lighting()
-	_level._mount_expedition_hud()
-	_level._setup_exploration_pressure()
+	# D 步10：mount_expedition_hud + setup_exploration_pressure 已真迁入本模块
+	mount_expedition_hud()
+	setup_exploration_pressure()
 	# D 步4：extraction 信号接线已真迁入本模块（不转调 procedural）
 	wire_extraction_portal_signal()
 	if AudioManager:
 		AudioManager.start_music()
+
+func mount_expedition_hud() -> void:
+	# D 步10 真迁：把 procedural._mount_expedition_hud 逻辑搬入本模块，
+	# _expedition_hud/_combat_hud 挂 _level（保字段路径不破）。
+	if _level == null or not is_instance_valid(_level):
+		return
+	var hud_scene = load("res://scenes/ui/expedition_hud.tscn")
+	if not hud_scene:
+		return
+	var hud := hud_scene.instantiate() as ExpeditionHUD
+	_level._expedition_hud = hud
+	var layer = CanvasLayer.new()
+	layer.name = "ExpeditionHUDLayer"
+	layer.add_child(hud)
+	_level.add_child(layer)
+	if not _is_running_under_world():
+		var game_ui = load("res://scenes/ui/ui.tscn")
+		if game_ui:
+			var ui_instance = game_ui.instantiate()
+			_level.add_child(ui_instance)
+		var combat_hud_scene = load("res://scenes/ui/combat_hud.tscn")
+		if combat_hud_scene:
+			_level._combat_hud = combat_hud_scene.instantiate() as CombatHUD
+			_level.add_child(_level._combat_hud)
+
+func _is_running_under_world() -> bool:
+	# D 步10 真迁：把 procedural._is_running_under_world 逻辑搬入本模块
+	if _level == null:
+		return false
+	var node: Node = _level.get_parent()
+	while node != null:
+		if node.has_method("transition_to_tavern") and node.has_method("transition_to_dungeon"):
+			return true
+		node = node.get_parent()
+	return false
+
+func setup_exploration_pressure() -> void:
+	# D 步10 真迁：把 procedural._setup_exploration_pressure 逻辑搬入本模块，
+	# 信号接本模块 on_pressure_changed/on_expedition_overtime（已真迁）。
+	if _level == null or not is_instance_valid(_level):
+		return
+	_level._exploration_pressure = EXPLORATION_PRESSURE_SCRIPT.new() as ExplorationPressure
+	_level._exploration_pressure.name = "ExplorationPressure"
+	_level._exploration_pressure.pressure_changed.connect(on_pressure_changed)
+	_level._exploration_pressure.expedition_overtime.connect(on_expedition_overtime)
+	_level.add_child(_level._exploration_pressure)
+	on_pressure_changed(_level._exploration_pressure.make_snapshot())
 
 func stabilize_lighting() -> void:
 	# D 步7 真迁：把 procedural._stabilize_dungeon_lighting 逻辑搬入本模块，
@@ -121,12 +171,6 @@ func spawn_items() -> void:
 	spawner.spawn_items_from_layout(layout, spawn_root)
 	if _level != null and is_instance_valid(_level):
 		_level._build_batched_decor_multi_meshes()
-
-func mount_expedition_hud() -> void:
-	pass  # TODO D 步2: 迁自 procedural._mount_expedition_hud
-
-func setup_exploration_pressure() -> void:
-	pass  # TODO D 步2: 迁自 procedural._setup_exploration_pressure
 
 func wire_extraction_portal_signal() -> void:
 	# D 步4 真迁：把 procedural._wire_extraction_portal_signal 逻辑搬入本模块，
