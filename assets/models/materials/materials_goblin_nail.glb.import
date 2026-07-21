@@ -3,7 +3,7 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://c0544c3dstqtr"
+uid="uid://c4jirkrxo00jf"
 path="res://.godot/imported/materials_goblin_nail.glb-3c8a8031411619c7bfedf206ed4dc94d.scn"
 
 [deps]
@@ -42,4 +42,4 @@ materials/extract_path=""
 _subresources={}
 gltf/naming_version=2
 gltf/embedded_image_handling=1
-gltf/texture_map_mode=1
+gltf/texture_map_mode=0

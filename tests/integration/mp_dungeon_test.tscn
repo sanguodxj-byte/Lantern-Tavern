@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://d9m2k7q4v5z1x"]
+
+[ext_resource type="Script" path="res://tests/integration/mp_dungeon_test.gd" id="1_test"]
+
+[node name="DungeonSliceTest" type="Node3D"]
+script = ExtResource("1_test")

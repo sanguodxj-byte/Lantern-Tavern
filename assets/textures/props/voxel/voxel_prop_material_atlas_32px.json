@@ -5,12 +5,12 @@
     32
   ],
   "grid": [
-    4,
-    2
+    8,
+    4
   ],
   "size_px": [
-    128,
-    64
+    256,
+    128
   ],
   "voxel_px_per_meter": 32,
   "tiles": {
@@ -71,6 +71,62 @@
       ]
     },
     "wax": {
+      "col": 4,
+      "row": 0,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        128,
+        0,
+        32,
+        32
+      ]
+    },
+    "flame": {
+      "col": 5,
+      "row": 0,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        160,
+        0,
+        32,
+        32
+      ]
+    },
+    "bone": {
+      "col": 6,
+      "row": 0,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        192,
+        0,
+        32,
+        32
+      ]
+    },
+    "red_cloth": {
+      "col": 7,
+      "row": 0,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        224,
+        0,
+        32,
+        32
+      ]
+    },
+    "tankard_aged_oak": {
       "col": 0,
       "row": 1,
       "span": [
@@ -84,7 +140,7 @@
         32
       ]
     },
-    "flame": {
+    "tankard_dark_iron": {
       "col": 1,
       "row": 1,
       "span": [
@@ -98,7 +154,7 @@
         32
       ]
     },
-    "bone": {
+    "ale_foam": {
       "col": 2,
       "row": 1,
       "span": [
@@ -112,7 +168,7 @@
         32
       ]
     },
-    "red_cloth": {
+    "goblet_worn_silver": {
       "col": 3,
       "row": 1,
       "span": [
@@ -122,6 +178,174 @@
       "pixel_rect": [
         96,
         32,
+        32,
+        32
+      ]
+    },
+    "goblet_wine_glow": {
+      "col": 4,
+      "row": 1,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        128,
+        32,
+        32,
+        32
+      ]
+    },
+    "bottle_green_glass": {
+      "col": 5,
+      "row": 1,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        160,
+        32,
+        32,
+        32
+      ]
+    },
+    "bottle_amber_glass": {
+      "col": 6,
+      "row": 1,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        192,
+        32,
+        32,
+        32
+      ]
+    },
+    "bottle_cork": {
+      "col": 7,
+      "row": 1,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        224,
+        32,
+        32,
+        32
+      ]
+    },
+    "notice_aged_parchment": {
+      "col": 0,
+      "row": 2,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        0,
+        64,
+        32,
+        32
+      ]
+    },
+    "notice_frame_wood": {
+      "col": 1,
+      "row": 2,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        32,
+        64,
+        32,
+        32
+      ]
+    },
+    "ink_dark": {
+      "col": 2,
+      "row": 2,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        64,
+        64,
+        32,
+        32
+      ]
+    },
+    "chandelier_oiled_wood": {
+      "col": 3,
+      "row": 2,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        96,
+        64,
+        32,
+        32
+      ]
+    },
+    "warm_bronze": {
+      "col": 4,
+      "row": 2,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        128,
+        64,
+        32,
+        32
+      ]
+    },
+    "lantern_smoked_glass": {
+      "col": 5,
+      "row": 2,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        160,
+        64,
+        32,
+        32
+      ]
+    },
+    "soot_dark": {
+      "col": 6,
+      "row": 2,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        192,
+        64,
+        32,
+        32
+      ]
+    },
+    "wax_warm_drip": {
+      "col": 7,
+      "row": 2,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        224,
+        64,
         32,
         32
       ]

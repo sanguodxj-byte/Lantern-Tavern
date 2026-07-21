@@ -1,375 +1,1003 @@
 key,en,zh
-"LANTERN TAVERN","LANTERN TAVERN","灯笼酒馆"
-"Day Expedition (WFC)","Day Expedition (WFC)","白天探险（WFC）"
-"Classic Dungeon Campaign","Classic Dungeon Campaign","经典地牢战役"
-"Tavern Brewing & Management","Tavern Brewing & Management","酒馆酿造与管理"
-"Model & Asset Editor Viewer","Model & Asset Editor Viewer","模型与资源编辑器"
-"Character Gear & Quest Log","Character Gear & Quest Log","角色装备与任务日志"
-"Language: English (EN)","Language: English (EN)","Language: 简体中文 (CN)"
-"Language: 简体中文 (CN)","Language: 简体中文 (CN)","Language: 简体中文 (CN)"
-"Exit Game","Exit Game","退出游戏"
-"Computing shaders, please wait...","Computing shaders, please wait...","正在计算着色器，请稍候..."
-"Return to Main Menu","Return to Main Menu","返回主菜单"
-"[E] Pick Up","[E] Pick Up","[E] 拾取"
-"[F] Open","[F] Open","[F] 开门"
-"YOU DIED","YOU DIED","你死了！"
-"PRESS R TO RESTART","PRESS R TO RESTART","按 R 重新开始"
-"COZY BREWING TAVERN","COZY BREWING TAVERN","温馨酿造酒馆"
-"COZY BREWING TAVERN (Gold: %d)","COZY BREWING TAVERN (Gold: %d)","温馨酿造酒馆（金币：%d）"
-"Gold: %d","Gold: %d","金币：%d"
-"Gold: 100","Gold: 100","金币：100"
-"Materials: %d","Materials: %d","材料：%d"
-"EXTRACTION_READY","⚠ EXTRACTION PORTAL OPEN - HEAD TO THE EXTRACTION ROOM!","⚠ 撤离传送门已开启 - 前往撤离房间！"
-"Customer Orders","Customer Orders","顾客订单"
-"Customer: %s","Customer: %s","顾客：%s"
-"Likes: %s (%s: %d+)","Likes: %s (%s: %d+)","喜欢：%s（%s：%d+）"
-"Dislikes: %s (AVOID!)","Dislikes: %s (AVOID!)","讨厌：%s（避免！）"
-"[SERVED & SATISFIED]","[SERVED & SATISFIED]","[已服务并满意]"
-"Your Gathered Materials","Your Gathered Materials","你收集的材料"
-"Kettle / Cauldron","Kettle / Cauldron","水壶 / 大锅"
-"Brew & Serve","Brew & Serve","酿造并服务"
-"Proceed to Next Expedition","Proceed to Next Expedition","进行下一次探险"
-"Brew drinks to earn gold!","Brew drinks to earn gold!","酿造饮品赚取金币！"
-"Not enough %s left!","Not enough %s left!","%s不够了！"
-"Added %s to cauldron.","Added %s to cauldron.","已将%s加入大锅。"
-"The cauldron is empty!","The cauldron is empty!","大锅是空的！"
-"Mock Brew: Served! (+40 Gold)","Mock Brew: Served! (+40 Gold)","模拟酿造：已服务！（+40金币）"
-"Brew failed! Check your ingredients.","Brew failed! Check your ingredients.","酿造失败！请检查你的材料。"
-"Brewed quality %d drink! Served to %s who LOVED it!","Brewed quality %d drink! Served to %s who LOVED it!","酿造了%d级饮品！提供给%s，他们超喜欢！"
-"Brewed quality %d drink! Served to %s who drank it.","Brewed quality %d drink! Served to %s who drank it.","酿造了%d级饮品！提供给%s并饮用。"
-"But they hated the %s flavor!","But they hated the %s flavor!","但他们讨厌%s口味！"
-"Brewed quality %d drink! Served to general customers.","Brewed quality %d drink! Served to general customers.","酿造了%d级饮品！提供给普通顾客。"
-" (+%d Gold)"," (+%d Gold)","（+%d金币）"
-" ADVENTURER LOG & STATS"," ADVENTURER LOG & STATS"," 冒险者日志与属性"
-"Close Panel","Close Panel","关闭面板"
-"Character Attributes","Character Attributes","角色属性"
-"Hero Specifications","Hero Specifications","英雄规格"
-"Life Force (HP):","Life Force (HP):","生命值（HP）："
-"Tavern Funds (Gold):","Tavern Funds (Gold):","酒馆资金（金币）："
-"Weapon Damage:","Weapon Damage:","武器伤害："
-"Shield Defense:","Shield Defense:","盾牌防御："
-"Attack Reach:","Attack Reach:","攻击范围："
-"Attack Speed:","Attack Speed:","攻击速度："
-"Status Lore","Status Lore","状态描述"
-"%d / %d","%d / %d","%d / %d"
-"100 / 100 (Default)","100 / 100 (Default)","100 / 100（默认）"
-"%d Gold","%d Gold","%d 金币"
-"100 Gold","100 Gold","100 金币"
-"%d - %d Physical","%d - %d Physical","%d - %d 物理伤害"
-"%.1f meters","%.1f meters","%.1f 米"
-"%.1f attack factor","%.1f attack factor","%.1f 攻击系数"
-"%d Guard Rating","%d Guard Rating","%d 防御等级"
-"A brave adventurer exploring Wave Function Collapse dungeons to gather valuable brewing ingredients for the Cozy Tavern.","A brave adventurer exploring Wave Function Collapse dungeons to gather valuable brewing ingredients for the Cozy Tavern.","一位勇敢的冒险者探索波函数坍缩生成的地牢，为温馨酒馆收集珍贵的酿造材料。"
-"Equipment Inspect","Equipment Inspect","装备检视"
-"Gear Specifications","Gear Specifications","装备规格"
-"Name:","Name:","名称："
-"Condition:","Condition:","状态："
-"Power/Dmg:","Power/Dmg:","威力/伤害："
-"Reach Limit:","Reach Limit:","范围限制："
-"Item Lore:","Item Lore:","物品描述："
-"%d / %d (Stable)","%d / %d (Stable)","%d / %d（稳定）"
-"%d - %d Phys","%d - %d Phys","%d - %d 物理"
-"N/A (Blocking Focus)","N/A (Blocking Focus)","无（专注格挡）"
-"A versatile close-combat weapon suited for slashing dungeon monsters.","A versatile close-combat weapon suited for slashing dungeon monsters.","一把多功能近战武器，适合劈砍地牢怪物。"
-"A sturdy lightweight buckler used to block incoming attacks and stun opponents.","A sturdy lightweight buckler used to block incoming attacks and stun opponents.","一面坚固轻便的小圆盾，用于格挡来袭攻击并眩晕对手。"
-"Short Sword","Short Sword","短剑"
-"Axe","Axe","战斧"
-"Buckler","Buckler","圆盾"
-"Adventure Quests","Adventure Quests","冒险任务"
-"QUEST DETAILS:","QUEST DETAILS:","任务详情："
-"REQUIRED MATERIALS (收集进度):","REQUIRED MATERIALS (收集进度):","所需材料（收集进度）："
-"(OK)","(OK)","（完成）"
-"(Incomplete)","(Incomplete)","（未完成）"
-"REWARDS:","REWARDS:","奖励："
-"[Active]","[Active]","[进行中]"
-"[Ready to Hand In (可交付)]","[Ready to Hand In (可交付)]","[可交付]"
-"[%d/%d Gained]","[%d/%d Gained]","[%d/%d 已获得]"
-"Gathering Ingredients for Glowcap Ale","Gathering Ingredients for Glowcap Ale","收集荧光浆果麦芽酒材料"
-"The local travelers love the sweet-sour, glowing taste of Glowcap Ale. Gather the necessary materials in the dungeon.","The local travelers love the sweet-sour, glowing taste of Glowcap Ale. Gather the necessary materials in the dungeon.","当地的旅人喜爱荧光浆果麦芽酒酸甜发光的味道。在地牢中收集所需材料。"
-"150 Gold, 20 Rep","150 Gold, 20 Rep","150金币，20声望"
-"Slime Core Preservation","Slime Core Preservation","收集史莱姆核心"
-"Tavern brewing requires highly elastic stabilizers. Defeat Slimes in the procedural dungeon to collect jelly.","Tavern brewing requires highly elastic stabilizers. Defeat Slimes in the procedural dungeon to collect jelly.","酒馆酿造需要高弹性稳定剂。在程序生成的地牢中击败史莱姆收集凝胶。"
-"100 Gold, 15 Rep","100 Gold, 15 Rep","100金币，15声望"
-"Fire Bloom Inferno Brewing","Fire Bloom Inferno Brewing","恶魔烈焰特调"
-"Brew a dynamic and spicy drink for the Fire Imps. Gather Fire Bloom in the dungeon vaults.","Brew a dynamic and spicy drink for the Fire Imps. Gather Fire Bloom in the dungeon vaults.","为火焰小鬼酿造一款充满活力的辣味饮品。在地牢密室中收集烈焰花瓣。"
-"250 Gold, 35 Rep","250 Gold, 35 Rep","250金币，35声望"
-"Props / Objects","Props / Objects","场景道具"
-"Table","Table","木桌"
-"Stool","Stool","圆凳"
-"Barrel","Barrel","木桶"
-"Pillar","Pillar","石柱"
-"Chest","Chest","宝箱"
-"Portal","Portal","传送门"
-"Weapons & Shields","Weapons & Shields","武器装备"
-"Shortsword","Shortsword","短剑"
-"Greatsword","Greatsword","双手大剑"
-"Buckler","Buckler","圆盾"
-"Spikes Trap","Spikes Trap","地刺陷阱"
-"Monsters","Monsters","怪物建模"
-"Goblin","Goblin","哥布林"
-"Spider","Spider","巨型蜘蛛"
-"Slime","Slime","史莱姆"
-"Skeleton","Skeleton","骷髅兵"
-"Bat","Bat","吸血蝙蝠"
-"Rat","Rat","巨鼠"
-"Troll","Troll","巨魔"
-"Zombie","Zombie","僵尸"
-"Imp","Imp","小恶魔"
-"Harpy","Harpy","哈比鸟人"
-"Gatherable Materials","Gatherable Materials","采集原料"
-"Wild Glowcap","Wild Glowcap","野生荧光菇"
-"Frost Berry","Frost Berry","霜冻浆果"
-"Fire Bloom","Fire Bloom","烈焰花瓣"
-"Cave Lichen","Cave Lichen","洞穴苔藓"
-"Honeycomb","Honeycomb","野生蜂巢"
-"Cozy Candlelight","Cozy Candlelight","暖烛光"
-"Daylight","Daylight","白日光"
-"Eerie Moonlight","Eerie Moonlight","冷月光"
-"GLTF PackedScene","GLTF PackedScene","GLTF 场景"
-"Wavefront OBJ Mesh","Wavefront OBJ Mesh","Wavefront OBJ 网格"
-"%d Verts","%d Verts","%d 顶点"
+LONE LIGHT TAVERN,LONE LIGHT TAVERN,孤灯酒馆
+Day Expedition (WFC),Day Expedition (WFC),白天探险（WFC）
+Classic Dungeon Campaign,Classic Dungeon Campaign,经典地牢战役
+Tavern Brewing & Management,Tavern Brewing & Management,酒馆酿造与管理
+Model & Asset Editor Viewer,Model & Asset Editor Viewer,模型与资源编辑器
+Character Gear & Quest Log,Character Gear & Quest Log,角色装备与任务日志
+Language: English (EN),Language: English (EN),Language: 简体中文 (CN)
+Language: 简体中文 (CN),Language: 简体中文 (CN),Language: 简体中文 (CN)
+Exit Game,Exit Game,退出游戏
+"Computing shaders, please wait...","Computing shaders, please wait...",正在计算着色器，请稍候...
+Return to Main Menu,Return to Main Menu,返回主菜单
+[E] Pick Up,[E] Pick Up,[E] 拾取
+[F] Open,[F] Open,[F] 开门
+YOU DIED,YOU DIED,你死了！
+PRESS R TO RESTART,PRESS R TO RESTART,按 R 重新开始
+COZY BREWING TAVERN,COZY BREWING TAVERN,温馨酿造酒馆
+COZY BREWING TAVERN (Gold: %d),COZY BREWING TAVERN (Gold: %d),温馨酿造酒馆（金币：%d）
+Gold: %d,Gold: %d,金币：%d
+Gold: 100,Gold: 100,金币：100
+Materials: %d,Materials: %d,材料：%d
+EXTRACTION_READY,⚠ EXTRACTION PORTAL OPEN - HEAD TO THE EXTRACTION ROOM!,⚠ 撤离传送门已开启 - 前往撤离房间！
+Customer Orders,Customer Orders,顾客订单
+Customer: %s,Customer: %s,顾客：%s
+Likes: %s (%s: %d+),Likes: %s (%s: %d+),喜欢：%s（%s：%d+）
+Dislikes: %s (AVOID!),Dislikes: %s (AVOID!),讨厌：%s（避免！）
+[SERVED & SATISFIED],[SERVED & SATISFIED],[已服务并满意]
+Your Gathered Materials,Your Gathered Materials,你收集的材料
+Kettle / Cauldron,Kettle / Cauldron,水壶 / 大锅
+Brew & Serve,Brew & Serve,酿造并服务
+Proceed to Next Expedition,Proceed to Next Expedition,进行下一次探险
+Brew drinks to earn gold!,Brew drinks to earn gold!,酿造饮品赚取金币！
+Not enough %s left!,Not enough %s left!,%s不够了！
+Added %s to cauldron.,Added %s to cauldron.,已将%s加入大锅。
+The cauldron is empty!,The cauldron is empty!,大锅是空的！
+Mock Brew: Served! (+40 Gold),Mock Brew: Served! (+40 Gold),模拟酿造：已服务！（+40金币）
+Brew failed! Check your ingredients.,Brew failed! Check your ingredients.,酿造失败！请检查你的材料。
+Brewed quality %d drink! Served to %s who LOVED it!,Brewed quality %d drink! Served to %s who LOVED it!,酿造了%d级饮品！提供给%s，他们超喜欢！
+Brewed quality %d drink! Served to %s who drank it.,Brewed quality %d drink! Served to %s who drank it.,酿造了%d级饮品！提供给%s并饮用。
+But they hated the %s flavor!,But they hated the %s flavor!,但他们讨厌%s口味！
+Brewed quality %d drink! Served to general customers.,Brewed quality %d drink! Served to general customers.,酿造了%d级饮品！提供给普通顾客。
+ (+%d Gold), (+%d Gold),（+%d金币）
+ ADVENTURER LOG & STATS, ADVENTURER LOG & STATS, 冒险者日志与属性
+Close Panel,Close Panel,关闭面板
+Character Attributes,Character Attributes,角色属性
+Hero Specifications,Hero Specifications,英雄规格
+Life Force (HP):,Life Force (HP):,生命值（HP）：
+Tavern Funds (Gold):,Tavern Funds (Gold):,酒馆资金（金币）：
+Weapon Damage:,Weapon Damage:,武器伤害：
+Shield Defense:,Shield Defense:,盾牌防御：
+Attack Reach:,Attack Reach:,攻击范围：
+Attack Speed:,Attack Speed:,攻击速度：
+Status Lore,Status Lore,状态描述
+%d / %d,%d / %d,%d / %d
+100 / 100 (Default),100 / 100 (Default),100 / 100（默认）
+%d Gold,%d Gold,%d 金币
+100 Gold,100 Gold,100 金币
+%d - %d Physical,%d - %d Physical,%d - %d 物理伤害
+%.1f meters,%.1f meters,%.1f 米
+%.1f attack factor,%.1f attack factor,%.1f 攻击系数
+%d Guard Rating,%d Guard Rating,%d 防御等级
+A brave adventurer exploring Wave Function Collapse dungeons to gather valuable brewing ingredients for the Cozy Tavern.,A brave adventurer exploring Wave Function Collapse dungeons to gather valuable brewing ingredients for the Cozy Tavern.,一位勇敢的冒险者探索波函数坍缩生成的地牢，为温馨酒馆收集珍贵的酿造材料。
+Equipment Inspect,Equipment Inspect,装备检视
+Gear Specifications,Gear Specifications,装备规格
+Name:,Name:,名称：
+Condition:,Condition:,状态：
+Power/Dmg:,Power/Dmg:,威力/伤害：
+Reach Limit:,Reach Limit:,范围限制：
+Item Lore:,Item Lore:,物品描述：
+%d / %d (Stable),%d / %d (Stable),%d / %d（稳定）
+%d - %d Phys,%d - %d Phys,%d - %d 物理
+N/A (Blocking Focus),N/A (Blocking Focus),无（专注格挡）
+A versatile close-combat weapon suited for slashing dungeon monsters.,A versatile close-combat weapon suited for slashing dungeon monsters.,一把多功能近战武器，适合劈砍地牢怪物。
+A sturdy lightweight buckler used to block incoming attacks and stun opponents.,A sturdy lightweight buckler used to block incoming attacks and stun opponents.,一面坚固轻便的小圆盾，用于格挡来袭攻击并眩晕对手。
+Short Sword,Short Sword,短剑
+Axe,Axe,战斧
+Buckler,Buckler,圆盾
+Adventure Quests,Adventure Quests,冒险任务
+QUEST DETAILS:,QUEST DETAILS:,任务详情：
+REQUIRED MATERIALS (收集进度):,REQUIRED MATERIALS (收集进度):,所需材料（收集进度）：
+(OK),(OK),（完成）
+(Incomplete),(Incomplete),（未完成）
+REWARDS:,REWARDS:,奖励：
+[Active],[Active],[进行中]
+[Ready to Hand In (可交付)],[Ready to Hand In (可交付)],[可交付]
+[%d/%d Gained],[%d/%d Gained],[%d/%d 已获得]
+Gathering Ingredients for Glowcap Ale,Gathering Ingredients for Glowcap Ale,收集荧光浆果麦芽酒材料
+"The local travelers love the sweet-sour, glowing taste of Glowcap Ale. Gather the necessary materials in the dungeon.","The local travelers love the sweet-sour, glowing taste of Glowcap Ale. Gather the necessary materials in the dungeon.",当地的旅人喜爱荧光浆果麦芽酒酸甜发光的味道。在地牢中收集所需材料。
+"150 Gold, 20 Rep","150 Gold, 20 Rep",150金币，20声望
+Slime Core Preservation,Slime Core Preservation,收集史莱姆核心
+Tavern brewing requires highly elastic stabilizers. Defeat Slimes in the procedural dungeon to collect jelly.,Tavern brewing requires highly elastic stabilizers. Defeat Slimes in the procedural dungeon to collect jelly.,酒馆酿造需要高弹性稳定剂。在程序生成的地牢中击败史莱姆收集凝胶。
+"100 Gold, 15 Rep","100 Gold, 15 Rep",100金币，15声望
+Fire Bloom Inferno Brewing,Fire Bloom Inferno Brewing,恶魔烈焰特调
+Brew a dynamic and spicy drink for the Fire Imps. Gather Fire Bloom in the dungeon vaults.,Brew a dynamic and spicy drink for the Fire Imps. Gather Fire Bloom in the dungeon vaults.,为火焰小鬼酿造一款充满活力的辣味饮品。在地牢密室中收集烈焰花瓣。
+"250 Gold, 35 Rep","250 Gold, 35 Rep",250金币，35声望
+Props / Objects,Props / Objects,场景道具
+Table,Table,木桌
+Stool,Stool,圆凳
+Barrel,Barrel,木桶
+Pillar,Pillar,石柱
+Chest,Chest,宝箱
+Portal,Portal,传送门
+Weapons & Shields,Weapons & Shields,武器装备
+Shortsword,Shortsword,短剑
+Greatsword,Greatsword,双手大剑
+Spikes Trap,Spikes Trap,地刺陷阱
+Monsters,Monsters,怪物建模
+Goblin,Goblin,哥布林
+Spider,Spider,巨型蜘蛛
+Slime,Slime,史莱姆
+Skeleton,Skeleton,骷髅兵
+Bat,Bat,吸血蝙蝠
+Rat,Rat,巨鼠
+Troll,Troll,巨魔
+Zombie,Zombie,僵尸
+Imp,Imp,小恶魔
+Harpy,Harpy,哈比鸟人
+Gatherable Materials,Gatherable Materials,采集原料
+Wild Glowcap,Wild Glowcap,野生荧光菇
+Frost Berry,Frost Berry,霜冻浆果
+Fire Bloom,Fire Bloom,烈焰花瓣
+Cave Lichen,Cave Lichen,洞穴苔藓
+Honeycomb,Honeycomb,野生蜂巢
+Cozy Candlelight,Cozy Candlelight,暖烛光
+Daylight,Daylight,白日光
+Eerie Moonlight,Eerie Moonlight,冷月光
+GLTF PackedScene,GLTF PackedScene,GLTF 场景
+Wavefront OBJ Mesh,Wavefront OBJ Mesh,Wavefront OBJ 网格
+%d Verts,%d Verts,%d 顶点
 "Mocked: 1,852 Verts","Mocked: 1,852 Verts","模拟：1,852 顶点"
-"Normalized to 1.5 units","Normalized to 1.5 units","标准化为1.5单位"
-"VALIDATED & STABLE","VALIDATED & STABLE","已验证且稳定"
-"Unknown / Missing","Unknown / Missing","未知 / 缺失"
-"0 Verts","0 Verts","0 顶点"
+Normalized to 1.5 units,Normalized to 1.5 units,标准化为1.5单位
+VALIDATED & STABLE,VALIDATED & STABLE,已验证且稳定
+Unknown / Missing,Unknown / Missing,未知 / 缺失
+0 Verts,0 Verts,0 顶点
 "0, 0, 0","0, 0, 0","0, 0, 0"
-"MISSING SOURCE MODEL","MISSING SOURCE MODEL","缺少源模型"
-"Generic Brew (普通酿造)","Generic Brew (普通酿造)","普通酿造"
-"Sweet Grass","Sweet Grass","甜心草"
-"Bitter Root","Bitter Root","苦艾根"
-"Mountain Barley","Mountain Barley","高山大麦"
-"Witch Plum","Witch Plum","女巫李"
-"Shadow Lotus","Shadow Lotus","暗影莲花"
-"Sunflower Seed","Sunflower Seed","向日葵籽"
-"Ironwood Bark","Ironwood Bark","铁木树皮"
-"Amber Resin","Amber Resin","琥珀树脂"
-"Acid Grape","Acid Grape","酸腺葡萄"
-"Rock Salt","Rock Salt","岩盐结晶"
-"Goblin Ear","Goblin Ear","哥布林耳尖"
-"Spider Poison Sac","Spider Poison Sac","蜘蛛毒囊"
-"Slime Jelly","Slime Jelly","史莱姆凝胶"
-"Bat Wing","Bat Wing","蝙蝠翅膀"
-"Wolf Fang","Wolf Fang","野狼犬齿"
-"Boar Tusk","Boar Tusk","野猪獠牙"
-"Skeleton Dust","Skeleton Dust","白骨粉末"
-"Giant Rat Tail","Giant Rat Tail","巨鼠尾巴"
-"Screaming Spores","Screaming Spores","尖叫蕈孢子"
-"Imp Horn Dust","Imp Horn Dust","小恶魔角粉"
-"Troll Blood","Troll Blood","巨魔之血"
-"Zombie Flesh","Zombie Flesh","腐肉精华"
-"Harpy Feather","Harpy Feather","哈比羽毛粉"
-"Basilisk Scale","Basilisk Scale","蜥蜴人鳞片"
-"Drake Scale","Drake Scale","幼龙碎鳞"
-"Glowcap Berry Ale","Glowcap Berry Ale","荧光浆果麦芽酒"
-"A refreshing ale with a faint glow and icy chill.","A refreshing ale with a faint glow and icy chill.","带有淡淡幽光与极寒霜冻风味的清爽麦芽酒。"
-"Sweet Slime Nectar","Sweet Slime Nectar","甜心史莱姆花蜜"
-"An incredibly thick and sweet nectar, a slime's favorite.","An incredibly thick and sweet nectar, a slime's favorite.","极度黏稠甜美的花蜜，是史莱姆的最爱。"
-"Goblin Bitter Brew","Goblin Bitter Brew","哥布林苦汁烈酒"
-"A strong, gamey brew with extreme bitterness and saltiness.","A strong, gamey brew with extreme bitterness and saltiness.","带有强烈腥膻气味与极度苦咸风味的哥布林传统烈酒。"
-"Fiery Imp Infusion","Fiery Imp Infusion","恶魔烈焰浸剂"
-"Scorching hot, this demonic drink makes you breathe smoke and sulfur.","Scorching hot, this demonic drink makes you breathe smoke and sulfur.","辛辣灼热至极，饮下后会呼出硫磺与黑烟的恶魔之饮。"
-"Shadow Lotus Tea","Shadow Lotus Tea","暗影莲华圣茗"
-"A high-meditation tea with floral aroma and subtle sour darkness.","A high-meditation tea with floral aroma and subtle sour darkness.","散发出迷离花香与微酸幽暗气质的高阶冥想圣茶。"
-"goblin","goblin","哥布林"
-"spider","spider","巨型蜘蛛"
-"slime","slime","史莱姆"
-" MODEL VIEWER / EDITOR"," MODEL VIEWER / EDITOR"," 模型查看器 / 编辑器"
-"Auto-Rotate Model","Auto-Rotate Model","自动旋转模型"
-"Rot Speed: ","Rot Speed: ","旋转速度："
-"Display Floor Grid","Display Floor Grid","显示地板网格"
-"Light Kit: ","Light Kit: ","灯光方案："
-" ASSET INSPECTOR"," ASSET INSPECTOR"," 资源检查器"
-"Model Specifications:","Model Specifications:","模型规格："
-"Path:","Path:","路径："
-"Type:","Type:","类型："
-"OBJ Mesh","OBJ Mesh","OBJ 网格"
-"Normalized","Normalized","已标准化"
-"Vertices:","Vertices:","顶点数："
-"Bounds:","Bounds:","包围盒："
+MISSING SOURCE MODEL,MISSING SOURCE MODEL,缺少源模型
+Generic Brew (普通酿造),Generic Brew (普通酿造),普通酿造
+Sweet Grass,Sweet Grass,甜心草
+Bitter Root,Bitter Root,苦艾根
+Mountain Barley,Mountain Barley,高山大麦
+Witch Plum,Witch Plum,女巫李
+Shadow Lotus,Shadow Lotus,暗影莲花
+Sunflower Seed,Sunflower Seed,向日葵籽
+Ironwood Bark,Ironwood Bark,铁木树皮
+Amber Resin,Amber Resin,琥珀树脂
+Acid Grape,Acid Grape,酸腺葡萄
+Rock Salt,Rock Salt,岩盐结晶
+Goblin Ear,Goblin Ear,哥布林耳尖
+Spider Poison Sac,Spider Poison Sac,蜘蛛毒囊
+Slime Jelly,Slime Jelly,史莱姆凝胶
+Bat Wing,Bat Wing,蝙蝠翅膀
+Wolf Fang,Wolf Fang,野狼犬齿
+Boar Tusk,Boar Tusk,野猪獠牙
+Skeleton Dust,Skeleton Dust,白骨粉末
+Giant Rat Tail,Giant Rat Tail,巨鼠尾巴
+Screaming Spores,Screaming Spores,尖叫蕈孢子
+Imp Horn Dust,Imp Horn Dust,小恶魔角粉
+Troll Blood,Troll Blood,巨魔之血
+Zombie Flesh,Zombie Flesh,腐肉精华
+Harpy Feather,Harpy Feather,哈比羽毛粉
+Basilisk Scale,Basilisk Scale,蜥蜴人鳞片
+Drake Scale,Drake Scale,幼龙碎鳞
+Glowcap Berry Ale,Glowcap Berry Ale,荧光浆果麦芽酒
+A refreshing ale with a faint glow and icy chill.,A refreshing ale with a faint glow and icy chill.,带有淡淡幽光与极寒霜冻风味的清爽麦芽酒。
+Sweet Slime Nectar,Sweet Slime Nectar,甜心史莱姆花蜜
+"An incredibly thick and sweet nectar, a slime's favorite.","An incredibly thick and sweet nectar, a slime's favorite.",极度黏稠甜美的花蜜，是史莱姆的最爱。
+Goblin Bitter Brew,Goblin Bitter Brew,哥布林苦汁烈酒
+"A strong, gamey brew with extreme bitterness and saltiness.","A strong, gamey brew with extreme bitterness and saltiness.",带有强烈腥膻气味与极度苦咸风味的哥布林传统烈酒。
+Fiery Imp Infusion,Fiery Imp Infusion,恶魔烈焰浸剂
+"Scorching hot, this demonic drink makes you breathe smoke and sulfur.","Scorching hot, this demonic drink makes you breathe smoke and sulfur.",辛辣灼热至极，饮下后会呼出硫磺与黑烟的恶魔之饮。
+Shadow Lotus Tea,Shadow Lotus Tea,暗影莲华圣茗
+A high-meditation tea with floral aroma and subtle sour darkness.,A high-meditation tea with floral aroma and subtle sour darkness.,散发出迷离花香与微酸幽暗气质的高阶冥想圣茶。
+goblin,goblin,哥布林
+spider,spider,巨型蜘蛛
+slime,slime,史莱姆
+ MODEL VIEWER / EDITOR, MODEL VIEWER / EDITOR, 模型查看器 / 编辑器
+Auto-Rotate Model,Auto-Rotate Model,自动旋转模型
+Rot Speed: ,Rot Speed: ,旋转速度：
+Display Floor Grid,Display Floor Grid,显示地板网格
+Light Kit: ,Light Kit: ,灯光方案：
+ ASSET INSPECTOR, ASSET INSPECTOR, 资源检查器
+Model Specifications:,Model Specifications:,模型规格：
+Path:,Path:,路径：
+Type:,Type:,类型：
+OBJ Mesh,OBJ Mesh,OBJ 网格
+Normalized,Normalized,已标准化
+Vertices:,Vertices:,顶点数：
+Bounds:,Bounds:,包围盒：
 "1,852 Verts","1,852 Verts","1,852 顶点"
-"Status Check:","Status Check:","状态检查："
-"VALIDATED","VALIDATED","已验证"
-"120 Gold","120 Gold","120 金币"
-"3 - 5 Phys","3 - 5 Phys","3 - 5 物理"
-"30 Shield Block","30 Shield Block","30 盾牌格挡"
-"3.5 meters","3.5 meters","3.5 米"
-"1.0 factor","1.0 factor","1.0 系数"
-"30 / 30","30 / 30","30 / 30"
-"A brave adventurer...","A brave adventurer...","一位勇敢的冒险者..."
-"A versatile close-combat weapon...","A versatile close-combat weapon...","一把多功能近战武器..."
-"Start Game","Start Game","开始游戏"
-"Continue","Continue","继续游戏"
-"Gallery","Gallery","图鉴"
-"Settings","Settings","设置"
-"Tutorial","Tutorial","教程"
-"NPC","NPC","NPC"
-"Choose whether to play the opening tutorial before entering the tavern.","Choose whether to play the opening tutorial before entering the tavern.","选择是否先体验开局教程，再进入酒馆。"
-"Play Tutorial","Play Tutorial","进入教程"
-"Skip To Tavern","Skip To Tavern","直接进入酒馆"
-"Back","Back","返回"
-"PAUSED","PAUSED","暂停"
-"Resume","Resume","继续游戏"
-"Main Menu","Main Menu","返回主菜单"
-"hey! you! finally wake","hey! you! finally wake","嘿！你！你终于醒了。"
-"WASD Move  |  Shift Run","WASD Move  |  Shift Run","WASD 移动  |  Shift 奔跑"
-"It will not push open.","It will not push open.","这扇门推不开。"
-"[F] Kick Door","[F] Kick Door","[F] 踢开门"
-"Move away from the door. Something followed us.","Move away from the door. Something followed us.","离门远一点。有东西跟着我们进来了。"
-"Step away from the tavern door","Step away from the tavern door","先离开酒馆门口"
-"Grab the barrel with E and throw it to stun the goblin.","Grab the barrel with E and throw it to stun the goblin.","按 E 拿起木桶，把它砸出去眩晕哥布林。"
-"[E] Pick Up Barrel  |  [LMB] Throw","[E] Pick Up Barrel  |  [LMB] Throw","[E] 拿起木桶  |  [左键] 投掷"
-"Behind the bar. Take the weapon.","Behind the bar. Take the weapon.","去吧台后面，把武器拿上。"
-"[E] Pick Up Weapon","[E] Pick Up Weapon","[E] 拿起武器"
-"Fight. Left click attacks. Right click blocks. F kicks.","Fight. Left click attacks. Right click blocks. F kicks.","开始战斗。左键攻击，右键格挡，F 踢击。"
-"[LMB] Attack  |  [RMB] Block  |  [F] Kick","[LMB] Attack  |  [RMB] Block  |  [F] Kick","[左键] 攻击  |  [右键] 格挡  |  [F] 踢击"
-"The tavern is yours. Sign the inheritance letter.","The tavern is yours. Sign the inheritance letter.","这间酒馆归你了。签下这封继承书吧。"
-"Write your permanent name into the letter","Write your permanent name into the letter","把你的永久名字写进这封信里"
-"Please write your name.","Please write your name.","请先写下你的名字。"
-"Inheritance Letter","Inheritance Letter","继承书"
-"To the new keeper of this tavern,\n\nThe former heir has been struck from this record.\nAll rights, debts, barrels, and broken chairs now pass to you.\n\nDear","To the new keeper of this tavern,\n\nThe former heir has been struck from this record.\nAll rights, debts, barrels, and broken chairs now pass to you.\n\nDear","致这间酒馆的新主人：\n\n前任继承人的名字已从记录中划去。\n从现在起，酒馆的一切权益、债务、木桶与破椅子，皆归你所有。\n\n亲爱的"
-"Your permanent name","Your permanent name","你的永久名字"
-",\nplease confirm by mark and claim the tavern.",",\nplease confirm by mark and claim the tavern.","，\n请按下手印，正式接收这间酒馆。"
-"Seal","Seal","按下手印"
-"[Handprint]","[Handprint]","[手印]"
-"Monster Drops","Monster Drops","怪物掉落物"
-"Goblin Tooth","Goblin Tooth","哥布林犬齿"
-"Spider Web","Spider Web","粘稠蜘蛛丝"
-"Slime Core","Slime Core","史莱姆核心"
-"Bat Guano","Bat Guano","蝙蝠粪便结晶"
-"Fossil Bone","Fossil Bone","古老遗骨"
-"Rat Whisker","Rat Whisker","巨鼠胡须"
-"Imp Wing Ash","Imp Wing Ash","恶魔翅灰"
-"Troll Skin","Troll Skin","巨魔厚皮"
-"Zombie Nail","Zombie Nail","僵尸指甲"
-"Harpy Talon","Harpy Talon","哈比尖爪"
-"Mug","Mug","酒杯"
-"[S]tart Game","[S]Start Game","[S]开始游戏"
-"[C]ontinue","[C]ontinue","[C]继续游戏"
-"[G]allery","[G]allery","[G]模型展厅"
-"Settin[g]s","Settin[g]s","设[g]置"
-"E[x]it Game","E[x]it Game","退[x]出游戏"
-"Character Gear & Quest Log","Character Gear & Quest Log","角色装备与任务日志"
-"Items","Items","物品"
-"Stats","Stats","属性"
-"Skills","Skills","技能"
-"Close Panel","Close Panel","关闭面板"
-"Head\n[Empty]","Head\n[Empty]","头部\n[空]"
-"Chest\n[Leather]","Chest\n[Leather]","胸部\n[皮甲]"
-"Hands\n[Gloves]","Hands\n[Gloves]","手部\n[手套]"
-"Feet\n[Boots]","Feet\n[Boots]","脚部\n[靴子]"
-"Back\n[Empty]","Back\n[Empty]","背部\n[空]"
-"Accessory\n[Ring]","Accessory\n[Ring]","饰品\n[戒指]"
-"Main Hand\n[Sword]","Main Hand\n[Sword]","主手\n[剑]"
-"Off Hand\n[Shield]","Off Hand\n[Shield]","副手\n[盾]"
-"Main Hand\n[Fists]","Main Hand\n[Fists]","主手\n[徒手]"
-"Off Hand\n[Empty]","Off Hand\n[Empty]","副手\n[空]"
-"Main Hand\n[%s]","Main Hand\n[%s]","主手\n[%s]"
-"Off Hand\n[%s]","Off Hand\n[%s]","副手\n[%s]"
-"%s (Equipped)","%s (Equipped)","%s（已装备）"
-"Fists","Fists","徒手"
-"Heavy Strike (重击)","Heavy Strike","重击"
-"Swift Slash (迅捷回旋)","Swift Slash","迅捷回旋"
-"Shield Wall (坚盾壁垒)","Shield Wall","坚盾壁垒"
-"Adrenaline Rush (绝境苏醒)","Adrenaline Rush","被动：绝境苏醒"
-"6.0 seconds","6.0 seconds","6.0 秒"
-"4.0 seconds","4.0 seconds","4.0 秒"
-"12.0 seconds","12.0 seconds","12.0 秒"
-"15 Stamina","15 Stamina","15 耐力"
-"10 Stamina","10 Stamina","10 耐力"
-"20 Stamina","20 Stamina","20 耐力"
-"Channels physical power into a single devastating blow, dealing 150% physical damage. Can stun low-tier enemies on impact.","Channels physical power into a single devastating blow, dealing 150% physical damage. Can stun low-tier enemies on impact.","凝聚物理力量进行一次毁灭性打击，造成 150% 物理伤害。击中时可眩晕低阶敌人。"
-"Performs a rapid 360-degree sweep with the main-hand weapon, hitting all nearby monsters and dealing 80% slash damage.","Performs a rapid 360-degree sweep with the main-hand weapon, hitting all nearby monsters and dealing 80% slash damage.","使用主手武器进行一次快速的 360 度横扫，击中周围所有怪物并造成 80% 斩击伤害。"
-"Raises the shield in defense, raising Guard Rating and damage reduction by 100% for 3 seconds. Blocked attacks recovery speed increases.","Raises the shield in defense, raising Guard Rating and damage reduction by 100% for 3 seconds. Blocked attacks recovery speed increases.","举盾防御，使格挡等级和伤害减免提高 100%，持续 3 秒。格挡后的攻击恢复速度加快。"
-"Passive: When HP drops below 30%, increases attack speed, recovery speed and movement speed by 40% until health is restored.","Passive: When HP drops below 30%, increases attack speed, recovery speed and movement speed by 40% until health is restored.","被动：当生命值低于 30% 时，提高攻击速度、恢复速度和移动速度 40%，直到生命值恢复。"
-"Armor Slots:","Armor Slots:","护甲槽位："
-"Hands/Gear:","Hands/Gear:","武器/装备："
-"Description:","Description:","描述："
-"No item selected","No item selected","未选择物品"
-"Head\n[Empty]","Head\n[Empty]","头部\n[空]"
-"Chest\n[Leather]","Chest\n[Leather]","胸部\n[皮甲]"
-"Hands\n[Gloves]","Hands\n[Gloves]","双手\n[手套]"
-"Feet\n[Boots]","Feet\n[Boots]","脚部\n[靴子]"
-"Back\n[Empty]","Back\n[Empty]","背部\n[空]"
-"Accessory\n[Ring]","Accessory\n[Ring]","饰品\n[戒指]"
-"Main Hand\n[Sword]","Main Hand\n[Sword]","主手\n[剑]"
-"Off Hand\n[Shield]","Off Hand\n[Shield]","副手\n[盾牌]"
-"Main Hand\n[Fists]","Main Hand\n[Fists]","主手\n[拳头]"
-"Select a skill to inspect its parameters...","Select a skill to inspect its parameters...","选择一个技能查看参数..."
-"Immutable","Immutable","不可变"
-"Material","Material","材料"
-"Head Armor","Head Armor","头部护甲"
-"Chest Armor (Leather)","Chest Armor (Leather)","胸甲（皮甲）"
-"Gloves","Gloves","手套"
-"Boots","Boots","靴子"
-"Back Slot [Empty]","Back Slot [Empty]","背部 [空位]"
-"Accessory Ring","Accessory Ring","饰品戒指"
-"Basic adventuring hood providing minimal defense but high comfort.","Basic adventuring hood providing minimal defense but high comfort.","基础冒险兜帽，提供最低限度防护但佩戴舒适。"
-"Reinforced leather tunic, offering decent protection against bites and scratches.","Reinforced leather tunic, offering decent protection against bites and scratches.","强化皮甲外套，可有效抵御撕咬和抓挠。"
-"Thick leather wrap to protect knuckles during close combat and shield grips.","Thick leather wrap to protect knuckles during close combat and shield grips.","厚皮革护手，在近战和持盾时保护指关节。"
-"Heavy dungeon travel boots protecting feet from acid traps and mud.","Heavy dungeon travel boots protecting feet from acid traps and mud.","重型地牢旅行靴，保护双脚免受酸液陷阱和泥泞伤害。"
-"Can hold spare ranged weapons like Short Bows or Crossbows.","Can hold spare ranged weapons like Short Bows or Crossbows.","可存放短弓或弩等备用远程武器。"
-"Copper signet ring carved with tiny tavern engravings. Increases max stamina slightly.","Copper signet ring carved with tiny tavern engravings. Increases max stamina slightly.","刻有微小酒馆图案的铜质印章戒指。略微提高最大耐力。"
-"Bare knuckles. Useful when weapon breaks, but damage reach is extremely limited.","Bare knuckles. Useful when weapon breaks, but damage reach is extremely limited.","赤手空拳。武器损坏时有用，但伤害和范围极为有限。"
-"Can equip Bucklers or Heater Shields to block incoming strikes.","Can equip Bucklers or Heater Shields to block incoming strikes.","可装备小圆盾或鸢盾来格挡来袭攻击。"
-"A close-combat weapon suited for slashing dungeon monsters.","A close-combat weapon suited for slashing dungeon monsters.","适合劈砍地牢怪物的近战武器。"
-"A sturdy buckler used to block attacks and stun opponents.","A sturdy buckler used to block attacks and stun opponents.","用于格挡攻击和眩晕对手的坚固小圆盾。"
-"An ingredient collected from the deep dungeon vaults.","An ingredient collected from the deep dungeon vaults.","从地牢深处收集的酿造材料。"
-"SKILL DETAILS:","SKILL DETAILS:","技能详情："
-"Name:","Name:","名称："
-"Cooldown:","Cooldown:","冷却："
-"Cost:","Cost:","消耗："
-"DESCRIPTION:","DESCRIPTION:","描述："
-"Off Hand [Empty]","Off Hand [Empty]","副手\n[空]"
-"HP","HP","生命"
-"MP","MP","法力"
-"你踏入了地牢深处…","You venture deeper into the dungeon…","你踏入了地牢深处…"
-"受到伤害！剩余生命: %d","Took damage! HP remaining: %d","受到伤害！剩余生命: %d"
-"你倒下了…","You have fallen…","你倒下了…"
-"装备盾牌: %s","Equipped shield: %s","装备盾牌: %s"
-"装备武器: %s","Equipped weapon: %s","装备武器: %s"
-"获得钥匙","Obtained a key","获得钥匙"
-"击败了 %s","Defeated %s","击败了 %s"
-"哥布林","Goblin","哥布林"
-"巨鼠","Giant Rat","巨鼠"
-"骷髅兵","Skeleton","骷髅兵"
-"史莱姆","Slime","史莱姆"
-"巨魔","Troll","巨魔"
-"死灵领主","Necrolord","死灵领主"
-"巨龙","Dragon","巨龙"
-"怪物","Monster","怪物"
-"精英","Elite","精英"
-"敌人","Enemy","敌人"
-"未知敌人","Unknown Enemy","未知敌人"
-"[精英]","[ELITE]","[精英]"
-"Pick Up","Pick Up","拾取"
-"Interact","Interact","交互"
-"Item","Item","物品"
-"Object","Object","物体"
-"Door","Door","门"
-"Damage %d-%d","Damage %d-%d","伤害 %d-%d"
-"Reach %.1fm","Reach %.1fm","距离 %.1fm"
-"Phys Def %+d","Phys Def %+d","物防 %+d"
-"Evade %+0.1f%%","Evade %+0.1f%%","闪避 %+0.1f%%"
-"Move Spd %+.0f%%","Move Spd %+.0f%%","移速 %+.0f%%"
-"Shield Def %+d","Shield Def %+d","盾防 %+d"
-"Block %d / %.1f%%","Block %d / %.1f%%","格挡 %d / %.1f%%"
-"Durability %d/%d","Durability %d/%d","耐久 %d/%d"
-"Qty x%d","Qty x%d","数量 x%d"
-"Flavor: %s","Flavor: %s","风味：%s"
-"Rarity %s","Rarity %s","稀有度 %s"
-"Weapon","Weapon","武器"
-"Shield","Shield","盾牌"
-"Light Armor","Light Armor","轻甲"
-"Heavy Armor","Heavy Armor","重甲"
-"Accessory","Accessory","饰品"
-"Movable Object","Movable Object","可搬动物件"
-"Rune","Rune","符文"
-"A handheld weapon, configurable to any hand slot.","A handheld weapon, configurable to any hand slot.","手持装备，可配置到任意手持槽。"
-"A shield shares the off-hand slot with weapons; switch via scroll wheel.","A shield shares the off-hand slot with weapons; switch via scroll wheel.","盾牌与武器共用手持槽，可通过滚轮切换。"
-"Armor participates in hit defense and may be damaged on extraction failure.","Armor participates in hit defense and may be damaged on extraction failure.","防具会参与受击防御，并可能在撤离失败时损坏。"
-"Brewing material recovered from the dungeon.","Brewing material recovered from the dungeon.","地牢中带回的酿造材料。"
-"Defensive gear equippable in the off-hand slot.","Defensive gear equippable in the off-hand slot.","可装备到手持槽的防御装备。"
-"A scene object you can lift, throw, or use in impromptu combat.","A scene object you can lift, throw, or use in impromptu combat.","可举起、投掷或用于临时战斗的场景物件。"
-"Opening...","Opening...","开启中…"
-"Hold [E] to Open (5s)","Hold [E] to Open (5s)","长按 [E] 打开（5秒）"
+Status Check:,Status Check:,状态检查：
+VALIDATED,VALIDATED,已验证
+120 Gold,120 Gold,120 金币
+3 - 5 Phys,3 - 5 Phys,3 - 5 物理
+30 Shield Block,30 Shield Block,30 盾牌格挡
+3.5 meters,3.5 meters,3.5 米
+1.0 factor,1.0 factor,1.0 系数
+30 / 30,30 / 30,30 / 30
+A brave adventurer...,A brave adventurer...,一位勇敢的冒险者...
+A versatile close-combat weapon...,A versatile close-combat weapon...,一把多功能近战武器...
+Start Game,Start Game,开始游戏
+Continue,Continue,继续游戏
+Gallery,Gallery,图鉴
+Settings,Settings,设置
+Tutorial,Tutorial,教程
+NPC,NPC,NPC
+Choose whether to play the opening tutorial before entering the tavern.,Choose whether to play the opening tutorial before entering the tavern.,选择是否先体验开局教程，再进入酒馆。
+Play Tutorial,Play Tutorial,进入教程
+Skip To Tavern,Skip To Tavern,直接进入酒馆
+Back,Back,返回
+PAUSED,PAUSED,暂停
+Resume,Resume,继续游戏
+Main Menu,Main Menu,返回主菜单
+hey! you! finally wake,hey! you! finally wake,嘿！你！你终于醒了。
+WASD Move  |  Shift Run,WASD Move  |  Shift Run,WASD 移动  |  Shift 奔跑
+It will not push open.,It will not push open.,这扇门推不开。
+[F] Kick Door,[F] Kick Door,[F] 踢开门
+Move away from the door. Something followed us.,Move away from the door. Something followed us.,离门远一点。有东西跟着我们进来了。
+Step away from the tavern door,Step away from the tavern door,先离开酒馆门口
+Grab the barrel with E and throw it to stun the goblin.,Grab the barrel with E and throw it to stun the goblin.,按 E 拿起木桶，把它砸出去眩晕哥布林。
+[E] Pick Up Barrel  |  [LMB] Throw,[E] Pick Up Barrel  |  [LMB] Throw,[E] 拿起木桶  |  [左键] 投掷
+Behind the bar. Take the weapon.,Behind the bar. Take the weapon.,去吧台后面，把武器拿上。
+[E] Pick Up Weapon,[E] Pick Up Weapon,[E] 拿起武器
+Fight. Left click attacks. Right click blocks. F kicks.,Fight. Left click attacks. Right click blocks. F kicks.,开始战斗。左键攻击，右键格挡，F 踢击。
+[LMB] Attack  |  [RMB] Block  |  [F] Kick,[LMB] Attack  |  [RMB] Block  |  [F] Kick,[左键] 攻击  |  [右键] 格挡  |  [F] 踢击
+The tavern is yours. Sign the inheritance letter.,The tavern is yours. Sign the inheritance letter.,这间酒馆归你了。签下这封继承书吧。
+Write your permanent name into the letter,Write your permanent name into the letter,把你的永久名字写进这封信里
+Please write your name.,Please write your name.,请先写下你的名字。
+Inheritance Letter,Inheritance Letter,继承书
+"To the new keeper of this tavern,\n\nThe former heir has been struck from this record.\nAll rights, debts, barrels, and broken chairs now pass to you.\n\nDear","To the new keeper of this tavern,\n\nThe former heir has been struck from this record.\nAll rights, debts, barrels, and broken chairs now pass to you.\n\nDear",致这间酒馆的新主人：\n\n前任继承人的名字已从记录中划去。\n从现在起，酒馆的一切权益、债务、木桶与破椅子，皆归你所有。\n\n亲爱的
+Your permanent name,Your permanent name,你的永久名字
+",\nplease confirm by mark and claim the tavern.",",\nplease confirm by mark and claim the tavern.",，\n请按下手印，正式接收这间酒馆。
+Seal,Seal,按下手印
+[Handprint],[Handprint],[手印]
+Monster Drops,Monster Drops,怪物掉落物
+Goblin Tooth,Goblin Tooth,哥布林犬齿
+Spider Web,Spider Web,粘稠蜘蛛丝
+Slime Core,Slime Core,史莱姆核心
+Bat Guano,Bat Guano,蝙蝠粪便结晶
+Fossil Bone,Fossil Bone,古老遗骨
+Rat Whisker,Rat Whisker,巨鼠胡须
+Imp Wing Ash,Imp Wing Ash,恶魔翅灰
+Troll Skin,Troll Skin,巨魔厚皮
+Zombie Nail,Zombie Nail,僵尸指甲
+Harpy Talon,Harpy Talon,哈比尖爪
+Mug,Mug,酒杯
+[S]tart Game,[S]Start Game,[S]开始游戏
+[C]ontinue,[C]ontinue,[C]继续游戏
+[G]allery,[G]allery,[G]模型展厅
+Settin[g]s,Settin[g]s,设[g]置
+E[x]it Game,E[x]it Game,退[x]出游戏
+Items,Items,物品
+Stats,Stats,属性
+Skills,Skills,技能
+Head\n[Empty],Head\n[Empty],头部\n[空]
+Chest\n[Leather],Chest\n[Leather],胸部\n[皮甲]
+Hands\n[Gloves],Hands\n[Gloves],手部\n[手套]
+Feet\n[Boots],Feet\n[Boots],脚部\n[靴子]
+Back\n[Empty],Back\n[Empty],背部\n[空]
+Accessory\n[Ring],Accessory\n[Ring],饰品\n[戒指]
+Main Hand\n[Sword],Main Hand\n[Sword],主手\n[剑]
+Off Hand\n[Shield],Off Hand\n[Shield],副手\n[盾]
+Main Hand\n[Fists],Main Hand\n[Fists],主手\n[徒手]
+Off Hand\n[Empty],Off Hand\n[Empty],副手\n[空]
+Main Hand\n[%s],Main Hand\n[%s],主手\n[%s]
+Off Hand\n[%s],Off Hand\n[%s],副手\n[%s]
+%s (Equipped),%s (Equipped),%s（已装备）
+Fists,Fists,徒手
+Heavy Strike (重击),Heavy Strike,重击
+Swift Slash (迅捷回旋),Swift Slash,迅捷回旋
+Shield Wall (坚盾壁垒),Shield Wall,坚盾壁垒
+Adrenaline Rush (绝境苏醒),Adrenaline Rush,被动：绝境苏醒
+6.0 seconds,6.0 seconds,6.0 秒
+4.0 seconds,4.0 seconds,4.0 秒
+12.0 seconds,12.0 seconds,12.0 秒
+"Channels physical power into a single devastating blow, dealing 150% physical damage. Can stun low-tier enemies on impact.","Channels physical power into a single devastating blow, dealing 150% physical damage. Can stun low-tier enemies on impact.",凝聚物理力量进行一次毁灭性打击，造成 150% 物理伤害。击中时可眩晕低阶敌人。
+"Performs a rapid 360-degree sweep with the main-hand weapon, hitting all nearby monsters and dealing 80% slash damage.","Performs a rapid 360-degree sweep with the main-hand weapon, hitting all nearby monsters and dealing 80% slash damage.",使用主手武器进行一次快速的 360 度横扫，击中周围所有怪物并造成 80% 斩击伤害。
+"Raises the shield in defense, raising Guard Rating and damage reduction by 100% for 3 seconds. Blocked attacks recovery speed increases.","Raises the shield in defense, raising Guard Rating and damage reduction by 100% for 3 seconds. Blocked attacks recovery speed increases.",举盾防御，使格挡等级和伤害减免提高 100%，持续 3 秒。格挡后的攻击恢复速度加快。
+"Passive: When HP drops below 30%, increases attack speed, recovery speed and movement speed by 40% until health is restored.","Passive: When HP drops below 30%, increases attack speed, recovery speed and movement speed by 40% until health is restored.",被动：当生命值低于 30% 时，提高攻击速度、恢复速度和移动速度 40%，直到生命值恢复。
+Armor Slots:,Armor Slots:,护甲槽位：
+Hands/Gear:,Hands/Gear:,武器/装备：
+Description:,Description:,描述：
+No item selected,No item selected,未选择物品
+Select a skill to inspect its parameters...,Select a skill to inspect its parameters...,选择一个技能查看参数...
+Immutable,Immutable,不可变
+Material,Material,材料
+Head Armor,Head Armor,头部护甲
+Chest Armor (Leather),Chest Armor (Leather),胸甲（皮甲）
+Gloves,Gloves,手套
+Boots,Boots,靴子
+Back Slot [Empty],Back Slot [Empty],背部 [空位]
+Accessory Ring,Accessory Ring,饰品戒指
+Basic adventuring hood providing minimal defense but high comfort.,Basic adventuring hood providing minimal defense but high comfort.,基础冒险兜帽，提供最低限度防护但佩戴舒适。
+"Reinforced leather tunic, offering decent protection against bites and scratches.","Reinforced leather tunic, offering decent protection against bites and scratches.",强化皮甲外套，可有效抵御撕咬和抓挠。
+Thick leather wrap to protect knuckles during close combat and shield grips.,Thick leather wrap to protect knuckles during close combat and shield grips.,厚皮革护手，在近战和持盾时保护指关节。
+Heavy dungeon travel boots protecting feet from acid traps and mud.,Heavy dungeon travel boots protecting feet from acid traps and mud.,重型地牢旅行靴，保护双脚免受酸液陷阱和泥泞伤害。
+Can hold spare ranged weapons like Short Bows or Crossbows.,Can hold spare ranged weapons like Short Bows or Crossbows.,可存放短弓或弩等备用远程武器。
+Copper signet ring carved with tiny tavern engravings. Increases max health slightly.,Copper signet ring carved with tiny tavern engravings. Increases max health slightly.,刻有微小酒馆图案的铜质印章戒指。略微提高生命上限。
+"Bare knuckles. Useful when weapon breaks, but damage reach is extremely limited.","Bare knuckles. Useful when weapon breaks, but damage reach is extremely limited.",赤手空拳。武器损坏时有用，但伤害和范围极为有限。
+Can equip Bucklers or Heater Shields to block incoming strikes.,Can equip Bucklers or Heater Shields to block incoming strikes.,可装备小圆盾或鸢盾来格挡来袭攻击。
+A close-combat weapon suited for slashing dungeon monsters.,A close-combat weapon suited for slashing dungeon monsters.,适合劈砍地牢怪物的近战武器。
+A sturdy buckler used to block attacks and stun opponents.,A sturdy buckler used to block attacks and stun opponents.,用于格挡攻击和眩晕对手的坚固小圆盾。
+An ingredient collected from the deep dungeon vaults.,An ingredient collected from the deep dungeon vaults.,从地牢深处收集的酿造材料。
+SKILL DETAILS:,SKILL DETAILS:,技能详情：
+Cooldown:,Cooldown:,冷却：
+Cost:,Cost:,消耗：
+DESCRIPTION:,DESCRIPTION:,描述：
+Off Hand [Empty],Off Hand [Empty],副手\n[空]
+HP,HP,生命
+MP,MP,法力
+你踏入了地牢深处…,You venture deeper into the dungeon…,你踏入了地牢深处…
+受到伤害！剩余生命: %d,Took damage! HP remaining: %d,受到伤害！剩余生命: %d
+你倒下了…,You have fallen…,你倒下了…
+装备盾牌: %s,Equipped shield: %s,装备盾牌: %s
+装备武器: %s,Equipped weapon: %s,装备武器: %s
+获得钥匙,Obtained a key,获得钥匙
+击败了 %s,Defeated %s,击败了 %s
+哥布林,Goblin,哥布林
+巨鼠,Giant Rat,巨鼠
+骷髅兵,Skeleton,骷髅兵
+史莱姆,Slime,史莱姆
+巨魔,Troll,巨魔
+死灵领主,Necrolord,死灵领主
+巨龙,Dragon,巨龙
+怪物,Monster,怪物
+精英,Elite,精英
+敌人,Enemy,敌人
+未知敌人,Unknown Enemy,未知敌人
+[精英],[ELITE],[精英]
+Pick Up,Pick Up,拾取
+Interact,Interact,交互
+Item,Item,物品
+Object,Object,物体
+Door,Door,门
+Damage %d-%d,Damage %d-%d,伤害 %d-%d
+Reach %.1fm,Reach %.1fm,距离 %.1fm
+Phys Def %+d,Phys Def %+d,物防 %+d
+Evade %+0.1f%%,Evade %+0.1f%%,闪避 %+0.1f%%
+Move Spd %+.0f%%,Move Spd %+.0f%%,移速 %+.0f%%
+Shield Def %+d,Shield Def %+d,盾防 %+d
+Block %d / %.1f%%,Block %d / %.1f%%,格挡 %d / %.1f%%
+Durability %d/%d,Durability %d/%d,耐久 %d/%d
+Qty x%d,Qty x%d,数量 x%d
+Flavor: %s,Flavor: %s,风味：%s
+Rarity %s,Rarity %s,稀有度 %s
+Weapon,Weapon,武器
+Shield,Shield,盾牌
+Light Armor,Light Armor,轻甲
+Heavy Armor,Heavy Armor,重甲
+Accessory,Accessory,饰品
+Movable Object,Movable Object,可搬动物件
+Rune,Rune,符文
+"A handheld weapon, configurable to any hand slot.","A handheld weapon, configurable to any hand slot.",手持装备，可配置到任意手持槽。
+A shield shares the off-hand slot with weapons; switch via scroll wheel.,A shield shares the off-hand slot with weapons; switch via scroll wheel.,盾牌与武器共用手持槽，可通过滚轮切换。
+Armor participates in hit defense and may be damaged on extraction failure.,Armor participates in hit defense and may be damaged on extraction failure.,防具会参与受击防御，并可能在撤离失败时损坏。
+Brewing material recovered from the dungeon.,Brewing material recovered from the dungeon.,地牢中带回的酿造材料。
+Defensive gear equippable in the off-hand slot.,Defensive gear equippable in the off-hand slot.,可装备到手持槽的防御装备。
+"A scene object you can lift, throw, or use in impromptu combat.","A scene object you can lift, throw, or use in impromptu combat.",可举起、投掷或用于临时战斗的场景物件。
+Opening...,Opening...,开启中…
+Hold [E] to Open (5s),Hold [E] to Open (5s),长按 [E] 打开（5秒）
+COZY BREWING TAVERN (Gold: 100),COZY BREWING TAVERN (Gold: 100),温馨酿造酒馆（金币：100）
+Select Expedition Zone,Select Expedition Zone,选择探险区域
+Start Expedition,Start Expedition,开始探险
+[E] Interact,[E] Interact,[E] 交互
+AttrPanel not available,AttrPanel not available,属性面板不可用
+— Battle Attributes —,— Battle Attributes —,— 战斗属性 —
+— Passive Milestones —,— Passive Milestones —,— 被动里程碑 —
+(None unlocked yet),(None unlocked yet),（尚未解锁）
+— No proficiency data yet —,— No proficiency data yet —,— 暂无熟练度数据 —
+100 / 100,100 / 100,100 / 100
+ (Equipped), (Equipped), （已装备）
+N/A,N/A,N/A
+Proficiency,Proficiency,熟练度
+Shields,Shields,盾牌
+Weapons,Weapons,武器
+Characters & Monsters,Characters & Monsters,角色与怪物
+Stable,Stable,稳定
+Out of Control,Out of Control,失控
+Evacuate,Evacuate,撤离
+Deepening,Deepening,加深
+Dark Erosion %03d%%  %s,Dark Erosion %03d%%  %s,暗蚀 %03d%%  %s
+Dark Erosion %d - Evacuate Now,Dark Erosion %d - Evacuate Now,暗蚀 %d - 立刻撤离
+Dark Erosion %d - Time to Leave,Dark Erosion %d - Time to Leave,暗蚀 %d - 差不多该撤了
+Dark Erosion %d - Surroundings Stirring,Dark Erosion %d - Surroundings Stirring,暗蚀 %d - 周围开始躁动
+Dark Erosion %d - Contained,Dark Erosion %d - Contained,暗蚀 %d - 可控
+18:00 reached - tonight's tavern earnings are lost,18:00 reached - tonight's tavern earnings are lost,18:00 已到，今晚经营收入归零
+Time to leave,Time to leave,差不多该撤了
+Depart!,Depart!,出发!
+Chest is empty,Chest is empty,（宝箱已空）
+Backpack is empty,Backpack is empty,（背包为空）
+Unknown Style,Unknown Style,未知风格
+Combat Style %s  Type %s,Combat Style %s  Type %s,战斗风格 %s  类型 %s
+Damage ~%.1f  Mult %.2f,Damage ~%.1f  Mult %.2f,伤害 ~%.1f  倍率 %.2f
+Crit %.0f%%  Crit Dmg %+0.2f,Crit %.0f%%  Crit Dmg %+0.2f,暴击率 %.0f%%  暴伤 %+0.2f
+Armor Pierce %.0f%%  Knockback %.1fm/s  Stun %.1fs,Armor Pierce %.0f%%  Knockback %.1fm/s  Stun %.1fs,穿甲 %.0f%%  击退 %.1fm/s  眩晕 %.1fs
+Phys Def %d  Armor Def %d,Phys Def %d  Armor Def %d,物防 %d  防具防御 %d
+"Shield  Active Block (0.3s perfect window, no durability loss)","Shield  Active Block (0.3s perfect window, no durability loss)",持盾  动作格挡（0.3s完美窗口免耐久）
+Two-Handed  Precise Block (0.3s window),Two-Handed  Precise Block (0.3s window),双手武器  精确格挡（0.3s窗口）
+Attack Interval %.2fs  Move Speed %.2fm/s,Attack Interval %.2fs  Move Speed %.2fm/s,攻击间隔 %.2fs  移动速度 %.2fm/s
+（发酵系统未加载）,(Fermentation system not loaded),（发酵系统未加载）
+（桶位数据缺失）,(Barrel slot data missing),（桶位数据缺失）
+（无酒桶，需扩建）,(No barrels available; needs expansion),（无酒桶，需扩建）
+桶%d: %s,Barrel %d: %s,桶%d: %s
+（无材料，需白天探索收集）,(No materials; gather during daytime expeditions),（无材料，需白天探索收集）
+下料篮：空,Mixing basket: empty,下料篮：空
+下料篮：,Mixing basket: ,下料篮：
+下料篮为空，请先选择材料,Mixing basket is empty; select materials first,下料篮为空，请先选择材料
+发酵系统未加载,Fermentation system not loaded,发酵系统未加载
+无空桶可用，请先开缸或扩建,No empty barrel; open one or expand first,无空桶可用，请先开缸或扩建
+桶%d非空，请选择空桶,Barrel %d is not empty; select an empty barrel,桶%d非空，请选择空桶
+材料库存不足,Insufficient material stock,材料库存不足
+下料失败,Loading failed,下料失败
+已下料至桶%d，发酵中（明日完成）,Loaded into barrel %d; fermenting (ready tomorrow),已下料至桶%d，发酵中（明日完成）
+请先选择桶位,Select a barrel slot first,请先选择桶位
+桶%d不可开缸,Barrel %d cannot be opened,桶%d不可开缸
+桶%d开缸完成,Barrel %d opened,桶%d开缸完成
+，匹配经典酒谱【%s】,", matched classic recipe [%s]",，匹配经典酒谱【%s】
+桶%d不可陈酿（仅 READY 状态可封存）,Barrel %d cannot be aged (only READY state can be sealed),桶%d不可陈酿（仅 READY 状态可封存）
+桶%d已封存陈酿，每日口味 +1，最多 3 天,"Barrel %d sealed for aging; +1 flavor/day, up to 3 days",桶%d已封存陈酿，每日口味 +1，最多 3 天
+%s 库存不足（已选 %d/%d）,%s stock insufficient (selected %d/%d),%s 库存不足（已选 %d/%d）
+已加入 %s 至下料篮,Added %s to mixing basket,已加入 %s 至下料篮
+已选中桶%d,Selected barrel %d,已选中桶%d
+单手近战,One-Handed Melee,单手近战
+双手武器,Two-Handed Weapon,双手武器
+长弓,Longbow,长弓
+轻弩,Light Crossbow,轻弩
+法杖,Staff,法杖
+魔导书,Grimoire,魔导书
+徒手,Unarmed,徒手
+STR 力量,STR Strength,STR 力量
+DEX 敏捷,DEX Agility,DEX 敏捷
+MAG 魔力,MAG Magic,MAG 魔力
+CON 体质,CON Constitution,CON 体质
+AGI 灵巧,AGI Finesse,AGI 灵巧
+PER 感知,PER Perception,PER 感知
+English,English,English
+Simplified Chinese,Simplified Chinese,简体中文
+头部,Head,头部
+身体,Body,身体
+手部,Hands,手部
+脚部,Feet,脚部
+空,Empty,空
+手持 %d%s\n[%s],Held %d%s\n[%s],手持 %d%s\n[%s]
+随身物品为空,Personal items empty,随身物品为空
+仓库为空,Storage empty,仓库为空
+符文为空,Runes empty,符文为空
+%s\n空,%s\nEmpty,%s\n空
+无法绑定到该槽位,Cannot bind to this slot,无法绑定到该槽位
+生命 %d/%d,HP %d/%d,生命 %d/%d
+等级 %d,Level %d,等级 %d
+属性 ,Attributes ,属性 
+当前手持 %s,Currently holding %s,当前手持 %s
+基础伤害 %d-%d  距离 %.1fm,Base damage %d-%d  Range %.1fm,基础伤害 %d-%d  距离 %.1fm
+当前手持 空,Currently holding: empty,当前手持 空
+未找到实机角色,No in-game character found,未找到实机角色
+单手,One-Handed,单手
+双手,Two-Handed,双手
+持盾,Shield,持盾
+暂无熟练度记录,No proficiency records yet,暂无熟练度记录
+装备,Equipment,装备
+F 主动槽,F Active Slot,F 主动槽
+G 主动槽,G Active Slot,G 主动槽
+被动槽 %d,Passive Slot %d,被动槽 %d
+\n符文: %s,\nRunes: %s,\n符文: %s
+神迹！这股香醇彻底征服了我！不虚此生！,A miracle! This exquisite brew has conquered me - a life fulfilled!,神迹！这股香醇彻底征服了我！不虚此生！
+噢噢噢！太正宗了！这就是我想要的味道！,Whoa! So authentic! Exactly the taste I craved!,噢噢噢！太正宗了！这就是我想要的味道！
+啧，味道勉强凑合。润润喉咙还行。,"Tsk, the flavor's merely passable. Fine for wetting the throat.",啧，味道勉强凑合。润润喉咙还行。
+呸！这什么恶心的马尿！别指望我留下铁片！,Bah! What revolting swill! Don't expect me to leave a single coin!,呸！这什么恶心的马尿！别指望我留下铁片！
+价格公道，老板实在。,"Fair price, honest keeper.",价格公道，老板实在。
+嗯……还行吧。,"Hmm... it's alright, I suppose.",嗯……还行吧。
+这价格……算了，下次不来了。,At this price... forget it. I won't be back.,这价格……算了，下次不来了。
+宰客！再也不来了！,Ripped off! Never again!,宰客！再也不来了！
+来一杯。,"One drink, please.",来一杯。
+老板，上酒。,"Keeper, serve the ale.",老板，上酒。
+今晚生意不错。,Good business tonight.,今晚生意不错。
+实惠赞赏,Cheap & Praised,实惠赞赏
+合理接受,Fairly Accepted,合理接受
+昂贵抱怨,Pricey Complaint,昂贵抱怨
+暴利拒付,Profiteering Refusal,暴利拒付
+摔杯拒付,Cup-Smash Refusal,摔杯拒付
+极佳,Excellent,极佳
+满意,Satisfied,满意
+一般,So-So,一般
+完全不合,Totally Unsuited,完全不合
+吧台,Bar,吧台
+酿造材料,Brewing Material,酿造材料
+家具,Furniture,家具
+消耗品,Consumable,消耗品
+钥匙,Key,钥匙
+宝藏,Treasure,宝藏
+装饰,Decor,装饰
+陷阱,Trap,陷阱
+容器,Container,容器
+地面中心,Floor Center,地面中心
+靠墙,Near Wall,靠墙
+角落,Corner,角落
+散布,Scatter,散布
+桌面,On Table,桌面
+随机,Random,随机
+静态,Static,静态
+刚体,Rigid,刚体
+触发器,Trigger,触发器
+锋利的,Sharp,锋利的
+轻盈的,Lightweight,轻盈的
+专注的,Focused,专注的
+狂暴的,Furious,狂暴的
+坚固的,Sturdy,坚固的
+受洗的,Blessed,受洗的
+生锈的,Rusty,生锈的
+笨重的,Clunky,笨重的
+磨损的,Worn,磨损的
+劣质的,Inferior,劣质的
+碎裂的,Cracked,碎裂的
+黯淡的,Dim,黯淡的
+余烬符文,Ember Rune,余烬符文
+迅捷符文,Swift Rune,迅捷符文
+冲击符文,Force Rune,冲击符文
+奔涌符文,Surge Rune,奔涌符文
+抛掷符文,Launch Rune,抛掷符文
+回响符文,Echo Rune,回响符文
+守护符文,Guardian Rune,守护符文
+提高伤害，并附加燃烧概率。,Increases damage and adds a burn chance.,提高伤害，并附加燃烧概率。
+降低冷却与前摇。,Reduces cooldown and cast time.,降低冷却与前摇。
+强化击退与短暂硬直。,Strengthens knockback and brief stun.,强化击退与短暂硬直。
+提高冲撞位移冲量，并强化后续地形撞击伤害。,Increases charge momentum and follow-up terrain-impact damage.,提高冲撞位移冲量，并强化后续地形撞击伤害。
+提高踢击给予的位移距离，并强化落点撞击伤害。,Increases kick displacement and landing-impact damage.,提高踢击给予的位移距离，并强化落点撞击伤害。
+额外触发一次机制，但略微增加冷却。,"Triggers the mechanism an extra time, but slightly raises cooldown.",额外触发一次机制，但略微增加冷却。
+强化被动或增益类技能的数值与持续时间。,Boosts the values and duration of passive or buff skills.,强化被动或增益类技能的数值与持续时间。
+幽暗地牢,Gloomy Dungeon,幽暗地牢
+寂静之森,Silent Forest,寂静之森
+深邃洞窟,Deep Caverns,深邃洞窟
+荒芜墓园,Desolate Graveyard,荒芜墓园
+熔岩火山,Lava Volcano,熔岩火山
+古代遗迹,Ancient Ruins,古代遗迹
+初始区域。潮湿的石砌地牢，老鼠横行，适合新手熟悉战斗与采集。,Starting zone. A damp stone dungeon teeming with rats; ideal for learning combat and gathering.,初始区域。潮湿的石砌地牢，老鼠横行，适合新手熟悉战斗与采集。
+新手友好区。盛产黑莓、蓝光菇、月光草等温和材料。,"Beginner-friendly. Abundant in mild materials like blackberries, glowshrooms, and moongrass.",新手友好区。盛产黑莓、蓝光菇、月光草等温和材料。
+盛产黑麦根、深岩苔藓、独眼巨人胡须。盲鱼与碎岩虫出没。,"Rich in black rye root, deeprock moss, and cyclops beard. Blind fish and rock-borers lurk.",盛产黑麦根、深岩苔藓、独眼巨人胡须。盲鱼与碎岩虫出没。
+灵魂薄荷、月露花、曼德拉根生长之地。亡灵徘徊。,"Where soulmint, moon lilies, and mandrakes grow. Undead wander.",灵魂薄荷、月露花、曼德拉根生长之地。亡灵徘徊。
+高危区。火焰葡萄、熔岩麦芽、爆裂椒等炽热材料，火蜥蜴横行。,"High-risk zone. Fiery materials like firegrapes, lava malt, and burst peppers; salamanders roam.",高危区。火焰葡萄、熔岩麦芽、爆裂椒等炽热材料，火蜥蜴横行。
+极危区。水晶泪滴、远古符文碎、星光苔等灵界材料。幽灵守卫徘徊。,Extreme-danger zone. Ethereal materials like crystal tears and ancient rune shards; ghost guardians patrol.,极危区。水晶泪滴、远古符文碎、星光苔等灵界材料。幽灵守卫徘徊。
+未知区域,Unknown Zone,未知区域
+甜美,Sweetness,甜美
+酸爽,Tart,酸爽
+苦涩,Bitter,苦涩
+辣口,Spicy,辣口
+咸度,Saltiness,咸度
+香醇,Mellow,香醇
+麦香,Malty,麦香
+果香,Fruity,果香
+温暖,Warmth,温暖
+寒凉,Coolness,寒凉
+浓郁,Rich,浓郁
+清澈,Clear,清澈
+恶臭,Stench,恶臭
+腐败,Rotten,腐败
+死寂,Deathly,死寂
+剧毒,Poisonous,剧毒
+老鼠尾巴,Rat Tail,老鼠尾巴
+发霉面包,Moldy Bread,发霉面包
+生锈铁钉,Rusty Nail,生锈铁钉
+地牢苔,Dungeon Moss,地牢苔
+碎骨片,Bone Shard,碎骨片
+陈腐积水,Stale Water,陈腐积水
+囚室地衣,Prison Lichen,囚室地衣
+地窖蘑菇,Cellar Mushroom,地窖蘑菇
+黑莓,Blackberry,黑莓
+血藤,Bloodvine,血藤
+蓝光菇,Glowshroom,蓝光菇
+月光草,Moongrass,月光草
+哥布林指甲,Goblin Nail,哥布林指甲
+迷雾花,Mistflower,迷雾花
+狼耳草,Wolf Ear Herb,狼耳草
+剧毒藤莓,Poison Berry,剧毒藤莓
+橡木地衣,Oak Lichen,橡木地衣
+妖精粉尘,Pixie Dust,妖精粉尘
+深岩苔藓,Deeprock Moss,深岩苔藓
+黑麦根,Black Rye Root,黑麦根
+独眼巨人的胡须,Cyclops Beard,独眼巨人的胡须
+钟乳石髓,Stalactite Sap,钟乳石髓
+盲鱼干,Blindfish Jerky,盲鱼干
+地热木耳,Geothermal Fungus,地热木耳
+蝙蝠粪石,Guano Crystal,蝙蝠粪石
+碎岩虫粘液,Rockworm Slime,碎岩虫粘液
+荧光蕨,Luminous Fern,荧光蕨
+石英晶粉,Quartz Dust,石英晶粉
+无名者的骨灰,Nameless Ashes,无名者的骨灰
+灵魂薄荷,Soul Mint,灵魂薄荷
+月露花,Moon Lily,月露花
+尖叫曼德拉根,Screaming Mandrake,尖叫曼德拉根
+墓穴苔藓,Tomb Moss,墓穴苔藓
+亡灵泪滴,Ghost Tear,亡灵泪滴
+怨念灰烬,Wraith Ashes,怨念灰烬
+寿衣碎片,Shroud Shred,寿衣碎片
+坟地黑松露,Graveyard Truffle,坟地黑松露
+枯骨花蜜,Bone Nectar,枯骨花蜜
+火焰葡萄,Firegrape,火焰葡萄
+熔岩麦芽,Lava Malt,熔岩麦芽
+火蜥蜴的蜕皮,Salamander Skin,火蜥蜴的蜕皮
+灰烬莲花,Ash Lotus,灰烬莲花
+熔岩煤精,Lava Jet,熔岩煤精
+爆裂椒,Burst Pepper,爆裂椒
+硫磺花,Sulfur Flower,硫磺花
+焦木炭根,Charred Root,焦木炭根
+熔岩蜂王浆,Lava Royal Jelly,熔岩蜂王浆
+烈焰鸟羽灰,Firebird Ash,烈焰鸟羽灰
+水晶泪滴,Crystal Tear,水晶泪滴
+远古符文碎,Ancient Rune Shard,远古符文碎
+星光苔,Starlight Moss,星光苔
+灵界精华,Ethereal Essence,灵界精华
+幻影花瓣,Phantom Petal,幻影花瓣
+遗迹花蜜,Ruin Honey,遗迹花蜜
+幽灵菇,Ghost Mushroom,幽灵菇
+奥术粉尘,Arcane Dust,奥术粉尘
+亮莓果汁,Glowberry Juice,亮莓果汁
+冰棺亡灵引,Ice Coffin Undead Call,冰棺亡灵引
+哥布林甜腐浆,Goblin Sweet-Rot Mash,哥布林甜腐浆
+月光艾尔啤酒,Moonlight Ale,月光艾尔啤酒
+岩浆燥辣烈酒,Magma Spicy Spirits,岩浆燥辣烈酒
+月露清醇蜜酒,Moonlily Honey Mead,月露清醇蜜酒
+盲鱼霉烂酒,Blindfish Rot Wine,盲鱼霉烂酒
+熔岩蜂皇威士忌,Lava Royal Whiskey,熔岩蜂皇威士忌
+重岩焦香黑啤,Heavyrock Charred Stout,重岩焦香黑啤
+硫磺烈焰原浆,Sulfur Flame Mash,硫磺烈焰原浆
+警惕,Wary,警惕
+中立,Neutral,中立
+友好,Friendly,友好
+信任,Trusted,信任
+崇敬,Revered,崇敬
+生死之交,Exalted,生死之交
+锋利,Sharp,锋利
+坚韧,Sturdy,坚韧
+炽焰,Blazing,炽焰
+寒霜,Frost,寒霜
+破甲,Armor-Piercing,破甲
+嗜血,Bloodthirsty,嗜血
+锈蚀,Rusted,锈蚀
+裂痕,Cracked,裂痕
+钝重,Blunt,钝重
+诅咒,Cursed,诅咒
+残缺,Broken,残缺
+普通,Plain,普通
+老旧,Worn,老旧
+格鲁姆,Grom,格鲁姆
+斯尼克,Snicke,斯尼克
+莫格,Mogg,莫格
+拉格纳,Ragnar,拉格纳
+皮普,Pip,皮普
+铁蹄,Ironhoof,铁蹄
+裂角,Cleathorn,裂角
+巨锤,Greatmaul,巨锤
+磐石,Bedrock,磐石
+怒吼,Roar,怒吼
+巴洛克,Baroque,巴洛克
+独眼,One-Eye,独眼
+裂岩,Riftscale,裂岩
+熔瞳,Molteneye,熔瞳
+崩山,Landslide,崩山
+幽影,Shade,幽影
+残念,Lingering,残念
+寒泣,Coldweep,寒泣
+无面,Faceless,无面
+逝语,Lastwhisper,逝语
+艾琳娜,Elynna,艾琳娜
+月辉,Moonradiance,月辉
+晨露,Morningdew,晨露
+叶语,Leafsong,叶语
+星弦,Starstring,星弦
+凯恩,Kane,凯恩
+老兵,Veteran,老兵
+旅人,Wanderer,旅人
+佣兵,Mercenary,佣兵
+猎人,Hunter,猎人
+无名,Nameless,无名
+无效桶位,Invalid Keg Slot,无效桶位
+空桶,Empty Keg,空桶
+发酵中,Fermenting,发酵中
+已熟成,Matured,已熟成
+陈酿中 (%d/%d),Aging (%d/%d),陈酿中 (%d/%d)
+陈酿封顶,Aged (Max),陈酿封顶
+未知,Unknown,未知
+防御姿态,Defensive Stance,防御姿态
+防御姿态 / Defensive Stance,Defensive Stance,防御姿态 / Defensive Stance
+3 秒内物防 +4，闪避 +5%,Physical DEF +4 and Evasion +5% for 3s,3 秒内物防 +4，闪避 +5%
+精准刺击,Precision Thrust,精准刺击
+精准刺击 / Precision Thrust,Precision Thrust,精准刺击 / Precision Thrust
+命中 +25%，命中即暴击,"+25% hit rate; on hit, guaranteed crit",命中 +25%，命中即暴击
+招架反击,Riposte,招架反击
+招架反击 / Riposte,Riposte,招架反击 / Riposte
+闪避/格挡后 40% 概率免费反击 80% 基础攻击力,"After dodge/block, 40% chance to free counter for 80% base ATK",闪避/格挡后 40% 概率免费反击 80% 基础攻击力
+顺劈斩,Cleave,顺劈斩
+顺劈斩 / Cleave,Cleave,顺劈斩 / Cleave
+前方扇形 3 米内敌人 85% 伤害 + 击退 1 米,85% damage to enemies in a 3m frontal cone + knockback 1m,前方扇形 3 米内敌人 85% 伤害 + 击退 1 米
+过顶重击,Heavy Overhead,过顶重击
+过顶重击 / Heavy Overhead,Heavy Overhead,过顶重击 / Heavy Overhead
+蓄力 1 秒，220% 伤害，无视 20% 物防，击退 +2 米,"1s charge: 220% damage, ignore 20% physical DEF, +2m knockback",蓄力 1 秒，220% 伤害，无视 20% 物防，击退 +2 米
+不屈重斩,Unyielding Strike,不屈重斩
+不屈重斩 / Unyielding Strike,Unyielding Strike,不屈重斩 / Unyielding Strike
+150% 伤害 + 30% 吸血,150% damage + 30% lifesteal,150% 伤害 + 30% 吸血
+破甲斩,Sunder,破甲斩
+破甲斩 / Sunder,Sunder,破甲斩 / Sunder
+110% 伤害 + 3 秒内物防 -6,110% damage + target Physical DEF -6 for 3s,110% 伤害 + 3 秒内物防 -6
+斩首,Decapitate,斩首
+斩首 / Decapitate,Decapitate,斩首 / Decapitate
+目标 HP < 35% 时基础伤害 ×1.6,Base damage x1.6 when target HP < 35%,目标 HP < 35% 时基础伤害 ×1.6
+旋风斩,Whirlwind,旋风斩
+旋风斩 / Whirlwind,Whirlwind,旋风斩 / Whirlwind
+周围 1.5 米内 120% 伤害，无视 15% 物防,"120% damage to all within 1.5m, ignore 15% physical DEF",周围 1.5 米内 120% 伤害，无视 15% 物防
+震荡打击,Concussive Blow,震荡打击
+震荡打击 / Concussive Blow,Concussive Blow,震荡打击 / Concussive Blow
+90% 伤害 + 击退 1 米，撞墙追加 30% 碰撞伤害 + 2 秒眩晕,90% damage + knockback 1m; on wall hit +30% collision damage and 2s stun,90% 伤害 + 击退 1 米，撞墙追加 30% 碰撞伤害 + 2 秒眩晕
+颅骨粉碎,Skullcracker,颅骨粉碎
+颅骨粉碎 / Skullcracker,Skullcracker,颅骨粉碎 / Skullcracker
+对眩晕/立足不稳目标暴击率 +30%、暴击伤害 +25%,+30% crit rate and +25% crit damage vs stunned/off-balance targets,对眩晕/立足不稳目标暴击率 +30%、暴击伤害 +25%
+震地击,Earthshaker,震地击
+震地击 / Earthshaker,Earthshaker,震地击 / Earthshaker
+前方直线 3 米 110% 伤害 + 击退 2 米 + 必眩晕 1 秒,110% damage in a 3m frontal line + knockback 2m + guaranteed 1s stun,前方直线 3 米 110% 伤害 + 击退 2 米 + 必眩晕 1 秒
+突刺,Lunge,突刺
+突刺 / Lunge,Lunge,突刺 / Lunge
+直线 2 米单体 105% 伤害 + 命中 +10%,105% single-target damage in a 2m line +10% hit,直线 2 米单体 105% 伤害 + 命中 +10%
+横扫击,Sweeping Strike,横扫击
+横扫击 / Sweeping Strike,Sweeping Strike,横扫击 / Sweeping Strike
+前方扇形 3 米 80% 伤害 + 减速 3 秒,80% damage in a 3m frontal cone + slow 3s,前方扇形 3 米 80% 伤害 + 减速 3 秒
+贯穿刺击,Impale,贯穿刺击
+贯穿刺击 / Impale,Impale,贯穿刺击 / Impale
+2 米单体 180% 伤害 + 命中 +15% + 无视盾牌格挡,"180% single-target damage at 2m +15% hit, ignore shield block",2 米单体 180% 伤害 + 命中 +15% + 无视盾牌格挡
+瞄准射击,Aimed Shot,瞄准射击
+瞄准射击 / Aimed Shot,Aimed Shot,瞄准射击 / Aimed Shot
+射程 4 米，95% 远程伤害 + 命中 +30%,Range 4m: 95% ranged damage +30% hit,射程 4 米，95% 远程伤害 + 命中 +30%
+压制齐射,Suppressing Volley,压制齐射
+压制齐射 / Suppressing Volley,Suppressing Volley,压制齐射 / Suppressing Volley
+2x2 米区域 70% 伤害 + 闪避 -10% 持续 3 秒,"70% damage in a 2x2m area, target Evasion -10% for 3s",2x2 米区域 70% 伤害 + 闪避 -10% 持续 3 秒
+贯穿射击,Piercing Shot,贯穿射击
+贯穿射击 / Piercing Shot,Piercing Shot,贯穿射击 / Piercing Shot
+直线 5 米穿透，每穿一敌伤害 -15%,"Pierces in a 5m line, -15% damage per enemy pierced",直线 5 米穿透，每穿一敌伤害 -15%
+双发连射,Double Tap,双发连射
+双发连射 / Double Tap,Double Tap,双发连射 / Double Tap
+同目标两发，各 60% 伤害独立判定命中暴击,"Two shots at same target, each 60% damage, independent crit rolls",同目标两发，各 60% 伤害独立判定命中暴击
+刺钩弩箭,Barbed Bolt,刺钩弩箭
+刺钩弩箭 / Barbed Bolt,Barbed Bolt,刺钩弩箭 / Barbed Bolt
+110% 伤害 + 击退 1 米 + 2 秒减速 30%,110% damage + knockback 1m + 30% slow for 2s,110% 伤害 + 击退 1 米 + 2 秒减速 30%
+弩箭齐射,Volley of Bolts,弩箭齐射
+弩箭齐射 / Volley of Bolts,Volley of Bolts,弩箭齐射 / Volley of Bolts
+装填 1 秒，前方 3 米扇形 130% 伤害 + 命中 +10%,1s reload: 130% damage in a 3m frontal cone +10% hit,装填 1 秒，前方 3 米扇形 130% 伤害 + 命中 +10%
+元素弹,Elemental Bolt,元素弹
+元素弹 / Elemental Bolt,Elemental Bolt,元素弹 / Elemental Bolt
+射程 3 米，100% 法术伤害,Range 3m: 100% spell damage,射程 3 米，100% 法术伤害
+寒冰新星,Frost Nova,寒冰新星
+寒冰新星 / Frost Nova,Frost Nova,寒冰新星 / Frost Nova
+周围 1.5 米 80% 法术伤害 + 地面冰冻 2 秒（减速 30%）,80% spell damage within 1.5m + ground freeze 2s (30% slow),周围 1.5 米 80% 法术伤害 + 地面冰冻 2 秒（减速 30%）
+雷暴术,Thunderstorm,雷暴术
+雷暴术 / Thunderstorm,Thunderstorm,雷暴术 / Thunderstorm
+3 米内 3x3 米区域 150% 法术伤害 + 30% 概率眩晕 1 秒,"150% spell damage in a 3x3m area, 30% chance to stun 1s",3 米内 3x3 米区域 150% 法术伤害 + 30% 概率眩晕 1 秒
+魔力涌动,Mana Surge,魔力涌动
+魔力涌动 / Mana Surge,Mana Surge,魔力涌动 / Mana Surge
+副手魔导书时法术伤害 +5%,+5% spell damage when off-hand is a grimoire,副手魔导书时法术伤害 +5%
+防护结界,Ward Barrier,防护结界
+防护结界 / Ward Barrier,Ward Barrier,防护结界 / Ward Barrier
+吸收最大 HP 20% 伤害，持续 3 秒,Absorb damage up to 20% max HP for 3s,吸收最大 HP 20% 伤害，持续 3 秒
+迟缓术,Slow,迟缓术
+迟缓术 / Slow,Slow,迟缓术 / Slow
+目标 3 秒减速 30%，自身 3 秒加速 20%,Target -30% speed 3s; self +20% speed 3s,目标 3 秒减速 30%，自身 3 秒加速 20%
+刺拳,Jab,刺拳
+刺拳 / Jab,Jab,刺拳 / Jab
+双手空置，100% 伤害 + 击退 1 米 + 命中 +10%,Unarmed: 100% damage + knockback 1m +10% hit,双手空置，100% 伤害 + 击退 1 米 + 命中 +10%
+关节锁,Joint Lock,关节锁
+关节锁 / Joint Lock,Joint Lock,关节锁 / Joint Lock
+90% 伤害 + 3 秒内移动力归 0 且攻击伤害 -20%,90% damage + root (0 move) and -20% attack damage for 3s,90% 伤害 + 3 秒内移动力归 0 且攻击伤害 -20%
+碎骨重拳,Skullbreaker Punch,碎骨重拳
+碎骨重拳 / Skullbreaker Punch,Skullbreaker Punch,碎骨重拳 / Skullbreaker Punch
+180% 伤害，被墙阻挡无法击退时基础伤害 ×1.5,180% damage; x1.5 base damage if wall-blocked (no knockback),180% 伤害，被墙阻挡无法击退时基础伤害 ×1.5
+震退,Knockback,震退
+震退 / Knockback,Knockback,震退 / Knockback
+近战命中 15% 概率击退 1 米；撞墙追加自防 20% 碰撞伤害,15% chance on melee hit to knock back 1m; wall hit adds 20% collision damage,近战命中 15% 概率击退 1 米；撞墙追加自防 20% 碰撞伤害
+重力击,Heavy Stride,重力击
+重力击 / Heavy Stride,Heavy Stride,重力击 / Heavy Stride
+近战伤害 +5%，暴击必触发击退,+5% melee damage; crits always knock back,近战伤害 +5%，暴击必触发击退
+蛮力负荷,Brute Load,蛮力负荷
+蛮力负荷 / Brute Load,Brute Load,蛮力负荷 / Brute Load
+负重 +15，双手武器基础伤害倍率 +5%,+15 carry weight; two-hand weapon base damage x1.05,负重 +15，双手武器基础伤害倍率 +5%
+跳跃,Leap,跳跃
+跳跃 / Leap,Leap,跳跃 / Leap
+主动跳跃 1 米，越过地形裂隙；CD 3 秒,Active leap 1m over gaps; CD 3s,主动跳跃 1 米，越过地形裂隙；CD 3 秒
+神射手,Sharpshooter,神射手
+神射手 / Sharpshooter,Sharpshooter,神射手 / Sharpshooter
+长弓/轻弩远程暴击率 +10%（动作化替代命中率）,Longbow/crossbow ranged crit rate +10% (action-game replacement for hit rate),长弓/轻弩远程暴击率 +10%（动作化替代命中率）
+穿透打击,Penetrating Strike,穿透打击
+穿透打击 / Penetrating Strike,Penetrating Strike,穿透打击 / Penetrating Strike
+远程攻击 100% 概率无视 10% 物防,Ranged attacks ignore 10% physical DEF (100% chance),远程攻击 100% 概率无视 10% 物防
+侧垫步,Sidestep,侧垫步
+侧垫步 / Sidestep,Sidestep,侧垫步 / Sidestep
+受近战攻击 10% 概率侧闪免伤；CD 5 秒,10% chance to sidestep and avoid melee damage; CD 5s,受近战攻击 10% 概率侧闪免伤；CD 5 秒
+轻捷之行,Fleet Foot,轻捷之行
+轻捷之行 / Fleet Foot,Fleet Foot,轻捷之行 / Fleet Foot
+移动消耗 -10%（移速 +10%）,-10% move cost (+10% move speed),移动消耗 -10%（移速 +10%）
+虚实避让,Elusive,虚实避让
+虚实避让 / Elusive,Elusive,虚实避让 / Elusive
+基础闪避率 +6%,+6% base evasion rate,基础闪避率 +6%
+强健体魄,Fortitude,强健体魄
+强健体魄 / Fortitude,Fortitude,强健体魄 / Fortitude
+最大 HP +20,+20 max HP,最大 HP +20
+厚实皮肤,Thick Skin,厚实皮肤
+厚实皮肤 / Thick Skin,Thick Skin,厚实皮肤 / Thick Skin
+每次受击最终扣血 -2（最低 1）,-2 final damage per hit (min 1),每次受击最终扣血 -2（最低 1）
+复苏之息,Recovery Breath,复苏之息
+复苏之息 / Recovery Breath,Recovery Breath,复苏之息 / Recovery Breath
+夜晚酒馆休息额外恢复 25% 最大 HP,Night tavern rest restores +25% max HP,夜晚酒馆休息额外恢复 25% 最大 HP
+魔力凝息,Mana Focus,魔力凝息
+魔力凝息 / Mana Focus,Mana Focus,魔力凝息 / Mana Focus
+释放法杖/魔导书技能 10% 概率冷却清零,10% chance to reset cooldown on wand/grimoire skills,释放法杖/魔导书技能 10% 概率冷却清零
+元素护壳,Elemental Aegis,元素护壳
+元素护壳 / Elemental Aegis,Elemental Aegis,元素护壳 / Elemental Aegis
+受法术伤害最终扣血 -4,-4 final spell damage taken,受法术伤害最终扣血 -4
+魔力涌流,Mana Surge,魔力涌流
+魔力涌流 / Mana Surge,Mana Surge,魔力涌流 / Mana Surge
+所有魔法主动技能暴击率 +8%,+8% crit rate for all magic active skills,所有魔法主动技能暴击率 +8%
+警觉,Alertness,警觉
+警觉 / Alertness,Alertness,警觉 / Alertness
+视野 +1 米，发现陷阱/暗门概率 +20%,+1m vision; +20% chance to find traps/secret doors,视野 +1 米，发现陷阱/暗门概率 +20%
+弱点洞察,Find Weakness,弱点洞察
+弱点洞察 / Find Weakness,Find Weakness,弱点洞察 / Find Weakness
+基础暴击率 +5%,+5% base crit rate,基础暴击率 +5%
+直觉闪避,Intuitive Evade,直觉闪避
+直觉闪避 / Intuitive Evade,Intuitive Evade,直觉闪避 / Intuitive Evade
+侧击/背袭不再享有额外伤害加成（命中由动作判定，不计入）,Flank/back attacks no longer gain extra damage (hit is action-determined, not counted),侧击/背袭不再享有额外伤害加成（命中由动作判定，不计入）
+踢击,Kick,踢击
+踢击 / Kick,Kick,踢击 / Kick
+无武器限制的踢击，击退 1 米，可踢门/踢敌,"Kick with no weapon restriction: knockback 1m, can kick doors/enemies",无武器限制的踢击，击退 1 米，可踢门/踢敌
+冲撞,Charge,冲撞
+冲撞 / Charge,Charge,冲撞 / Charge
+向前冲撞 5 米，命中敌人击退 2 米 + 眩晕 0.5 秒,Charge forward 5m; on hit: knockback 2m + stun 0.5s,向前冲撞 5 米，命中敌人击退 2 米 + 眩晕 0.5 秒
+抓取投掷,Grab & Throw,抓取投掷
+抓取/投掷 / Grab & Throw,Grab & Throw,抓取/投掷 / Grab & Throw
+抓取前方敌人投掷出去，击退 3 米 + 眩晕 1 秒,Grab the enemy in front and throw it; knockback 3m + stun 1s,抓取前方敌人投掷出去，击退 3 米 + 眩晕 1 秒
+滑铲,Slide,滑铲
+滑铲 / Slide,Slide,滑铲 / Slide
+向前滑铲 4 米，滑行期间 0.5 秒无敌帧,Slide forward 4m; 0.5s invulnerability frames during slide,向前滑铲 4 米，滑行期间 0.5 秒无敌帧
+战术滑步,Tactical Step,战术滑步
+战术滑步 / Tactical Step,Tactical Step,战术滑步 / Tactical Step
+短距离战术滑步 3 米，0.3 秒闪避帧,Short tactical step 3m; 0.3s dodge frames,短距离战术滑步 3 米，0.3 秒闪避帧
+单手风格,One-Hand Style,单手风格
+单手持盾风格,One-Hand + Shield Style,单手持盾风格
+双手风格,Two-Hand Style,双手风格
+双持风格,Dual-Wield Style,双持风格
+徒手风格,Unarmed Style,徒手风格
+远程风格,Ranged Style,远程风格
+法术风格,Spell Style,法术风格
+箭矢,Arrow,箭矢
+弩箭,Bolt,弩箭
+贯穿箭,Piercing Arrow,贯穿箭
+齐射箭,Volley Arrow,齐射箭
+齐射弩箭,Volley Bolt,齐射弩箭
+奥术弹,Arcane Bolt,奥术弹
+雷暴,Thunder,雷暴
+技能不存在,Skill does not exist,技能不存在
+被动技能不可释放,Passive skills cannot be cast,被动技能不可释放
+冷却中,On cooldown,冷却中
+正在施法其他技能,Casting another skill,正在施法其他技能
+这次要控制好时间,Better manage your time next expedition,这次要控制好时间
+盾,Shield,盾
+等级 Lv,Level Lv,等级 Lv
+HP 上限,Max HP,HP 上限
+物防,Phys Def,物防
+闪避率,Evade Rate,闪避率
+暴击率,Crit Rate,暴击率
+移速倍率,Move Speed Mult,移速倍率
+负重上限,Carry Weight Cap,负重上限
+%s: 熟练度 Lv %d,%s: Proficiency Lv %d,%s: 熟练度 Lv %d
+Show FPS,Show FPS,显示 FPS
+Multiplayer,Multiplayer,联机
+Multiplayer Lobby,Multiplayer Lobby,联机大厅
+Host Room,Host Room,创建房间
+Port,Port,端口
+Max Players,Max Players,最大玩家数
+Create Room,Create Room,创建房间
+Join Room,Join Room,加入房间
+Server Address,Server Address,服务器地址
+Join,Join,加入
+Connected Players,Connected Players,已连接玩家
+You (Host),You (Host),你（房主）
+You,You,你
+Waiting for host to start...,Waiting for host to start...,等待房主开始出征…
+Leave Room,Leave Room,离开房间
+Connecting...,Connecting...,连接中…
+Host room created. Waiting for players...,Host room created. Waiting for players...,房间已创建，等待其他玩家加入…
+Connection failed: ,Connection failed: ,连接失败：
+Armor Pierce %+0.0f%%,Armor Pierce %+0.0f%%,护甲穿透 %+0.0f%%
+Knockback %+.1fm,Knockback %+.1fm,击退 %+0.1f米
+Stun %+0.2fs,Stun %+0.2fs,眩晕 %+0.2f秒
+Carry Weight %+.0f%%,Carry Weight %+.0f%%,负重 %+.0f%%
+Carry Capacity %+d,Carry Capacity %+d,负重容量 %+d
+Broken,Broken,已损坏
+Failed to create room: ,Failed to create room: ,创建房间失败：
+A TAVERNKEEPER'S DESCENT,A TAVERNKEEPER'S DESCENT,酒馆掌柜的深渊行
+THE HEARTH AWAITS,THE HEARTH AWAITS,炉火在此静候
+"Build your legend between the warmth of the hearth and the dark below.","Build your legend between the warmth of the hearth and the dark below.","在温暖的炉火与深邃的黑暗中，谱写你的传奇。"
+PREFERENCES,PREFERENCES,偏好设置
+LONE LIGHT TAVERN  •  EARLY ACCESS,LONE LIGHT TAVERN  •  EARLY ACCESS,孤灯酒馆  •  抢先体验版
+S 档,S Tier,S 档
+A 档,A Tier,A 档
+B 档,B Tier,B 档
+C 档,C Tier,C 档
+D 档,D Tier,D 档
+其他,Other,其他
+冒险者,Adventurer,冒险者
+角色模型,Character Model,角色模型
+酒馆老板,Tavern Keeper,酒馆老板
+牛头怪,Minotaur,牛头怪
+岩石魔像,Rock Golem,岩石魔像
+狗头人,Kobold,狗头人
+兽人掠夺者,Orc Raider,兽人掠夺者
+大地精军团士兵,Hobgoblin Legionary,大地精军团士兵
+熊地精暴徒,Bugbear Brute,熊地精暴徒
+豺狼人鬣狗战士,Gnoll Hyena Warrior,豺狼人鬣狗战士
+蜥蜴人斥候,Lizardfolk Scout,蜥蜴人斥候
+穴居人,Troglodyte,穴居人
+灰矮人矿工,Duergar Miner,灰矮人矿工
+暗精灵咒术师,Dark Elf Hexer,暗精灵咒术师
+卓尔剑士,Drow Blade,卓尔剑士
+半羊人掠夺者,Satyr Marauder,半羊人掠夺者
+鹰身女妖女族长,Harpy Matriarch,鹰身女妖女族长
+狼人潜行者,Werewolf Stalker,狼人潜行者
+吸血鬼仆从,Vampire Thrall,吸血鬼仆从
+尸妖守卫,Wight Guard,尸妖守卫
+食尸鬼饕客,Ghoul Feaster,食尸鬼饕客
+木乃伊咒缚者,Mummy Cursebearer,木乃伊咒缚者
+瘟疫医生,Plague Doctor,瘟疫医生
+邪教火法师,Cultist Pyromancer,邪教火法师
+邪教狂信徒,Cultist Zealot,邪教狂信徒
+强盗割喉者,Bandit Cutthroat,强盗割喉者
+强盗弩手,Bandit Crossbowman,强盗弩手
+真菌行尸,Fungal Shambler,真菌行尸
+蘑菇人孢子守卫,Myconid Sporekeeper,蘑菇人孢子守卫
+灰烬元素,Ash Elemental,灰烬元素
+寒霜元素,Frost Elemental,寒霜元素
+风暴元素,Storm Elemental,风暴元素
+石像鬼哨兵,Gargoyle Sentinel,石像鬼哨兵
+活化盔甲,Animated Armor,活化盔甲
+鬼族怨灵,Oni Revenant,鬼族怨灵
+暗影刺客,Shadow Assassin,暗影刺客
+战斧,Axe,战斧
+弩,Crossbow,弩
+匕首,Dagger,匕首
+巨剑,Greatsword,巨剑
+长剑,Longsword,长剑
+短剑,Shortsword,短剑
+长矛,Spear,长矛
+单手剑,Sword,单手剑
+战锤,Warhammer,战锤
+圆盾,Buckler,圆盾
+锁子甲,Chain Armor,锁子甲
+布甲,Cloth Armor,布甲
+皮甲,Leather Armor,皮甲
+板甲,Plate Armor,板甲
+壁炉,Fireplace,壁炉
+木桶,Barrel,木桶
+破碎木桶,Fragmented Barrel,破碎木桶
+旗帜,Banner,旗帜
+长凳,Bench,长凳
+骨堆,Bones,骨堆
+首领宝箱,Boss Chest,首领宝箱
+瓶罐组,Bottle Set,瓶罐组
+蜡烛,Candles,蜡烛
+椅子,Chair,椅子
+吊灯,Chandelier,吊灯
+高脚杯,Goblet,高脚杯
+铁栅,Grate,铁栅
+牢笼,Jail,牢笼
+大型宝箱,Large Chest,大型宝箱
+大木箱,Large Crate,大木箱
+点燃的蜡烛,Lit Candles,点燃的蜡烛
+木板,Plank,木板
+瓦砾,Rubble,瓦砾
+小木箱,Small Crate,小木箱
+桌子,Table,桌子
+酒杯,Tankard,酒杯
+火把,Torch,火把
+壁灯,Wall Lantern,壁灯
+墙上告示,Wall Notice,墙上告示
+白骨粉末,Skeleton Dust,白骨粉末
+灵魂宝石,Soul Gem,灵魂宝石
+龙鳞,Dragon Scale,龙鳞
+骨片样本,Bone Shard Sample,骨片样本
+荧光菇,Glowcap,荧光菇
+教程损坏马车,Tutorial Cart Wreck,教程损坏马车
+教程入口遗迹,Tutorial Entrance Ruins,教程入口遗迹
+教程森林树丛,Tutorial Forest Cluster,教程森林树丛
+教程道路障碍,Tutorial Road Blocker,教程道路障碍
+僵尸,Zombie,僵尸
+蜘蛛,Spider,蜘蛛
+石柱,Pillar,石柱
+宝箱,Chest,宝箱
+史莱姆凝胶,Slime Jelly,史莱姆凝胶
+哥布林耳尖,Goblin Ear,哥布林耳尖
+巨鼠尾巴,Giant Rat Tail,巨鼠尾巴
+巨魔之血,Troll Blood,巨魔之血
+双手大剑,Greatsword,双手大剑
+双手斧,Axe,双手斧
+长枪,Spear,长枪
+盾牌,Shield,盾牌
+链甲,Chain Armor,链甲
+负重挂件,Weight Accessory,负重挂件
+破圆木盾,Broken Round Shield,破圆木盾
+精铁圆盾,Fine Iron Round Shield,精铁圆盾
+矮人叹息,Dwarven Sigh,矮人叹息

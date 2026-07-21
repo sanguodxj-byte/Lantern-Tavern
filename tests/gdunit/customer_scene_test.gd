@@ -7,53 +7,59 @@ func _customer_entity_script():
 	return load("res://scenes/tavern/customer_entity.gd")
 
 
+func _make_customer() -> Node:
+	var customer: Node = _customer_entity_script().new()
+	auto_free(customer)
+	return customer
+
+
 func test_perfect_lines_not_empty() -> void:
-	var c = _customer_entity_script().new()
+	var c = _make_customer()
 	assert_bool(c.LINES_PERFECT.size() > 0).is_true()
 
 
 func test_satisfied_lines_not_empty() -> void:
-	var c = _customer_entity_script().new()
+	var c = _make_customer()
 	assert_bool(c.LINES_SATISFIED.size() > 0).is_true()
 
 
 func test_normal_lines_not_empty() -> void:
-	var c = _customer_entity_script().new()
+	var c = _make_customer()
 	assert_bool(c.LINES_NORMAL.size() > 0).is_true()
 
 
 func test_refuse_lines_not_empty() -> void:
-	var c = _customer_entity_script().new()
+	var c = _make_customer()
 	assert_bool(c.LINES_REFUSE.size() > 0).is_true()
 
 
 func test_human_cheap_lines_not_empty() -> void:
-	var c = _customer_entity_script().new()
+	var c = _make_customer()
 	assert_bool(c.LINES_HUMAN_CHEAP.size() > 0).is_true()
 
 
 func test_human_normal_lines_not_empty() -> void:
-	var c = _customer_entity_script().new()
+	var c = _make_customer()
 	assert_bool(c.LINES_HUMAN_NORMAL.size() > 0).is_true()
 
 
 func test_human_expensive_lines_not_empty() -> void:
-	var c = _customer_entity_script().new()
+	var c = _make_customer()
 	assert_bool(c.LINES_HUMAN_EXPENSIVE.size() > 0).is_true()
 
 
 func test_human_refuse_lines_not_empty() -> void:
-	var c = _customer_entity_script().new()
+	var c = _make_customer()
 	assert_bool(c.LINES_HUMAN_REFUSE.size() > 0).is_true()
 
 
 func test_enter_lines_not_empty() -> void:
-	var c = _customer_entity_script().new()
+	var c = _make_customer()
 	assert_bool(c.LINES_ENTER.size() > 0).is_true()
 
 
 func test_all_chat_lines_are_strings() -> void:
-	var c = _customer_entity_script().new()
+	var c = _make_customer()
 	var all_lines := []
 	all_lines.append_array(c.LINES_PERFECT)
 	all_lines.append_array(c.LINES_SATISFIED)
@@ -69,7 +75,7 @@ func test_all_chat_lines_are_strings() -> void:
 
 
 func test_customer_default_move_speed() -> void:
-	var c = _customer_entity_script().new()
+	var c = _make_customer()
 	assert_float(c.move_speed).is_equal(1.5)
 
 

@@ -44,9 +44,9 @@ func test_toggle_switches_to_chinese() -> void:
 func test_toggle_back_to_english_resets_text() -> void:
 	var original = TranslationServer.get_locale()
 	TranslationServer.set_locale("zh")
-	var result_zh = tr("[S]tart Game")
+	var result_zh = tr("Start Game")
 	assert_str(result_zh).contains("开始")
 	TranslationServer.set_locale("en")
-	var result_en = tr("[S]tart Game")
+	var result_en = tr("Start Game")
 	assert_str(result_en).contains("Start")
 	TranslationServer.set_locale(original)

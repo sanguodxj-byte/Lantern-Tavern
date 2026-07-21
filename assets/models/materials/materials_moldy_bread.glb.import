@@ -3,7 +3,7 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://ct3vlxrtg44a3"
+uid="uid://cymjruhystvwp"
 path="res://.godot/imported/materials_moldy_bread.glb-40b7cef119952656006a729f9f98648d.scn"
 
 [deps]
@@ -42,4 +42,4 @@ materials/extract_path=""
 _subresources={}
 gltf/naming_version=2
 gltf/embedded_image_handling=1
-gltf/texture_map_mode=1
+gltf/texture_map_mode=0

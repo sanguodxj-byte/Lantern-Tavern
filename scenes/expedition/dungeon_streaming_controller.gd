@@ -22,13 +22,18 @@ var _player: Node3D = null
 
 # 注册表（controller 自维护，不反向依赖 procedural 内部）
 var _visual_chunks: Dictionary = {}        # Vector2i chunk -> Array[Node3D]
-var _physics_chunks: Dictionary = {}       # Vector2i chunk -> Array[PhysicsBody3D]
+var _physics_chunks: Dictionary = {}       # Vector2i chunk -> Array[CollisionObject3D]
 var _terrain_chunks: Dictionary = {}       # Vector2i chunk -> Array[Node3D]
 var _light_chunks: Dictionary = {}         # Vector2i chunk -> Array[Light3D]
 var _last_player_chunk := Vector2i(999999, 999999)
 var _last_active_physics_chunks: Dictionary = {}
+var _last_active_visual_chunks: Dictionary = {}
+var _last_active_terrain_chunks: Dictionary = {}
+var _active_light_set: Dictionary = {}        # light_instance_id -> Light3D（当前已激活灯）
 var _streaming_ready := false
 var _update_timer := 0.0
+var _streaming_state_initialized := false
+var _streaming_refresh_count := 0
 
 ## 配置 controller。layout 提供边界与 tile_size；build_result 提供已注册节点。
 func configure(layout: DungeonLayout, build_result: DungeonBuildResult) -> void:
@@ -48,6 +53,10 @@ func configure(layout: DungeonLayout, build_result: DungeonBuildResult) -> void:
 ## 设置玩家引用（用于每帧取 global_position）
 func set_player(player: Node3D) -> void:
 	_player = player
+	# 玩家在地牢 _ready() 中刚生成时，下一次节流 tick 尚未到达；立即激活出生
+	# chunk 的物理体，避免 CharacterBody3D 在首帧没有地面碰撞而掉出地图。
+	if _streaming_ready:
+		update_streaming(true)
 
 ## 注册一个视觉节点（按其位置归 chunk）。重复注册不重复处理。
 func register_visual_node(node: Node3D) -> void:
@@ -60,8 +69,10 @@ func register_visual_node(node: Node3D) -> void:
 		_visual_chunks[chunk] = []
 	_visual_chunks[chunk].append(node)
 	node.visible = false
-	if _streaming_ready:
-		update_streaming(true)
+	# 默认隐藏即暂停其下粒子/音频，避免隐藏火把仍在烧粒子/播音频。
+	_apply_visual_side_effects(node, true)
+	if _streaming_ready and _streaming_state_initialized:
+		_set_visual_node_active(node, _is_chunk_within_radius(chunk, _last_player_chunk, STREAM_VISUAL_CHUNK_RADIUS))
 
 ## 注册一个物理节点（收集其下所有 PhysicsBody3D）。
 func register_physics_node(node: Node) -> void:
@@ -71,14 +82,22 @@ func register_physics_node(node: Node) -> void:
 	_collect_physics_bodies(node, bodies)
 	for entry in bodies:
 		_register_one_physics_body(entry["body"], entry["visual_root"])
-	if _streaming_ready and not bodies.is_empty():
-		update_streaming(true)
+	if _streaming_ready and _streaming_state_initialized:
+		for entry in bodies:
+			var body := entry["body"] as CollisionObject3D
+			if body == null or not is_instance_valid(body):
+				continue
+			var chunk: Vector2i = body.get_meta("stream_physics_chunk", Vector2i.ZERO)
+			_set_physics_body_active(body, _is_chunk_within_radius(chunk, _last_player_chunk, STREAM_PHYSICS_CHUNK_RADIUS))
 
 ## 注册一个 terrain chunk 节点。
 func register_terrain_chunk(chunk: Vector2i, node: Node3D) -> void:
 	if not _terrain_chunks.has(chunk):
 		_terrain_chunks[chunk] = []
 	_terrain_chunks[chunk].append(node)
+	node.visible = false
+	if _streaming_ready and _streaming_state_initialized:
+		node.visible = _is_chunk_within_radius(chunk, _last_player_chunk, STREAM_TERRAIN_CHUNK_RADIUS)
 
 ## 注册一个环境灯光节点。
 func register_light(light: Light3D) -> void:
@@ -99,13 +118,13 @@ func update_streaming(force: bool = false) -> void:
 	var player_chunk := _world_to_chunk(player_pos)
 	if not force and player_chunk == _last_player_chunk:
 		return
+	_streaming_refresh_count += 1
 	_last_player_chunk = player_chunk
-	if force:
-		_last_active_physics_chunks = {}
-	_update_lights(player_chunk, player_pos)
+	_update_lights(player_chunk, player_pos, force)
 	_update_physics(player_chunk)
 	_update_visuals(player_chunk)
 	_update_terrain(player_chunk)
+	_streaming_state_initialized = true
 
 ## Node 自带 _process：按 STREAM_UPDATE_INTERVAL 节流自动更新。
 func _process(delta: float) -> void:
@@ -123,18 +142,21 @@ func clear() -> void:
 	_light_chunks.clear()
 	_last_player_chunk = Vector2i(999999, 999999)
 	_last_active_physics_chunks.clear()
+	_last_active_visual_chunks.clear()
+	_last_active_terrain_chunks.clear()
+	_active_light_set.clear()
 	_streaming_ready = false
+	_streaming_state_initialized = false
+	_streaming_refresh_count = 0
+	_update_timer = 0.0
 	_layout = null
 	_build_result = null
 	_player = null
 
 
 # ── 内部：4 类 chunk 更新（从 procedural_dungeon.gd 迁出，去 _grid/_rooms 依赖）──────
-func _update_lights(player_chunk: Vector2i, player_pos: Vector3) -> void:
-	for chunk in _light_chunks.keys():
-		for light in _light_chunks[chunk]:
-			if is_instance_valid(light):
-				light.visible = false
+func _update_lights(player_chunk: Vector2i, player_pos: Vector3, _force: bool) -> void:
+	# force 只要求重新排名；保留旧集合才能做增量差分，避免全部灯先灭再亮。
 	var ranked: Array[Dictionary] = []
 	for chunk in _iter_chunks(player_chunk, STREAM_LIGHT_CHUNK_RADIUS):
 		var lights: Array = _light_chunks.get(chunk, [])
@@ -144,10 +166,23 @@ func _update_lights(player_chunk: Vector2i, player_pos: Vector3) -> void:
 	ranked.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return float(a["distance"]) < float(b["distance"])
 	)
+	var new_active: Dictionary = {}
 	for i in range(mini(ranked.size(), DUNGEON_VISIBLE_LOCAL_LIGHT_BUDGET)):
 		var light := ranked[i]["light"] as Light3D
 		if light != null:
-			light.visible = true
+			new_active[light.get_instance_id()] = light
+	# 增量：仅关闭离开预算/半径的旧灯，仅打开新进入预算的灯（不再全表 hide-all）。
+	for lid in _active_light_set.keys():
+		if not new_active.has(lid):
+			var light: Light3D = _active_light_set[lid]
+			if is_instance_valid(light):
+				light.visible = false
+	for lid in new_active.keys():
+		if not _active_light_set.has(lid):
+			var light: Light3D = new_active[lid]
+			if is_instance_valid(light):
+				light.visible = true
+	_active_light_set = new_active
 
 func _update_physics(player_chunk: Vector2i) -> void:
 	var active := {}
@@ -161,12 +196,11 @@ func _update_physics(player_chunk: Vector2i) -> void:
 		for body in bodies:
 			if body != null and is_instance_valid(body):
 				_set_physics_body_active(body, true)
-	# 失活处理：遍历所有已注册 chunk，非 active 的全停用。
-	# 不能只遍历 _last_active_physics_chunks.keys()——force 路径会清空它，导致远离失活被跳过。
-	for chunk in _physics_chunks.keys():
+	# 仅停用刚离开半径的 chunk。注册时节点已经默认停用，因此无需扫描全地图。
+	for chunk in _last_active_physics_chunks.keys():
 		if active.has(chunk):
 			continue
-		var bodies: Array = _physics_chunks[chunk]
+		var bodies: Array = _physics_chunks.get(chunk, [])
 		for body in bodies:
 			if body != null and is_instance_valid(body):
 				_set_physics_body_active(body, false)
@@ -178,12 +212,23 @@ func _update_visuals(player_chunk: Vector2i) -> void:
 	var active := {}
 	for chunk in _iter_chunks(player_chunk, STREAM_VISUAL_CHUNK_RADIUS):
 		active[chunk] = true
-	for chunk in _visual_chunks.keys():
-		var visible := active.has(chunk)
-		var nodes: Array = _visual_chunks[chunk]
+	# 新激活 chunk：仅对之前未激活的设置可见（并恢复粒子/音频）。
+	for chunk in active.keys():
+		if _last_active_visual_chunks.has(chunk):
+			continue
+		var nodes: Array = _visual_chunks.get(chunk, [])
 		for node in nodes:
 			if node != null and is_instance_valid(node):
-				node.visible = visible
+				_set_visual_node_active(node, true)
+	# 失活 chunk：仅对之前激活的设置不可见（并暂停粒子/音频）。
+	for chunk in _last_active_visual_chunks.keys():
+		if active.has(chunk):
+			continue
+		var nodes: Array = _visual_chunks.get(chunk, [])
+		for node in nodes:
+			if node != null and is_instance_valid(node):
+				_set_visual_node_active(node, false)
+	_last_active_visual_chunks = active
 
 func _update_terrain(player_chunk: Vector2i) -> void:
 	if _terrain_chunks.is_empty():
@@ -191,12 +236,37 @@ func _update_terrain(player_chunk: Vector2i) -> void:
 	var active := {}
 	for chunk in _iter_chunks(player_chunk, STREAM_TERRAIN_CHUNK_RADIUS):
 		active[chunk] = true
-	for chunk in _terrain_chunks.keys():
-		var visible := active.has(chunk)
-		var nodes: Array = _terrain_chunks[chunk]
+	for chunk in active.keys():
+		if _last_active_terrain_chunks.has(chunk):
+			continue
+		var nodes: Array = _terrain_chunks.get(chunk, [])
 		for node in nodes:
 			if node != null and is_instance_valid(node):
-				node.visible = visible
+				node.visible = true
+	for chunk in _last_active_terrain_chunks.keys():
+		if active.has(chunk):
+			continue
+		var nodes: Array = _terrain_chunks.get(chunk, [])
+		for node in nodes:
+			if node != null and is_instance_valid(node):
+				node.visible = false
+	_last_active_terrain_chunks = active
+
+## 设置视觉节点可见性，并随可见性暂停/恢复其下的粒子与 3D 音频，
+## 避免隐藏的火把仍在烧粒子、播火焰音（灯光预算只控 OmniLight3D，不控粒子/音频）。
+func _set_visual_node_active(node: Node3D, active: bool) -> void:
+	node.visible = active
+	_apply_visual_side_effects(node, not active)
+
+func _apply_visual_side_effects(node: Node, paused: bool) -> void:
+	if node is GPUParticles3D:
+		(node as GPUParticles3D).emitting = not paused
+	elif node is CPUParticles3D:
+		(node as CPUParticles3D).emitting = not paused
+	elif node is AudioStreamPlayer3D:
+		(node as AudioStreamPlayer3D).stream_paused = paused
+	for child in node.get_children():
+		_apply_visual_side_effects(child, paused)
 
 # ── 物理体启停（从 procedural_dungeon.gd 迁出）────────────────────
 func _collect_physics_bodies(node: Node, result: Array, visual_root: Node = null) -> void:
@@ -204,27 +274,53 @@ func _collect_physics_bodies(node: Node, result: Array, visual_root: Node = null
 		visual_root = node
 	if node is CharacterBody3D:
 		result.append({"body": node, "visual_root": visual_root})
+		_collect_nested_areas(node, result, visual_root)
 		return
 	if node is RigidBody3D:
 		result.append({"body": node, "visual_root": visual_root})
+		_collect_nested_areas(node, result, visual_root)
 		return
 	if node is StaticBody3D:
+		result.append({"body": node, "visual_root": visual_root})
+		_collect_nested_areas(node, result, visual_root)
+		_collect_nested_static_bodies(node, result, visual_root)
+		return
+	if node is Area3D:
 		result.append({"body": node, "visual_root": visual_root})
 		return
 	for child in node.get_children():
 		_collect_physics_bodies(child, result, visual_root)
 
-func _register_one_physics_body(body: PhysicsBody3D, visual_root: Node = null) -> void:
+func _collect_nested_areas(node: Node, result: Array, visual_root: Node) -> void:
+	for child in node.get_children():
+		if child is Area3D:
+			result.append({"body": child, "visual_root": visual_root})
+		_collect_nested_areas(child, result, visual_root)
+
+func _collect_nested_static_bodies(node: Node, result: Array, visual_root: Node) -> void:
+	for child in node.get_children():
+		if child is StaticBody3D:
+			result.append({"body": child, "visual_root": visual_root})
+		_collect_nested_static_bodies(child, result, visual_root)
+
+func _register_one_physics_body(body: CollisionObject3D, visual_root: Node = null) -> void:
 	if body.get_meta("stream_physics_registered", false):
 		return
 	var stream_position := _node_position(body)
 	if visual_root is Node3D:
 		stream_position = _node_position(visual_root as Node3D)
-	var chunk := _world_to_chunk(stream_position)
+	var chunk: Vector2i = _world_to_chunk(stream_position)
+	if body.has_meta("stream_physics_chunk"):
+		var chunk_hint = body.get_meta("stream_physics_chunk")
+		if chunk_hint is Vector2i:
+			chunk = chunk_hint
 	body.set_meta("stream_physics_registered", true)
 	body.set_meta("stream_physics_chunk", chunk)
 	body.set_meta("stream_collision_layer", body.collision_layer)
 	body.set_meta("stream_collision_mask", body.collision_mask)
+	if body is Area3D:
+		body.set_meta("stream_monitoring", (body as Area3D).monitoring)
+		body.set_meta("stream_monitorable", (body as Area3D).monitorable)
 	if visual_root is Node3D:
 		body.set_meta("stream_visual_root_id", (visual_root as Node3D).get_instance_id())
 	if body is RigidBody3D:
@@ -234,7 +330,7 @@ func _register_one_physics_body(body: PhysicsBody3D, visual_root: Node = null) -
 	_physics_chunks[chunk].append(body)
 	_set_physics_body_active(body, false)
 
-func _set_physics_body_active(body: PhysicsBody3D, active: bool) -> void:
+func _set_physics_body_active(body: CollisionObject3D, active: bool) -> void:
 	# 不早返回：远离后再次设 false 必须强制 layer=0，否则激活残留的 layer 不会清。
 	# （早返回会跳过 layer=0 设置，导致停用的 body 仍持碰撞。）
 	body.set_meta("stream_physics_active", active)
@@ -255,8 +351,13 @@ func _set_physics_body_active(body: PhysicsBody3D, active: bool) -> void:
 		(body as CharacterBody3D).velocity = Vector3.ZERO
 	if body is CharacterBody3D:
 		_set_character_callbacks(body as CharacterBody3D, active)
+	elif body is Area3D:
+		var area := body as Area3D
+		area.monitoring = bool(area.get_meta("stream_monitoring", true)) if active else false
+		area.monitorable = bool(area.get_meta("stream_monitorable", true)) if active else false
+		_set_node_callbacks_recursive(area, active)
 
-func _set_visual_root_active(body: PhysicsBody3D, active: bool) -> void:
+func _set_visual_root_active(body: CollisionObject3D, active: bool) -> void:
 	var root_id := int(body.get_meta("stream_visual_root_id", 0))
 	if root_id == 0:
 		return
@@ -264,6 +365,9 @@ func _set_visual_root_active(body: PhysicsBody3D, active: bool) -> void:
 	if root == null or not is_instance_valid(root):
 		return
 	root.visible = active
+	# 物理注册节点（如火把：仅注册为 physics 节点，无可视节点）也需随可见性暂停其下
+	# 粒子与音频，否则隐藏的火把仍常播火焰音（灯光预算只控 OmniLight3D，不控音频/粒子）。
+	_apply_visual_side_effects(root, not active)
 
 func _set_character_callbacks(body: CharacterBody3D, active: bool) -> void:
 	body.set_process(active)
@@ -289,6 +393,9 @@ func _iter_chunks(center: Vector2i, radius: int) -> Array:
 		for x in range(center.x - radius, center.x + radius + 1):
 			chunks.append(Vector2i(x, y))
 	return chunks
+
+func _is_chunk_within_radius(chunk: Vector2i, center: Vector2i, radius: int) -> bool:
+	return absi(chunk.x - center.x) <= radius and absi(chunk.y - center.y) <= radius
 
 func _node_position(node: Node3D) -> Vector3:
 	return node.global_position if node.is_inside_tree() else node.position

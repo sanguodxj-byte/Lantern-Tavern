@@ -3,103 +3,168 @@ extends Node
 ## 按房间类型分类生成怪物：普通房间生成弱怪/精英，BOSS 房间只生成 BOSS 类。
 ## 与 procedural_dungeon.gd 协作：地牢生成完毕后调用 spawn_enemies() 注入怪物。
 ##
-## 怪物种类以体素模型为准（assets/meshes/characters/voxel_*.glb）：
-## - goblin   (voxel_goblin_32px)   — 普通精英，持盾
-## - rat      (voxel_rat_12px)      — 弱怪，速度快
-## - skeleton (voxel_skeleton_48px) — 中等，持剑
-## - slime    (voxel_slime_18px)    — 弱怪，近战
-## - troll    (voxel_troll_64x)     — 普通怪，高血量大体型
-## - necrolord(voxel_necrolord_80px)— BOSS 级，法系
-## - dragon   (voxel_dragon_256px)  — BOSS 级，龙息
-##
-## BOSS 房间：龙和死灵领主二选一随机刷新
-## 普通房间：所有 5 种普通怪按区域权重出现
+## data/enemy_roster.json 声明完整重建队列；CharacterModelTiers.ACCEPTED_IDS
+## 是唯一允许运行时加载和生成的子集。
 
-const GOBLIN_PREFAB := preload("res://scenes/characters/enemies/goblin.tscn")
-const RAT_PREFAB := preload("res://scenes/characters/enemies/rat.tscn")
-const SKELETON_PREFAB := preload("res://scenes/characters/enemies/skeleton.tscn")
-const SLIME_PREFAB := preload("res://scenes/characters/enemies/slime.tscn")
-const TROLL_PREFAB := preload("res://scenes/characters/enemies/troll.tscn")
-const NECROLORD_PREFAB := preload("res://scenes/characters/enemies/necrolord.tscn")
-const DRAGON_PREFAB := preload("res://scenes/characters/enemies/dragon.tscn")
+const ROSTER_PATH := "res://data/enemy_roster.json"
+const MODEL_TIERS := preload("res://data/character_model_tiers.gd")
 
-# BOSS 类怪物：只允许在 BOSS 房间生成（龙和死灵领主二选一）
-const BOSS_TYPES := ["necrolord", "dragon"]
-# 普通类怪物：可在任何非起始房间生成（巨魔降为普通怪）
-const NORMAL_TYPES := ["goblin", "rat", "skeleton", "slime", "troll"]
-const BODY_SIZE_BY_TYPE: Dictionary = {
-	"rat": "small",
-	"slime": "small",
-	"goblin": "medium",
-	"skeleton": "medium",
-	"troll": "large",
-	"necrolord": "large",
-	"dragon": "huge",
-}
+## 用于单元测试：如果为 true，则实例化普通的 CharacterBody3D 节点，不加载完整怪物预制件
+var use_mock_nodes := false
 
-# 各区域怪物配置（普通房间用）：弱怪权重 + 精英权重 + 数量倍率 + 属性倍率
-# BOSS 房间使用 BOSS_ZONE_CONFIG
-const ZONE_ENEMY_CONFIG: Dictionary = {
-	0: {  # 幽暗地牢 — 最弱，适合初始
-		"types": {"rat": 30, "slime": 25, "skeleton": 20, "goblin": 15, "troll": 10},
-		"count_per_room": 1.5,
-		"hp_mult": 0.8, "speed_mult": 0.9, "dmg_mult": 0.8,
-		"boss": {"necrolord": 50, "dragon": 50},
-	},
-	1: {  # 寂静之森
-		"types": {"rat": 25, "slime": 20, "skeleton": 20, "goblin": 20, "troll": 15},
-		"count_per_room": 2.0,
-		"hp_mult": 1.0, "speed_mult": 1.0, "dmg_mult": 1.0,
-		"boss": {"necrolord": 50, "dragon": 50},
-	},
-	2: {  # 深邃洞窟
-		"types": {"slime": 20, "skeleton": 25, "rat": 15, "goblin": 20, "troll": 20},
-		"count_per_room": 2.5,
-		"hp_mult": 1.2, "speed_mult": 1.1, "dmg_mult": 1.1,
-		"boss": {"necrolord": 50, "dragon": 50},
-	},
-	3: {  # 荒芜墓园
-		"types": {"skeleton": 25, "rat": 10, "slime": 15, "goblin": 25, "troll": 25},
-		"count_per_room": 3.0,
-		"hp_mult": 1.4, "speed_mult": 1.15, "dmg_mult": 1.3,
-		"boss": {"necrolord": 50, "dragon": 50},
-	},
-	4: {  # 熔岩火山
-		"types": {"skeleton": 15, "slime": 10, "rat": 5, "goblin": 30, "troll": 40},
-		"count_per_room": 3.5,
-		"hp_mult": 1.8, "speed_mult": 1.25, "dmg_mult": 1.5,
-		"boss": {"necrolord": 50, "dragon": 50},
-	},
-	5: {  # 古代遗迹
-		"types": {"skeleton": 10, "rat": 5, "slime": 5, "goblin": 35, "troll": 45},
-		"count_per_room": 4.0,
-		"hp_mult": 2.2, "speed_mult": 1.3, "dmg_mult": 1.8,
-		"boss": {"necrolord": 50, "dragon": 50},
-	},
-}
-
-# 怪物基础属性（各 .tscn 的 @export 默认值参考）
-const BASE_HP: Dictionary = {
-	"goblin": 10, "rat": 3, "skeleton": 12, "slime": 6,
-	"troll": 20, "necrolord": 25, "dragon": 40,
-}
-const BASE_SPEED: Dictionary = {
-	"goblin": 2.0, "rat": 3.5, "skeleton": 1.8, "slime": 1.5,
-	"troll": 1.0, "necrolord": 1.3, "dragon": 0.8,
-}
+# 运行时由 _ready 从 roster 填充
+var _roster: Dictionary = {}
+var _enemies_by_id: Dictionary = {}  # id -> entry
+var _prefabs: Dictionary = {}  # id -> PackedScene
+var BOSS_TYPES: Array = []
+var NORMAL_TYPES: Array = []
+var BODY_SIZE_BY_TYPE: Dictionary = {}
+var ZONE_ENEMY_CONFIG: Dictionary = {}
+var BASE_HP: Dictionary = {}
+var BASE_SPEED: Dictionary = {}
 
 # 精英怪额外属性倍率
 const ELITE_HP_MULT := 2.0
 const ELITE_SPEED_MULT := 1.1
 const ELITE_DMG_MULT := 1.5
 
+func _ready() -> void:
+	_load_roster()
+
+
+func _load_roster() -> void:
+	if not FileAccess.file_exists(ROSTER_PATH):
+		push_error("[DungeonSpawner] missing roster: %s" % ROSTER_PATH)
+		_fallback_minimal_roster()
+		return
+	var file := FileAccess.open(ROSTER_PATH, FileAccess.READ)
+	var json := JSON.new()
+	var err := json.parse(file.get_as_text())
+	file.close()
+	if err != OK:
+		push_error("[DungeonSpawner] roster JSON parse failed")
+		_fallback_minimal_roster()
+		return
+	_roster = json.data as Dictionary
+	_enemies_by_id.clear()
+	_prefabs.clear()
+	BOSS_TYPES.clear()
+	NORMAL_TYPES.clear()
+	BODY_SIZE_BY_TYPE.clear()
+	BASE_HP.clear()
+	BASE_SPEED.clear()
+
+	var declared_bosses: Dictionary = {}
+	for t in _roster.get("boss_types", []):
+		declared_bosses[String(t)] = true
+
+	for entry in _roster.get("enemies", []):
+		var eid: String = String(entry.get("id", ""))
+		if eid.is_empty() or not MODEL_TIERS.is_accepted(eid):
+			continue
+		_enemies_by_id[eid] = entry
+		BODY_SIZE_BY_TYPE[eid] = String(entry.get("body_size", "medium"))
+		BASE_HP[eid] = int(entry.get("hp", 10))
+		BASE_SPEED[eid] = float(entry.get("speed", 2.0))
+		if declared_bosses.has(eid):
+			BOSS_TYPES.append(eid)
+		else:
+			NORMAL_TYPES.append(eid)
+		# 仅登记路径；PackedScene 懒加载，避免 headless 一次载入全部蒙皮 GLB 崩溃
+
+	ZONE_ENEMY_CONFIG.clear()
+	var zw: Dictionary = _roster.get("zone_weights", {})
+	for zone_key in zw.keys():
+		var zid: int = int(zone_key)
+		var zcfg: Dictionary = zw[zone_key]
+		# 未通过独立美术验收的 roster 条目只保留声明，不进入运行时权重。
+		var types: Dictionary = {}
+		for k in zcfg.get("types", {}).keys():
+			var enemy_id := String(k)
+			var w: float = float(zcfg["types"][k])
+			if w <= 0.0 or not NORMAL_TYPES.has(enemy_id):
+				continue
+			types[enemy_id] = w
+		var boss: Dictionary = {}
+		for k in zcfg.get("boss", {}).keys():
+			var boss_id := String(k)
+			var w2: float = float(zcfg["boss"][k])
+			if w2 <= 0.0 or not BOSS_TYPES.has(boss_id):
+				continue
+			boss[boss_id] = w2
+		ZONE_ENEMY_CONFIG[zid] = {
+			"types": types,
+			"count_per_room": float(zcfg.get("count_per_room", 1.5)),
+			"hp_mult": float(zcfg.get("hp_mult", 1.0)),
+			"speed_mult": float(zcfg.get("speed_mult", 1.0)),
+			"dmg_mult": float(zcfg.get("dmg_mult", 1.0)),
+			"boss": boss,
+		}
+	print("[DungeonSpawner] roster loaded: %d enemies, %d zones" % [
+		_enemies_by_id.size(), ZONE_ENEMY_CONFIG.size()
+	])
+
+
+func _fallback_minimal_roster() -> void:
+	_roster.clear()
+	_enemies_by_id.clear()
+	_prefabs.clear()
+	var fallback_boss_types: Array = ["dragon", "rock_golem"]
+	var fallback_normal_types: Array = ["goblin", "skeleton", "troll", "orc_raider"]
+	BOSS_TYPES.clear()
+	NORMAL_TYPES.clear()
+	for eid in fallback_boss_types:
+		var boss_id := String(eid)
+		if MODEL_TIERS.is_accepted(boss_id):
+			BOSS_TYPES.append(boss_id)
+	for eid in fallback_normal_types:
+		var normal_id := String(eid)
+		if MODEL_TIERS.is_accepted(normal_id):
+			NORMAL_TYPES.append(normal_id)
+	BODY_SIZE_BY_TYPE = {
+		"goblin": "medium", "skeleton": "medium", "troll": "large", "orc_raider": "medium",
+		"rock_golem": "large", "dragon": "huge",
+	}
+	BASE_HP = {
+		"goblin": 10, "skeleton": 12, "troll": 20, "orc_raider": 14,
+		"rock_golem": 32, "dragon": 40,
+	}
+	BASE_SPEED = {
+		"goblin": 2.0, "skeleton": 1.8, "troll": 1.0, "orc_raider": 1.9,
+		"rock_golem": 0.9, "dragon": 0.8,
+	}
+	for eid in NORMAL_TYPES + BOSS_TYPES:
+		var enemy_id := String(eid)
+		_enemies_by_id[enemy_id] = {
+			"id": enemy_id,
+			"body_size": BODY_SIZE_BY_TYPE.get(enemy_id, "medium"),
+		}
+	ZONE_ENEMY_CONFIG.clear()
+	var fallback_normal_weights: Dictionary = {}
+	for eid in NORMAL_TYPES:
+		fallback_normal_weights[String(eid)] = 50
+	var fallback_boss_weights: Dictionary = {}
+	for eid in BOSS_TYPES:
+		fallback_boss_weights[String(eid)] = 50
+	var hp_mults := [0.8, 1.0, 1.2, 1.4, 1.8, 2.2]
+	var speed_mults := [0.9, 1.0, 1.1, 1.15, 1.25, 1.3]
+	var dmg_mults := [0.8, 1.0, 1.1, 1.3, 1.5, 1.8]
+	for zone in range(6):
+		ZONE_ENEMY_CONFIG[zone] = {
+			"types": fallback_normal_weights.duplicate() if zone == 0 else {},
+			"count_per_room": 1.5 if zone == 0 else 1.0,
+			"hp_mult": hp_mults[zone],
+			"speed_mult": speed_mults[zone],
+			"dmg_mult": dmg_mults[zone],
+			"boss": fallback_boss_weights.duplicate(),
+		}
+
+
 ## 在地牢房间内生成怪物。
-## parent: 地牢节点；grid: 二维数组；zone: ZoneManager 区域 id；
-## player: Player 实例；spawn_pos: 玩家出生点；
-## tile_size: 格子尺寸；rooms: 所有房间矩形数组；room_roles: 房间角色字典。
 func spawn_enemies(parent: Node, grid: Array, zone: int, player: Node, spawn_pos: Vector3, tile_size: float = 3.0, _offset: Vector3 = Vector3.ZERO, rooms: Array = [], room_roles: Dictionary = {}) -> Array:
-	var config: Dictionary = ZONE_ENEMY_CONFIG.get(zone, ZONE_ENEMY_CONFIG[0])
-	# 重算偏移（与 _generate_visuals 同公式）
+	if ZONE_ENEMY_CONFIG.is_empty():
+		_load_roster()
+	var config: Dictionary = ZONE_ENEMY_CONFIG.get(zone, ZONE_ENEMY_CONFIG.get(0, {}))
 	var grid_width: int = grid[0].size() if grid.size() > 0 else 0
 	var grid_height: int = grid.size()
 	var offset_x: float = -(float(grid_width) * tile_size) / 2.0
@@ -108,94 +173,105 @@ func spawn_enemies(parent: Node, grid: Array, zone: int, player: Node, spawn_pos
 
 	var spawned: Array = []
 
-	# 如果没有房间信息，回退到旧逻辑（全地图散布）
 	if rooms.is_empty():
 		spawned = _spawn_scattered(parent, grid, config, zone, player, spawn_pos, tile_size, offset)
 		print("[DungeonSpawner] Spawned %d enemies (fallback scattered, zone %d)" % [spawned.size(), zone])
 		return spawned
 
-	# 按房间分类生成
 	var start_room: Rect2i = room_roles.get("start", Rect2i())
 	var boss_room: Rect2i = room_roles.get("boss", Rect2i())
 
 	for room in rooms:
 		var room_rect: Rect2i = room
-		# 跳过起始房间
 		if room_rect == start_room:
 			continue
-		# 收集该房间内的地板格
 		var cell_positions: Array = _collect_room_floor_cells(grid, room_rect, tile_size, offset, spawn_pos)
 		if cell_positions.is_empty():
 			continue
-
 		if room_rect == boss_room:
-			# BOSS 房间：只生成 BOSS 类怪物
 			spawned.append_array(_spawn_in_room(parent, cell_positions, config, zone, player, true))
 		else:
-			# 普通房间：只生成普通怪物
 			spawned.append_array(_spawn_in_room(parent, cell_positions, config, zone, player, false))
 
 	print("[DungeonSpawner] Spawned %d enemies (zone %d, rooms %d, boss_room %s)" % [spawned.size(), zone, rooms.size(), boss_room != Rect2i()])
 	return spawned
 
-## 阶段 9 接线：按 DungeonLayout.enemy_spawn_specs 实例化怪物，不再重读 grid/rooms/room_roles。
-## layout: 已规划 enemy_spawn_specs 的 DungeonLayout（DungeonSpawnPlanner.plan_enemy_spawns 产出）
-## spawn_root: 敌人节点容器（DungeonBuildResult.spawn_root）
-## player: Player 实例，注入敌人 AI
-## 倍率从 layout.zone 查 ZONE_ENEMY_CONFIG；boss 类型 spec.is_elite=true 走 elite 倍率。
-func spawn_enemies_from_layout(layout: DungeonLayout, spawn_root: Node, player: Node) -> Array:
+
+func spawn_enemies_from_layout(layout: DungeonLayout, spawn_root: Node, player: Node, batched: bool = false) -> Array:
+	if ZONE_ENEMY_CONFIG.is_empty():
+		_load_roster()
+	var plan: Array = build_enemy_spawn_plan(layout, player)
+	if batched:
+		# 调用方（DungeonRuntime）将分帧实例化，以削平进场单帧卡顿与显存峰值尖峰。
+		return plan
 	var spawned: Array = []
-	if layout == null or layout.is_empty() or spawn_root == null or not is_instance_valid(spawn_root):
-		return spawned
-	var zone_cfg: Dictionary = ZONE_ENEMY_CONFIG.get(layout.zone, ZONE_ENEMY_CONFIG[0])
-	for spec in layout.enemy_spawn_specs:
-		var enemy_type: String = spec["enemy_type"]
-		var cell: Vector2i = spec["cell"]
-		# 格坐标 → 世界坐标（与 procedural 的 OFFSET 公式一致：居中）
-		var offset_x: float = -(float(layout.width) * layout.tile_size) / 2.0
-		var offset_z: float = -(float(layout.height) * layout.tile_size) / 2.0
-		var pos: Vector3 = Vector3(offset_x, 0.5, offset_z) + Vector3(cell.x * layout.tile_size, 0.0, cell.y * layout.tile_size)
-		# boss 类型走 elite_ 前缀，触 _instantiate_enemy 的 is_elite 倍率链
-		var instantiate_type: String = enemy_type
-		if bool(spec.get("is_elite", false)) and not enemy_type.begins_with("elite_"):
-			instantiate_type = "elite_" + enemy_type
-		var enemy: Node = _instantiate_enemy(instantiate_type, pos, player, zone_cfg)
-		spawn_root.add_child(enemy)
-		enemy.global_position = pos
-		spawned.append(enemy)
+	for desc in plan:
+		var enemy: Node = instantiate_enemy_descriptor(desc, spawn_root, player, layout)
+		if enemy != null:
+			spawned.append(enemy)
 	print("[DungeonSpawner] Spawned %d enemies from layout specs (zone %d, specs %d)" % [spawned.size(), layout.zone, layout.enemy_spawn_specs.size()])
 	return spawned
 
-## 收集房间内所有地板格的世界坐标
+
+## 仅构建敌人生成计划（描述符列表），不实例化。供运行时分帧生成。
+func build_enemy_spawn_plan(layout: DungeonLayout, player: Node) -> Array:
+	if ZONE_ENEMY_CONFIG.is_empty():
+		_load_roster()
+	var plan: Array = []
+	if layout == null or layout.is_empty() or player == null:
+		return plan
+	for spec in layout.enemy_spawn_specs:
+		var enemy_type: String = spec["enemy_type"]
+		var cell: Vector2i = spec["cell"]
+		var offset_x: float = -(float(layout.width) * layout.tile_size) / 2.0
+		var offset_z: float = -(float(layout.height) * layout.tile_size) / 2.0
+		var pos: Vector3 = Vector3(offset_x, 0.5, offset_z) + Vector3(cell.x * layout.tile_size, 0.0, cell.y * layout.tile_size)
+		var instantiate_type: String = enemy_type
+		if bool(spec.get("is_elite", false)) and not enemy_type.begins_with("elite_"):
+			instantiate_type = "elite_" + enemy_type
+		plan.append({"enemy_type": instantiate_type, "pos": pos})
+	return plan
+
+
+## 按单个描述符实例化一个敌人（供分帧生成）。失败返回 null。
+func instantiate_enemy_descriptor(desc: Dictionary, spawn_root: Node, player: Node, layout: DungeonLayout) -> Node:
+	if desc.is_empty() or spawn_root == null or not is_instance_valid(spawn_root) or player == null or layout == null:
+		return null
+	var zone_cfg: Dictionary = ZONE_ENEMY_CONFIG.get(layout.zone, ZONE_ENEMY_CONFIG.get(0, {}))
+	var enemy: Node = _instantiate_enemy(desc["enemy_type"], desc["pos"], player, zone_cfg)
+	if enemy == null:
+		return null
+	spawn_root.add_child(enemy)
+	enemy.global_position = desc["pos"]
+	return enemy
+
+
 func _collect_room_floor_cells(grid: Array, room: Rect2i, tile_size: float, offset: Vector3, spawn_pos: Vector3) -> Array:
 	var positions: Array = []
 	for y in range(room.position.y, room.position.y + room.size.y):
 		for x in range(room.position.x, room.position.x + room.size.x):
 			if y < 0 or y >= grid.size() or x < 0 or x >= grid[y].size():
 				continue
-			if grid[y][x] == 1:  # FLOOR
+			if grid[y][x] == 1:
 				var pos: Vector3 = offset + Vector3(x * tile_size, 0.5, y * tile_size)
-				# 起始房间附近的格子也跳过（额外安全距离）
 				if pos.distance_to(spawn_pos) >= tile_size * 3.0:
 					positions.append(pos)
 	return positions
 
-## 在房间内生成怪物
+
 func _spawn_in_room(parent: Node, cell_positions: Array, config: Dictionary, zone: int, player: Node, is_boss_room: bool) -> Array:
 	var spawned: Array = []
 	if cell_positions.is_empty():
 		return spawned
 
 	var count_per_room: float = float(config.get("count_per_room", 1.5))
-	# BOSS 房间：龙和死灵领主二选一，固定 1 只
 	var count: int
 	if is_boss_room:
 		count = 1
 	else:
 		count = int(cell_positions.size() * count_per_room * 0.25)
-		count = clampi(count, 1, 5)  # 每个普通房间 1-5 只
+		count = clampi(count, 1, 5)
 
-	# 打乱位置列表
 	cell_positions.shuffle()
 
 	for i in range(count):
@@ -206,15 +282,19 @@ func _spawn_in_room(parent: Node, cell_positions: Array, config: Dictionary, zon
 		if is_boss_room:
 			enemy_type = _pick_boss_type(config)
 		else:
-			enemy_type = _pick_enemy_type(config.types)
+			enemy_type = _pick_enemy_type(config.get("types", {}))
+		if enemy_type.is_empty():
+			continue
 		var enemy: Node = _instantiate_enemy(enemy_type, pos, player, config)
+		if enemy == null:
+			continue
 		parent.add_child(enemy)
 		enemy.global_position = pos
 		spawned.append(enemy)
 
 	return spawned
 
-## 旧逻辑：无房间信息时全地图散布生成
+
 func _spawn_scattered(parent: Node, grid: Array, config: Dictionary, zone: int, player: Node, spawn_pos: Vector3, tile_size: float, offset: Vector3) -> Array:
 	var enemy_positions: Array = _collect_enemy_spawn_positions(grid, spawn_pos, tile_size, offset)
 	var count: int = int(enemy_positions.size() * float(config.get("count_per_room", 1.5)) * 0.3)
@@ -225,122 +305,185 @@ func _spawn_scattered(parent: Node, grid: Array, config: Dictionary, zone: int, 
 			break
 		var idx: int = randi() % enemy_positions.size()
 		var pos: Vector3 = enemy_positions.pop_at(idx)
-		var enemy_type: String = _pick_enemy_type(config.types)
+		var enemy_type: String = _pick_enemy_type(config.get("types", {}))
+		if enemy_type.is_empty():
+			continue
 		var enemy: Node = _instantiate_enemy(enemy_type, pos, player, config)
+		if enemy == null:
+			continue
 		parent.add_child(enemy)
 		enemy.global_position = pos
 		spawned.append(enemy)
 	return spawned
 
-## 收集适合刷怪的地板格子（远离玩家出生点，避免出生房刷怪）
+
 func _collect_enemy_spawn_positions(grid: Array, spawn_pos: Vector3, tile_size: float, offset: Vector3) -> Array:
 	var positions: Array = []
 	for y in range(grid.size()):
 		for x in range(grid[y].size()):
-			if grid[y][x] == 1:  # FLOOR
+			if grid[y][x] == 1:
 				var pos: Vector3 = offset + Vector3(x * tile_size, 0.5, y * tile_size)
 				if pos.distance_to(spawn_pos) >= tile_size * 4.0:
 					positions.append(pos)
 	return positions
 
-## 按权重随机选择普通怪物种类
+
 func _pick_enemy_type(types: Dictionary) -> String:
+	var accepted_weights: Dictionary = {}
 	var total: float = 0.0
 	for k in types.keys():
-		total += float(types[k])
+		var enemy_id := String(k)
+		var weight := float(types[k])
+		if weight <= 0.0 or not NORMAL_TYPES.has(enemy_id) or not MODEL_TIERS.is_accepted(enemy_id):
+			continue
+		accepted_weights[enemy_id] = weight
+		total += weight
+	if total <= 0.0:
+		return ""
 	var roll: float = randf() * total
 	var acc: float = 0.0
-	for k in types.keys():
-		acc += float(types[k])
+	for k in accepted_weights.keys():
+		acc += float(accepted_weights[k])
 		if roll <= acc:
-			return k
-	return types.keys()[0]
+			return String(k)
+	return String(accepted_weights.keys()[0])
 
-## 按权重随机选择 BOSS 类怪物种类（龙和死灵领主二选一）
+
 func _pick_boss_type(config: Dictionary) -> String:
-	var boss_config: Dictionary = config.get("boss", {"necrolord": 50, "dragon": 50})
+	var boss_config: Dictionary = config.get("boss", {})
+	var accepted_weights: Dictionary = {}
 	var total: float = 0.0
 	for k in boss_config.keys():
-		total += float(boss_config[k])
+		var boss_id := String(k)
+		var weight := float(boss_config[k])
+		if weight <= 0.0 or not BOSS_TYPES.has(boss_id) or not MODEL_TIERS.is_accepted(boss_id):
+			continue
+		accepted_weights[boss_id] = weight
+		total += weight
+	if total <= 0.0:
+		return ""
 	var roll: float = randf() * total
 	var acc: float = 0.0
-	for k in boss_config.keys():
-		acc += float(boss_config[k])
+	for k in accepted_weights.keys():
+		acc += float(accepted_weights[k])
 		if roll <= acc:
-			return "elite_" + k
-	return "elite_" + String(boss_config.keys()[0])
+			return "elite_" + String(k)
+	return "elite_" + String(accepted_weights.keys()[0])
 
-## 实例化怪物并应用区域属性倍率
-## enemy_type 格式: "rat" / "skeleton" / "elite_goblin" / "elite_dragon"
+
 func _instantiate_enemy(enemy_type: String, pos: Vector3, player: Node, config: Dictionary) -> Node:
 	var is_elite := enemy_type.begins_with("elite_")
 	var base_type := enemy_type.trim_prefix("elite_")
-	var prefab: PackedScene = _get_enemy_prefab(base_type)
-	var enemy: Node = prefab.instantiate()
-	# 标记怪物类型（含 elite_ 前缀），供测试与运行时验证
+	if not MODEL_TIERS.is_accepted(base_type) or not _enemies_by_id.has(base_type):
+		push_warning("[DungeonSpawner] rejected unaccepted or unknown enemy type: %s" % enemy_type)
+		return null
+
+	var enemy: Node
+	if use_mock_nodes:
+		enemy = CharacterBody3D.new()
+	else:
+		var prefab: PackedScene = _get_enemy_prefab(base_type)
+		if prefab == null:
+			push_warning("[DungeonSpawner] accepted enemy scene is missing or invalid: %s" % base_type)
+			return null
+		enemy = prefab.instantiate()
+
 	enemy.set_meta("enemy_type", enemy_type)
 	enemy.set_meta("enemy_base_type", base_type)
 	enemy.set_meta("is_boss_type", BOSS_TYPES.has(base_type))
 	enemy.set_meta("is_boss", BOSS_TYPES.has(base_type))
 	enemy.set_meta("enemy_rank", "boss" if BOSS_TYPES.has(base_type) else ("elite" if is_elite else "normal"))
 	enemy.set_meta("body_size", get_body_size(base_type))
-	# 注入 player 引用（敌人 AI 追击需要；用 set_meta 避免类型/信号错误）
 	enemy.set_meta("player_ref", player)
 	enemy.set_meta("spawn_pos", pos)
-	# 应用区域属性倍率
 	var zone_hp_mult: float = float(config.get("hp_mult", 1.0))
 	var zone_spd_mult: float = float(config.get("speed_mult", 1.0))
 	if is_elite:
 		enemy.set_meta("hp_mult", zone_hp_mult * ELITE_HP_MULT)
 		enemy.set_meta("speed_mult", zone_spd_mult * ELITE_SPEED_MULT)
-		enemy.set("is_elite", true)
+		if not use_mock_nodes:
+			enemy.set("is_elite", true)
 	else:
 		enemy.set_meta("hp_mult", zone_hp_mult)
 		enemy.set_meta("speed_mult", zone_spd_mult)
 	enemy.set_meta("dmg_mult", float(config.get("dmg_mult", 1.0)) * (ELITE_DMG_MULT if is_elite else 1.0))
 	return enemy
 
-## 根据怪物类型获取对应预制体场景
-static func _get_enemy_prefab(base_type: String) -> PackedScene:
-	match base_type:
-		"goblin":
-			return GOBLIN_PREFAB
-		"rat":
-			return RAT_PREFAB
-		"skeleton":
-			return SKELETON_PREFAB
-		"slime":
-			return SLIME_PREFAB
-		"troll":
-			return TROLL_PREFAB
-		"necrolord":
-			return NECROLORD_PREFAB
-		"dragon":
-			return DRAGON_PREFAB
-		_:
-			return GOBLIN_PREFAB
 
-## 获取区域怪物配置（供 UI/测试查询）
+func _get_enemy_prefab(base_type: String) -> PackedScene:
+	if not MODEL_TIERS.is_accepted(base_type) or not _enemies_by_id.has(base_type):
+		return null
+	if _prefabs.has(base_type):
+		return _prefabs[base_type]
+	# lazy load
+	var path := "res://scenes/characters/enemies/%s.tscn" % base_type
+	if ResourceLoader.exists(path):
+		var packed := load(path) as PackedScene
+		if packed:
+			_prefabs[base_type] = packed
+			return packed
+	return null
+
+
 func get_zone_config(zone: int) -> Dictionary:
-	return ZONE_ENEMY_CONFIG.get(zone, ZONE_ENEMY_CONFIG[0])
+	if ZONE_ENEMY_CONFIG.is_empty():
+		_load_roster()
+	return ZONE_ENEMY_CONFIG.get(zone, ZONE_ENEMY_CONFIG.get(0, {}))
 
-## 获取所有体素模型怪物种类列表（供 UI/测试查询）
+
 func get_all_enemy_types() -> Array:
-	return ["goblin", "rat", "skeleton", "slime", "troll", "necrolord", "dragon"]
+	if _enemies_by_id.is_empty():
+		_load_roster()
+	var types: Array = []
+	for eid in _enemies_by_id.keys():
+		types.append(eid)
+	types.sort()
+	return types
 
-## 获取 BOSS 类怪物种类列表
+
 func get_boss_types() -> Array:
+	if BOSS_TYPES.is_empty():
+		_load_roster()
 	return BOSS_TYPES.duplicate()
 
-## 获取普通类怪物种类列表
+
 func get_normal_types() -> Array:
+	if NORMAL_TYPES.is_empty():
+		_load_roster()
 	return NORMAL_TYPES.duplicate()
+
 
 func get_body_size(enemy_type: String) -> String:
 	var base_type: String = enemy_type.trim_prefix("elite_")
-	return String(BODY_SIZE_BY_TYPE.get(base_type, "medium"))
+	if not MODEL_TIERS.is_accepted(base_type) or not _enemies_by_id.has(base_type):
+		return ""
+	return String(BODY_SIZE_BY_TYPE.get(base_type, ""))
 
-## 判断怪物类型是否为 BOSS 类
+
 func is_boss_type(enemy_type: String) -> bool:
+	if BOSS_TYPES.is_empty():
+		_load_roster()
 	var base_type: String = enemy_type.trim_prefix("elite_")
 	return BOSS_TYPES.has(base_type)
+
+
+func get_display_name(enemy_type: String) -> String:
+	if _enemies_by_id.is_empty():
+		_load_roster()
+	var base_type: String = enemy_type.trim_prefix("elite_")
+	if not MODEL_TIERS.is_accepted(base_type) or not _enemies_by_id.has(base_type):
+		return ""
+	var entry: Dictionary = _enemies_by_id.get(base_type, {})
+	var name_zh := String(entry.get("name_zh", ""))
+	# name_zh 作为翻译键：zh 原样显示，en 走 CSV 英文列
+	return TranslationServer.translate(name_zh)
+
+
+func get_drop_id(enemy_type: String) -> String:
+	if _enemies_by_id.is_empty():
+		_load_roster()
+	var base_type: String = enemy_type.trim_prefix("elite_")
+	if not MODEL_TIERS.is_accepted(base_type) or not _enemies_by_id.has(base_type):
+		return ""
+	var entry: Dictionary = _enemies_by_id.get(base_type, {})
+	return String(entry.get("drop", ""))

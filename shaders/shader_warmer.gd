@@ -12,6 +12,8 @@ const WARMUP_FRAMES := 5
 const FX_SCENES: Array[PackedScene] = [
 	preload("res://fx/blood_spurt.tscn"),
 	preload("res://fx/metal_spark.tscn"),
+	preload("res://fx/damage_number.tscn"),
+	preload("res://fx/voxel_chip.tscn"),
 ]
 
 # Override / surface materials applied at runtime via material_override.

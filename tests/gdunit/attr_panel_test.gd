@@ -6,7 +6,7 @@ var _ap
 
 func before() -> void:
 	# auto_free 实例 new() 时 attrs 已初始化为全 5；不调 reset() 避免钩子内异常中断套件
-	_ap = auto_free(load("res://globals/attr_panel.gd").new())
+	_ap = auto_free(load("res://globals/combat/attr_panel.gd").new())
 
 
 func test_initial_attrs_all_5() -> void:
@@ -91,7 +91,7 @@ func test_serialize_deserialize() -> void:
 	_ap.accumulate_level_exp(50)
 	var data = _ap.serialize()
 
-	var ap2 = auto_free(load("res://globals/attr_panel.gd").new())
+	var ap2 = auto_free(load("res://globals/combat/attr_panel.gd").new())
 	ap2.deserialize(data)
 	assert_int(ap2.get_attr("dex")).is_equal(_ap.get_attr("dex"))
 	assert_int(ap2.get_proficiency("bow")).is_equal(20)

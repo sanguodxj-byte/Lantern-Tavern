@@ -93,7 +93,7 @@ static func is_valid(tag: String) -> bool:
 
 ## 获取标签显示名
 static func display_name(tag: String) -> String:
-	return DISPLAY_NAMES.get(tag, tag)
+	return TranslationServer.translate(DISPLAY_NAMES.get(tag, tag))
 
 ## 获取所有标签
 static func all_tags() -> Array[String]:

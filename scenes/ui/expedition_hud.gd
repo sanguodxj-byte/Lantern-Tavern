@@ -62,19 +62,19 @@ func update_pressure(snapshot: Dictionary) -> void:
 	var band := String(snapshot.get("pressure_band", "safe"))
 	match band:
 		"critical":
-			pressure_label.text = "暗蚀 %d - 立刻撤离" % threat
+			pressure_label.text = tr("Dark Erosion %d - Evacuate Now") % threat
 		"leave_soon":
-			pressure_label.text = "暗蚀 %d - 差不多该撤了" % threat
+			pressure_label.text = tr("Dark Erosion %d - Time to Leave") % threat
 		"tense":
-			pressure_label.text = "暗蚀 %d - 周围开始躁动" % threat
+			pressure_label.text = tr("Dark Erosion %d - Surroundings Stirring") % threat
 		_:
-			pressure_label.text = "暗蚀 %d - 可控" % threat
+			pressure_label.text = tr("Dark Erosion %d - Contained") % threat
 
 	if bool(snapshot.get("overtime", false)):
-		alert_label.text = "18:00 已到，今晚经营收入归零"
+		alert_label.text = tr("18:00 reached - tonight's tavern earnings are lost")
 		alert_label.visible = true
 	elif bool(snapshot.get("should_extract", false)):
-		alert_label.text = "差不多该撤了"
+		alert_label.text = tr("Time to leave")
 		alert_label.visible = true
 
 func trigger_extraction_available() -> void:

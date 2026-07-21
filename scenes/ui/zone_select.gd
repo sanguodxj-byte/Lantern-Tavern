@@ -1,7 +1,7 @@
-extends Control
+extends UiScreen
 ## 区域选择界面。玩家从四个探险区域中选定一个，再进入地牢。
 
-const ZONE_BUTTON_SCENE := "res://scenes/ui/zone_button.tscn"
+const UI_ROUTES := preload("res://globals/ui/ui_route_catalog.gd")
 
 @onready var zone_list: VBoxContainer = $Panel/ScrollContainer/ZoneList
 @onready var back_btn: Button = $Panel/BackBtn
@@ -11,6 +11,7 @@ const ZONE_BUTTON_SCENE := "res://scenes/ui/zone_button.tscn"
 var _selected_zone: int = -1
 
 func _ready() -> void:
+	super._ready()
 	add_to_group("character_panel")
 	title.text = tr("Select Expedition Zone")
 	start_btn.text = tr("Start Expedition")
@@ -59,7 +60,7 @@ func _on_back_pressed() -> void:
 	if world != null and world.has_method("close_overlay"):
 		world.call("close_overlay")
 	else:
-		get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+		request_navigation(UI_ROUTES.MAIN_MENU)
 
 func _find_world() -> Node:
 	var node: Node = self

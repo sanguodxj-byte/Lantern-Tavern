@@ -111,19 +111,19 @@ func _refresh_keg_status() -> void:
 	keg_status_list.clear()
 	var fs: Node = _get_fermentation_system()
 	if fs == null:
-		keg_status_list.add_item("（发酵系统未加载）")
+		keg_status_list.add_item(tr("（发酵系统未加载）"))
 		return
 	if not "kegs" in fs:
-		keg_status_list.add_item("（桶位数据缺失）")
+		keg_status_list.add_item(tr("（桶位数据缺失）"))
 		return
 	var kegs: Array = fs.kegs
 	if kegs.is_empty():
-		keg_status_list.add_item("（无酒桶，需扩建）")
+		keg_status_list.add_item(tr("（无酒桶，需扩建）"))
 		return
 	for i in range(kegs.size()):
 		var keg = kegs[i]
 		var status_text: String = fs.get_keg_status_text(i)
-		var display: String = "桶%d: %s" % [i + 1, status_text]
+		var display: String = tr("桶%d: %s") % [i + 1, status_text]
 		if keg.recipe_name != "":
 			display += " [%s]" % keg.recipe_name
 		keg_status_list.add_item(display)
@@ -136,7 +136,7 @@ func _refresh_material_grid() -> void:
 	brewing_basket.clear()
 	var inventory: Dictionary = _get_inventory()
 	if inventory.is_empty():
-		material_grid.add_item("（无材料，需白天探索收集）")
+		material_grid.add_item(tr("（无材料，需白天探索收集）"))
 		return
 	for mat_id in inventory:
 		var count: int = int(inventory[mat_id])
@@ -152,14 +152,14 @@ func _refresh_basket_display() -> void:
 	if selected_ingredients_label == null:
 		return
 	if brewing_basket.is_empty():
-		selected_ingredients_label.text = "下料篮：空"
+		selected_ingredients_label.text = tr("下料篮：空")
 		return
 	var parts: Array = []
 	for mat_id in brewing_basket:
 		var count: int = int(brewing_basket[mat_id])
 		var mat_name: String = BD.get_material_name(mat_id)
 		parts.append("%s×%d" % [mat_name, count])
-	selected_ingredients_label.text = "下料篮：" + ", ".join(parts)
+	selected_ingredients_label.text = tr("下料篮：") + ", ".join(parts)
 
 ## 刷新操作按钮可用状态（基于选中桶位）
 func _refresh_buttons_for_keg(keg_index: int) -> void:
@@ -207,11 +207,11 @@ func _set_buttons_disabled(disabled: bool) -> void:
 ## 下料：把 brewing_basket 投入空桶，启动发酵
 func _on_brew_pressed() -> void:
 	if brewing_basket.is_empty():
-		_set_status("下料篮为空，请先选择材料")
+		_set_status(tr("下料篮为空，请先选择材料"))
 		return
 	var fs: Node = _get_fermentation_system()
 	if fs == null:
-		_set_status("发酵系统未加载")
+		_set_status(tr("发酵系统未加载"))
 		return
 	# 选中的桶位必须为空
 	var target_keg: int = selected_keg_index
@@ -219,24 +219,24 @@ func _on_brew_pressed() -> void:
 		# 自动找第一个空桶
 		target_keg = _find_empty_keg(fs)
 		if target_keg < 0:
-			_set_status("无空桶可用，请先开缸或扩建")
+			_set_status(tr("无空桶可用，请先开缸或扩建"))
 			return
 	# 校验选中桶是否为空
 	if fs.kegs[target_keg].state != FS.KegState.EMPTY:
-		_set_status("桶%d非空，请选择空桶" % (target_keg + 1))
+		_set_status(tr("桶%d非空，请选择空桶") % (target_keg + 1))
 		return
 	# 扣减库存
 	if not _deduct_inventory(brewing_basket):
-		_set_status("材料库存不足")
+		_set_status(tr("材料库存不足"))
 		return
 	# 启动发酵
 	var keg_index: int = fs.start_brewing(brewing_basket.duplicate(), _get_current_day())
 	if keg_index < 0:
-		_set_status("下料失败")
+		_set_status(tr("下料失败"))
 		return
 	brewing_basket.clear()
 	selected_keg_index = keg_index
-	_set_status("已下料至桶%d，发酵中（明日完成）" % (keg_index + 1))
+	_set_status(tr("已下料至桶%d，发酵中（明日完成）") % (keg_index + 1))
 	brew_started.emit(keg_index)
 	_refresh_all()
 	_refresh_buttons_for_keg(keg_index)
@@ -244,20 +244,20 @@ func _on_brew_pressed() -> void:
 ## 开缸取酒：把 READY/AGING/AGED 桶的酒取出
 func _on_open_keg_pressed() -> void:
 	if selected_keg_index < 0:
-		_set_status("请先选择桶位")
+		_set_status(tr("请先选择桶位"))
 		return
 	var fs: Node = _get_fermentation_system()
 	if fs == null:
-		_set_status("发酵系统未加载")
+		_set_status(tr("发酵系统未加载"))
 		return
 	var flavors: Dictionary = fs.open_keg(selected_keg_index)
 	if flavors.is_empty():
-		_set_status("桶%d不可开缸" % (selected_keg_index + 1))
+		_set_status(tr("桶%d不可开缸") % (selected_keg_index + 1))
 		return
 	var recipe_id: String = flavors.get("__recipe_id__", "")
-	var msg: String = "桶%d开缸完成" % (selected_keg_index + 1)
+	var msg: String = tr("桶%d开缸完成") % (selected_keg_index + 1)
 	if recipe_id != "":
-		msg += "，匹配经典酒谱【%s】" % BD.get_recipe_name(recipe_id)
+		msg += tr("，匹配经典酒谱【%s】") % BD.get_recipe_name(recipe_id)
 	_set_status(msg)
 	keg_opened.emit(selected_keg_index, flavors)
 	_refresh_all()
@@ -267,16 +267,16 @@ func _on_open_keg_pressed() -> void:
 ## 选择陈酿：把 READY 桶封存转入陈酿
 func _on_seal_aging_pressed() -> void:
 	if selected_keg_index < 0:
-		_set_status("请先选择桶位")
+		_set_status(tr("请先选择桶位"))
 		return
 	var fs: Node = _get_fermentation_system()
 	if fs == null:
-		_set_status("发酵系统未加载")
+		_set_status(tr("发酵系统未加载"))
 		return
 	if not fs.seal_for_aging(selected_keg_index):
-		_set_status("桶%d不可陈酿（仅 READY 状态可封存）" % (selected_keg_index + 1))
+		_set_status(tr("桶%d不可陈酿（仅 READY 状态可封存）") % (selected_keg_index + 1))
 		return
-	_set_status("桶%d已封存陈酿，每日口味 +1，最多 3 天" % (selected_keg_index + 1))
+	_set_status(tr("桶%d已封存陈酿，每日口味 +1，最多 3 天") % (selected_keg_index + 1))
 	keg_sealed.emit(selected_keg_index)
 	_refresh_all()
 	_refresh_buttons_for_keg(selected_keg_index)
@@ -298,10 +298,10 @@ func _on_material_selected(index: int) -> void:
 	var available: int = int(inventory.get(mat_id, 0))
 	var in_basket: int = int(brewing_basket.get(mat_id, 0))
 	if in_basket >= available:
-		_set_status("%s 库存不足（已选 %d/%d）" % [BD.get_material_name(mat_id), in_basket, available])
+		_set_status(tr("%s 库存不足（已选 %d/%d）") % [BD.get_material_name(mat_id), in_basket, available])
 		return
 	brewing_basket[mat_id] = in_basket + 1
-	_set_status("已加入 %s 至下料篮" % BD.get_material_name(mat_id))
+	_set_status(tr("已加入 %s 至下料篮") % BD.get_material_name(mat_id))
 	_refresh_basket_display()
 	# 若已选中空桶，刷新下料按钮
 	if selected_keg_index >= 0:
@@ -315,7 +315,7 @@ func _on_keg_selected(index: int) -> void:
 	_refresh_buttons_for_keg(index)
 	var fs: Node = _get_fermentation_system()
 	if fs != null and "kegs" in fs and index < fs.kegs.size():
-		_set_status("已选中桶%d" % (index + 1))
+		_set_status(tr("已选中桶%d") % (index + 1))
 
 # ============================================================================
 # 6. 辅助

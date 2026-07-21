@@ -3,7 +3,7 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://b3x5nf1alyl15"
+uid="uid://dfgdbjv7dpf3c"
 path="res://.godot/imported/materials_quartz_dust.glb-2198a4b6cf929b5da712b4438d1cac2c.scn"
 
 [deps]
@@ -42,4 +42,4 @@ materials/extract_path=""
 _subresources={}
 gltf/naming_version=2
 gltf/embedded_image_handling=1
-gltf/texture_map_mode=1
+gltf/texture_map_mode=0

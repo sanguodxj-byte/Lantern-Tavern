@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="ShieldData" format=3 uid="uid://dwwgg8a4e5a5o"]
 
-[ext_resource type="PackedScene" uid="uid://dkhdwshp0w5tn" path="res://assets/meshes/shields/buckler.glb" id="1_3gggj"]
+[ext_resource type="PackedScene" uid="uid://b6yrh01ayv4wm" path="res://assets/meshes/shields/voxel_buckler.glb" id="1_3gggj"]
 [ext_resource type="Script" uid="uid://cyme7j2jd6kpb" path="res://data/shield_data.gd" id="1_jokwb"]
 
 [resource]

@@ -14,7 +14,7 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 	if data.is_empty():
 		return null
 	var preview := Label.new()
-	preview.text = String(data.get("id", "Skill"))
+	preview.text = tr(String(data.get("id", "Skill")))
 	set_drag_preview(preview)
 	return data
 

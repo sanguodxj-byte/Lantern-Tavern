@@ -6,6 +6,11 @@ extends Control
 const HOLD_DURATION: float = 2.0  # 按住出发键持续时间（秒）
 const DEPART_ACTION := "depart"
 
+## 环形纹理参数
+const RING_TEX_SIZE := 128
+const RING_OUTER_RADIUS := 60.0
+const RING_THICKNESS := 12.0
+
 @onready var ring: TextureProgressBar = $RingCenter/RingProgress
 @onready var depart_text: Label = $RingCenter/DepartText
 
@@ -13,9 +18,28 @@ var hold_time: float = 0.0
 var is_complete: bool = false
 
 func _ready() -> void:
-	# 默认隐藏，仅按住 F 时显示
 	visible = false
+	# 程序化生成环形纹理，替代外部图标资源
+	var ring_tex := _create_ring_texture()
+	ring.texture_under = ring_tex
+	ring.texture_progress = ring_tex
 	ring.value = 0.0
+
+## 生成一张带抗锯齿边缘的环形（圆环）白色纹理。
+## 配合 TextureProgressBar 的 radial_fill 实现扇形进度填充效果。
+func _create_ring_texture() -> ImageTexture:
+	var image := Image.create(RING_TEX_SIZE, RING_TEX_SIZE, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	var center := Vector2(RING_TEX_SIZE / 2.0, RING_TEX_SIZE / 2.0)
+	var outer_r := RING_OUTER_RADIUS
+	var inner_r := outer_r - RING_THICKNESS
+	for y in range(RING_TEX_SIZE):
+		for x in range(RING_TEX_SIZE):
+			var d := Vector2(x + 0.5, y + 0.5).distance_to(center)
+			# 硬边缘像素风填充，不使用任何抗锯齿渐变
+			if d >= inner_r and d <= outer_r:
+				image.set_pixel(x, y, Color(1, 1, 1, 1.0))
+	return ImageTexture.create_from_image(image)
 
 func _process(delta: float) -> void:
 	if is_complete:
@@ -43,7 +67,7 @@ func _process(delta: float) -> void:
 ## 进度满：跳转区域选择界面
 func _on_progress_complete() -> void:
 	is_complete = true
-	depart_text.text = "出发!"
+	depart_text.text = tr("Depart!")
 	# 延迟 0.3 秒让玩家看到满进度反馈
 	await get_tree().create_timer(0.3).timeout
 	var world := _find_world()

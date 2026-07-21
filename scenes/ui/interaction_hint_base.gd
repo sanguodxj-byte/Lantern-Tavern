@@ -25,7 +25,7 @@ func _build_ui() -> void:
 		return
 	# 统一样式：深色半透明背景 + 金色边框 + 圆角
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.094, 0.078, 0.145, 0.92)
+	style.bg_color = Color(0.094, 0.098, 0.11, 0.92)
 	style.border_width_left = 2
 	style.border_width_top = 2
 	style.border_width_right = 2

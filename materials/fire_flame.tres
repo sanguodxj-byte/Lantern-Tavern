@@ -1,0 +1,13 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://shaders/fire_flame.gdshader" id="1_fire"]
+
+[resource]
+shader = ExtResource("1_fire")
+shader_parameter_speed = 1.2
+shader_parameter_turbulence = 1.0
+shader_parameter_color_core = Color(1.0, 0.9, 0.55, 1)
+shader_parameter_color_mid = Color(1.0, 0.45, 0.1, 1)
+shader_parameter_color_edge = Color(0.7, 0.08, 0.02, 1)
+shader_parameter_intensity = 1.6
+shader_parameter_ember_strength = 0.5

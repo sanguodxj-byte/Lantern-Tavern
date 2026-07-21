@@ -25,6 +25,7 @@ script = ExtResource("1_f5cxw")
 [node name="HurtVignette" type="Panel" parent="." unique_id=120424258]
 unique_name_in_owner = true
 modulate = Color(1, 1, 1, 0)
+mouse_filter = 2
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -36,6 +37,7 @@ metadata/_edit_lock_ = true
 [node name="DeathScreen" type="ColorRect" parent="." unique_id=178748000]
 unique_name_in_owner = true
 modulate = Color(1, 1, 1, 0)
+mouse_filter = 2
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0

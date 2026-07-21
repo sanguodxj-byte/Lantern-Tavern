@@ -8,6 +8,10 @@ var weapon_input_action: String = ""
 var weapon_attack_hand: String = "primary"
 var weapon_release_state: int = -1
 var weapon_charge_started_msec: int = 0
+## 近战蓄力比例 0..1（基础操作，与是否装备蓄力被动无关；被动仅决定是否转化为增伤）
+var weapon_charge_ratio: float = 0.0
+## 是否暴击（供伤害飘字等表现层使用）
+var is_crit: bool = false
 
 func set_damage(dmg: int) -> PlayerStateData:
 	damage = dmg
@@ -19,6 +23,10 @@ func set_impact_direction(direction: Vector3) -> PlayerStateData:
 
 func set_knockback_force(force: float) -> PlayerStateData:
 	knockback_force = force
+	return self
+
+func set_crit(crit: bool) -> PlayerStateData:
+	is_crit = crit
 	return self
 
 func set_grabbed_enemy(enemy: Node) -> PlayerStateData:
@@ -33,4 +41,8 @@ func set_weapon_attack(input_action: String, attack_hand: String, release_state:
 	weapon_attack_hand = attack_hand
 	weapon_release_state = release_state
 	weapon_charge_started_msec = Time.get_ticks_msec()
+	return self
+
+func set_weapon_charge_ratio(ratio: float) -> PlayerStateData:
+	weapon_charge_ratio = ratio
 	return self

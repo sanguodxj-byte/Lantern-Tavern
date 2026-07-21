@@ -7,7 +7,7 @@ func test_csv_file_exists() -> void:
 
 
 func test_parse_csv_line_simple() -> void:
-	var lm = auto_free(load("res://globals/localization_manager.gd").new())
+	var lm = auto_free(load("res://globals/core/localization_manager.gd").new())
 	var result = lm._parse_csv_line("hello,world,test")
 	assert_int(result.size()).is_equal(3)
 	assert_str(result[0]).is_equal("hello")
@@ -15,28 +15,28 @@ func test_parse_csv_line_simple() -> void:
 
 
 func test_parse_csv_line_quoted() -> void:
-	var lm = auto_free(load("res://globals/localization_manager.gd").new())
+	var lm = auto_free(load("res://globals/core/localization_manager.gd").new())
 	var result = lm._parse_csv_line('"hello, world","foo","bar"')
 	assert_int(result.size()).is_equal(3)
 	assert_str(result[0]).is_equal("hello, world")
 
 
 func test_parse_csv_line_escaped_quote() -> void:
-	var lm = auto_free(load("res://globals/localization_manager.gd").new())
+	var lm = auto_free(load("res://globals/core/localization_manager.gd").new())
 	var result = lm._parse_csv_line('"say ""hello""",world')
 	assert_int(result.size()).is_equal(2)
 	assert_str(result[0]).is_equal('say "hello"')
 
 
 func test_parse_csv_line_leading_trailing_spaces() -> void:
-	var lm = auto_free(load("res://globals/localization_manager.gd").new())
+	var lm = auto_free(load("res://globals/core/localization_manager.gd").new())
 	var result = lm._parse_csv_line('  a , b , c  ')
 	assert_int(result.size()).is_equal(3)
 	assert_str(result[0]).is_equal("a")
 
 
 func test_parse_csv_line_empty_fields() -> void:
-	var lm = auto_free(load("res://globals/localization_manager.gd").new())
+	var lm = auto_free(load("res://globals/core/localization_manager.gd").new())
 	var result = lm._parse_csv_line('a,,c')
 	assert_int(result.size()).is_equal(3)
 	assert_str(result[0]).is_equal("a")

@@ -1,19 +1,27 @@
 extends CanvasLayer
 class_name PauseMenu
 
+const UI_ROUTES := preload("res://globals/ui/ui_route_catalog.gd")
+
 @onready var resume_btn: Button = %ResumeBtn
 @onready var main_menu_btn: Button = %MainMenuBtn
+@onready var save_btn: Button = %SaveBtn
 @onready var exit_btn: Button = %ExitBtn
+@onready var save_load_panel: Control = $SaveLoadPanel
 
 var is_paused := false
 
 func _ready() -> void:
 	visible = false
 	_update_button_texts()
+	save_btn.pressed.connect(_on_save_pressed)
+	save_load_panel.back_pressed.connect(_on_save_load_back)
+	save_load_panel.slot_action_completed.connect(_on_slot_action_completed)
 
 func _update_button_texts() -> void:
 	resume_btn.text = tr("Resume")
 	main_menu_btn.text = tr("Main Menu")
+	save_btn.text = tr("Save Game")
 	exit_btn.text = tr("Exit Game")
 
 # 轮询检测 ESC
@@ -32,6 +40,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		var pos: Vector2 = (event as InputEventMouseButton).position
 		if _is_click_on_control(resume_btn, pos):
 			_on_resume_pressed()
+			_handle_input()
+		elif _is_click_on_control(save_btn, pos):
+			_on_save_pressed()
 			_handle_input()
 		elif _is_click_on_control(main_menu_btn, pos):
 			_on_main_menu_pressed()
@@ -102,7 +113,18 @@ func _on_main_menu_pressed() -> void:
 	is_paused = false
 	visible = false
 	_pause_tree_except_self(false)
-	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+	UiNavigation.navigate(UI_ROUTES.MAIN_MENU)
+
+func _on_save_pressed() -> void:
+	save_load_panel.set_mode(SaveLoadPanel.Mode.SAVE)
+	save_load_panel.visible = true
+	save_load_panel.refresh()
+
+func _on_save_load_back() -> void:
+	save_load_panel.visible = false
+
+func _on_slot_action_completed(_action: String, _slot_index: int) -> void:
+	save_load_panel.visible = false
 
 func _on_exit_pressed() -> void:
 	_pause_tree_except_self(false)

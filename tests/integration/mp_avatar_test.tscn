@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://a1v9k3m7q5z2t"]
+
+[ext_resource type="Script" path="res://tests/integration/mp_avatar_test.gd" id="1_test"]
+
+[node name="AvatarTest" type="Node3D"]
+script = ExtResource("1_test")

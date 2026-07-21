@@ -16,4 +16,4 @@ func test_scene_loads() -> void:
 func test_refresh_zero_value() -> void:
 	var indicator = load("res://scenes/ui/stat_indicator.tscn").instantiate() as StatIndicator
 	assert_bool(indicator != null).is_true()
-	indicator.queue_free()
+	indicator.free()

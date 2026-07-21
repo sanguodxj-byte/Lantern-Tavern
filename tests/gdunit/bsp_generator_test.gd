@@ -7,6 +7,9 @@ var _bsp: BSP_DungeonGenerator
 func before() -> void:
 	_bsp = load("res://scenes/expedition/bsp_generator.gd").new()
 
+func after() -> void:
+	if is_instance_valid(_bsp):
+		_bsp.free()
 
 func test_dungeon_size_match() -> void:
 	var width := 30
@@ -105,3 +108,14 @@ func test_ceiling_heights() -> void:
 				# Outer borders walls must be default 3.0 initially
 				if x == 0 or x == width - 1 or y == 0 or y == height - 1:
 					assert_float(h).is_equal(3.0)
+
+func test_rooms_are_recorded_for_room_based_hazard_generation() -> void:
+	var width := 30
+	var height := 30
+	_bsp.generate_dungeon(width, height)
+	assert_int(_bsp.rooms.size()).is_greater(0)
+	for room in _bsp.rooms:
+		assert_bool(room.size.x > 0 and room.size.y > 0).is_true()
+		assert_bool(room.position.x >= 0 and room.position.y >= 0).is_true()
+		assert_bool(room.position.x + room.size.x <= width).is_true()
+		assert_bool(room.position.y + room.size.y <= height).is_true()

@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://e7k2m9q4v6z1t"]
+
+[ext_resource type="Script" path="res://globals/multiplayer/multiplayer_scene_bridge.gd" id="1_bridge"]
+
+[node name="MultiplayerSceneBridge" type="Node"]
+script = ExtResource("1_bridge")
+
+[node name="RemoteAvatars" type="Node3D" parent="."]

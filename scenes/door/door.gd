@@ -33,7 +33,7 @@ func _ready() -> void:
 		editor_update_key_indicator()
 	else:
 		_reset_closed_pose()
-		frame.visible = door_color != KeyColor.None
+		frame.visible = false
 		update_frame_color()
 
 
@@ -59,7 +59,7 @@ func get_kick_prompt() -> String:
 	return tutorial_kick_prompt if not tutorial_kick_prompt.is_empty() else "[F] Open"
 
 func can_open_with_kick() -> bool:
-	return requires_kick_to_open or door_color == KeyColor.None
+	return true
 
 func open(source_transform: Transform3D) -> void:
 	collision_shape_3d.disabled = true
@@ -74,22 +74,8 @@ func open(source_transform: Transform3D) -> void:
 	opened.emit()
 
 func update_frame_color() -> void:
-	if door_color != KeyColor.None:
-		var material := frame_mesh.get_surface_override_material(0).duplicate() as StandardMaterial3D
-		material.albedo_color = COLOR_MAP[door_color]
-		material.emission_enabled = true
-		material.emission = COLOR_MAP[door_color]
-		material.emission_energy_multiplier = 3.0
-		frame_mesh.set_surface_override_material(0, material)
-	else:
-		frame.hide()
+	frame.hide()
 		
 func editor_update_key_indicator() -> void:
-	if Engine.is_editor_hint():
-		editor_key_indicator.visible = door_color != KeyColor.None
-		if door_color != KeyColor.None:
-			var material := editor_key_indicator.get_active_material(0).duplicate() as StandardMaterial3D
-			material.albedo_color = COLOR_MAP[door_color]
-			editor_key_indicator.set_surface_override_material(0, material)
-	else:
+	if editor_key_indicator != null:
 		editor_key_indicator.visible = false

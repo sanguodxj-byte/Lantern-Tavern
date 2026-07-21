@@ -10,7 +10,7 @@ func _initialize() -> void:
 	# Instantiate safe mock autoloads dynamically to decouple complex dependencies
 	var mock_game_events = Node.new()
 	var ge_script = GDScript.new()
-	ge_script.source_code = "extends Node\nsignal player_spawned\nsignal player_hurt\nsignal player_dead\nsignal level_restarted\nsignal shield_changed\nsignal weapon_changed\nsignal possible_action_changed\nsignal current_keys_changed"
+	ge_script.source_code = "extends Node\nsignal player_spawned\nsignal player_hurt\nsignal player_dead\nsignal level_restarted\nsignal shield_changed\nsignal weapon_changed\nsignal item_detail_changed(detail: Dictionary, screen_position: Vector2)\nsignal interaction_hint_changed"
 	ge_script.reload()
 	mock_game_events.set_script(ge_script)
 	mock_game_events.name = "GameEvents"
@@ -173,15 +173,29 @@ func _initialize() -> void:
 		return
 	parent_melee.queue_free()
 	
-	# Test Interact (by_interact = true)
+	# Test Interact (by_interact = true) — now generates loot data + emits signal, no physical drops
 	var parent_interact = Node.new()
 	root.add_child(parent_interact)
 	var chest_interact = load("res://scenes/props/chest/chest.gd").new()
 	parent_interact.add_child(chest_interact)
 	chest_interact.open_chest(true)
+	# Interact mode should NOT spawn physical items — loot is stored in loot_data
 	var dropped_interact = parent_interact.get_child_count() - 1
-	if dropped_interact < 3 or dropped_interact > 4:
-		print("FAIL: Interact chest drop count mismatch, got ", dropped_interact)
+	if dropped_interact != 0:
+		print("FAIL: Interact chest should not drop physical items, got ", dropped_interact)
+		quit(1)
+		return
+	# Verify loot_data was generated
+	if chest_interact.loot_data.is_empty():
+		print("FAIL: Interact chest loot_data should not be empty")
+		quit(1)
+		return
+	if not chest_interact.loot_data.has("weapon") or not chest_interact.loot_data.has("materials"):
+		print("FAIL: Interact chest loot_data missing weapon/materials keys")
+		quit(1)
+		return
+	if chest_interact.loot_data["materials"].size() < 2:
+		print("FAIL: Interact chest should have at least 2 materials, got ", chest_interact.loot_data["materials"].size())
 		quit(1)
 		return
 	parent_interact.queue_free()

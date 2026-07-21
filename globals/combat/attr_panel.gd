@@ -13,15 +13,10 @@ const ATTR_KEYS: Array = ["str", "dex", "mag", "con", "agi", "per"]
 # 1. 持久化状态（save/load 兼容）
 # ============================================================================
 
-# 6 主属性当前值
-var attrs: Dictionary = {
-	"str": 5, "dex": 5, "mag": 5, "con": 5, "agi": 5, "per": 5
-}
-
-# 6 主属性累积经验（达 ATTR_UPGRADE_THRESHOLD 时 +1 属性）
-var attr_exp: Dictionary = {
-	"str": 0, "dex": 0, "mag": 0, "con": 0, "agi": 0, "per": 0
-}
+# 6 主属性当前值（引用类型，必须在 _init 内按实例独立初始化，
+# 否则 GDScript 类级字面量会被所有实例共享 —— 联机 per-peer 隔离会被破坏）
+var attrs: Dictionary
+var attr_exp: Dictionary
 
 # 角色等级 + 总经验
 var level: int = 1
@@ -29,13 +24,21 @@ var level_exp: int = 0
 
 # 武器熟练度（按武器类型 id 累积，达门槛解锁技能）
 # 策划案 §1.1：T1 需 Lv3，T2 需 Lv8，T3 需 Lv15
-var weapon_proficiency: Dictionary = {}  # {"one_hand_melee": 0, "two_hand": 0, ...}
+var weapon_proficiency: Dictionary
 
 # 已领悟技能 id 列表
-var unlocked_skills: Array = []
+var unlocked_skills: Array
 
 # 已解锁里程碑被动 id 列表
-var unlocked_milestones: Array = []
+var unlocked_milestones: Array
+
+# 每个实例独立的初始状态（避免类级字面量跨实例共享）
+func _init() -> void:
+	attrs = {"str": 5, "dex": 5, "mag": 5, "con": 5, "agi": 5, "per": 5}
+	attr_exp = {"str": 0, "dex": 0, "mag": 0, "con": 0, "agi": 0, "per": 0}
+	weapon_proficiency = {}
+	unlocked_skills = []
+	unlocked_milestones = []
 
 # ============================================================================
 # 2. 属性查询 API
@@ -48,6 +51,15 @@ func get_player_attrs() -> Dictionary:
 ## 获取单属性值
 func get_attr(attr_key: String) -> int:
 	return int(attrs.get(attr_key, 0))
+
+## 显式初始化钩子（AttrPanel 无 _ready 依赖，此处仅建立/校验默认状态，
+## 使 per-peer 实例与 autoload 行为一致）。联机工厂在 .new() 后调用。
+func init_defaults() -> void:
+	for k in ATTR_KEYS:
+		if not attrs.has(k):
+			attrs[k] = 5
+		if not attr_exp.has(k):
+			attr_exp[k] = 0
 
 ## 获取角色等级
 func get_level() -> int:
@@ -71,6 +83,7 @@ func accumulate_attr(attr_key: String, gain: int) -> bool:
 	if result["leveled_up"]:
 		attrs[attr_key] = int(attrs[attr_key]) + 1
 		_check_milestone_unlock(attr_key)
+		_recompute_mechanism_passives()
 		return true
 	return false
 
@@ -78,6 +91,8 @@ func accumulate_attr(attr_key: String, gain: int) -> bool:
 func accumulate_proficiency(weapon_type: String, gain: int) -> void:
 	var cur: int = int(weapon_proficiency.get(weapon_type, 0))
 	weapon_proficiency[weapon_type] = cur + gain
+	# 武器 tier 类机制被动（蓄力/完美格挡/快速装弹）依赖熟练度，重算授予
+	_recompute_mechanism_passives()
 
 ## 角色等级经验累积（策划案未给具体阈值，暂用简化阶梯）
 func accumulate_level_exp(gain: int) -> void:
@@ -112,6 +127,13 @@ func _check_milestone_unlock(attr_key: String) -> void:
 ## 检查某里程碑被动是否已解锁
 func has_milestone(milestone_id: String) -> bool:
 	return unlocked_milestones.has(milestone_id)
+
+## 依据当前双轨阶梯重算机制类被动授予（doc21 §5/§7）。
+## 跨 autoload 调用统一走节点查找，避免全局名解析不确定性。
+func _recompute_mechanism_passives() -> void:
+	var sr = Engine.get_main_loop().root.get_node_or_null("SkillRuntime")
+	if sr != null and sr.has_method("recompute_mechanism_passives"):
+		sr.recompute_mechanism_passives()
 
 ## 获取某属性某阶里程碑被动定义（若已解锁）
 func get_milestone(attr_key: String, tier: int) -> Dictionary:
@@ -155,6 +177,8 @@ func check_skill_unlocks() -> Array:
 		unlocked_skills.append(skill["id"])
 		newly_unlocked.append(skill["id"])
 		print("[AttrPanel] 技能领悟: %s" % skill["id"])
+	# 技能领悟门槛同时依赖 属性+熟练度，可能新满足某机制被动阶梯，重算授予
+	_recompute_mechanism_passives()
 	return newly_unlocked
 
 ## 检查某技能是否已领悟
@@ -237,6 +261,8 @@ func deserialize(data: Dictionary) -> void:
 		unlocked_skills = data["unlocked_skills"].duplicate()
 	if data.has("unlocked_milestones"):
 		unlocked_milestones = data["unlocked_milestones"].duplicate()
+	# 读档后按已恢复的属性/熟练度重算机制被动授予
+	_recompute_mechanism_passives()
 
 ## 重置为初始状态
 func reset() -> void:

@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3 uid="uid://expedition_hud_demo"]
+[gd_scene load_steps=4 format=3 uid="uid://expedition_hud_demo"]
 
 [ext_resource type="Script" path="res://scenes/ui/expedition_hud.gd" id="1_hud"]
 [ext_resource type="PackedScene" uid="uid://bskillbar00007" path="res://scenes/ui/skill_bar.tscn" id="2_sb"]
+[ext_resource type="Theme" path="res://scenes/ui/lantern_theme.tres" id="3_theme"]
 
 [node name="ExpeditionHUD" type="Control"]
 layout_mode = 3
@@ -9,31 +10,39 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
+theme = ExtResource("3_theme")
 script = ExtResource("1_hud")
 
-[node name="TopHUD" type="Control" parent="."]
-layout_mode = 0
-offset_left = 10.0
-offset_top = 10.0
-offset_right = 400.0
-offset_bottom = 84.0
+[node name="TopHUD" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -244.0
+offset_top = 318.0
+offset_right = -16.0
+offset_bottom = 370.0
+grow_horizontal = 0
 mouse_filter = 2
+theme_type_variation = &"HUDPanel"
 
 [node name="HPBar" type="ProgressBar" parent="TopHUD"]
+visible = false
 layout_mode = 0
-offset_left = 0.0
-offset_top = 0.0
-offset_right = 200.0
-offset_bottom = 24.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 216.0
+offset_bottom = 44.0
 mouse_filter = 2
 
 [node name="GoldLabel" type="Label" parent="TopHUD"]
 layout_mode = 0
-offset_left = 0.0
-offset_top = 28.0
-offset_right = 200.0
-offset_bottom = 50.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 216.0
+offset_bottom = 40.0
 mouse_filter = 2
+theme_type_variation = &"CrystalLabel"
 text = "Gold: 100"
 
 [node name="TimeLabel" type="Label" parent="TopHUD"]
@@ -46,30 +55,36 @@ offset_bottom = 78.0
 mouse_filter = 2
 text = "10:00 / 18:00"
 
-[node name="MiddleHUD" type="Control" parent="."]
-layout_mode = 0
-offset_left = 10.0
-offset_top = 96.0
-offset_right = 400.0
-offset_bottom = 152.0
+[node name="MiddleHUD" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -244.0
+offset_top = 382.0
+offset_right = -16.0
+offset_bottom = 448.0
+grow_horizontal = 0
 mouse_filter = 2
+theme_type_variation = &"HUDPanel"
 
 [node name="MaterialLabel" type="Label" parent="MiddleHUD"]
 layout_mode = 0
-offset_left = 0.0
-offset_top = 0.0
-offset_right = 200.0
-offset_bottom = 24.0
+offset_left = 12.0
+offset_top = 10.0
+offset_right = 216.0
+offset_bottom = 36.0
 mouse_filter = 2
+theme_type_variation = &"SectionTitle"
 text = "Materials: 0"
 
 [node name="PressureLabel" type="Label" parent="MiddleHUD"]
 visible = false
 layout_mode = 0
-offset_left = 0.0
-offset_top = 28.0
-offset_right = 260.0
-offset_bottom = 52.0
+offset_left = 12.0
+offset_top = 36.0
+offset_right = 216.0
+offset_bottom = 60.0
 mouse_filter = 2
 text = "暗蚀 0 - 可控"
 
@@ -90,6 +105,8 @@ anchor_right = 0.5
 anchor_bottom = 0.5
 visible = false
 mouse_filter = 2
+theme_type_variation = &"CrystalLabel"
+theme_override_font_sizes/font_size = 28
 text = "EXTRACTION READY"
 horizontal_alignment = 1
 

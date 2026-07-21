@@ -59,13 +59,41 @@ var chest_spawn_specs: Array[Dictionary] = []
 func is_empty() -> bool:
 	return grid.is_empty() or width <= 0 or height <= 0
 
-## 网格在 (x,y) 是否为地板格（TileType.FLOOR == 1）
+## 推导玩家出生点的世界坐标（单格 → Vector3）。
+## 这是【唯一】出生点算法来源：procedural_dungeon.gd（单人/真实场景路径）
+## 与 DungeonSessionController（联机 listen-server / 专用服务器路径）都经本方法计算，
+## 避免两端漂移导致权威出生点不一致（破坏跨进程地牢指纹与实体位置确定性）。
+##   - 优先用 player_spawn_cell（生成器产出的确定性关键点）。
+##   - 未命中时回退到 start 房间矩形中心（兼容老布局 / 单格缺失）。
+##   - 都不可用时回退到原点 (0, 0.5, 0)。
+func calc_player_spawn_pos() -> Vector3:
+	if is_empty():
+		return Vector3(0, 0.5, 0)
+	if not is_key_cell_missing(player_spawn_cell):
+		var offset_x: float = -(float(width) * tile_size) / 2.0
+		var offset_z: float = -(float(height) * tile_size) / 2.0
+		return Vector3(offset_x + player_spawn_cell.x * tile_size, 0.5, offset_z + player_spawn_cell.y * tile_size)
+	if room_roles.has("start"):
+		# 与 procedural_dungeon._rect_center_cell 的整数整除语义一致（奇尺寸房间下
+		# 与 Rect2i.get_center() 的浮点中心结果不同，必须保持整数以不动真实游戏路径）。
+		var start_rect: Rect2i = room_roles["start"]
+		var center: Vector2i = start_rect.position + Vector2i(start_rect.size.x / 2, start_rect.size.y / 2)
+		var offset_x: float = -(float(width) * tile_size) / 2.0
+		var offset_z: float = -(float(height) * tile_size) / 2.0
+		return Vector3(offset_x + center.x * tile_size, 0.5, offset_z + center.y * tile_size)
+	return Vector3(0, 0.5, 0)
+
+## 网格在 (x,y) 是否为可走格。
+## 与 isaac `_is_walkable_grid_cell` 一致：FLOOR/LOOT/RESOURCE/PILLAR 均可走，
+## 仅 EMPTY/WALL 不可走。旧实现只认 FLOOR==1，会导致 LOOT/RESOURCE 关键点“缺失”
+## 以及可达比被严重低估。
 func is_floor_at(x: int, y: int) -> bool:
 	if x < 0 or y < 0 or y >= grid.size() or x >= grid[y].size():
 		return false
-	return int(grid[y][x]) == 1
+	var cell_type := int(grid[y][x])
+	return cell_type != 0 and cell_type != 2  # EMPTY=0, WALL=2
 
-## 网格在 cell 是否为地板格
+## 网格在 cell 是否为可走格
 func is_floor_cell(cell: Vector2i) -> bool:
 	return is_floor_at(cell.x, cell.y)
 
@@ -93,6 +121,56 @@ func is_boss_reward_cell(cell: Vector2i) -> bool:
 	if room_roles.has("reward") and (room_roles["reward"] as Rect2i).has_point(cell):
 		return true
 	return is_boss_room_cell(cell)
+
+## BFS 距离场：从 player_spawn_cell 在可走格上扩散，返回 {"x,y": 步数} 的 Dictionary。
+## 用于“房间深度”估算（越深越险、喘息房选择）。player_spawn 缺失时返回空。
+## 纯数据、无 Node 引用，规划期可安全调用。
+func compute_floor_distance_field() -> Dictionary:
+	var field := {}
+	if is_key_cell_missing(player_spawn_cell):
+		return field
+	var start_key := "%d,%d" % [player_spawn_cell.x, player_spawn_cell.y]
+	var queue: Array = [player_spawn_cell]
+	var visited := {}
+	visited[start_key] = true
+	field[start_key] = 0
+	while not queue.is_empty():
+		var next_q: Array = []
+		for c in queue:
+			var c_key := "%d,%d" % [c.x, c.y]
+			var d: int = int(field[c_key])
+			for dir in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0)]:
+				var n: Vector2i = c + dir
+				if n.x < 0 or n.y < 0 or n.y >= grid.size() or n.x >= grid[n.y].size():
+					continue
+				if not is_floor_cell(n):
+					continue
+				var n_key := "%d,%d" % [n.x, n.y]
+				if visited.has(n_key):
+					continue
+				visited[n_key] = true
+				field[n_key] = d + 1
+				next_q.append(n)
+		queue = next_q
+	return field
+
+## 房间到出生点的最近可走格 BFS 距离（借已算好的 field；无记录则回退曼哈顿距离）。
+func depth_of_room_with_field(room: Rect2i, field: Dictionary) -> int:
+	var best := -1
+	for y in range(room.position.y, room.position.y + room.size.y):
+		for x in range(room.position.x, room.position.x + room.size.x):
+			var cell := Vector2i(x, y)
+			if not is_floor_cell(cell):
+				continue
+			var key := "%d,%d" % [cell.x, cell.y]
+			if field.has(key):
+				var d: int = int(field[key])
+				if best < 0 or d < best:
+					best = d
+	if best < 0:
+		var center := room.position + Vector2i(room.size.x / 2, room.size.y / 2)
+		best = absi(center.x - player_spawn_cell.x) + absi(center.y - player_spawn_cell.y)
+	return best
 
 ## 深拷贝：grid/heights 逐层复制，避免共享内层数组
 func duplicate_layout() -> DungeonLayout:

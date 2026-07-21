@@ -45,17 +45,17 @@ static func apply_heavy_stride(damage: int, is_melee: bool) -> int:
 		return int(round(damage * 1.05))
 	return damage
 
-## 神射手（DEX T2）：长弓/轻弩远程命中率 +10%
-static func apply_sharpshooter(hit_bonus: float, is_ranged: bool) -> float:
+## 神射手（DEX T2）：长弓/轻弩远程暴击率 +10%（动作化替代原"命中率+10%"）
+static func apply_sharpshooter_crit(crit_rate: float, is_ranged: bool) -> float:
 	if is_ranged and _ap().has_milestone("神射手"):
-		return hit_bonus + 10.0
-	return hit_bonus
+		return crit_rate + 10.0
+	return crit_rate
 
-## 穿透打击（DEX T3）：远程攻击 100% 概率无视 10% 物防
-static func apply_penetrating_strike(ignore_def: float, is_ranged: bool) -> float:
+## 穿透打击（DEX T3）：远程伤害 +12%（动作化替代原"无视10%物防"）
+static func apply_penetrating_damage(dmg_mult: float, is_ranged: bool) -> float:
 	if is_ranged and _ap().has_milestone("穿透打击"):
-		return maxf(ignore_def, 10.0)
-	return ignore_def
+		return dmg_mult * 1.12
+	return dmg_mult
 
 ## 震退（STR T1）：近战命中 15% 概率击退 1 米
 ## 返回 > 0 表示触发击退，值为击退米数

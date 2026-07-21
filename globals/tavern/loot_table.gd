@@ -57,6 +57,26 @@ const RARE_CROSS_ZONE_MATERIALS: Dictionary = {
 }
 const RARE_CROSS_ZONE_CHANCE: float = 0.15  # 15% 概率从稀有池抽
 
+# 各区域散落采集材料池（地牢地面散落点使用，比宝箱池种类更多、权重更高）
+# 单一数据源：ZoneManager.get_scatter_materials() 委托此常量。
+const ZONE_SCATTER_WEIGHTS: Dictionary = {
+	0: {"rat_tail": 15, "moldy_bread": 12, "rusty_nail": 10, "dungeon_moss": 10, "bone_shard": 8, "stale_water": 8, "prison_lichen": 5, "cellar_mushroom": 4},
+	1: {"blackberry": 15, "glowshroom": 12, "moongrass": 10, "goblin_nail": 8, "mistflower": 8, "wolfear_herb": 8, "pixie_dust": 5, "poison_berry": 4},
+	2: {"deeprock_moss": 12, "black_rye_root": 12, "cyclops_beard": 8, "stalactite_sap": 8, "geothermal_ear": 8, "luminous_fern": 8, "quartz_dust": 5, "blindfish_jerky": 4},
+	3: {"soulmint": 12, "moon_lily": 10, "mandrake_root": 8, "tomb_moss": 8, "ghost_tear": 8, "grave_truffle": 6, "bone_nectar": 5, "forgotten_ash": 4},
+	4: {"firegrape": 12, "lava_malt": 10, "salamander_skin": 8, "ash_lotus": 8, "burst_pepper": 8, "charred_root": 8, "firebird_dust": 5, "lava_jelly": 3},
+	5: {"crystal_tear": 12, "ancient_rune": 10, "starlight_moss": 10, "ethereal_essence": 8, "phantom_petal": 8, "ruin_honey": 6, "ghost_mushroom": 5, "arcane_dust": 4},
+}
+
+# ============================================================================
+# 散落材料池查询（单一数据源）
+# ============================================================================
+
+## 获取指定区域的散落材料池 {material_id: weight}。
+## ZoneManager.get_scatter_materials() 委托此方法，确保区域材料映射只在此维护。
+func get_scatter_materials(zone: int) -> Dictionary:
+	return ZONE_SCATTER_WEIGHTS.get(zone, {}).duplicate()
+
 # ============================================================================
 # 武器掉落
 # ============================================================================
@@ -64,7 +84,20 @@ const RARE_CROSS_ZONE_CHANCE: float = 0.15  # 15% 概率从稀有池抽
 ## 抽取一件装备。返回 {id, tier_index, tier_name, weapon_data}，空字典表示注册表未就绪。
 ## 包含武器、盾牌、防具和饰品，按类别权重随机抽取。
 ## 装备属性按阶位 (tier) 正确应用，并附带随机词缀。
-func roll_weapon() -> Dictionary:
+## 区域对应的阶位权重映射（策划案 33：阶位与层级深度强相关，前期禁止高阶）
+const ZONE_TIER_WEIGHTS: Dictionary = {
+	0: {0: 100.0, 1: 0.0, 2: 0.0},   # Zone 0 (地牢一层): 100% 只能生成一阶 Tier 0
+	1: {0: 80.0, 1: 20.0, 2: 0.0},   # Zone 1 (森林): 80% 一阶，20% 二阶
+	2: {0: 50.0, 1: 50.0, 2: 0.0},   # Zone 2 (洞穴): 50% 一阶，50% 二阶
+	3: {0: 20.0, 1: 60.0, 2: 20.0},  # Zone 3 (墓园): 解锁 20% 三阶 Tier 2
+	4: {0: 0.0, 1: 50.0, 2: 50.0},   # Zone 4 (火山): 50% 二阶，50% 三阶
+	5: {0: 0.0, 1: 20.0, 2: 80.0},   # Zone 5 (废墟): 80% 三阶 Tier 2
+}
+
+## 抽取一件装备（常用于环境宝箱或废迹生成）。
+## zone: 地牢探索区域深度 (BrewingData.Zone，默认为 0 地牢一层)。
+## 装备阶位严格由 zone 限制，绝不可能在前期爆出高阶神兵。
+func roll_weapon(zone: int = 0) -> Dictionary:
 	var wr: Node = _get_weapon_registry()
 	if wr == null:
 		return {}
@@ -78,7 +111,7 @@ func roll_weapon() -> Dictionary:
 		return {}
 	var pick_id: String = pool[randi() % pool.size()]
 	var tiers: Array = wr.get_tiers(pick_id)
-	var tier_idx: int = _pick_tier_index(tiers.size())
+	var tier_idx: int = _pick_tier_index_for_zone(zone, tiers.size())
 	# 使用 build_weapon_data_with_tier 创建独立副本并应用阶位属性
 	var weapon_data = wr.build_weapon_data_with_tier(pick_id, tier_idx)
 	if weapon_data == null:
@@ -99,20 +132,22 @@ func roll_weapon() -> Dictionary:
 		"weapon_data": weapon_data,
 	}
 
-func _pick_tier_index(max_tiers: int) -> int:
+func _pick_tier_index_for_zone(zone: int, max_tiers: int) -> int:
 	if max_tiers <= 0:
 		return 0
-	# 按权重抽取 tier
+	var weights: Dictionary = ZONE_TIER_WEIGHTS.get(zone, ZONE_TIER_WEIGHTS[0])
 	var total: float = 0.0
 	for i in range(min(max_tiers, 3)):
-		total += TIER_WEIGHTS.get(i, 0.0)
+		total += weights.get(i, 0.0)
+	if total <= 0.0:
+		return 0
 	var roll: float = randf() * total
 	var cumul: float = 0.0
 	for i in range(min(max_tiers, 3)):
-		cumul += TIER_WEIGHTS.get(i, 0.0)
+		cumul += weights.get(i, 0.0)
 		if roll <= cumul:
 			return i
-	return min(max_tiers - 1, 2)
+	return 0
 
 # ============================================================================
 # 材料掉落

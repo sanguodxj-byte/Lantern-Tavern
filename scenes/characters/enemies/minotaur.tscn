@@ -1,0 +1,133 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scenes/characters/enemies/enemy.gd" id="1_enemy"]
+[ext_resource type="PackedScene" path="res://assets/meshes/characters/voxel_minotaur_72px_rig.glb" id="2_minotaur_rig"]
+[ext_resource type="PackedScene" path="res://scenes/characters/component/equipment_component.tscn" id="3_equipment"]
+[ext_resource type="PackedScene" path="res://scenes/characters/component/health_component.tscn" id="4_health"]
+[ext_resource type="Resource" path="res://data/weapons/axe.tres" id="5_axe"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_minotaur"]
+margin = 0.04
+radius = 0.4375
+height = 2.25
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_detection"]
+radius = 8.0
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_torso"]
+size = Vector3(0.75, 0.75, 0.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_head"]
+size = Vector3(0.625, 0.5, 0.625)
+
+[node name="Minotaur" type="CharacterBody3D"]
+collision_layer = 4
+collision_mask = 119
+script = ExtResource("1_enemy")
+duration_between_attacks = 2600
+duration_stun = 3500
+speed = 1.2
+is_elite = true
+is_boss_type = true
+body_size = "large"
+detection_range = 8.0
+
+[node name="CollisionShape" type="CollisionShape3D" parent="."]
+unique_name_in_owner = true
+position = Vector3(0, 1.125, 0)
+shape = SubResource("CapsuleShape3D_minotaur")
+
+[node name="character" parent="." instance=ExtResource("2_minotaur_rig")]
+
+[node name="WeaponBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D"]
+bone_name = "Hand.R"
+
+[node name="WeaponPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/WeaponBoneAttachment"]
+unique_name_in_owner = true
+
+[node name="ShieldBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D"]
+bone_name = "Hand.L"
+
+[node name="ShieldPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/ShieldBoneAttachment"]
+unique_name_in_owner = true
+
+[node name="PhysicalBoneSimulator3D" type="PhysicalBoneSimulator3D" parent="character/Armature/Skeleton3D"]
+unique_name_in_owner = true
+
+[node name="Physical Bone Torso" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D"]
+unique_name_in_owner = true
+collision_layer = 0
+collision_mask = 0
+mass = 16.0
+bone_name = "Torso"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone Torso"]
+shape = SubResource("BoxShape3D_torso")
+
+[node name="Physical Bone Head" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D"]
+unique_name_in_owner = true
+collision_layer = 0
+collision_mask = 0
+mass = 8.0
+bone_name = "Head"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone Head"]
+shape = SubResource("BoxShape3D_head")
+
+[node name="AnimationPlayer" parent="character" index="1"]
+autoplay = &"idle"
+
+[node name="EquipmentComponent" parent="." node_paths=PackedStringArray("shield_placeholder", "weapon_placeholder", "weapon_reach_raycast", "weapon_spawn_position") instance=ExtResource("3_equipment")]
+unique_name_in_owner = true
+shield_data = null
+shield_placeholder = NodePath("../character/Armature/Skeleton3D/ShieldBoneAttachment/ShieldPlaceholder")
+weapon_data = ExtResource("5_axe")
+weapon_placeholder = NodePath("../character/Armature/Skeleton3D/WeaponBoneAttachment/WeaponPlaceholder")
+weapon_reach_raycast = NodePath("../WeaponReachRaycast")
+weapon_spawn_position = NodePath("../WeaponSpawnPosition")
+
+[node name="WeaponSpawnPosition" type="Node3D" parent="."]
+position = Vector3(0.5, 1.5, -0.625)
+
+[node name="WeaponReachRaycast" type="RayCast3D" parent="."]
+unique_name_in_owner = true
+position = Vector3(0, 1.25, 0)
+target_position = Vector3(0, 0, -1.8)
+collision_mask = 2
+enabled = true
+
+[node name="HealthComponent" parent="." instance=ExtResource("4_health")]
+unique_name_in_owner = true
+max_life = 28
+current_life = 28
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+unique_name_in_owner = true
+path_desired_distance = 0.5
+target_desired_distance = 1.2
+radius = 0.4375
+height = 2.25
+avoidance_enabled = true
+
+[node name="PlayerDetectionArea" type="Area3D" parent="."]
+unique_name_in_owner = true
+collision_layer = 0
+collision_mask = 2
+monitorable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PlayerDetectionArea"]
+shape = SubResource("SphereShape3D_detection")
+
+[node name="ActionAudioStreamPlayer" type="AudioStreamPlayer3D" parent="."]
+unique_name_in_owner = true
+bus = &"SFX"
+
+[node name="FootstepAudioStreamPlayer" type="AudioStreamPlayer3D" parent="."]
+unique_name_in_owner = true
+bus = &"SFX"
+
+[node name="VocalAudioStreamPlayer" type="AudioStreamPlayer3D" parent="."]
+unique_name_in_owner = true
+bus = &"SFX"
+
+[editable path="character"]

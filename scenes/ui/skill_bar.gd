@@ -19,6 +19,13 @@ const AS := preload("res://globals/combat/action_skills.gd")
 	$PassiveRow/P1, $PassiveRow/P2, $PassiveRow/P3, $PassiveRow/P4, $PassiveRow/P5,
 ]
 
+## 性能：缓存上次刷新快照，值未变则跳过 queue_redraw 与 tr()/文本设置。
+## 每帧无条件刷新会触发 2 次 CD 遮罩重绘 + 多次翻译查找，地牢中始终挂载、持续耗电。
+var _cached_active_skill: Array[String] = ["", ""]
+var _cached_active_progress: Array[float] = [-2.0, -2.0]
+var _cached_active_matched: Array[bool] = [true, true]
+var _cached_passive_skill: Array[String] = ["", "", "", "", ""]
+
 func _process(_delta: float) -> void:
 	_refresh()
 
@@ -33,47 +40,61 @@ func _refresh_active_slot(slot_index: int, name_label: Label, icon_rect: Texture
 	var sr: Node = _get_skill_runtime()
 	var icons: Node = _get_skill_icons()
 	if sr == null or icons == null:
-		name_label.text = "-"
-		icon_rect.texture = null
-		cd_label.text = ""
-		cd_overlay.queue_redraw()
+		if _cached_active_skill[slot_index] != "-":
+			name_label.text = "-"
+			icon_rect.texture = null
+			cd_label.text = ""
+			cd_overlay.queue_redraw()
+			_cached_active_skill[slot_index] = "-"
+			_cached_active_progress[slot_index] = -2.0
 		return
 	var skill_id: String = sr.get_slot_skill(slot_index)
 	if skill_id == "":
-		name_label.text = "-"
-		icon_rect.texture = null
-		cd_label.text = ""
-		cd_overlay.queue_redraw()
+		if _cached_active_skill[slot_index] != "":
+			name_label.text = "-"
+			icon_rect.texture = null
+			cd_label.text = ""
+			cd_overlay.queue_redraw()
+			_cached_active_skill[slot_index] = ""
+			_cached_active_progress[slot_index] = -2.0
 		return
-	# 技能名 + 图标
-	name_label.text = skill_id
-	icon_rect.texture = icons.get_icon(skill_id)
-	# CD 进度（0=刚释放/冷却中, 1=就绪）
+	# 技能名 + 图标（仅 skill_id 变化时刷新，避免每帧 tr() 与纹理查找）
+	if skill_id != _cached_active_skill[slot_index]:
+		name_label.text = tr(skill_id)
+		icon_rect.texture = icons.get_icon(skill_id)
+		_cached_active_skill[slot_index] = skill_id
+	# CD 进度（0=刚释放/冷却中, 1=就绪）。仅进度明显变化或冷却就绪翻转时才重绘遮罩。
 	var progress: float = sr.get_cooldown_progress(skill_id)
-	cd_overlay.progress = progress
-	cd_overlay.queue_redraw()
-	# CD 剩余秒数显示
+	if abs(progress - _cached_active_progress[slot_index]) > 0.002:
+		cd_overlay.progress = progress
+		cd_overlay.queue_redraw()
+		_cached_active_progress[slot_index] = progress
+	# CD 剩余秒数显示（缓存避免每帧字符串分配）
 	var remain: float = sr.get_cooldown_remain(skill_id)
-	if remain > 0.0:
-		cd_label.text = "%.1f" % remain
-	else:
-		cd_label.text = ""
-	# 媒介置灰（仅 G 槽，F 槽无媒介限制）
+	var remain_text := "%.1f" % remain if remain > 0.0 else ""
+	if remain_text != cd_label.text:
+		cd_label.text = remain_text
+	# 媒介置灰（仅 G 槽，F 槽无媒介限制）——仅 matched 变化时设置
 	var main_hand := _get_main_hand_type()
 	var off_hand := _get_off_hand_type()
 	var matched: bool = sr.is_slot_medium_matched(slot_index, main_hand, off_hand)
-	icon_rect.modulate = Color(1, 1, 1, 1.0) if matched else Color(1, 1, 1, 0.35)
+	if matched != _cached_active_matched[slot_index]:
+		icon_rect.modulate = Color(1, 1, 1, 1.0) if matched else Color(1, 1, 1, 0.35)
+		_cached_active_matched[slot_index] = matched
 
 ## 刷新被动槽
 func _refresh_passive_slots() -> void:
 	var sr: Node = _get_skill_runtime()
-	var icons: Node = _get_skill_icons()
 	if sr == null:
 		return
 	for i in range(5):
 		var slot_idx: int = SR.SLOT_PASSIVE_1 + i
 		var skill_id: String = sr.get_slot_skill(slot_idx)
-		passive_labels[i].text = skill_id if skill_id != "" else "-"
+		# 仅 skill_id 变化时重做 tr() 与文本/着色设置
+		if skill_id == _cached_passive_skill[i]:
+			continue
+		_cached_passive_skill[i] = skill_id
+		passive_labels[i].text = tr(skill_id) if skill_id != "" else "-"
 		passive_labels[i].modulate = Color(0.8, 0.8, 1.0) if skill_id != "" else Color(0.4, 0.4, 0.4)
 
 ## 获取玩家当前主手武器类型（集成期默认 one_hand_melee）

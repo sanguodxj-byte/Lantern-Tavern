@@ -11,8 +11,8 @@ func test_skill_bar_has_active_slots() -> void:
 	add_child(inst)
 	assert_object(inst.get_node_or_null("ActiveRow/SlotF")).is_not_null()
 	assert_object(inst.get_node_or_null("ActiveRow/SlotG")).is_not_null()
-	assert_object(inst.get_node_or_null("ActiveRow/SlotF/CDBar")).is_not_null()
-	assert_object(inst.get_node_or_null("ActiveRow/SlotG/CDBar")).is_not_null()
+	assert_object(inst.get_node_or_null("ActiveRow/SlotF/CDOverlay")).is_not_null()
+	assert_object(inst.get_node_or_null("ActiveRow/SlotG/CDOverlay")).is_not_null()
 	inst.queue_free()
 
 func test_skill_bar_has_passive_slots() -> void:
@@ -75,4 +75,14 @@ func test_skill_bar_has_cd_label_nodes() -> void:
 	add_child(inst)
 	assert_object(inst.get_node_or_null("ActiveRow/SlotF/CDLabel")).is_not_null()
 	assert_object(inst.get_node_or_null("ActiveRow/SlotG/CDLabel")).is_not_null()
+	inst.queue_free()
+
+func test_skill_bar_uses_readable_pixel_hud_frame() -> void:
+	var inst: Control = load("res://scenes/ui/skill_bar.tscn").instantiate()
+	add_child(inst)
+	await await_idle_frame()
+	assert_object(inst.get_node_or_null("Backdrop")).is_not_null()
+	assert_str(String(inst.get_node("Backdrop").theme_type_variation)).is_equal("HUDPanel")
+	assert_float(inst.get_node("ActiveRow/SlotF").size.x).is_greater_equal(76.0)
+	assert_float(inst.get_node("ActiveRow/SlotG").size.y).is_greater_equal(76.0)
 	inst.queue_free()

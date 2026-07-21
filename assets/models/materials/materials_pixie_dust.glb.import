@@ -3,7 +3,7 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://c05npa0w7nbav"
+uid="uid://ktfo41vqfrul"
 path="res://.godot/imported/materials_pixie_dust.glb-9ee7eace4308b8ce4985fcf4aafca669.scn"
 
 [deps]
@@ -42,4 +42,4 @@ materials/extract_path=""
 _subresources={}
 gltf/naming_version=2
 gltf/embedded_image_handling=1
-gltf/texture_map_mode=1
+gltf/texture_map_mode=0

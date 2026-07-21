@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/characters/player/player.tscn" id="1_player"]
+
+[ext_resource type="Script" path="res://tools/probe_leak_scan.gd" id="2_scan"]
+
+[node name="ProbeRoot" type="Node"]
+script = ExtResource("2_scan")
+
+[node name="Player" parent="." instance=ExtResource("1_player")]

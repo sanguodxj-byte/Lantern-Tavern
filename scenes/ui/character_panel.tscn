@@ -21,7 +21,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.0666667, 0.0431373, 0.0352941, 0.921569)
+color = Color(0.018, 0.019, 0.021, 0.965)
 
 [node name="PanelContainer" type="PanelContainer" parent="."]
 layout_mode = 1
@@ -45,7 +45,7 @@ layout_mode = 2
 [node name="Title" type="Label" parent="PanelContainer/VBoxContainer/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 34
+theme_type_variation = &"ScreenTitle"
 text = " ADVENTURER INVENTORY & STATUS"
 
 [node name="ReturnBtn" type="Button" parent="PanelContainer/VBoxContainer/Header"]
@@ -72,48 +72,56 @@ alignment = 1
 [node name="SlotHead" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipmentSlots"]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
+theme_type_variation = &"SlotButton"
 text = "Head
 [Empty]"
 
 [node name="SlotBody" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipmentSlots"]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
+theme_type_variation = &"SlotButton"
 text = "Chest
 [Leather]"
 
 [node name="SlotHands" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipmentSlots"]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
+theme_type_variation = &"SlotButton"
 text = "Hands
 [Gloves]"
 
 [node name="SlotFeet" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipmentSlots"]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
+theme_type_variation = &"SlotButton"
 text = "Feet
 [Boots]"
 
 [node name="SlotMainHand" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipmentSlots"]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
+theme_type_variation = &"SlotButton"
 text = "Main Hand
 [Sword]"
 
 [node name="SlotOffHand" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipmentSlots"]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
+theme_type_variation = &"SlotButton"
 text = "Off Hand
 [Shield]"
 
 [node name="SlotBack" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipmentSlots"]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
+theme_type_variation = &"SlotButton"
 text = "Back
 [Empty]"
 
 [node name="SlotRing" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipmentSlots"]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
+theme_type_variation = &"SlotButton"
 text = "Accessory
 [Ring]"
 
@@ -248,7 +256,7 @@ theme_override_constants/separation = 12
 
 [node name="Label" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightColumn/属性/HBox/DetailsPanel/VBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 26
+theme_type_variation = &"SectionTitle"
 text = "Hero Specifications"
 
 [node name="Grid" type="GridContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightColumn/属性/HBox/DetailsPanel/VBox"]
@@ -325,7 +333,7 @@ theme_override_constants/separation = 12
 
 [node name="Label" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightColumn/属性/HBox/DescPanel/VBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 26
+theme_type_variation = &"SectionTitle"
 text = "Status Lore"
 
 [node name="DescVal" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightColumn/属性/HBox/DescPanel/VBox" unique_name_in_owner = true]
@@ -386,7 +394,7 @@ theme_override_constants/separation = 8
 
 [node name="ProfLabel" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightColumn/熟练度/VBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
+theme_type_variation = &"SectionTitle"
 text = "Weapon & School Proficiency"
 
 [node name="ProfList" type="ItemList" parent="PanelContainer/VBoxContainer/MainLayout/RightColumn/熟练度/VBox" unique_name_in_owner = true]

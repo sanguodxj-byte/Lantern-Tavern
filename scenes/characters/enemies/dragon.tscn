@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://cylmpirnbgosr"]
 
 [ext_resource type="PackedScene" uid="uid://cty2xvbejnvbg" path="res://scenes/characters/enemies/goblin.tscn" id="1_drag"]
-[ext_resource type="PackedScene" uid="uid://b683i6fpr0pjv" path="res://assets/meshes/characters/voxel_dragon_256px.glb" id="2_voxel"]
+[ext_resource type="PackedScene" uid="uid://bdxls380ccmt3" path="res://assets/meshes/characters/voxel_dragon_256px_rig.glb" id="2_voxel"]
 [ext_resource type="Resource" uid="uid://b85xdn0cdw6p1" path="res://data/weapons/axe.tres" id="3_axe"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_drag"]
@@ -10,21 +10,22 @@ backlight_enabled = true
 backlight = Color(0.5, 0.1, 0.0, 1)
 texture_filter = 0
 
-[sub_resource type="ViewportTexture" id="ViewportTexture_drag"]
-viewport_path = NodePath("Healthbar/SubViewport")
-
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_drag"]
-radius = 0.8
-height = 3.0
+radius = 0.4375
+height = 2.975
 
 [node name="Dragon" instance=ExtResource("1_drag")]
+base_material = SubResource("StandardMaterial3D_drag")
 duration_between_attacks = 3500
 duration_stun = 4000
 speed = 0.8
 is_elite = true
+body_size = "huge"
+
+[node name="character" parent="." index="1" instance=ExtResource("2_voxel")]
 
 [node name="CollisionShape" parent="." index="0"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4875, 0)
 shape = SubResource("CapsuleShape3D_drag")
 
 [node name="EquipmentComponent" parent="." index="2"]
@@ -34,11 +35,3 @@ weapon_data = ExtResource("3_axe")
 [node name="HealthComponent" parent="." index="6"]
 max_life = 40
 current_life = 40
-
-[node name="Healthbar" parent="." index="11"]
-texture = SubResource("ViewportTexture_drag")
-
-[node name="PresenceLight" parent="." index="9"]
-light_color = Color(0.8, 0.2, 0.0, 1)
-light_energy = 2.5
-omni_range = 4.0

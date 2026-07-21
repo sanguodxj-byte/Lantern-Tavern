@@ -1,0 +1,826 @@
+{
+  "comment": "TEMP playtest: all normal monsters spawn only in L0 (zone 0) with equal weight. Zones 1-5 have empty normal types. Boss pool remains available.",
+  "boss_types": [
+    "necrolord",
+    "dragon",
+    "rock_golem",
+    "minotaur",
+    "harpy_matriarch",
+    "oni_revenant"
+  ],
+  "enemies": [
+    {
+      "id": "goblin",
+      "name_zh": "哥布林",
+      "rig": "voxel_goblin_32px_rig.glb",
+      "body_size": "medium",
+      "hp": 10,
+      "speed": 2.0,
+      "weapon": "axe",
+      "has_shield": true,
+      "tier": "core",
+      "drop": "goblin_ear",
+      "color": [
+        0.4,
+        0.6,
+        0.3
+      ]
+    },
+    {
+      "id": "rat",
+      "name_zh": "巨鼠",
+      "rig": "voxel_rat_12px_rig.glb",
+      "body_size": "small",
+      "hp": 3,
+      "speed": 3.5,
+      "weapon": "claw",
+      "has_shield": false,
+      "tier": "core",
+      "drop": "giant_rat_tail",
+      "color": [
+        0.45,
+        0.42,
+        0.38
+      ]
+    },
+    {
+      "id": "skeleton",
+      "name_zh": "骷髅兵",
+      "rig": "voxel_skeleton_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 12,
+      "speed": 1.8,
+      "weapon": "shortsword",
+      "has_shield": false,
+      "tier": "core",
+      "drop": "skeleton_dust",
+      "color": [
+        0.85,
+        0.85,
+        0.8
+      ]
+    },
+    {
+      "id": "slime",
+      "name_zh": "史莱姆",
+      "rig": "voxel_slime_24px_rig.glb",
+      "body_size": "small",
+      "hp": 6,
+      "speed": 1.5,
+      "weapon": "claw",
+      "has_shield": false,
+      "tier": "core",
+      "drop": "slime_jelly",
+      "color": [
+        0.3,
+        0.7,
+        0.3
+      ]
+    },
+    {
+      "id": "spider",
+      "name_zh": "巨型蜘蛛",
+      "rig": "voxel_spider_30px_rig.glb",
+      "body_size": "medium",
+      "hp": 9,
+      "speed": 2.4,
+      "weapon": "claw",
+      "has_shield": false,
+      "tier": "core",
+      "drop": "spider_poison_sac",
+      "color": [
+        0.16,
+        0.18,
+        0.22
+      ]
+    },
+    {
+      "id": "troll",
+      "name_zh": "巨魔",
+      "rig": "voxel_troll_64x_rig.glb",
+      "body_size": "large",
+      "hp": 20,
+      "speed": 1.0,
+      "weapon": "axe",
+      "has_shield": false,
+      "tier": "core",
+      "drop": "troll_blood",
+      "color": [
+        0.4,
+        0.5,
+        0.35
+      ]
+    },
+    {
+      "id": "necrolord",
+      "name_zh": "死灵领主",
+      "rig": "voxel_necrolord_80px_rig.glb",
+      "body_size": "large",
+      "hp": 25,
+      "speed": 1.3,
+      "weapon": "shortsword",
+      "has_shield": false,
+      "tier": "boss",
+      "drop": "soul_gem",
+      "color": [
+        0.2,
+        0.15,
+        0.3
+      ],
+      "is_elite": true
+    },
+    {
+      "id": "dragon",
+      "name_zh": "巨龙",
+      "rig": "voxel_dragon_256px_rig.glb",
+      "body_size": "huge",
+      "hp": 40,
+      "speed": 0.8,
+      "weapon": "axe",
+      "has_shield": false,
+      "tier": "boss",
+      "drop": "dragon_scale",
+      "color": [
+        0.6,
+        0.15,
+        0.1
+      ],
+      "is_elite": true
+    },
+    {
+      "id": "minotaur",
+      "name_zh": "牛头怪",
+      "rig": "voxel_minotaur_72px_rig.glb",
+      "body_size": "large",
+      "hp": 28,
+      "speed": 1.2,
+      "weapon": "axe",
+      "has_shield": false,
+      "tier": "boss",
+      "drop": "troll_blood",
+      "color": [
+        0.42,
+        0.28,
+        0.16
+      ],
+      "is_elite": true
+    },
+    {
+      "id": "rock_golem",
+      "name_zh": "岩石魔像",
+      "rig": "voxel_rock_golem_80px_rig.glb",
+      "body_size": "large",
+      "hp": 32,
+      "speed": 0.9,
+      "weapon": "axe",
+      "has_shield": false,
+      "tier": "boss",
+      "drop": "soul_gem",
+      "color": [
+        0.42,
+        0.4,
+        0.38
+      ],
+      "is_elite": true
+    },
+    {
+      "id": "orc_raider",
+      "name_zh": "兽人掠夺者",
+      "rig": "voxel_orc_raider_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 14,
+      "speed": 1.9,
+      "weapon": "axe",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "goblin_ear",
+      "color": [
+        0.2,
+        0.42,
+        0.16
+      ]
+    },
+    {
+      "id": "hobgoblin_legionary",
+      "name_zh": "大地精军团士兵",
+      "rig": "voxel_hobgoblin_legionary_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 15,
+      "speed": 1.7,
+      "weapon": "shortsword",
+      "has_shield": true,
+      "tier": "normal",
+      "drop": "goblin_ear",
+      "color": [
+        0.55,
+        0.28,
+        0.18
+      ]
+    },
+    {
+      "id": "bugbear_brute",
+      "name_zh": "熊地精暴徒",
+      "rig": "voxel_bugbear_brute_48px_rig.glb",
+      "body_size": "large",
+      "hp": 18,
+      "speed": 1.4,
+      "weapon": "axe",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "troll_blood",
+      "color": [
+        0.35,
+        0.22,
+        0.12
+      ]
+    },
+    {
+      "id": "gnoll_hyena",
+      "name_zh": "豺狼人鬣狗战士",
+      "rig": "voxel_gnoll_hyena_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 12,
+      "speed": 2.4,
+      "weapon": "claw",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "giant_rat_tail",
+      "color": [
+        0.55,
+        0.42,
+        0.22
+      ]
+    },
+    {
+      "id": "lizardfolk_scout",
+      "name_zh": "蜥蜴人斥候",
+      "rig": "voxel_lizardfolk_scout_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 11,
+      "speed": 2.2,
+      "weapon": "shortsword",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "slime_jelly",
+      "color": [
+        0.25,
+        0.48,
+        0.3
+      ]
+    },
+    {
+      "id": "troglodyte",
+      "name_zh": "穴居人",
+      "rig": "voxel_troglodyte_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 10,
+      "speed": 1.6,
+      "weapon": "claw",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "slime_jelly",
+      "color": [
+        0.4,
+        0.45,
+        0.28
+      ]
+    },
+    {
+      "id": "duergar_miner",
+      "name_zh": "灰矮人矿工",
+      "rig": "voxel_duergar_miner_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 13,
+      "speed": 1.5,
+      "weapon": "axe",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "skeleton_dust",
+      "color": [
+        0.35,
+        0.35,
+        0.4
+      ]
+    },
+    {
+      "id": "dark_elf_hexer",
+      "name_zh": "暗精灵咒术师",
+      "rig": "voxel_dark_elf_hexer_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 9,
+      "speed": 2.0,
+      "weapon": "shortsword",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "soul_gem",
+      "color": [
+        0.25,
+        0.15,
+        0.35
+      ]
+    },
+    {
+      "id": "drow_blade",
+      "name_zh": "卓尔剑士",
+      "rig": "voxel_drow_blade_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 12,
+      "speed": 2.3,
+      "weapon": "shortsword",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "skeleton_dust",
+      "color": [
+        0.2,
+        0.12,
+        0.28
+      ]
+    },
+    {
+      "id": "satyr_marauder",
+      "name_zh": "半羊人掠夺者",
+      "rig": "voxel_satyr_marauder_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 11,
+      "speed": 2.1,
+      "weapon": "axe",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "goblin_ear",
+      "color": [
+        0.45,
+        0.32,
+        0.18
+      ]
+    },
+    {
+      "id": "harpy_matriarch",
+      "name_zh": "鹰身女妖女族长",
+      "rig": "voxel_harpy_matriarch_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 16,
+      "speed": 2.5,
+      "weapon": "claw",
+      "has_shield": false,
+      "tier": "boss",
+      "drop": "dragon_scale",
+      "color": [
+        0.55,
+        0.35,
+        0.45
+      ],
+      "is_elite": true
+    },
+    {
+      "id": "werewolf_stalker",
+      "name_zh": "狼人潜行者",
+      "rig": "voxel_werewolf_stalker_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 15,
+      "speed": 2.6,
+      "weapon": "claw",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "giant_rat_tail",
+      "color": [
+        0.35,
+        0.32,
+        0.35
+      ]
+    },
+    {
+      "id": "vampire_thrall",
+      "name_zh": "吸血鬼仆从",
+      "rig": "voxel_vampire_thrall_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 13,
+      "speed": 2.0,
+      "weapon": "shortsword",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "soul_gem",
+      "color": [
+        0.4,
+        0.15,
+        0.18
+      ]
+    },
+    {
+      "id": "wight_guard",
+      "name_zh": "尸妖守卫",
+      "rig": "voxel_wight_guard_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 14,
+      "speed": 1.6,
+      "weapon": "shortsword",
+      "has_shield": true,
+      "tier": "normal",
+      "drop": "skeleton_dust",
+      "color": [
+        0.45,
+        0.48,
+        0.5
+      ]
+    },
+    {
+      "id": "ghoul_feaster",
+      "name_zh": "食尸鬼饕客",
+      "rig": "voxel_ghoul_feaster_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 11,
+      "speed": 2.2,
+      "weapon": "claw",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "skeleton_dust",
+      "color": [
+        0.5,
+        0.55,
+        0.4
+      ]
+    },
+    {
+      "id": "mummy_cursebearer",
+      "name_zh": "木乃伊咒缚者",
+      "rig": "voxel_mummy_cursebearer_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 16,
+      "speed": 1.3,
+      "weapon": "claw",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "soul_gem",
+      "color": [
+        0.55,
+        0.48,
+        0.32
+      ]
+    },
+    {
+      "id": "plague_doctor",
+      "name_zh": "瘟疫医生",
+      "rig": "voxel_plague_doctor_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 10,
+      "speed": 1.8,
+      "weapon": "shortsword",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "slime_jelly",
+      "color": [
+        0.25,
+        0.28,
+        0.22
+      ]
+    },
+    {
+      "id": "cultist_pyromancer",
+      "name_zh": "邪教火法师",
+      "rig": "voxel_cultist_pyromancer_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 9,
+      "speed": 1.7,
+      "weapon": "shortsword",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "soul_gem",
+      "color": [
+        0.55,
+        0.2,
+        0.1
+      ]
+    },
+    {
+      "id": "cultist_zealot",
+      "name_zh": "邪教狂信徒",
+      "rig": "voxel_cultist_zealot_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 11,
+      "speed": 1.9,
+      "weapon": "axe",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "goblin_ear",
+      "color": [
+        0.4,
+        0.18,
+        0.18
+      ]
+    },
+    {
+      "id": "bandit_cutthroat",
+      "name_zh": "强盗割喉者",
+      "rig": "voxel_bandit_cutthroat_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 10,
+      "speed": 2.3,
+      "weapon": "shortsword",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "goblin_ear",
+      "color": [
+        0.35,
+        0.3,
+        0.28
+      ]
+    },
+    {
+      "id": "bandit_crossbowman",
+      "name_zh": "强盗弩手",
+      "rig": "voxel_bandit_crossbowman_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 9,
+      "speed": 1.8,
+      "weapon": "shortsword",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "skeleton_dust",
+      "color": [
+        0.32,
+        0.3,
+        0.28
+      ]
+    },
+    {
+      "id": "fungal_shambler",
+      "name_zh": "真菌行尸",
+      "rig": "voxel_fungal_shambler_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 14,
+      "speed": 1.2,
+      "weapon": "claw",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "slime_jelly",
+      "color": [
+        0.35,
+        0.5,
+        0.28
+      ]
+    },
+    {
+      "id": "myconid_sporekeeper",
+      "name_zh": "蘑菇人孢子守卫",
+      "rig": "voxel_myconid_sporekeeper_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 12,
+      "speed": 1.4,
+      "weapon": "claw",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "slime_jelly",
+      "color": [
+        0.42,
+        0.2,
+        0.48
+      ]
+    },
+    {
+      "id": "elemental_ash",
+      "name_zh": "灰烬元素",
+      "rig": "voxel_elemental_ash_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 13,
+      "speed": 1.5,
+      "weapon": "claw",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "dragon_scale",
+      "color": [
+        0.24,
+        0.22,
+        0.2
+      ]
+    },
+    {
+      "id": "elemental_frost",
+      "name_zh": "寒霜元素",
+      "rig": "voxel_elemental_frost_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 13,
+      "speed": 1.5,
+      "weapon": "claw",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "soul_gem",
+      "color": [
+        0.22,
+        0.56,
+        0.72
+      ]
+    },
+    {
+      "id": "elemental_storm",
+      "name_zh": "风暴元素",
+      "rig": "voxel_elemental_storm_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 13,
+      "speed": 1.7,
+      "weapon": "claw",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "soul_gem",
+      "color": [
+        0.3,
+        0.32,
+        0.58
+      ]
+    },
+    {
+      "id": "gargoyle_sentinel",
+      "name_zh": "石像鬼哨兵",
+      "rig": "voxel_gargoyle_sentinel_48px_rig.glb",
+      "body_size": "large",
+      "hp": 18,
+      "speed": 1.3,
+      "weapon": "claw",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "skeleton_dust",
+      "color": [
+        0.34,
+        0.34,
+        0.36
+      ]
+    },
+    {
+      "id": "animated_armor",
+      "name_zh": "活化盔甲",
+      "rig": "voxel_animated_armor_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 16,
+      "speed": 1.4,
+      "weapon": "shortsword",
+      "has_shield": true,
+      "tier": "normal",
+      "drop": "skeleton_dust",
+      "color": [
+        0.38,
+        0.4,
+        0.42
+      ]
+    },
+    {
+      "id": "oni_revenant",
+      "name_zh": "鬼族怨灵",
+      "rig": "voxel_oni_revenant_48px_rig.glb",
+      "body_size": "large",
+      "hp": 22,
+      "speed": 1.5,
+      "weapon": "axe",
+      "has_shield": false,
+      "tier": "boss",
+      "drop": "soul_gem",
+      "color": [
+        0.56,
+        0.18,
+        0.16
+      ],
+      "is_elite": true
+    },
+    {
+      "id": "shadow_assassin",
+      "name_zh": "暗影刺客",
+      "rig": "voxel_shadow_assassin_48px_rig.glb",
+      "body_size": "medium",
+      "hp": 10,
+      "speed": 2.8,
+      "weapon": "shortsword",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "soul_gem",
+      "color": [
+        0.12,
+        0.12,
+        0.16
+      ]
+    }
+  ],
+  "zone_weights": {
+    "0": {
+      "types": {
+        "goblin": 10,
+        "rat": 10,
+        "skeleton": 10,
+        "slime": 10,
+        "spider": 10,
+        "troll": 10,
+        "orc_raider": 10,
+        "hobgoblin_legionary": 10,
+        "bugbear_brute": 10,
+        "gnoll_hyena": 10,
+        "lizardfolk_scout": 10,
+        "troglodyte": 10,
+        "duergar_miner": 10,
+        "dark_elf_hexer": 10,
+        "drow_blade": 10,
+        "satyr_marauder": 10,
+        "werewolf_stalker": 10,
+        "vampire_thrall": 10,
+        "wight_guard": 10,
+        "ghoul_feaster": 10,
+        "mummy_cursebearer": 10,
+        "plague_doctor": 10,
+        "cultist_pyromancer": 10,
+        "cultist_zealot": 10,
+        "bandit_cutthroat": 10,
+        "bandit_crossbowman": 10,
+        "fungal_shambler": 10,
+        "myconid_sporekeeper": 10,
+        "elemental_ash": 10,
+        "elemental_frost": 10,
+        "elemental_storm": 10,
+        "gargoyle_sentinel": 10,
+        "animated_armor": 10,
+        "shadow_assassin": 10
+      },
+      "boss": {
+        "necrolord": 10,
+        "dragon": 10,
+        "rock_golem": 10,
+        "minotaur": 10,
+        "harpy_matriarch": 10,
+        "oni_revenant": 10
+      },
+      "count_per_room": 2.5,
+      "hp_mult": 0.8,
+      "speed_mult": 0.9,
+      "dmg_mult": 0.8
+    },
+    "1": {
+      "types": {},
+      "boss": {
+        "necrolord": 10,
+        "dragon": 10,
+        "rock_golem": 10,
+        "minotaur": 10,
+        "harpy_matriarch": 10,
+        "oni_revenant": 10
+      },
+      "count_per_room": 1.0,
+      "hp_mult": 1.0,
+      "speed_mult": 1.0,
+      "dmg_mult": 1.0
+    },
+    "2": {
+      "types": {},
+      "boss": {
+        "necrolord": 10,
+        "dragon": 10,
+        "rock_golem": 10,
+        "minotaur": 10,
+        "harpy_matriarch": 10,
+        "oni_revenant": 10
+      },
+      "count_per_room": 1.0,
+      "hp_mult": 1.2,
+      "speed_mult": 1.1,
+      "dmg_mult": 1.1
+    },
+    "3": {
+      "types": {},
+      "boss": {
+        "necrolord": 10,
+        "dragon": 10,
+        "rock_golem": 10,
+        "minotaur": 10,
+        "harpy_matriarch": 10,
+        "oni_revenant": 10
+      },
+      "count_per_room": 1.0,
+      "hp_mult": 1.4,
+      "speed_mult": 1.15,
+      "dmg_mult": 1.3
+    },
+    "4": {
+      "types": {},
+      "boss": {
+        "necrolord": 10,
+        "dragon": 10,
+        "rock_golem": 10,
+        "minotaur": 10,
+        "harpy_matriarch": 10,
+        "oni_revenant": 10
+      },
+      "count_per_room": 1.0,
+      "hp_mult": 1.8,
+      "speed_mult": 1.25,
+      "dmg_mult": 1.5
+    },
+    "5": {
+      "types": {},
+      "boss": {
+        "necrolord": 10,
+        "dragon": 10,
+        "rock_golem": 10,
+        "minotaur": 10,
+        "harpy_matriarch": 10,
+        "oni_revenant": 10
+      },
+      "count_per_room": 1.0,
+      "hp_mult": 2.2,
+      "speed_mult": 1.3,
+      "dmg_mult": 1.8
+    }
+  }
+}

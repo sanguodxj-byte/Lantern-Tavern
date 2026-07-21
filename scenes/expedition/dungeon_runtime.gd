@@ -10,73 +10,107 @@
 # 严格约束：
 #   - 不重新规划布局（layout 已含 spawn specs）
 #   - 不创建地形节点（builder 已产 build_result）
-#   - 不管理 streaming（controller 已接管）
-#   - 信号接线（extraction_requested.connect / pressure.pressure_changed.connect）属本模块范畴
-#
-# 本会话先建框架 + 接口声明，真迁移放下回合（保 procedural 旧路径不破，避免单回合高风险大改）。
+#   - 不维护 streaming registry（controller 已接管；可协调一次 update）
+#   - 信号接线（extraction_requested / pressure_changed）属本模块范畴
 class_name DungeonRuntime
 extends Node
 
 const EXPLORATION_PRESSURE_SCRIPT := preload("res://globals/dungeon/exploration_pressure.gd")
+const LIGHTING_HELPER := preload("res://scenes/expedition/dungeon_lighting_helper.gd")
+const DungeonRenderingConfig := preload("res://scenes/expedition/dungeon_rendering_config.gd")
 
 # 配置（由 ProceduralDungeon._ready 注入）
 var layout: DungeonLayout = null
 var build_result: DungeonBuildResult = null
 var expedition_finished: bool = false
-var _level: Node = null  # ProceduralDungeon 引用（转调其 spawn_player/HUD/pressure 旧路径，下回合真迁）
 
-## 配置：注入 layout + build_result + level（ProceduralDungeon 引用，转调旧路径暂保）。
-func configure(p_layout: DungeonLayout, p_build_result: DungeonBuildResult, p_level: Node = null) -> void:
+# 宿主仅提供：spawn_player / streaming_controller / decor batch 收尾
+var _level: Node = null
+var _streaming_controller: Node = null
+var _rendering_cfg: DungeonRenderingConfig = DungeonRenderingConfig.default()
+
+# 是否生成敌人/掉落物人口。生产默认 true。
+# 供无头集成测试关闭：headless GL Compatibility 下反复实例化 ~30 具蒙皮 rig 敌人会累积
+# GPU 资源并触发原生崩溃（signal 11，见 enemy_dying_defer_test 记录，真机正常）。
+# 只验证地形/门/光照/材质的全场景测试无需敌人，可置 false 规避该引擎限制。
+var spawn_population_enabled: bool = true
+
+# 敌人分帧实例化状态：先取生成计划，再按帧批量实例化，削平进场单帧卡顿与显存峰值尖峰。
+const ENEMY_SPAWN_BATCH_PER_FRAME := 4
+var _enemy_spawn_plan: Array = []
+var _enemy_spawn_root: Node = null
+var _enemy_spawn_player: Node = null
+var _enemy_spawn_index: int = 0
+
+# Runtime 自有状态（不再写回 _level._private_field）
+var expedition_hud: ExpeditionHUD = null
+var combat_hud: CombatHUD = null
+var exploration_pressure: ExplorationPressure = null
+
+## 配置：注入 layout + build_result + level + streaming_controller + rendering_cfg。
+## 显式注入避反向读 _level.streaming_controller/_rendering_cfg（消除浅 Module 反向依赖）。
+func configure(p_layout: DungeonLayout, p_build_result: DungeonBuildResult, p_level: Node = null,
+		p_streaming_controller: Node = null, p_rendering_cfg: DungeonRenderingConfig = null,
+		p_spawn_population: bool = true) -> void:
 	layout = p_layout
 	build_result = p_build_result
 	_level = p_level
+	_streaming_controller = p_streaming_controller
+	spawn_population_enabled = p_spawn_population
+	if p_rendering_cfg != null:
+		_rendering_cfg = p_rendering_cfg
 
 ## 启动 runtime：spawn player/enemies/items + mount HUD + setup pressure + connect extraction + music。
-## D 步3 真迁移：本版转调 procedural 旧路径（通过 _level 引用），下回合把函数体真搬入本模块。
 func start() -> void:
 	if _level == null or not is_instance_valid(_level):
 		return
-	# spawn 序（余下转调 procedural 旧路径，下步真迁）
-	var spawned_player = _level.spawn_player()
-	# D 步5：spawn_enemies 已真迁入本模块（不转调 procedural）
-	spawn_enemies(spawned_player)
-	spawn_items()
-	# D 步7：stabilize_lighting 已真迁入本模块（转调 procedural 工具 + streaming_controller）
+	var spawned_player = null
+	if _level.has_method("spawn_player"):
+		spawned_player = _level.spawn_player()
+	# 关键接线：把玩家引用交给 streaming controller。否则其 _player_position() 恒用
+	# 地图角落 fallback 坐标决定激活哪些 chunk，玩家周围的 terrain/wall/light chunk
+	# 永不激活 → 地牢全黑、无墙体无光源。
+	if _streaming_controller != null and is_instance_valid(_streaming_controller) \
+			and _streaming_controller.has_method("set_player"):
+		_streaming_controller.set_player(spawned_player)
+	if spawn_population_enabled:
+		spawn_enemies(spawned_player)
+		spawn_items()
 	stabilize_lighting()
-	# D 步10：mount_expedition_hud + setup_exploration_pressure 已真迁入本模块
 	mount_expedition_hud()
 	setup_exploration_pressure()
-	# D 步4：extraction 信号接线已真迁入本模块（不转调 procedural）
 	wire_extraction_portal_signal()
 	if AudioManager:
 		AudioManager.start_music()
 
 func mount_expedition_hud() -> void:
-	# D 步10 真迁：把 procedural._mount_expedition_hud 逻辑搬入本模块，
-	# _expedition_hud/_combat_hud 挂 _level（保字段路径不破）。
 	if _level == null or not is_instance_valid(_level):
 		return
 	var hud_scene = load("res://scenes/ui/expedition_hud.tscn")
 	if not hud_scene:
 		return
 	var hud := hud_scene.instantiate() as ExpeditionHUD
-	_level._expedition_hud = hud
+	expedition_hud = hud
 	var layer = CanvasLayer.new()
 	layer.name = "ExpeditionHUDLayer"
 	layer.add_child(hud)
 	_level.add_child(layer)
-	if not _is_running_under_world():
-		var game_ui = load("res://scenes/ui/ui.tscn")
-		if game_ui:
-			var ui_instance = game_ui.instantiate()
-			_level.add_child(ui_instance)
-		var combat_hud_scene = load("res://scenes/ui/combat_hud.tscn")
-		if combat_hud_scene:
-			_level._combat_hud = combat_hud_scene.instantiate() as CombatHUD
-			_level.add_child(_level._combat_hud)
+	# 无头环境（gdUnit/CI 或专用服务器）没有可渲染的显示上下文：整套客户端 UI
+	# （ui.tscn → pause_menu.tscn 的 blur_overlay 后处理 shader）在 GL Compatibility 无头渲染下
+	# 反复创建 shader/viewport，跨多次全场景实例化累积 GPU 资源，最终触发原生崩溃（signal 11），
+	# 使整个测试套件在中途挂起。无头下本就无需玩家 UI，跳过这层重 UI 的挂载。
+	if _is_running_under_world() or DisplayServer.get_name() == "headless":
+		return
+	var game_ui = load("res://scenes/ui/ui.tscn")
+	if game_ui:
+		var ui_instance = game_ui.instantiate()
+		_level.add_child(ui_instance)
+	var combat_hud_scene = load("res://scenes/ui/combat_hud.tscn")
+	if combat_hud_scene:
+		combat_hud = combat_hud_scene.instantiate() as CombatHUD
+		_level.add_child(combat_hud)
 
 func _is_running_under_world() -> bool:
-	# D 步10 真迁：把 procedural._is_running_under_world 逻辑搬入本模块
 	if _level == null:
 		return false
 	var node: Node = _level.get_parent()
@@ -87,20 +121,16 @@ func _is_running_under_world() -> bool:
 	return false
 
 func setup_exploration_pressure() -> void:
-	# D 步10 真迁：把 procedural._setup_exploration_pressure 逻辑搬入本模块，
-	# 信号接本模块 on_pressure_changed/on_expedition_overtime（已真迁）。
 	if _level == null or not is_instance_valid(_level):
 		return
-	_level._exploration_pressure = EXPLORATION_PRESSURE_SCRIPT.new() as ExplorationPressure
-	_level._exploration_pressure.name = "ExplorationPressure"
-	_level._exploration_pressure.pressure_changed.connect(on_pressure_changed)
-	_level._exploration_pressure.expedition_overtime.connect(on_expedition_overtime)
-	_level.add_child(_level._exploration_pressure)
-	on_pressure_changed(_level._exploration_pressure.make_snapshot())
+	exploration_pressure = EXPLORATION_PRESSURE_SCRIPT.new() as ExplorationPressure
+	exploration_pressure.name = "ExplorationPressure"
+	exploration_pressure.pressure_changed.connect(on_pressure_changed)
+	exploration_pressure.expedition_overtime.connect(on_expedition_overtime)
+	_level.add_child(exploration_pressure)
+	on_pressure_changed(exploration_pressure.make_snapshot())
 
 func stabilize_lighting() -> void:
-	# D 步7 真迁：把 procedural._stabilize_dungeon_lighting 逻辑搬入本模块，
-	# 4 工具（collect/is_player_vision/is_hint/configure）转调 procedural（保路径不破）。
 	if _level == null or not is_instance_valid(_level):
 		return
 	var player_node: Node3D = GameState.current_player
@@ -108,37 +138,33 @@ func stabilize_lighting() -> void:
 		if player_node.has_method("_setup_player_light"):
 			player_node._setup_player_light()
 	var local_lights: Array[Light3D] = []
-	_level._collect_local_lights(_level, local_lights)
+	LIGHTING_HELPER.collect_local_lights(_level, local_lights)
+	var base_energy: float = _rendering_cfg.player_vision_base_energy
+	var base_range: float = _rendering_cfg.player_vision_base_range
 	for light in local_lights:
-		if _level._is_player_vision_light(light):
-			_level._configure_player_vision_light(light)
+		if LIGHTING_HELPER.is_player_vision_light(light, Player.PLAYER_VISION_LIGHT_NAME):
+			LIGHTING_HELPER.configure_player_vision_light(light, base_energy, base_range)
 			continue
-		if _level._is_hint_light(light):
+		if LIGHTING_HELPER.is_hint_light(light, _level):
 			light.visible = false
 			continue
 		if light is OmniLight3D or light is SpotLight3D:
 			light.visible = false
-			var sc = _level.streaming_controller
-			if sc != null and is_instance_valid(sc):
-				sc.register_light(light)
-	var sc2 = _level.streaming_controller
-	if sc2 != null and is_instance_valid(sc2):
-		sc2.update_streaming(true)
+			if _streaming_controller != null and is_instance_valid(_streaming_controller):
+				if _streaming_controller.has_method("register_light"):
+					_streaming_controller.register_light(light)
+	if _streaming_controller != null and is_instance_valid(_streaming_controller):
+		if _streaming_controller.has_method("update_streaming"):
+			_streaming_controller.update_streaming(true)
 
 ## 停止 runtime：handle extraction/overtime 收尾。
 func stop() -> void:
 	expedition_finished = true
 
-# ── 接口框架（D 步2 真迁移放下回合，保 procedural 旧路径不破） ──
-# 这些函数声明占位，让集成测试可验 DungeonRuntime 已具备 runtime 范畴的全套接口名。
-# 真迁移时把 procedural 内对应函数体搬入这里 + 改 procedural 转调本模块。
-
 func spawn_player() -> Node3D:
-	return null  # TODO D 步2: 迁自 procedural.spawn_player
+	return null  # 仍由 level.spawn_player 提供；接口保留供契约测试
 
 func spawn_enemies(spawned_player: Node3D = null) -> void:
-	# D 步5 真迁：把 procedural._spawn_dungeon_enemies 逻辑搬入本模块，
-	# 调 DungeonSpawner.spawn_enemies_from_layout 接 layout.enemy_spawn_specs，敌人挂 build_result.spawn_root。
 	if layout == null or layout.is_empty() or build_result == null:
 		return
 	var spawner: Node = Service.dungeon_spawner() if Service != null else null
@@ -152,15 +178,44 @@ func spawn_enemies(spawned_player: Node3D = null) -> void:
 			push_warning("[DungeonRuntime] Player not spawned, skip enemy generation")
 			return
 	var spawn_root: Node = build_result.spawn_root if build_result.spawn_root != null else _level
-	var spawned_enemies: Array = spawner.spawn_enemies_from_layout(layout, spawn_root, player_node)
-	# streaming 注册转调 procedural.register_streamed_physics_node（它转调 controller，保路径）
-	if _level != null and is_instance_valid(_level):
-		for enemy in spawned_enemies:
-			_level.register_streamed_physics_node(enemy)
+	# 分帧实例化：先取生成计划（不实例化），再按帧批量生成，避免进场单帧卡顿。
+	_enemy_spawn_plan = spawner.spawn_enemies_from_layout(layout, spawn_root, player_node, true)
+	_enemy_spawn_root = spawn_root
+	_enemy_spawn_player = player_node
+	_enemy_spawn_index = 0
+	if _enemy_spawn_plan.is_empty():
+		return
+	# 无场景树（如纯单测 .new()）则同步实例化，保持测试可直接断言数量。
+	if get_tree() == null:
+		_spawn_enemy_batch(_enemy_spawn_plan.size())
+		return
+	_pump_enemy_spawns()
+
+
+## 同步实例化最多 count 个待生成敌人，并注册到 streaming。
+func _spawn_enemy_batch(count: int) -> void:
+	var spawner: Node = Service.dungeon_spawner() if Service != null else null
+	if spawner == null or _enemy_spawn_root == null or not is_instance_valid(_enemy_spawn_root):
+		return
+	var end := mini(_enemy_spawn_index + count, _enemy_spawn_plan.size())
+	for i in range(_enemy_spawn_index, end):
+		var desc: Dictionary = _enemy_spawn_plan[i]
+		var enemy: Node = spawner.instantiate_enemy_descriptor(desc, _enemy_spawn_root, _enemy_spawn_player, layout)
+		if enemy != null:
+			_register_streamed_physics(enemy)
+	_enemy_spawn_index = end
+
+
+## 按帧推进实例化：每帧生成一批，跨帧完成全图敌人生成。
+func _pump_enemy_spawns() -> void:
+	if _enemy_spawn_index >= _enemy_spawn_plan.size():
+		return
+	_spawn_enemy_batch(ENEMY_SPAWN_BATCH_PER_FRAME)
+	if _enemy_spawn_index < _enemy_spawn_plan.size():
+		if is_instance_valid(get_tree()):
+			get_tree().create_timer(0.0).timeout.connect(_pump_enemy_spawns)
 
 func spawn_items() -> void:
-	# D 步5 真迁：把 procedural._spawn_dungeon_items 逻辑搬入本模块，
-	# 调 ItemSpawner.spawn_items_from_layout 接 layout.item_spawn_specs，物挂 build_result.spawn_root。
 	if layout == null or layout.is_empty() or build_result == null:
 		return
 	var spawner: Node = Service.item_spawner() if Service != null else null
@@ -169,34 +224,29 @@ func spawn_items() -> void:
 		return
 	var spawn_root: Node = build_result.spawn_root if build_result.spawn_root != null else _level
 	spawner.spawn_items_from_layout(layout, spawn_root)
-	if _level != null and is_instance_valid(_level):
-		_level._build_batched_decor_multi_meshes()
+	# decor batch 已由 DungeonSceneBuilder.build 在 build 末尾完成
 
 func wire_extraction_portal_signal() -> void:
-	# D 步4 真迁：把 procedural._wire_extraction_portal_signal 逻辑搬入本模块，
-	# 信号接 runtime.on_extraction_requested（不转调 procedural，真接管）。
 	if build_result == null or build_result.interaction_root == null:
 		return
 	for child in build_result.interaction_root.get_children():
 		if String(child.get_meta("topdown_kind", "")) == "extraction" and child.has_signal("extraction_requested"):
 			child.extraction_requested.connect(on_extraction_requested)
-			break  # 唯一 ExtractionPortal
+			break
 
 func finish_expedition(player: Node, voluntary: bool) -> void:
-	# D 步8 真迁：把 procedural._finish_expedition 逻辑搬入本模块，
-	# _exploration_pressure 转调 _level（保路径不破），TavernManager autoload 直调。
 	if expedition_finished:
 		return
 	expedition_finished = true
 	if player != null and is_instance_valid(player):
 		_settle_extraction_loot(player)
 	if TavernManager != null and is_instance_valid(TavernManager) and TavernManager.has_method("extract_to_tavern"):
-		var pressure = _level._exploration_pressure if _level != null and is_instance_valid(_level) else null
-		var result: Dictionary = pressure.build_extraction_result(voluntary) if pressure != null else {}
+		var result: Dictionary = {}
+		if exploration_pressure != null and is_instance_valid(exploration_pressure):
+			result = exploration_pressure.build_extraction_result(voluntary)
 		TavernManager.extract_to_tavern(result)
 
 func _settle_extraction_loot(player: Node) -> void:
-	# D 步8 真迁：把 procedural._settle_extraction_loot 逻辑搬入本模块
 	var tm: Node = Service.tavern_manager() if Service != null else null
 	if tm == null:
 		return
@@ -208,54 +258,44 @@ func _settle_extraction_loot(player: Node) -> void:
 		tm.record_expedition_loot(carried_materials, carried_weapons, carried_shields)
 
 func on_extraction_requested(player: Node) -> void:
-	# D 步6 真迁：把 procedural._on_extraction_requested 逻辑搬入本模块
 	print("[DungeonRuntime] Extraction triggered by player!")
 	finish_expedition(player, true)
 
 func on_expedition_overtime(_snapshot: Dictionary) -> void:
-	# D 步6 真迁：把 procedural._on_expedition_overtime 逻辑搬入本模块
-	var player_node := GameState.current_player as Player
+	var player_node: Player = GameState.current_player as Player
 	finish_expedition(player_node, false)
 
 func on_pressure_changed(snapshot: Dictionary) -> void:
-	# D 步9 真迁：把 procedural._on_pressure_changed 逻辑搬入本模块
-	if _level == null or not is_instance_valid(_level):
-		return
-	if _level._expedition_hud != null and is_instance_valid(_level._expedition_hud):
-		_level._expedition_hud.update_pressure(snapshot)
-	var combat_hud := _get_combat_hud()
-	if combat_hud != null and is_instance_valid(combat_hud):
-		combat_hud.update_pressure(snapshot)
+	if expedition_hud != null and is_instance_valid(expedition_hud):
+		expedition_hud.update_pressure(snapshot)
+	var hud := _get_combat_hud()
+	if hud != null and is_instance_valid(hud):
+		hud.update_pressure(snapshot)
 	apply_player_vision_pressure(float(snapshot.get("vision_range_multiplier", 1.0)))
 	apply_environment_activity(float(snapshot.get("environment_activity_multiplier", 1.0)))
 	apply_monster_hunt_pressure(bool(snapshot.get("force_monster_hunt", false)))
 
 func _get_combat_hud() -> CombatHUD:
-	# D 步9 真迁：把 procedural._get_combat_hud 逻辑搬入本模块
+	if combat_hud != null and is_instance_valid(combat_hud):
+		return combat_hud
 	if _level == null or not is_instance_valid(_level):
 		return null
-	if _level._combat_hud != null and is_instance_valid(_level._combat_hud):
-		return _level._combat_hud
 	var node: Node = _level
 	while node != null:
 		var found := node.get_node_or_null("CombatHUD") as CombatHUD
 		if found != null:
-			_level._combat_hud = found
-			return _level._combat_hud
+			combat_hud = found
+			return combat_hud
 		node = node.get_parent()
 	return null
 
 func on_door_pressure_action(action: String) -> void:
-	# D 步9 真迁：把 procedural._on_door_pressure_action 逻辑搬入本模块
-	if _level == null or not is_instance_valid(_level):
+	if exploration_pressure == null:
 		return
-	if _level._exploration_pressure == null:
-		return
-	_level._exploration_pressure.record_door_action(action)
+	exploration_pressure.record_door_action(action)
 
 func apply_player_vision_pressure(multiplier: float) -> void:
-	# D 步9 真迁：把 procedural._apply_player_vision_pressure 逻辑搬入本模块
-	var player_node := GameState.current_player
+	var player_node: Node = GameState.current_player
 	if player_node == null or not is_instance_valid(player_node):
 		return
 	var light := player_node.get_node_or_null(Player.PLAYER_VISION_LIGHT_NAME) as OmniLight3D
@@ -263,19 +303,17 @@ func apply_player_vision_pressure(multiplier: float) -> void:
 		return
 	var light_multiplier := clampf(multiplier, 0.0, 1.0)
 	light.visible = light_multiplier > 0.0
-	light.light_energy = _level.PLAYER_VISION_BASE_ENERGY * light_multiplier
-	light.omni_range = _level.PLAYER_VISION_BASE_RANGE * light_multiplier
+	light.light_energy = _rendering_cfg.player_vision_base_energy * light_multiplier
+	light.omni_range = _rendering_cfg.player_vision_base_range * light_multiplier
 
 func apply_environment_activity(multiplier: float) -> void:
-	# D 步9 真迁：把 procedural._apply_environment_activity 逻辑搬入本模块
 	for node in get_tree().get_nodes_in_group("enemies"):
 		if node == null or not is_instance_valid(node):
 			continue
 		node.set_meta("environment_activity_mult", clampf(multiplier, 1.0, 1.75))
 
 func apply_monster_hunt_pressure(force_hunt: bool) -> void:
-	# D 步9 真迁：把 procedural._apply_monster_hunt_pressure 逻辑搬入本模块
-	var player_node := GameState.current_player as Player
+	var player_node: Player = GameState.current_player as Player
 	if player_node == null or not is_instance_valid(player_node):
 		return
 	for node in get_tree().get_nodes_in_group("enemies"):
@@ -285,3 +323,13 @@ func apply_monster_hunt_pressure(force_hunt: bool) -> void:
 		enemy.set_meta("dark_erosion_hunt", force_hunt)
 		if force_hunt:
 			enemy.player = player_node
+
+func _register_streamed_physics(node: Node) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	if _streaming_controller != null and is_instance_valid(_streaming_controller) \
+			and _streaming_controller.has_method("register_physics_node"):
+		_streaming_controller.register_physics_node(node)
+		return
+	if _level != null and is_instance_valid(_level) and _level.has_method("register_streamed_physics_node"):
+		_level.register_streamed_physics_node(node)

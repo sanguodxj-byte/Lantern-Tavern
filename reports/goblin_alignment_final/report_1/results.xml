@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites id="2026-07-21" name="report_1" tests="6" failures="0" skipped="0" flaky="0" time="0.000">
+	<testsuite id="0" name="goblin_runtime_alignment_test" package="tests/gdunit" timestamp="2026-07-21T11:07:32" hostname="localhost" tests="6" failures="0" errors="0" skipped="0" flaky="0" time="0.109">
+		<testcase name="test_runtime_scene_keeps_raw_rig_facing_and_origin" classname="goblin_runtime_alignment_test" time="0.016">
+		</testcase>
+		<testcase name="test_runtime_scene_retains_hand_attachments_under_skeleton" classname="goblin_runtime_alignment_test" time="0.017">
+		</testcase>
+		<testcase name="test_equipment_placeholders_resolve_to_hand_attachments" classname="goblin_runtime_alignment_test" time="0.015">
+		</testcase>
+		<testcase name="test_runtime_scene_exposes_required_animations" classname="goblin_runtime_alignment_test" time="0.015">
+		</testcase>
+		<testcase name="test_runtime_scene_pose_matches_raw_rig" classname="goblin_runtime_alignment_test" time="0.020">
+		</testcase>
+		<testcase name="test_runtime_render_capture_is_single_model_and_uses_runtime_scene" classname="goblin_runtime_alignment_test" time="0.004">
+		</testcase>
+	</testsuite>
+</testsuites>

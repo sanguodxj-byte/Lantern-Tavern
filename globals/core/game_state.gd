@@ -1,102 +1,115 @@
 extends Node
 
-var current_keys : Dictionary[Door.KeyColor, bool] = {}
+const Service := preload("res://globals/core/service.gd")
+
 var current_level : Node3D
 var current_player : Player
 
-# 角色随身状态：酒馆/地牢共用，不随场景切换清空。
-var carried_materials: Dictionary = {}   # material_id → 数量
-var carried_runes: Dictionary = {}       # rune_id → 数量
-var carried_equipment: Dictionary = {}   # equipment_id → 数量（未装备的背包装备）
+## 每玩家上下文（联机保险层）。单机下绑定到全局单例；详见 globals/core/player_context.gd。
+## 通过 player_context() 惰性获取，避免 autoload 初始化顺序问题。
+var _player_context: PlayerContext = null
+
+const DEFAULT_CARRIED_SPACE_LIMIT := 30
+const ExpeditionInventoryClass := preload("res://globals/core/state/expedition_inventory.gd")
+const EquipmentLoadoutClass := preload("res://globals/core/state/equipment_loadout.gd")
+
+var expedition_inventory := ExpeditionInventoryClass.new()
+var equipment_loadout := EquipmentLoadoutClass.new()
+
+var carried_materials: Dictionary:
+	get: return expedition_inventory.materials
+	set(value): expedition_inventory.materials = value
+
+var carried_runes: Dictionary:
+	get: return expedition_inventory.runes
+	set(value): expedition_inventory.runes = value
+
+var carried_equipment: Dictionary:
+	get: return expedition_inventory.equipment
+	set(value): expedition_inventory.equipment = value
+
 var carried_weapons: int = 0             # 探险获得的武器统计
 var carried_shields: int = 0             # 探险获得的盾统计
-var weapon_slot_ids: Array[String] = ["", "", "", ""]
-var armor_slot_ids: Dictionary = {
-	"head": "",
-	"body": "",
-	"hands": "",
-	"feet": "",
-}
-var active_weapon_slot: int = 0
+
+var weapon_slot_ids: Array[String]:
+	get: return equipment_loadout.weapon_slots
+	set(value): equipment_loadout.weapon_slots = value
+
+var armor_slot_ids: Dictionary:
+	get: return equipment_loadout.armor_slots
+	set(value): equipment_loadout.armor_slots = value
+
+var active_weapon_slot: int:
+	get: return equipment_loadout.active_weapon_slot
+	set(value): equipment_loadout.active_weapon_slot = value
 
 const EXPEDITION_FAILURE_DAMAGE_FRACTION := 1.0
-const DEFAULT_CARRIED_SPACE_LIMIT := 30
-const MATERIAL_SPACE_PER_ITEM := 1
-const RUNE_SPACE_PER_ITEM := 1
-const EQUIPMENT_SPACE_PER_ITEM := 1
 
-var carried_space_limit: int = DEFAULT_CARRIED_SPACE_LIMIT
-
-func has_key(color: Door.KeyColor) -> bool:
-	return current_keys.get(color, false)
-
-func use_key(color: Door.KeyColor) -> void:
-	current_keys[color] = false
-	GameEvents.current_keys_changed.emit(color)
-
-func obtain_key(color: Door.KeyColor) -> void:
-	current_keys[color] = true
-	GameEvents.current_keys_changed.emit(color)
+var carried_space_limit: int:
+	get: return expedition_inventory.space_limit
+	set(value): expedition_inventory.space_limit = value
 
 func register_level(level: Node3D) -> void:
 	current_level = level
-	current_keys = {}
+	# 关卡切换时清空投射物对象池，释放上一关残留的投射物
+	var ps: Node = Service.projectile_service()
+	if ps != null and ps.has_method("clear_pool"):
+		ps.clear_pool()
 
 func register_player(player: Player) -> void:
 	if player != null and player.has_meta("equipment_preview"):
 		return
 	current_player = player
+	if _player_context != null:
+		_player_context.player_node = player
 	if _has_saved_equipment_loadout():
 		apply_equipment_to_player(player)
-	else:
-		save_equipment_from_player(player)
+	# 不再在 register_player 中调用 save_equipment_from_player。
+	# 装备保存应由装备面板 (_apply_equipment_changed) 和拾取逻辑
+	# (player_state_picking_up) 显式调用。
+	# 否则场景重加载时新 Player 的空装备会覆盖已保存的数据，
+	# 导致“开始下一天”后装备丢失。
+
+## 每玩家上下文（联机保险层）。
+## 惰性创建并绑定到当前单机全局单例；后续联机改为 per-peer 实例。
+func player_context() -> PlayerContext:
+	if _player_context == null:
+		_player_context = PlayerContext.bind_to_globals(current_player)
+	return _player_context
 
 ## 记录拾取材料（地牢内实时调用）
 func add_carried_material(material_id: String, amount: int = 1) -> bool:
-	if material_id.is_empty() or amount <= 0:
-		return false
-	if not can_add_carried_space(amount * MATERIAL_SPACE_PER_ITEM):
-		return false
-	carried_materials[material_id] = int(carried_materials.get(material_id, 0)) + amount
-	return true
+	return expedition_inventory.add_material(material_id, amount)
 
 func add_carried_rune(rune_id: String, amount: int = 1) -> bool:
-	if rune_id.is_empty() or amount <= 0:
-		return false
-	if not can_add_carried_space(amount * RUNE_SPACE_PER_ITEM):
-		return false
-	carried_runes[rune_id] = int(carried_runes.get(rune_id, 0)) + amount
-	return true
+	return expedition_inventory.add_rune(rune_id, amount)
 
 ## 记录未装备的背包装备
 func add_carried_equipment(equipment_id: String, amount: int = 1) -> bool:
-	if equipment_id.is_empty() or amount <= 0:
-		return false
-	if not can_add_carried_space(amount * EQUIPMENT_SPACE_PER_ITEM):
-		return false
-	carried_equipment[equipment_id] = int(carried_equipment.get(equipment_id, 0)) + amount
-	return true
+	return expedition_inventory.add_equipment(equipment_id, amount)
+
+func add_carried_equipment_instance(data: WeaponData) -> bool:
+	return expedition_inventory.add_equipment_instance(data)
+
+func get_carried_equipment_instance(equipment_id: String) -> WeaponData:
+	return expedition_inventory.get_equipment_instance(equipment_id)
 
 func remove_carried_equipment(equipment_id: String, amount: int = 1) -> bool:
-	if equipment_id.is_empty() or amount <= 0:
-		return false
-	var current := int(carried_equipment.get(equipment_id, 0))
-	if current < amount:
-		return false
-	var remaining := current - amount
-	if remaining > 0:
-		carried_equipment[equipment_id] = remaining
-	else:
-		carried_equipment.erase(equipment_id)
-	return true
+	return expedition_inventory.remove_equipment(equipment_id, amount)
+
+func remove_carried_material(material_id: String, amount: int = 1) -> bool:
+	return expedition_inventory.remove_material(material_id, amount)
+
+func remove_carried_rune(rune_id: String, amount: int = 1) -> bool:
+	return expedition_inventory.remove_rune(rune_id, amount)
 
 func get_carried_equipment_dict() -> Dictionary:
-	return carried_equipment.duplicate()
+	return expedition_inventory.equipment.duplicate()
 
 ## 记录拾取武器
 func add_carried_weapon(equipment_id: String = "") -> bool:
 	if not equipment_id.is_empty():
-		if not add_carried_equipment(equipment_id, 1):
+		if not expedition_inventory.add_equipment(equipment_id, 1):
 			return false
 	carried_weapons += 1
 	return true
@@ -104,7 +117,7 @@ func add_carried_weapon(equipment_id: String = "") -> bool:
 ## 记录拾取盾
 func add_carried_shield(equipment_id: String = "") -> bool:
 	if not equipment_id.is_empty():
-		if not add_carried_equipment(equipment_id, 1):
+		if not expedition_inventory.add_equipment(equipment_id, 1):
 			return false
 	carried_shields += 1
 	return true
@@ -112,35 +125,39 @@ func add_carried_shield(equipment_id: String = "") -> bool:
 func can_add_carried_space(space: int) -> bool:
 	if space <= 0:
 		return true
-	return get_carried_space_used() + space <= carried_space_limit
+	return expedition_inventory.get_space_used() + space <= expedition_inventory.space_limit
 
 func get_carried_space_used() -> int:
-	return _sum_inventory(carried_materials) * MATERIAL_SPACE_PER_ITEM \
-		+ _sum_inventory(carried_runes) * RUNE_SPACE_PER_ITEM \
-		+ _sum_inventory(carried_equipment) * EQUIPMENT_SPACE_PER_ITEM
+	return expedition_inventory.get_space_used()
 
 func get_carried_space_limit() -> int:
-	return carried_space_limit
+	return expedition_inventory.space_limit
 
 func get_carried_space_free() -> int:
-	return maxi(0, carried_space_limit - get_carried_space_used())
+	return expedition_inventory.get_space_free()
 
 ## 获取本局携带材料总数
 func get_carried_materials() -> int:
 	var total: int = 0
-	for k in carried_materials.keys():
-		total += int(carried_materials[k])
+	for amt in expedition_inventory.materials.values():
+		total += int(amt)
 	return total
 
 ## 获取本局携带材料字典（material_id → 数量）
 func get_carried_materials_dict() -> Dictionary:
-	return carried_materials.duplicate()
+	return expedition_inventory.materials.duplicate()
 
 func get_carried_runes() -> int:
 	var total: int = 0
-	for k in carried_runes.keys():
-		total += int(carried_runes[k])
+	for amt in expedition_inventory.runes.values():
+		total += int(amt)
 	return total
+
+func clear_carried_state() -> void:
+	expedition_inventory.clear()
+	carried_weapons = 0
+	carried_shields = 0
+
 
 func get_carried_runes_dict() -> Dictionary:
 	return carried_runes.duplicate()
@@ -195,12 +212,37 @@ func save_equipment_from_player(player_node: Node = null) -> void:
 		var slots: Array = equipment.weapon_slots
 		for i in range(weapon_slot_ids.size()):
 			var data = slots[i] if i < slots.size() else null
-			weapon_slot_ids[i] = String(data.id) if data != null and "id" in data else ""
+			weapon_slot_ids[i] = _resolve_equipment_id(data)
 	if "armor_slots" in equipment:
 		var slots_dict: Dictionary = equipment.armor_slots
 		for slot_name in armor_slot_ids.keys():
 			var armor = slots_dict.get(slot_name, null)
-			armor_slot_ids[slot_name] = String(armor.id) if armor != null and "id" in armor else ""
+			armor_slot_ids[slot_name] = _resolve_equipment_id(armor)
+
+## 解析装备数据可持久化的 id。
+## 优先使用 data.id；对于无 id 的旧版 .tres WeaponData（如酒馆内手放的
+## shortsword.tres / axe.tres），按 glb_mesh 资源路径反查 WeaponRegistry，
+## 使其也能在场景重载（下一天 / 出发返回）后正确恢复，避免装备丢失。
+func _resolve_equipment_id(data) -> String:
+	if data == null:
+		return ""
+	if "id" in data and not String(data.id).is_empty():
+		return String(data.id)
+	if "glb_mesh" in data and data.glb_mesh != null:
+		var resolved := WeaponRegistry.find_id_by_glb(data.glb_mesh)
+		if not resolved.is_empty():
+			return resolved
+	return ""
+
+## 玩家是否已拥有指定 id 的装备（已装备于武器槽或在随身背包中）。
+## 供酒馆场景抑制已被拾取的固定摆件（如 PickableShortSword）在场景重载后重复刷新。
+func is_weapon_owned(weapon_id: String) -> bool:
+	if weapon_id.is_empty():
+		return false
+	for slot_id in weapon_slot_ids:
+		if String(slot_id) == weapon_id:
+			return true
+	return int(carried_equipment.get(weapon_id, 0)) > 0
 
 func apply_equipment_to_player(player_node: Node = null) -> void:
 	var target_player := player_node if player_node != null else current_player
@@ -284,3 +326,65 @@ func damage_random_equipped_item(player_node: Node = null) -> Dictionary:
 		"name": data.get("name") if "name" in data else "",
 		"condition": int(data.get("condition")),
 	}
+
+# ============================================================================
+# 存档/读档
+# ============================================================================
+
+## 序列化为字典（供 SaveManager 存档）。
+func serialize() -> Dictionary:
+	return {
+		"expedition_inventory": expedition_inventory.to_dict(),
+		"equipment_loadout": equipment_loadout.to_dict(),
+		"carried_weapons": carried_weapons,
+		"carried_shields": carried_shields,
+	}
+
+## 从字典恢复
+func deserialize(data: Dictionary) -> void:
+	if data.has("expedition_inventory") and data["expedition_inventory"] is Dictionary:
+		expedition_inventory.from_dict(data["expedition_inventory"])
+	else:
+		# 兼容老版直接存档字段
+		if data.has("carried_materials") and data["carried_materials"] is Dictionary:
+			expedition_inventory.materials = (data["carried_materials"] as Dictionary).duplicate()
+		if data.has("carried_runes") and data["carried_runes"] is Dictionary:
+			expedition_inventory.runes = (data["carried_runes"] as Dictionary).duplicate()
+		if data.has("carried_equipment") and data["carried_equipment"] is Dictionary:
+			expedition_inventory.equipment = (data["carried_equipment"] as Dictionary).duplicate()
+		if data.has("carried_space_limit"):
+			expedition_inventory.space_limit = int(data["carried_space_limit"])
+
+	if data.has("equipment_loadout") and data["equipment_loadout"] is Dictionary:
+		equipment_loadout.from_dict(data["equipment_loadout"])
+	else:
+		# 兼容老版直接存档字段
+		if data.has("weapon_slot_ids") and data["weapon_slot_ids"] is Array:
+			var loaded_slots: Array = data["weapon_slot_ids"]
+			var arr: Array[String] = ["", "", "", ""]
+			for i in range(mini(loaded_slots.size(), 4)):
+				arr[i] = String(loaded_slots[i])
+			equipment_loadout.weapon_slots = arr
+		if data.has("armor_slot_ids") and data["armor_slot_ids"] is Dictionary:
+			var loaded_armor: Dictionary = data["armor_slot_ids"]
+			equipment_loadout.armor_slots["head"] = String(loaded_armor.get("head", ""))
+			equipment_loadout.armor_slots["body"] = String(loaded_armor.get("body", ""))
+			equipment_loadout.armor_slots["hands"] = String(loaded_armor.get("hands", ""))
+			equipment_loadout.armor_slots["feet"] = String(loaded_armor.get("feet", ""))
+		if data.has("active_weapon_slot"):
+			equipment_loadout.active_weapon_slot = clampi(int(data["active_weapon_slot"]), 0, 3)
+
+	if data.has("carried_weapons"):
+		carried_weapons = int(data["carried_weapons"])
+	if data.has("carried_shields"):
+		carried_shields = int(data["carried_shields"])
+
+## 重置为初始状态
+func reset_state() -> void:
+	expedition_inventory.clear()
+	expedition_inventory.space_limit = DEFAULT_CARRIED_SPACE_LIMIT
+	carried_weapons = 0
+	carried_shields = 0
+	equipment_loadout.weapon_slots = ["", "", "", ""]
+	equipment_loadout.armor_slots = {"head": "", "body": "", "hands": "", "feet": ""}
+	equipment_loadout.active_weapon_slot = 0

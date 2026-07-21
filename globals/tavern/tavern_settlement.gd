@@ -122,11 +122,11 @@ func _pick_random_prefix() -> String:
 	# fallback 旧逻辑
 	var roll: float = randf()
 	if roll < 0.5:
-		return GEAR_PREFIXES_POSITIVE[randi() % GEAR_PREFIXES_POSITIVE.size()]
+		return tr(GEAR_PREFIXES_POSITIVE[randi() % GEAR_PREFIXES_POSITIVE.size()])
 	elif roll < 0.8:
-		return GEAR_PREFIXES_NEGATIVE[randi() % GEAR_PREFIXES_NEGATIVE.size()]
+		return tr(GEAR_PREFIXES_NEGATIVE[randi() % GEAR_PREFIXES_NEGATIVE.size()])
 	else:
-		return GEAR_PREFIXES_NEUTRAL[randi() % GEAR_PREFIXES_NEUTRAL.size()]
+		return tr(GEAR_PREFIXES_NEUTRAL[randi() % GEAR_PREFIXES_NEUTRAL.size()])
 
 func _get_weapon_registry() -> Node:
 	var tree := get_tree()
@@ -382,7 +382,7 @@ func get_prestige_tier(race_id: String) -> Dictionary:
 
 ## 获取种族声望阶梯名
 func get_prestige_tier_name(race_id: String) -> String:
-	return get_prestige_tier(race_id).name
+	return TranslationServer.translate(get_prestige_tier(race_id).name)
 
 ## 个体好感达到"熟悉"阈值（>=30）即录入常客名册，解锁本名
 func _try_register_regular(cust: Customer) -> void:

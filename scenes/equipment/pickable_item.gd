@@ -4,6 +4,7 @@ extends RigidBody3D
 const HIGHLIGHT_MATERIAL := preload("res://materials/highlight_material.tres")
 const MATERIAL_MODELS := preload("res://data/material_model_registry.gd")
 const RD := preload("res://globals/combat/rune_data.gd")
+const VOXEL_LIGHTING := preload("res://globals/visual/voxel_lighting_adapter.gd")
 
 @export var mesh_node : MeshInstance3D
 @export var furniture_data: FurnitureData
@@ -11,9 +12,13 @@ const RD := preload("res://globals/combat/rune_data.gd")
 @export var weapon_data: WeaponData
 @export var material_id: String = ""
 @export var rune_id: String = ""
+## 固定摆件归属的装备 id（如酒馆内 PickableShortSword 设为 "shortsword"）。
+## 仅对场景中手放的固定拾取物有意义：酒馆加载时若玩家已拥有该 id 的装备，
+## 则抑制本物件刷新，避免下一天 / 出发返回后重复拾取。运行时动态生成的
+## 战利品（地牢宝箱、怪物掉落）不要设置此字段。
+@export var owner_weapon_id: String = ""
 
 @onready var collision_shape: CollisionShape3D = %CollisionShape
-@onready var presence_light: OmniLight3D = %PresenceLight
 
 var highlight_material: StandardMaterial3D
 
@@ -24,8 +29,6 @@ func _ready() -> void:
 	var pickable_object : Node3D = null
 	highlight_material = HIGHLIGHT_MATERIAL.duplicate()
 	highlight_material.emission_enabled = false
-	if presence_light != null:
-		presence_light.visible = false
 	
 	if weapon_data and weapon_data.glb_mesh:
 		pickable_object = weapon_data.glb_mesh.instantiate()
@@ -53,8 +56,6 @@ func _ready() -> void:
 		
 	if mesh_node != null and material_id == "":
 		collision_shape.shape = mesh_node.mesh.create_convex_shape()
-		if weapon_data or shield_data:
-			presence_light.visible = false
 	elif furniture_data != null:
 		mesh_node = _find_first_mesh_instance(self)
 		_fit_collision_to_visual(self)
@@ -62,6 +63,12 @@ func _ready() -> void:
 		PhysicsSetup.setup_pickable(self)
 	_disable_drop_lights_recursive(self)
 	_disable_drop_material_glow_recursive(self)
+	# 地面武器/盾保留金属对比；材料/家具走默认体素适配
+	if weapon_data != null or shield_data != null:
+		var material_tier := weapon_data.material_tier if weapon_data != null else ""
+		VOXEL_LIGHTING.apply_weapon_tree(self, material_tier)
+	else:
+		VOXEL_LIGHTING.apply_to_tree(self, true)
 
 func _is_inside_procedural_dungeon() -> bool:
 	var node: Node = self
@@ -69,7 +76,7 @@ func _is_inside_procedural_dungeon() -> bool:
 		if node is ProceduralDungeon:
 			return true
 		node = node.get_parent()
-	var level := GameState.current_level if GameState != null else null
+	var level: Node = GameState.current_level if GameState != null else null
 	return level is ProceduralDungeon
 
 func highlight() -> void:
@@ -88,20 +95,27 @@ func get_item_name() -> String:
 	elif furniture_data:
 		return furniture_data.name
 	elif material_id != "":
-		var names = {
-			"wild_glowcap": tr("Wild Glowcap"),
-			"frost_berry": tr("Frost Berry"),
-			"fire_bloom": tr("Fire Bloom"),
-			"cave_lichen": tr("Cave Lichen"),
-			"honeycomb": tr("Honeycomb"),
-			"sweet_grass": tr("Sweet Grass"),
-			"bitter_root": tr("Bitter Root"),
-			"mountain_barley": tr("Mountain Barley")
-		}
-		return names.get(material_id, MATERIAL_MODELS.get_display_name(material_id))
+		# 与图鉴/背包同一解析链（BrewingData → MaterialModelRegistry）
+		return MATERIAL_MODELS.get_display_name(material_id)
 	elif rune_id != "":
 		return RD.get_rune_name(rune_id)
 	return tr("Item")
+
+## Barony 风格死亡爆出：从尸体位置向外+向上施加物理冲量并随机翻滚。
+## 怪物死亡掉落的物品调用此方法，模拟战利品从尸体中弹射飞出、落地翻滚的效果。
+## origin: 爆出源点（通常为怪物尸体世界坐标）；strength: 冲量强度（默认 3.5）。
+func pop_out(origin: Vector3, strength: float = 3.5) -> void:
+	if not is_inside_tree():
+		return
+	var to_item := global_position - origin
+	var horiz := Vector3(to_item.x, 0.0, to_item.z)
+	if horiz.length_squared() < 0.0001:
+		# 物品基本在源点正上方 → 随机一个水平方向散开
+		horiz = Vector3(randf_range(-1.0, 1.0), 0.0, randf_range(-1.0, 1.0))
+	horiz = horiz.normalized()
+	var dir := (horiz * randf_range(0.6, 1.0) + Vector3.UP * randf_range(0.9, 1.3)).normalized()
+	apply_central_impulse(dir * strength)
+	angular_velocity = Vector3(randf_range(-8.0, 8.0), randf_range(-8.0, 8.0), randf_range(-8.0, 8.0))
 
 func _instantiate_material_model(id: String) -> Node3D:
 	var glb_path := _material_glb_path(id)
@@ -112,14 +126,44 @@ func _instantiate_material_model(id: String) -> Node3D:
 			if instance != null:
 				instance.position += MATERIAL_MODELS.get_visual_offset(id)
 				instance.rotation_degrees = MATERIAL_MODELS.get_visual_rotation_degrees(id)
-			return instance
-	return null
+				return instance
+	# GLB 缺失或加载失败时生成占位方块（基于 manifest bbox 尺寸 + 材质高亮色），避免白板/隐形。
+	push_warning("[PickableItem] Material GLB not found or load failed: %s — using fallback box" % glb_path)
+	return _create_fallback_material_mesh(id)
 
 func _material_glb_path(id: String) -> String:
 	var registered_path := MATERIAL_MODELS.get_model_path(id)
 	if not registered_path.is_empty():
 		return registered_path
 	return "res://assets/models/materials/materials_%s.glb" % id
+
+## 当 GLB 模型缺失时，创建一个基于 manifest bbox 的占位 BoxMesh。
+## 使用材质高亮色着色，保证拾取物至少可见可碰撞，不会变成白板/隐形。
+func _create_fallback_material_mesh(id: String) -> Node3D:
+	var root := Node3D.new()
+	root.name = "FallbackMaterial_%s" % id
+	var mesh_inst := MeshInstance3D.new()
+	mesh_inst.name = "FallbackMesh"
+	var box := BoxMesh.new()
+	# 从 manifest 读取 bbox 尺寸，无则默认 0.2m 立方
+	var entry := MATERIAL_MODELS.get_entry(id)
+	var bbox: Array = entry.get("bbox", [0.2, 0.2, 0.2])
+	if bbox.size() >= 3:
+		box.size = Vector3(maxf(float(bbox[0]), 0.05), maxf(float(bbox[1]), 0.05), maxf(float(bbox[2]), 0.05))
+	else:
+		box.size = Vector3(0.2, 0.2, 0.2)
+	mesh_inst.mesh = box
+	# 用高亮色创建简单材质
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = _material_highlight_color(id)
+	mat.vertex_color_use_as_albedo = true
+	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	mesh_inst.material_override = mat
+	root.add_child(mesh_inst)
+	# 应用 manifest 中的偏移和旋转
+	root.position += MATERIAL_MODELS.get_visual_offset(id)
+	root.rotation_degrees = MATERIAL_MODELS.get_visual_rotation_degrees(id)
+	return root
 
 func _material_highlight_color(id: String) -> Color:
 	var lower_id := id.to_lower()

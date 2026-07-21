@@ -7,19 +7,23 @@ signal expedition_overtime(snapshot: Dictionary)
 
 const ACTION_OPEN_DOOR := "open_door"
 const ACTION_BREAK_DOOR := "break_door"
-const START_HOUR := 10
+const START_HOUR := 8
 const DEADLINE_HOUR := 18
 const MINUTES_PER_HOUR := 60
+const REAL_SECONDS_PER_FULL_EXPEDITION := 30.0 * 60.0
 const MAX_THREAT := 100.0
 const RECOMMEND_THREAT := 55.0
 const RECOMMEND_REMAINING_MINUTES := 90
+const LIGHT_HALF_THREAT := 60.0
+const LIGHT_OFF_THREAT := 80.0
+const HUNT_THREAT := 100.0
 
-@export var minutes_per_real_second := 1.0
-@export var open_door_threat := 8.0
-@export var break_door_threat := 18.0
+@export var minutes_per_real_second := float((DEADLINE_HOUR - START_HOUR) * MINUTES_PER_HOUR) / REAL_SECONDS_PER_FULL_EXPEDITION
+@export var open_door_threat := 1.0
+@export var break_door_threat := 3.0
 @export var open_door_minutes := 18
 @export var break_door_minutes := 32
-@export var passive_threat_per_minute := 0.08
+@export var passive_threat_per_minute := 0.0
 
 var elapsed_minutes := 0
 var threat_level := 0.0
@@ -87,8 +91,15 @@ func should_recommend_extraction() -> bool:
 
 
 func get_vision_range_multiplier() -> float:
-	var ratio := threat_level / MAX_THREAT
-	return clampf(1.0 - ratio * 0.45, 0.55, 1.0)
+	if threat_level >= LIGHT_OFF_THREAT:
+		return 0.0
+	if threat_level >= LIGHT_HALF_THREAT:
+		return 0.5
+	return 1.0
+
+
+func should_force_monster_hunt() -> bool:
+	return threat_level >= HUNT_THREAT
 
 
 func get_environment_activity_multiplier() -> float:
@@ -113,8 +124,10 @@ func make_snapshot() -> Dictionary:
 		"remaining_minutes": get_remaining_minutes(),
 		"threat_level": threat_level,
 		"pressure_band": get_pressure_band(),
+		"dark_erosion": threat_level,
 		"vision_range_multiplier": get_vision_range_multiplier(),
 		"environment_activity_multiplier": get_environment_activity_multiplier(),
+		"force_monster_hunt": should_force_monster_hunt(),
 		"opened_doors": opened_doors,
 		"broken_doors": broken_doors,
 		"should_extract": should_recommend_extraction(),

@@ -4,7 +4,7 @@ extends GdUnitTestSuite
 ## 与策划案《09》《10》《13》的数值完全一致。
 
 # 运行时函数已是 static，直接用 const BD 调用
-const BD := preload("res://globals/brewing_data.gd")
+const BD := preload("res://globals/tavern/brewing_data.gd")
 var bd: Node  # 备用 autoload 引用
 
 func before_test() -> void:
@@ -33,20 +33,22 @@ func test_flavor_tr_keys_cover_all_16() -> void:
 
 # ---------- 40 种材料完整性 (策划案 10) ----------
 
-func test_material_count_is_40() -> void:
-	assert_int(BD.MATERIALS_DB.size()).is_equal(40)
+func test_material_count_matches_all_expedition_zones() -> void:
+	assert_int(BD.MATERIALS_DB.size()).is_equal(56)
 
 
-func test_each_zone_has_10_materials() -> void:
-	# 策划案分 4 区，每区 10 种
+func test_each_zone_has_configured_materials() -> void:
+	# 当前 ARPG 探索分为 6 区：初始地牢/遗迹各 8 种，四个主区域各 10 种。
 	var zone_counts: Dictionary = {}
 	for mat_id in BD.MATERIALS_DB:
 		var zone: int = BD.MATERIALS_DB[mat_id].zone
 		zone_counts[zone] = zone_counts.get(zone, 0) + 1
+	assert_int(zone_counts[BD.Zone.DUNGEON]).is_equal(8)
 	assert_int(zone_counts[BD.Zone.FOREST]).is_equal(10)
 	assert_int(zone_counts[BD.Zone.CAVES]).is_equal(10)
 	assert_int(zone_counts[BD.Zone.GRAVEYARD]).is_equal(10)
 	assert_int(zone_counts[BD.Zone.VOLCANO]).is_equal(10)
+	assert_int(zone_counts[BD.Zone.RUINS]).is_equal(8)
 
 
 func test_all_material_flavors_use_valid_names() -> void:
@@ -86,6 +88,18 @@ func test_all_materials_have_name_and_zone() -> void:
 			.override_failure_message("材料 %s 缺中文名" % mat_id).is_true()
 		assert_bool(mat.has("zone") and mat.zone is int) \
 			.override_failure_message("材料 %s 缺区域" % mat_id).is_true()
+
+
+func test_get_material_name_localizes_brewing_and_drop_materials() -> void:
+	# 策划大表 + 仅有模型清单的掉落物，游戏内/图鉴共用此接口
+	var prev := TranslationServer.get_locale()
+	TranslationServer.set_locale("zh")
+	assert_str(BD.get_material_name("blackberry")).is_equal("黑莓")
+	assert_str(BD.get_material_name("rat_tail")).is_equal("老鼠尾巴")
+	assert_str(BD.get_material_name("skeleton_dust")).is_equal("白骨粉末")
+	assert_str(BD.get_material_name("soul_gem")).is_equal("灵魂宝石")
+	assert_str(BD.get_material_name("dragon_scale")).is_equal("龙鳞")
+	TranslationServer.set_locale(prev)
 
 
 # ---------- 10 种经典酒谱完整性 (策划案 13) ----------

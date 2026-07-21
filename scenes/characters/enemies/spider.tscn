@@ -1,0 +1,117 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scenes/characters/enemies/enemy.gd" id="1_enemy"]
+[ext_resource type="PackedScene" path="res://assets/meshes/characters/voxel_spider_30px_rig.glb" id="2_spider_rig"]
+[ext_resource type="PackedScene" path="res://scenes/characters/component/equipment_component.tscn" id="3_equipment"]
+[ext_resource type="PackedScene" path="res://scenes/characters/component/health_component.tscn" id="4_health"]
+[ext_resource type="Resource" path="res://data/weapons/claw.tres" id="5_claw"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_spider"]
+size = Vector3(1.15, 0.85, 1.25)
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_detection"]
+radius = 6.0
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_thorax"]
+size = Vector3(0.75, 0.65, 0.65)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_head"]
+size = Vector3(0.6, 0.45, 0.45)
+
+[node name="Spider" type="CharacterBody3D"]
+collision_layer = 4
+collision_mask = 119
+script = ExtResource("1_enemy")
+duration_between_attacks = 1300
+duration_stun = 1800
+speed = 2.4
+body_size = "medium"
+detection_range = 6.0
+
+[node name="CollisionShape" type="CollisionShape3D" parent="."]
+unique_name_in_owner = true
+position = Vector3(0, 0.425, 0)
+shape = SubResource("BoxShape3D_spider")
+
+[node name="character" parent="." instance=ExtResource("2_spider_rig")]
+
+[node name="PhysicalBoneSimulator3D" type="PhysicalBoneSimulator3D" parent="character/Armature/Skeleton3D"]
+unique_name_in_owner = true
+
+[node name="Physical Bone Torso" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D"]
+unique_name_in_owner = true
+collision_layer = 0
+collision_mask = 0
+mass = 6.0
+bone_name = "Thorax"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone Torso"]
+shape = SubResource("BoxShape3D_thorax")
+
+[node name="Physical Bone Head" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D"]
+unique_name_in_owner = true
+collision_layer = 0
+collision_mask = 0
+mass = 2.0
+bone_name = "Head"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone Head"]
+shape = SubResource("BoxShape3D_head")
+
+[node name="AnimationPlayer" parent="character" index="1"]
+autoplay = &"idle"
+
+[node name="EquipmentComponent" parent="." node_paths=PackedStringArray("weapon_reach_raycast", "weapon_spawn_position") instance=ExtResource("3_equipment")]
+unique_name_in_owner = true
+shield_data = null
+shield_placeholder = null
+weapon_data = ExtResource("5_claw")
+weapon_placeholder = null
+weapon_reach_raycast = NodePath("../WeaponReachRaycast")
+weapon_spawn_position = NodePath("../WeaponSpawnPosition")
+
+[node name="WeaponSpawnPosition" type="Node3D" parent="."]
+position = Vector3(0.65, 0.425, -0.75)
+
+[node name="WeaponReachRaycast" type="RayCast3D" parent="."]
+unique_name_in_owner = true
+position = Vector3(0, 0.425, 0)
+target_position = Vector3(0, 0, -2.0)
+collision_mask = 2
+enabled = true
+
+[node name="HealthComponent" parent="." instance=ExtResource("4_health")]
+unique_name_in_owner = true
+max_life = 9
+current_life = 9
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+unique_name_in_owner = true
+path_desired_distance = 0.5
+target_desired_distance = 1.35
+radius = 0.7
+height = 0.9
+avoidance_enabled = true
+
+[node name="PlayerDetectionArea" type="Area3D" parent="."]
+unique_name_in_owner = true
+collision_layer = 0
+collision_mask = 2
+monitorable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PlayerDetectionArea"]
+shape = SubResource("SphereShape3D_detection")
+
+[node name="ActionAudioStreamPlayer" type="AudioStreamPlayer3D" parent="."]
+unique_name_in_owner = true
+bus = &"SFX"
+
+[node name="FootstepAudioStreamPlayer" type="AudioStreamPlayer3D" parent="."]
+unique_name_in_owner = true
+bus = &"SFX"
+
+[node name="VocalAudioStreamPlayer" type="AudioStreamPlayer3D" parent="."]
+unique_name_in_owner = true
+bus = &"SFX"
+
+[editable path="character"]

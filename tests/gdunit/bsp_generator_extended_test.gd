@@ -8,12 +8,14 @@ func test_bsp_generator_10x10_grid() -> void:
 	assert_int(gen.grid.size()).is_equal(10)
 	for row in gen.grid:
 		assert_int(row.size()).is_equal(10)
+	gen.free()
 
 
 func test_bsp_generator_20x20_grid() -> void:
 	var gen := BSP_DungeonGenerator.new()
 	gen.grid = gen.generate_dungeon(20, 20)
 	assert_int(gen.grid.size()).is_equal(20)
+	gen.free()
 
 
 func test_bsp_generator_varying_sizes() -> void:
@@ -23,6 +25,7 @@ func test_bsp_generator_varying_sizes() -> void:
 		assert_int(gen.grid.size()).is_equal(size)
 		for row in gen.grid:
 			assert_int(row.size()).is_equal(size)
+		gen.free()
 
 
 func test_bsp_tile_types_enum() -> void:
@@ -43,6 +46,7 @@ func test_bsp_has_at_least_some_floor() -> void:
 			if cell == BSP_DungeonGenerator.TileType.FLOOR:
 				floor_count += 1
 	assert_bool(floor_count > 0).is_true()
+	gen.free()
 
 
 func test_bsp_has_walls() -> void:
@@ -54,6 +58,7 @@ func test_bsp_has_walls() -> void:
 			if cell == BSP_DungeonGenerator.TileType.WALL:
 				wall_count += 1
 	assert_bool(wall_count > 0).is_true()
+	gen.free()
 
 
 func test_bsp_leaf_split_logic() -> void:

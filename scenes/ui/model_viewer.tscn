@@ -206,3 +206,40 @@ text = "Status Check:"
 layout_mode = 2
 size_flags_horizontal = 3
 text = "VALIDATED"
+
+[node name="AnimSection" type="VBoxContainer" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AnimSectionTitle" type="Label" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer/AnimSection"]
+layout_mode = 2
+text = "Skeleton Animation:"
+
+[node name="AnimOption" type="OptionButton" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer/AnimSection"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AnimButtons" type="HBoxContainer" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer/AnimSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PlayAnimBtn" type="Button" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer/AnimSection/AnimButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Play"
+
+[node name="StopAnimBtn" type="Button" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer/AnimSection/AnimButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Stop"
+
+[node name="LoopAnimBtn" type="CheckButton" parent="HBoxContainer/Inspector/PanelContainer/MarginContainer/VBoxContainer/AnimSection"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Loop Animation"

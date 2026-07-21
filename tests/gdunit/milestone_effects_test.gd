@@ -2,7 +2,7 @@ extends GdUnitTestSuite
 ## MilestoneEffects 里程碑被动效果测试
 ## 验证：18 个被动效果函数在解锁/未解锁状态下的修正值
 
-const ME := preload("res://globals/milestone_effects.gd")
+const ME := preload("res://globals/combat/milestone_effects.gd")
 var AP
 
 func before() -> void:
@@ -89,23 +89,23 @@ func test_heavy_stride_unlocked_melee_5pct() -> void:
 
 func test_sharpshooter_not_ranged_no_change() -> void:
 	_unlock("神射手")
-	assert_float(ME.apply_sharpshooter(10.0, false)).is_equal(10.0)
+	assert_float(ME.apply_sharpshooter_crit(10.0, false)).is_equal(10.0)
 
 func test_sharpshooter_unlocked_ranged_plus_10() -> void:
 	_unlock("神射手")
-	assert_float(ME.apply_sharpshooter(10.0, true)).is_equal(20.0)
+	assert_float(ME.apply_sharpshooter_crit(10.0, true)).is_equal(20.0)
 
-func test_penetrating_strike_not_ranged_no_change() -> void:
+func test_penetrating_damage_not_ranged_no_change() -> void:
 	_unlock("穿透打击")
-	assert_float(ME.apply_penetrating_strike(0.0, false)).is_equal(0.0)
+	assert_float(ME.apply_penetrating_damage(1.0, false)).is_equal(1.0)
 
-func test_penetrating_strike_unlocked_ranged_10pct() -> void:
+func test_penetrating_damage_unlocked_ranged_plus_12pct() -> void:
 	_unlock("穿透打击")
-	assert_float(ME.apply_penetrating_strike(0.0, true)).is_equal(10.0)
+	assert_float(ME.apply_penetrating_damage(1.0, true)).is_equal_approx(1.12, 0.0001)
 
-func test_penetrating_strike_keeps_higher_value() -> void:
+func test_penetrating_damage_scales_base() -> void:
 	_unlock("穿透打击")
-	assert_float(ME.apply_penetrating_strike(15.0, true)).is_equal(15.0)
+	assert_float(ME.apply_penetrating_damage(15.0, true)).is_equal_approx(16.8, 0.0001)
 
 func test_knockback_chance_not_melee_never() -> void:
 	_unlock("震退")

@@ -18,9 +18,19 @@ func test_is_floor_cell_bounds_and_value() -> void:
 	assert_bool(layout.is_floor_cell(Vector2i(0, 0))).is_true()
 	assert_bool(layout.is_floor_cell(Vector2i(-1, 0))).is_false()
 	assert_bool(layout.is_floor_cell(Vector2i(99, 99))).is_false()
-	# 中心格设为墙(0)
+	# 中心格设为 EMPTY(0) 不可走
 	layout.grid[1][1] = 0
 	assert_bool(layout.is_floor_cell(Vector2i(1, 1))).is_false()
+	# WALL(2) 不可走
+	layout.grid[1][1] = 2
+	assert_bool(layout.is_floor_cell(Vector2i(1, 1))).is_false()
+	# LOOT/RESOURCE/PILLAR 与 isaac walkable 一致，视为可走
+	layout.grid[1][1] = 3  # LOOT
+	assert_bool(layout.is_floor_cell(Vector2i(1, 1))).is_true()
+	layout.grid[1][1] = 4  # RESOURCE
+	assert_bool(layout.is_floor_cell(Vector2i(1, 1))).is_true()
+	layout.grid[1][1] = 5  # PILLAR
+	assert_bool(layout.is_floor_cell(Vector2i(1, 1))).is_true()
 
 func test_key_cell_missing_detection() -> void:
 	var layout := DungeonLayout.new()

@@ -4,8 +4,14 @@ extends GdUnitTestSuite
 
 var _distributor: PropDistributor
 
-func before() -> void:
+func before_test() -> void:
 	_distributor = PropDistributor.new()
+
+
+func after_test() -> void:
+	if is_instance_valid(_distributor):
+		_distributor.free()
+	_distributor = null
 
 
 # --- Poisson Disk Sampling ---

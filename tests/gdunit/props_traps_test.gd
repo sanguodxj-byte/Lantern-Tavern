@@ -2,6 +2,10 @@ extends GdUnitTestSuite
 
 # Tests for props/traps: Door, Chest, SpikesTrap, AcidTrap
 
+func _track_node(node: Node) -> Node:
+	return auto_free(node)
+
+
 # ── Door ─────────────────────────────────────────────────────────────────
 
 func test_door_keycolor_none_is_zero() -> void:
@@ -40,18 +44,18 @@ func test_door_color_map_red_is_dark_red() -> void:
 # ── Chest ────────────────────────────────────────────────────────────────
 
 func test_chest_starts_closed() -> void:
-	var chest := Chest.new()
+	var chest := _track_node(Chest.new()) as Chest
 	assert_bool(chest.is_opened).is_false()
 
 
 func test_chest_open_sets_opened() -> void:
-	var chest := Chest.new()
+	var chest := _track_node(Chest.new()) as Chest
 	chest.open_chest()
 	assert_bool(chest.is_opened).is_true()
 
 
 func test_chest_double_open_does_not_error() -> void:
-	var chest := Chest.new()
+	var chest := _track_node(Chest.new()) as Chest
 	chest.open_chest()
 	assert_bool(chest.is_opened).is_true()
 	# Second open should return early without error
@@ -62,7 +66,7 @@ func test_chest_double_open_does_not_error() -> void:
 # ── SpikesTrap ───────────────────────────────────────────────────────────
 
 func test_spikes_trap_class_exists() -> void:
-	var trap := SpikesTrap.new()
+	var trap := _track_node(SpikesTrap.new())
 	assert_object(trap).is_not_null()
 	assert_object(trap).is_instanceof(SpikesTrap)
 	assert_object(trap).is_instanceof(Area3D)
@@ -71,7 +75,7 @@ func test_spikes_trap_class_exists() -> void:
 # ── AcidTrap ─────────────────────────────────────────────────────────────
 
 func test_acid_trap_class_exists() -> void:
-	var trap := AcidTrap.new()
+	var trap := _track_node(AcidTrap.new())
 	assert_object(trap).is_not_null()
 	assert_object(trap).is_instanceof(AcidTrap)
 	assert_object(trap).is_instanceof(Area3D)

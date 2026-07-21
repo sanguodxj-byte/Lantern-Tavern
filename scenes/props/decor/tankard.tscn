@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/props/voxel_prop.gd" id="1_voxel"]
+
+[node name="Tankard" type="StaticBody3D"]
+script = ExtResource("1_voxel")
+prop_kind = "tankard"
+metadata/topdown_kind = "terrain_feature"
+metadata/decor_kind = "tankard"

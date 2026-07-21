@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3]
+
+[sub_resource type="StandardMaterial3D" id="Material_road"]
+albedo_color = Color(0.2, 0.18, 0.13, 1)
+roughness = 1.0
+
+[sub_resource type="BoxMesh" id="Mesh_road"]
+size = Vector3(6.8125, 0.1875, 4.1875)
+material = SubResource("Material_road")
+
+[node name="VoxelRoadTile" type="Node3D"]
+metadata/voxel_px_per_meter = 32
+
+[node name="Road" type="MeshInstance3D" parent="."]
+mesh = SubResource("Mesh_road")

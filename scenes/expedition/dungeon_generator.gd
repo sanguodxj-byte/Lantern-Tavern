@@ -114,23 +114,23 @@ func _generate_with_wfc(config: DungeonGenerationConfig) -> DungeonLayout:
 
 
 # ── 关键点推导（复刻 procedural_dungeon.gd 语义）──────────────────
-## player_spawn：优先 start 房中心格（若该格为 FLOOR），否则首个 FLOOR 格（行优先遍历）。
-## 与 procedural_dungeon.gd:633-730 一致：preferred = start center；遍历命中 cell_type==1。
+## player_spawn：优先 start 房中心格（若可走），否则首个可走格（行优先遍历）。
+## 可走语义与 DungeonLayout.is_floor_cell / isaac walkable 一致（含 LOOT/RESOURCE/PILLAR）。
 func _derive_player_spawn_cell(layout: DungeonLayout) -> Vector2i:
 	var preferred := Vector2i(-1, -1)
 	if layout.room_roles.has("start"):
 		preferred = _rect_center_cell(layout.room_roles["start"])
-		# preferred 必须是 FLOOR 才用，否则降级到首个 FLOOR
+		# preferred 必须可走才用，否则降级到首个可走格
 		if preferred.x >= 0 and preferred.y >= 0 and layout.is_floor_cell(preferred):
 			return preferred
-	# 行优先遍历找首个 FLOOR 格（与 procedural_dungeon.gd 的嵌套 for y/x 顺序一致）
+	# 行优先遍历找首个可走格
 	for y in range(layout.grid.size()):
 		for x in range(layout.grid[y].size()):
-			if int(layout.grid[y][x]) == 1:  # TileType.FLOOR
+			if layout.is_floor_at(x, y):
 				return Vector2i(x, y)
 	return Vector2i(-1, -1)
 
-## role 房间中心格：优先 room_roles[role] 中心（若 FLOOR），否则该 Rect 内首个 FLOOR 格。
+## role 房间中心格：优先 room_roles[role] 中心（若可走），否则该 Rect 内首个可走格。
 ## 与 procedural_dungeon.gd:_spawn_extraction_portal / _spawn_downstairs_portal 的“先试中心、再扫 Rect”语义一致。
 func _derive_role_center_cell(layout: DungeonLayout, role: String) -> Vector2i:
 	if not layout.room_roles.has(role):
@@ -139,7 +139,7 @@ func _derive_role_center_cell(layout: DungeonLayout, role: String) -> Vector2i:
 	var center := _rect_center_cell(room)
 	if layout.is_floor_cell(center):
 		return center
-	# 中心非 FLOOR：扫 Rect 内首个 FLOOR 格
+	# 中心不可走：扫 Rect 内首个可走格
 	for y in range(room.position.y, room.position.y + room.size.y):
 		for x in range(room.position.x, room.position.x + room.size.x):
 			if layout.is_floor_at(x, y):

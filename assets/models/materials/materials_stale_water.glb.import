@@ -3,7 +3,7 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://4ht1o74b0k7n"
+uid="uid://ircuoitrl2bh"
 path="res://.godot/imported/materials_stale_water.glb-c2d080c972593a0814b579305002b508.scn"
 
 [deps]
@@ -42,4 +42,4 @@ materials/extract_path=""
 _subresources={}
 gltf/naming_version=2
 gltf/embedded_image_handling=1
-gltf/texture_map_mode=1
+gltf/texture_map_mode=0

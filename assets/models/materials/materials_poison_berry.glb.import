@@ -3,7 +3,7 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://ceo8o7x3w0i6l"
+uid="uid://b6fxhhgap6h0f"
 path="res://.godot/imported/materials_poison_berry.glb-0f426dd628cfe8aeb7808d5df6bf5858.scn"
 
 [deps]
@@ -42,4 +42,4 @@ materials/extract_path=""
 _subresources={}
 gltf/naming_version=2
 gltf/embedded_image_handling=1
-gltf/texture_map_mode=1
+gltf/texture_map_mode=0

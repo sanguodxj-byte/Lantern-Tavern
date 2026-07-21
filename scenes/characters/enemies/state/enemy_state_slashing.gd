@@ -8,13 +8,15 @@ var has_emitted_damage := false
 var hitbox: Area3D = null
 var time_start_slash := Time.get_ticks_msec()
 var slash_duration_msec := 440
+var slash_animation_name := SLASH_ANIM.ANIMATION_NAME
 var weapon_placeholder: Node3D = null
 var weapon_placeholder_base := Transform3D.IDENTITY
 
 func _enter_tree() -> void:
 	var weapon = enemy.equipment.weapon_data if enemy.equipment != null and enemy.equipment.has_weapon() else null
 	var animation_name := SLASH_ANIM.enemy_animation_name(weapon)
-	slash_duration_msec = SLASH_ANIM.play(enemy.animation_player, animation_name, SLASH_ANIM.ENEMY_SPEED_SCALE)
+	slash_animation_name = animation_name if enemy.animation_player.has_animation(animation_name) else SLASH_ANIM.ANIMATION_NAME
+	slash_duration_msec = SLASH_ANIM.play(enemy.animation_player, slash_animation_name, SLASH_ANIM.ENEMY_SPEED_SCALE)
 	weapon_placeholder = enemy.equipment.weapon_placeholder if enemy.equipment != null else null
 	if weapon_placeholder != null:
 		weapon_placeholder_base = weapon_placeholder.transform
@@ -33,7 +35,9 @@ func _physics_process(_delta: float) -> void:
 		has_emitted_damage = true
 		AudioManager.play("slash", enemy.action_audio_stream_player)
 
-func on_animation_finished(_anim_name: String) -> void:
+func on_animation_finished(anim_name: String) -> void:
+	if anim_name != slash_animation_name or enemy.state_node != self:
+		return
 	SLASH_ANIM.restore_weapon_arc(weapon_placeholder, weapon_placeholder_base)
 	if hitbox != null and is_instance_valid(hitbox):
 		enemy.set_attack_hitbox_active(hitbox, false)
@@ -42,6 +46,9 @@ func on_animation_finished(_anim_name: String) -> void:
 func _exit_tree() -> void:
 	if hitbox != null and is_instance_valid(hitbox):
 		enemy.set_attack_hitbox_active(hitbox, false)
+	if enemy != null and is_instance_valid(enemy) and enemy.animation_player != null:
+		if enemy.animation_player.animation_finished.is_connected(on_animation_finished):
+			enemy.animation_player.animation_finished.disconnect(on_animation_finished)
 
 func _resolve_hitbox_overlaps() -> void:
 	if hitbox == null or not is_instance_valid(hitbox):

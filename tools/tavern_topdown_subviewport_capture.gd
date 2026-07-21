@@ -116,7 +116,7 @@ func _hide_underground_for_topdown(structure: Node3D) -> void:
 	if built == null:
 		return
 	for child in built.get_children():
-		if String(child.name).begins_with("Cellar"):
+		if String(child.name).begins_with("Cellar") or String(child.name) == "Ceiling":
 			(child as Node3D).visible = false
 
 

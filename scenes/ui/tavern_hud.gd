@@ -129,19 +129,26 @@ func _create_order_ui(order: Dictionary) -> void:
 	panel.add_child(vbox)
 	order_list.add_child(panel)
 
+func _material_display_name(item_id: String) -> String:
+	var BD := load("res://globals/tavern/brewing_data.gd")
+	if BD != null and BD.has_method("get_material_name"):
+		return String(BD.call("get_material_name", item_id))
+	return tr(item_id.replace("_", " ").capitalize())
+
+
 func _populate_inventory() -> void:
 	inventory_list.clear()
 	if TavernManager:
 		for item_id in TavernManager.materials_inventory.keys():
 			var qty = TavernManager.materials_inventory[item_id]
-			var display_name = tr(item_id.replace("_", " ").capitalize())
+			var display_name = _material_display_name(String(item_id))
 			var idx = inventory_list.add_item("%s (x%d)" % [display_name, qty])
 			inventory_list.set_item_metadata(idx, item_id)
 	else:
 		# Mock data for editor preview
 		var mock_items = ["wild_glowcap", "frost_berry", "goblin_ear"]
 		for item in mock_items:
-			var idx = inventory_list.add_item("%s (x3)" % tr(item.replace("_", " ").capitalize()))
+			var idx = inventory_list.add_item("%s (x3)" % _material_display_name(item))
 			inventory_list.set_item_metadata(idx, item)
 
 func _on_inventory_item_selected(index: int) -> void:
@@ -157,12 +164,12 @@ func _on_inventory_item_selected(index: int) -> void:
 			if sel == item_id:
 				already_selected_qty += 1
 		if already_selected_qty >= available_qty:
-			status_label.text = tr("Not enough %s left!") % tr(item_id.replace("_", " ").capitalize())
+			status_label.text = tr("Not enough %s left!") % _material_display_name(String(item_id))
 			return
 
 		# Add to cauldron (酿造操作已由 brewing_panel.tscn 接管)
 		selected_ingredients.append(item_id)
-		var display_name = tr(item_id.replace("_", " ").capitalize())
+		var display_name = _material_display_name(String(item_id))
 		status_label.text = tr("Added %s to cauldron.") % display_name
 
 func _on_brew_pressed() -> void:

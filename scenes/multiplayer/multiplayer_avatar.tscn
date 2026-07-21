@@ -1,0 +1,23 @@
+[gd_scene load_steps=5 format=3 uid="uid://b8m4kq2v9x7zr"]
+
+[ext_resource type="Script" path="res://scenes/multiplayer/multiplayer_avatar.gd" id="1_ava"]
+[sub_resource type="CapsuleMesh" id="2_cap"]
+radius = 0.4
+height = 1.6
+[sub_resource type="StandardMaterial3D" id="3_mat"]
+albedo_color = Color(0.30, 0.55, 0.85, 1)
+[sub_resource type="StandardMaterial3D" id="4_lbl"]
+albedo_color = Color(1, 1, 1, 1)
+
+[node name="RemoteAvatar" type="Node3D"]
+script = ExtResource("1_ava")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+mesh = SubResource("2_cap")
+material_override = SubResource("3_mat")
+position = Vector3(0, 0.9, 0)
+
+[node name="Label3D" type="Label3D" parent="."]
+material_override = SubResource("4_lbl")
+position = Vector3(0, 2.0, 0)
+text = "P?"

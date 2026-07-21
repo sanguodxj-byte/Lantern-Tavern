@@ -36,13 +36,10 @@ static func dispatch_action_skill(player: Player, skill: Dictionary) -> void:
 			else:
 				print("[Player] 冲撞需要先按 Shift 跑起来")
 		AS_DB.ActionSkill.GRAB_THROW:
-			if player._raycast_is_colliding(player.kick_raycast):
-				var target := player.kick_raycast.get_collider() as Enemy
-				if target != null:
-					var data := PlayerStateData.new().set_grabbed_enemy(target)
-					player.switch_state(Player.State.GRABBING, data)
-				else:
-					print("[Player] 抓取未命中敌人")
+			var grab_target := _find_grab_target(player)
+			if grab_target != null:
+				var data := PlayerStateData.new().set_grabbed_enemy(grab_target)
+				player.switch_state(Player.State.GRABBING, data)
 			else:
 				print("[Player] 抓取未命中敌人")
 		AS_DB.ActionSkill.SLIDE:
@@ -181,6 +178,7 @@ static func _apply_lifesteal(player: Player, result) -> void:
 		player.health.heal(result.lifesteal_amount)
 	else:
 		player.health.current_life = clampi(player.health.current_life + result.lifesteal_amount, 0, player.health.max_life)
+	FxHelper.create_heal_number(player.global_position, result.lifesteal_amount)
 
 static func _get_player_attrs() -> Dictionary:
 	var ap: Node = Service.attr_panel()
@@ -193,3 +191,44 @@ static func _get_player_level() -> int:
 	if ap != null:
 		return ap.get_level()
 	return 1
+
+## 查找抓取目标：优先使用 kick_raycast，未命中时使用球形查询检测前方近距离敌人。
+## 解决敌人贴近玩家（<0.5m）时 raycast 射线起点在碰撞体内部导致无法命中的问题。
+static func _find_grab_target(player: Player) -> Enemy:
+	# 1. 优先用 kick_raycast 探测
+	if player._raycast_is_colliding(player.kick_raycast):
+		var target := player.kick_raycast.get_collider() as Enemy
+		if target != null:
+			return target
+	# 2. 后备：球形查询前方 2m 内最近的敌人
+	var grab_range := 2.0
+	var origin := player.global_position + Vector3(0, 1.0, 0)
+	var forward := -player.global_transform.basis.z.normalized()
+	# 从玩家中心向前方延伸的球形查询
+	var space := player.get_world_3d().direct_space_state
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = SphereShape3D.new()
+	query.shape.radius = grab_range
+	query.transform = Transform3D(Basis.IDENTITY, origin + forward * grab_range * 0.5)
+	query.collision_mask = 4  # LAYER_ENEMY
+	query.exclude = [player.get_rid()]
+	var results := space.intersect_shape(query, 32)
+	var best_enemy: Enemy = null
+	var best_dist := grab_range + 1.0
+	for result in results:
+		var enemy := result.collider as Enemy
+		if enemy == null:
+			continue
+		# 检查敌人在玩家前方（而非身后）
+		var to_enemy := enemy.global_position - player.global_position
+		to_enemy.y = 0.0
+		if to_enemy.length() < 0.01:
+			return enemy  # 几乎重合，直接抓取
+		var dot := forward.dot(to_enemy.normalized())
+		if dot < 0.0:
+			continue  # 在身后，跳过
+		var dist := to_enemy.length()
+		if dist < best_dist:
+			best_dist = dist
+			best_enemy = enemy
+	return best_enemy

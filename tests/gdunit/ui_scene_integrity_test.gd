@@ -9,10 +9,14 @@ var _ui_scripts_requiring_scene := {
 	"res://scenes/ui/expedition_hud.gd": "res://scenes/ui/expedition_hud.tscn",
 	"res://scenes/ui/tavern_hud.gd": "res://scenes/ui/tavern_ui.tscn",
 	"res://scenes/ui/main_menu.gd": "res://scenes/ui/main_menu.tscn",
+	"res://scenes/ui/settings_menu.gd": "res://scenes/ui/settings_menu.tscn",
 	"res://scenes/ui/pause_menu.gd": "res://scenes/ui/pause_menu.tscn",
 	"res://scenes/ui/character_panel.gd": "res://scenes/ui/character_panel.tscn",
 	"res://scenes/ui/model_viewer.gd": "res://scenes/ui/model_viewer.tscn",
 	"res://scenes/ui/stat_indicator.gd": "res://scenes/ui/stat_indicator.tscn",
+	"res://scenes/ui/scripted_dialogue_box.gd": "res://scenes/ui/scripted_dialogue_box.tscn",
+	"res://scenes/ui/tutorial_hint_overlay.gd": "res://scenes/ui/tutorial_hint_overlay.tscn",
+	"res://scenes/ui/character_name_prompt.gd": "res://scenes/ui/character_name_prompt.tscn",
 }
 
 func test_all_ui_scripts_have_corresponding_scenes() -> void:
@@ -47,7 +51,34 @@ func test_scene_instantiate_provides_child_nodes() -> void:
 	assert_object(hud.get_node("TopHUD/HPBar")).is_not_null()
 	assert_object(hud.get_node("TopHUD/GoldLabel")).is_not_null()
 	assert_object(hud.get_node("BottomHUD/AlertLabel")).is_not_null()
-	hud.queue_free()
+	hud.free()
+
+
+func test_expedition_hud_does_not_block_equipment_panel_mouse_input() -> void:
+	var scene = load("res://scenes/ui/expedition_hud.tscn")
+	var hud = scene.instantiate() as Control
+	assert_int(hud.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
+	assert_int((hud.get_node("TopHUD") as Control).mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
+	assert_int((hud.get_node("MiddleHUD") as Control).mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
+	assert_int((hud.get_node("BottomHUD") as Control).mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
+	hud.free()
+
+
+func test_shared_ui_layer_renders_above_expedition_hud() -> void:
+	var scene = load("res://scenes/ui/ui.tscn")
+	var ui = scene.instantiate() as CanvasLayer
+	assert_int(ui.layer) \
+		.override_failure_message("共享 UI 必须高于默认 CanvasLayer，避免地牢 HUD 盖住 Tab 装备界面") \
+		.is_greater(1)
+	ui.free()
+
+
+func test_tavern_equipment_layer_renders_above_regular_hud() -> void:
+	var script = load("res://scenes/tavern/tavern_manager_node.gd") as GDScript
+	var source: String = script.source_code
+	assert_bool(source.contains("tavern_equipment_layer.layer = 20")) \
+		.override_failure_message("酒馆装备 CanvasLayer 必须高于普通 HUD，避免 Tab 面板鼠标输入被盖住") \
+		.is_true()
 
 
 func test_all_ui_scenes_instantiate_without_error() -> void:
@@ -58,7 +89,7 @@ func test_all_ui_scenes_instantiate_without_error() -> void:
 		assert_object(scene).override_failure_message("Cannot load: " + scene_path).is_not_null()
 		var instance = scene.instantiate()
 		assert_object(instance).override_failure_message("Cannot instantiate: " + scene_path).is_not_null()
-		instance.queue_free()
+		instance.free()
 
 
 func test_procedural_dungeon_mounts_hud_via_scene() -> void:

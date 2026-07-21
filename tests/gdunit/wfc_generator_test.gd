@@ -4,8 +4,14 @@ extends GdUnitTestSuite
 
 var _wfc: WFC_RoomGenerator
 
-func before() -> void:
+func before_test() -> void:
 	_wfc = load("res://scenes/expedition/wfc_generator.gd").new()
+
+
+func after_test() -> void:
+	if is_instance_valid(_wfc):
+		_wfc.free()
+	_wfc = null
 
 
 # ─── Legacy regression tests ──────────────────────────────────────────────────

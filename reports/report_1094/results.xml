@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites id="2026-07-22" name="report_1094" tests="1" failures="0" skipped="0" flaky="0" time="0.000">
+	<testsuite id="0" name="voxel_grimoire_visual_verification_test" package="tests/gdunit" timestamp="2026-07-21T21:10:16" hostname="localhost" tests="1" failures="0" errors="0" skipped="0" flaky="0" time="1.664">
+		<testcase name="test_capture_grimoire_real_3d_views_in_godot" classname="voxel_grimoire_visual_verification_test" time="1.655">
+		</testcase>
+	</testsuite>
+</testsuites>

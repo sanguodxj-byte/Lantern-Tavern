@@ -8,10 +8,12 @@ signal weapon_added(weapon_id: String)
 # ── Data ─────────────────────────────────────────────────────────────────
 const EQUIPMENT_JSON_PATH := "res://data/weapons/weapons.json"
 const WEAPON_DATA_SCRIPT := preload("res://data/weapon_data.gd")
+const MATERIAL_TIERS := ["wood", "iron", "steel", "meteoric", "mithril", "adamantite"]
 
 # Internal storage
 var _weapons: Dictionary = {}            # id → WeaponData Resource
 var _glb_paths: Dictionary = {}          # id → glb path string
+var _glb_to_id: Dictionary = {}          # glb path string → id（反查，兼容无 id 的旧版 .tres）
 var _icons: Dictionary = {}              # id → icon path string
 var _categories: Dictionary = {}         # category → [ids]
 var _all_ids: Array[String] = []
@@ -25,6 +27,7 @@ var _weapon_classes: Dictionary = {}     # id → CombatEngine/SkillData medium 
 var _attack_types: Dictionary = {}       # id → melee/ranged/spell/shield
 var _skill_schools: Dictionary = {}      # id → SkillData school key
 var _combat_styles: Dictionary = {}      # id → compatible CombatEngine style keys
+var _view_model_profiles: Dictionary = {} # id → first-person visual profile
 var _proficiency_keys: Dictionary = {}   # id → AttrPanel proficiency key
 var _category_display: Dictionary = {}
 
@@ -86,6 +89,10 @@ func _register_equipment(entry: Dictionary) -> void:
 
 	# Store metadata
 	_glb_paths[id] = entry.get("glb_path", "")
+	var glb_path_str := String(_glb_paths[id])
+	if not glb_path_str.is_empty():
+		# 反查表：用 glb 资源路径反推装备 id，兼容无 id 的旧版 .tres WeaponData
+		_glb_to_id[glb_path_str] = id
 	_icons[id] = entry.get("icon", "res://assets/textures/icons/icon-weapon.png")
 	_entry_names[id] = base_name
 	_entry_names_zh[id] = zh_name
@@ -95,6 +102,7 @@ func _register_equipment(entry: Dictionary) -> void:
 	_attack_types[id] = entry.get("attack_type", "")
 	_skill_schools[id] = entry.get("skill_school", "")
 	_combat_styles[id] = entry.get("combat_styles", [])
+	_view_model_profiles[id] = entry.get("view_model_profile", "")
 	_proficiency_keys[id] = entry.get("proficiency_key", _weapon_classes[id])
 
 	if not _categories.has(category):
@@ -123,10 +131,12 @@ func _register_equipment(entry: Dictionary) -> void:
 	weapon_data.attack_type = _attack_types[id]
 	weapon_data.skill_school = _skill_schools[id]
 	weapon_data.combat_styles = get_combat_styles(id)
+	weapon_data.view_model_profile = get_view_model_profile(id)
 	weapon_data.proficiency_key = _proficiency_keys[id]
 	weapon_data.hands = entry.get("hands", "")
 	weapon_data.tier_index = 0
 	weapon_data.tier_name = tier.get("name", "")
+	weapon_data.material_tier = _material_tier_from_tier(tier)
 	weapon_data.damage_dice_count = int(dice.get("count", 0))
 	weapon_data.damage_dice_sides = int(dice.get("sides", 0))
 	weapon_data.damage_flat = int(dice.get("flat", 0))
@@ -135,19 +145,14 @@ func _register_equipment(entry: Dictionary) -> void:
 	weapon_data.damage_min = _compute_damage_min(weapon_data.damage_dice_count, weapon_data.damage_dice_sides, weapon_data.damage_flat, stats.get("damage_min", 1))
 	weapon_data.damage_max = _compute_damage_max(weapon_data.damage_dice_count, weapon_data.damage_dice_sides, weapon_data.damage_flat, stats.get("damage_max", 3))
 	weapon_data.reach = tier.get("reach", stats.get("reach", 3.0))
-	weapon_data.hit_bonus_percent = _ratio_to_percent(float(tier.get("hit_bonus", 0.0)))
 	weapon_data.crit_bonus_percent = _ratio_to_percent(float(tier.get("crit_bonus", 0.0)))
 	weapon_data.crit_damage_bonus = float(tier.get("crit_dmg_bonus", 0.0))
 	weapon_data.armor_pierce_percent = _ratio_to_percent(float(tier.get("armor_pierce", 0.0)))
 	weapon_data.knockback_m = float(tier.get("knockback", 0.0)) * 1.5
 	weapon_data.stun_sec = float(tier.get("stun", 0.0))
 	weapon_data.shield_phys_def = int(tier.get("phys_def", 0))
-	weapon_data.shield_block_value = int(tier.get("block_value", 0))
-	weapon_data.shield_block_chance_percent = _ratio_to_percent(float(tier.get("block_rate", 0.0)))
 	weapon_data.armor_slot = String(entry.get("armor_slot", "body" if category.begins_with("armor") else ""))
 	weapon_data.armor_phys_def = int(tier.get("phys_def", 0)) if category.begins_with("armor") else 0
-	var evade_value := float(tier.get("evade_bonus", tier.get("evade_penalty", 0.0)))
-	weapon_data.armor_evade_percent = _ratio_to_percent(evade_value) if category.begins_with("armor") else 0.0
 	weapon_data.armor_move_speed_mult = float(tier.get("move_speed_mult", 1.0)) if category.begins_with("armor") else 1.0
 	weapon_data.throw_rotation_speed = stats.get("throw_rotation_speed", 40.0)
 	weapon_data.throw_movement_speed = stats.get("throw_movement_speed", 10.0)
@@ -201,6 +206,13 @@ static func _ratio_to_percent(value: float) -> float:
 	return value
 
 
+static func _material_tier_from_tier(tier: Dictionary, fallback: String = "iron") -> String:
+	var material_tier := String(tier.get("material_tier", fallback)).to_lower()
+	if MATERIAL_TIERS.has(material_tier):
+		return material_tier
+	return fallback if MATERIAL_TIERS.has(fallback) else "iron"
+
+
 # ── Public API ───────────────────────────────────────────────────────────
 
 ## Get WeaponData Resource by ID.
@@ -226,6 +238,7 @@ func build_weapon_data_with_tier(weapon_id: String, tier_index: int) -> WeaponDa
 	var idx: int = clampi(tier_index, 0, tiers.size() - 1)
 	data.tier_index = idx
 	var tier: Dictionary = tiers[idx] if tiers[idx] is Dictionary else {}
+	data.material_tier = _material_tier_from_tier(tier, base.material_tier)
 	# 应用阶位属性
 	var dice: Dictionary = _parse_damage_dice(String(tier.get("damage_dice", "")))
 	if not dice.is_empty():
@@ -238,20 +251,15 @@ func build_weapon_data_with_tier(weapon_id: String, tier_index: int) -> WeaponDa
 	data.damage_min = _compute_damage_min(data.damage_dice_count, data.damage_dice_sides, data.damage_flat, data.damage_min)
 	data.damage_max = _compute_damage_max(data.damage_dice_count, data.damage_dice_sides, data.damage_flat, data.damage_max)
 	data.reach = float(tier.get("reach", base.reach))
-	data.hit_bonus_percent = _ratio_to_percent(float(tier.get("hit_bonus", 0.0)))
 	data.crit_bonus_percent = _ratio_to_percent(float(tier.get("crit_bonus", 0.0)))
 	data.crit_damage_bonus = float(tier.get("crit_dmg_bonus", 0.0))
 	data.armor_pierce_percent = _ratio_to_percent(float(tier.get("armor_pierce", 0.0)))
 	data.knockback_m = float(tier.get("knockback", 0.0)) * 1.5
 	data.stun_sec = float(tier.get("stun", 0.0))
 	data.shield_phys_def = int(tier.get("phys_def", 0))
-	data.shield_block_value = int(tier.get("block_value", 0))
-	data.shield_block_chance_percent = _ratio_to_percent(float(tier.get("block_rate", 0.0)))
 	var category: String = base.equipment_category
 	if category.begins_with("armor"):
 		data.armor_phys_def = int(tier.get("phys_def", 0))
-		var evade_value := float(tier.get("evade_bonus", tier.get("evade_penalty", 0.0)))
-		data.armor_evade_percent = _ratio_to_percent(evade_value)
 		data.armor_move_speed_mult = float(tier.get("move_speed_mult", 1.0))
 	# 饰品负重加成
 	if category == "accessories":
@@ -261,6 +269,39 @@ func build_weapon_data_with_tier(weapon_id: String, tier_index: int) -> WeaponDa
 ## Get the GLB scene path for a weapon ID.
 func get_glb_path(weapon_id: String) -> String:
 	return _glb_paths.get(weapon_id, "")
+
+## 根据 glb 资源反查装备 id。
+## 用于兼容无 id 的旧版 .tres WeaponData（如酒馆内手放的 shortsword.tres / axe.tres）：
+## 拾取后保存装备时，按 weapon_data.glb_mesh 资源路径反查注册表，得到可持久化的 id，
+## 避免装备在下一天 / 出发返回等场景重载后丢失。未匹配返回空字符串。
+func find_id_by_glb(glb_scene: PackedScene) -> String:
+	if glb_scene == null:
+		return ""
+	var path := String(glb_scene.resource_path)
+	if path.is_empty():
+		return ""
+	return String(_glb_to_id.get(path, ""))
+
+## 将旧版 .tres WeaponData 解析为注册表中的完整版本。
+## 旧版 .tres（如 shortsword.tres / axe.tres）缺少 id / weapon_class / skill_school /
+## proficiency_key / equipment_category / tags / name_zh 等字段，拾取后虽然能装备到手上，
+## 但技能系统、熟练度追踪、装备面板分类等功能无法正常工作。
+## 本方法按 glb_mesh 反查注册表，若命中则返回注册表的完整 WeaponData（独立副本），
+## 使拾取的武器拥有与现代 JSON 数据一致的完整属性。未命中时原样返回。
+func resolve_weapon_data(data: WeaponData) -> WeaponData:
+	if data == null:
+		return data
+	# 已有 id 的武器（JSON 生成 / 宝箱掉落）无需解析
+	if not String(data.id).is_empty():
+		return data
+	# 无 id 但有 glb_mesh 的旧版 .tres：按 glb 反查注册表
+	if data.glb_mesh != null:
+		var resolved_id := find_id_by_glb(data.glb_mesh)
+		if not resolved_id.is_empty():
+			var registry_data: WeaponData = get_weapon_data(resolved_id)
+			if registry_data != null:
+				return registry_data
+	return data
 
 ## Get the icon path for a weapon ID.
 func get_icon_path(weapon_id: String) -> String:
@@ -303,6 +344,15 @@ func get_categories() -> Array[String]:
 func get_tiers(weapon_id: String) -> Array:
 	return _tiers.get(weapon_id, [])
 
+## Get the canonical material tier for a weapon tier.
+func get_material_tier(weapon_id: String, tier_index: int = 0) -> String:
+	var tiers: Array = _tiers.get(weapon_id, [])
+	if tiers.is_empty():
+		return "iron"
+	var idx := clampi(tier_index, 0, tiers.size() - 1)
+	var tier: Dictionary = tiers[idx] if tiers[idx] is Dictionary else {}
+	return _material_tier_from_tier(tier)
+
 ## Get the full entry metadata.
 func get_entry_meta(weapon_id: String) -> Dictionary:
 	return _equipment_meta.get(weapon_id, {})
@@ -336,6 +386,10 @@ func get_combat_styles(weapon_id: String) -> Array[String]:
 	for style in _combat_styles.get(weapon_id, []):
 		result.append(String(style))
 	return result
+
+## Get the explicit first-person visual profile, when one is authored.
+func get_view_model_profile(weapon_id: String) -> String:
+	return _view_model_profiles.get(weapon_id, "")
 
 ## Get the proficiency key used by AttrPanel.
 func get_proficiency_key(weapon_id: String) -> String:
@@ -372,6 +426,7 @@ func get_gear_list_entries() -> Array[Dictionary]:
 			"attack_type": get_attack_type(wid),
 			"skill_school": get_skill_school(wid),
 			"combat_styles": get_combat_styles(wid),
+			"view_model_profile": get_view_model_profile(wid),
 			"proficiency_key": get_proficiency_key(wid),
 		})
 	return result

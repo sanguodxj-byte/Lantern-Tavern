@@ -84,7 +84,7 @@ const SCHOOL_WEAPON_MEDIUM: Dictionary = {
 #   name        中文名
 #   type        active 主动 / passive 被动
 #   damage_mult 伤害倍率（相对基础攻击力）
-#   hit_bonus   命中率加成(%)
+#   (命中率 hit_bonus 已移除：动作控制模型无命中/未命中判定，原字段为回合制残留)
 #   cooldown    冷却时间（秒）
 #   cast_time   施法前摇（秒），被动为 0
 #   range_m     射程/作用半径（米）
@@ -104,7 +104,7 @@ const SKILLS: Array = [
 	{
 		"id": "防御姿态", "school": School.ONE_HAND_SWORD, "tier": SkillTier.T1,
 		"name": "防御姿态 / Defensive Stance", "type": "active",
-		"damage_mult": 0.0, "hit_bonus": 0.0, "cooldown": 5.0, "cast_time": 1.0,
+		"damage_mult": 0.0, "cooldown": 5.0, "cast_time": 1.0,
 		"range_m": 0.0, "aoe_shape": "none", "aoe_radius": 0.0,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 3.0,
 		"buff_type": "def_and_evade_up", "buff_value": {"def": 4, "evade": 5},
@@ -114,7 +114,7 @@ const SKILLS: Array = [
 	{
 		"id": "精准刺击", "school": School.ONE_HAND_SWORD, "tier": SkillTier.T2,
 		"name": "精准刺击 / Precision Thrust", "type": "active",
-		"damage_mult": 1.0, "hit_bonus": 25.0, "cooldown": 4.0, "cast_time": 1.0,
+		"damage_mult": 1.0, "cooldown": 4.0, "cast_time": 1.0,
 		"range_m": 1.5, "aoe_shape": "none", "aoe_radius": 0.0,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 0.0,
 		"buff_type": "", "buff_value": 0,
@@ -124,7 +124,7 @@ const SKILLS: Array = [
 	{
 		"id": "招架反击", "school": School.ONE_HAND_SWORD, "tier": SkillTier.T3,
 		"name": "招架反击 / Riposte", "type": "passive",
-		"damage_mult": 0.8, "hit_bonus": 0.0, "cooldown": 0.0, "cast_time": 0.0,
+		"damage_mult": 0.8, "cooldown": 0.0, "cast_time": 0.0,
 		"range_m": 1.5, "aoe_shape": "none", "aoe_radius": 0.0,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 0.0,
 		"buff_type": "riposte_chance", "buff_value": 40,
@@ -135,27 +135,27 @@ const SKILLS: Array = [
 	{
 		"id": "顺劈斩", "school": School.TWO_HAND_SWORD, "tier": SkillTier.T1,
 		"name": "顺劈斩 / Cleave", "type": "active",
-		"damage_mult": 0.85, "hit_bonus": 0.0, "cooldown": 4.0, "cast_time": 1.0,
+		"damage_mult": 0.85, "cooldown": 4.0, "cast_time": 1.0,
 		"range_m": 4.5, "aoe_shape": "cone", "aoe_radius": 4.5,
-		"knockback_m": 1.5, "stun_sec": 0.0, "buff_sec": 0.0,
+		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 0.0,
 		"buff_type": "", "buff_value": 0,
 		"ignore_def": 0.0, "ignore_block": false, "lifesteal": 0.0,
-		"desc": "前方扇形 3 米内敌人 85% 伤害 + 击退 1 米",
+		"desc": "前方扇形 3 米内敌人 85% 伤害",
 	},
 	{
 		"id": "过顶重击", "school": School.TWO_HAND_SWORD, "tier": SkillTier.T2,
 		"name": "过顶重击 / Heavy Overhead", "type": "active",
-		"damage_mult": 2.2, "hit_bonus": 0.0, "cooldown": 6.0, "cast_time": 2.0,
+		"damage_mult": 2.2, "cooldown": 6.0, "cast_time": 2.0,
 		"range_m": 1.5, "aoe_shape": "none", "aoe_radius": 0.0,
-		"knockback_m": 3.0, "stun_sec": 0.0, "buff_sec": 0.0,
+		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 0.0,
 		"buff_type": "", "buff_value": 0,
 		"ignore_def": 20.0, "ignore_block": false, "lifesteal": 0.0,
-		"desc": "蓄力 1 秒，220% 伤害，无视 20% 物防，击退 +2 米",
+		"desc": "蓄力 1 秒，220% 伤害，无视 20% 物防",
 	},
 	{
 		"id": "不屈重斩", "school": School.TWO_HAND_SWORD, "tier": SkillTier.T3,
 		"name": "不屈重斩 / Unyielding Strike", "type": "active",
-		"damage_mult": 1.5, "hit_bonus": 0.0, "cooldown": 8.0, "cast_time": 1.0,
+		"damage_mult": 1.5, "cooldown": 8.0, "cast_time": 1.0,
 		"range_m": 1.5, "aoe_shape": "none", "aoe_radius": 0.0,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 0.0,
 		"buff_type": "", "buff_value": 0,
@@ -166,7 +166,7 @@ const SKILLS: Array = [
 	{
 		"id": "破甲斩", "school": School.TWO_HAND_AXE, "tier": SkillTier.T1,
 		"name": "破甲斩 / Sunder", "type": "active",
-		"damage_mult": 1.1, "hit_bonus": 0.0, "cooldown": 4.0, "cast_time": 1.0,
+		"damage_mult": 1.1, "cooldown": 4.0, "cast_time": 1.0,
 		"range_m": 1.5, "aoe_shape": "none", "aoe_radius": 0.0,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 3.0,
 		"buff_type": "def_down", "buff_value": 6,
@@ -176,7 +176,7 @@ const SKILLS: Array = [
 	{
 		"id": "斩首", "school": School.TWO_HAND_AXE, "tier": SkillTier.T2,
 		"name": "斩首 / Decapitate", "type": "active",
-		"damage_mult": 1.6, "hit_bonus": 0.0, "cooldown": 5.0, "cast_time": 1.0,
+		"damage_mult": 1.6, "cooldown": 5.0, "cast_time": 1.0,
 		"range_m": 1.5, "aoe_shape": "none", "aoe_radius": 0.0,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 0.0,
 		"buff_type": "execute_threshold", "buff_value": 35,
@@ -186,7 +186,7 @@ const SKILLS: Array = [
 	{
 		"id": "旋风斩", "school": School.TWO_HAND_AXE, "tier": SkillTier.T3,
 		"name": "旋风斩 / Whirlwind", "type": "active",
-		"damage_mult": 1.2, "hit_bonus": 0.0, "cooldown": 8.0, "cast_time": 1.0,
+		"damage_mult": 1.2, "cooldown": 8.0, "cast_time": 1.0,
 		"range_m": 2.25, "aoe_shape": "circle", "aoe_radius": 2.25,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 0.0,
 		"buff_type": "", "buff_value": 0,
@@ -197,17 +197,17 @@ const SKILLS: Array = [
 	{
 		"id": "震荡打击", "school": School.WAR_HAMMER, "tier": SkillTier.T1,
 		"name": "震荡打击 / Concussive Blow", "type": "active",
-		"damage_mult": 0.9, "hit_bonus": 0.0, "cooldown": 4.0, "cast_time": 1.0,
+		"damage_mult": 0.9, "cooldown": 4.0, "cast_time": 1.0,
 		"range_m": 1.5, "aoe_shape": "none", "aoe_radius": 0.0,
-		"knockback_m": 1.5, "stun_sec": 2.0, "buff_sec": 0.0,
+		"knockback_m": 0.0, "stun_sec": 2.0, "buff_sec": 0.0,
 		"buff_type": "collide_damage", "buff_value": 30,
 		"ignore_def": 0.0, "ignore_block": false, "lifesteal": 0.0,
-		"desc": "90% 伤害 + 击退 1 米，撞墙追加 30% 碰撞伤害 + 2 秒眩晕",
+		"desc": "90% 伤害 + 2 秒眩晕（仅踢击/冲撞有击退）",
 	},
 	{
 		"id": "颅骨粉碎", "school": School.WAR_HAMMER, "tier": SkillTier.T2,
 		"name": "颅骨粉碎 / Skullcracker", "type": "active",
-		"damage_mult": 1.0, "hit_bonus": 0.0, "cooldown": 5.0, "cast_time": 1.0,
+		"damage_mult": 1.0, "cooldown": 5.0, "cast_time": 1.0,
 		"range_m": 1.5, "aoe_shape": "none", "aoe_radius": 0.0,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 0.0,
 		"buff_type": "crit_vs_stunned", "buff_value": {"crit_rate": 30, "crit_dmg": 25},
@@ -217,18 +217,18 @@ const SKILLS: Array = [
 	{
 		"id": "震地击", "school": School.WAR_HAMMER, "tier": SkillTier.T3,
 		"name": "震地击 / Earthshaker", "type": "active",
-		"damage_mult": 1.1, "hit_bonus": 0.0, "cooldown": 9.0, "cast_time": 1.0,
+		"damage_mult": 1.1, "cooldown": 9.0, "cast_time": 1.0,
 		"range_m": 4.5, "aoe_shape": "line", "aoe_radius": 4.5,
-		"knockback_m": 3.0, "stun_sec": 1.0, "buff_sec": 0.0,
+		"knockback_m": 0.0, "stun_sec": 1.0, "buff_sec": 0.0,
 		"buff_type": "", "buff_value": 0,
 		"ignore_def": 0.0, "ignore_block": false, "lifesteal": 0.0,
-		"desc": "前方直线 3 米 110% 伤害 + 击退 2 米 + 必眩晕 1 秒",
+		"desc": "前方直线 3 米 110% 伤害 + 必眩晕 1 秒",
 	},
 	# ===== E. 长枪流派 =====
 	{
 		"id": "突刺", "school": School.SPEAR, "tier": SkillTier.T1,
 		"name": "突刺 / Lunge", "type": "active",
-		"damage_mult": 1.05, "hit_bonus": 10.0, "cooldown": 3.0, "cast_time": 1.0,
+		"damage_mult": 1.05, "cooldown": 3.0, "cast_time": 1.0,
 		"range_m": 3.0, "aoe_shape": "line", "aoe_radius": 3.0,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 0.0,
 		"buff_type": "", "buff_value": 0,
@@ -238,7 +238,7 @@ const SKILLS: Array = [
 	{
 		"id": "横扫击", "school": School.SPEAR, "tier": SkillTier.T2,
 		"name": "横扫击 / Sweeping Strike", "type": "active",
-		"damage_mult": 0.8, "hit_bonus": 0.0, "cooldown": 5.0, "cast_time": 1.0,
+		"damage_mult": 0.8, "cooldown": 5.0, "cast_time": 1.0,
 		"range_m": 4.5, "aoe_shape": "cone", "aoe_radius": 4.5,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 3.0,
 		"buff_type": "slow", "buff_value": 20,
@@ -248,7 +248,7 @@ const SKILLS: Array = [
 	{
 		"id": "贯穿刺击", "school": School.SPEAR, "tier": SkillTier.T3,
 		"name": "贯穿刺击 / Impale", "type": "active",
-		"damage_mult": 1.8, "hit_bonus": 15.0, "cooldown": 8.0, "cast_time": 1.0,
+		"damage_mult": 1.8, "cooldown": 8.0, "cast_time": 1.0,
 		"range_m": 3.0, "aoe_shape": "line", "aoe_radius": 3.0,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 0.0,
 		"buff_type": "", "buff_value": 0,
@@ -259,7 +259,7 @@ const SKILLS: Array = [
 	{
 		"id": "瞄准射击", "school": School.LONGBOW, "tier": SkillTier.T1,
 		"name": "瞄准射击 / Aimed Shot", "type": "active",
-		"damage_mult": 0.95, "hit_bonus": 30.0, "cooldown": 3.0, "cast_time": 1.0,
+		"damage_mult": 0.95, "cooldown": 3.0, "cast_time": 1.0,
 		"range_m": 6.0, "aoe_shape": "none", "aoe_radius": 0.0,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 0.0,
 		"buff_type": "", "buff_value": 0,
@@ -269,7 +269,7 @@ const SKILLS: Array = [
 	{
 		"id": "压制齐射", "school": School.LONGBOW, "tier": SkillTier.T2,
 		"name": "压制齐射 / Suppressing Volley", "type": "active",
-		"damage_mult": 0.7, "hit_bonus": 0.0, "cooldown": 6.0, "cast_time": 1.0,
+		"damage_mult": 0.7, "cooldown": 6.0, "cast_time": 1.0,
 		"range_m": 6.0, "aoe_shape": "circle", "aoe_radius": 3.0,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 3.0,
 		"buff_type": "evade_down", "buff_value": 10,
@@ -279,7 +279,7 @@ const SKILLS: Array = [
 	{
 		"id": "贯穿射击", "school": School.LONGBOW, "tier": SkillTier.T3,
 		"name": "贯穿射击 / Piercing Shot", "type": "active",
-		"damage_mult": 1.6, "hit_bonus": 0.0, "cooldown": 8.0, "cast_time": 1.0,
+		"damage_mult": 1.6, "cooldown": 8.0, "cast_time": 1.0,
 		"range_m": 7.5, "aoe_shape": "line", "aoe_radius": 7.5,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 0.0,
 		"buff_type": "pierce_falloff", "buff_value": 15,
@@ -290,7 +290,7 @@ const SKILLS: Array = [
 	{
 		"id": "双发连射", "school": School.LIGHT_CROSSBOW, "tier": SkillTier.T1,
 		"name": "双发连射 / Double Tap", "type": "active",
-		"damage_mult": 0.6, "hit_bonus": 0.0, "cooldown": 4.0, "cast_time": 1.0,
+		"damage_mult": 0.6, "cooldown": 4.0, "cast_time": 1.0,
 		"range_m": 6.0, "aoe_shape": "none", "aoe_radius": 0.0,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 0.0,
 		"buff_type": "double_hit", "buff_value": 2,
@@ -300,17 +300,17 @@ const SKILLS: Array = [
 	{
 		"id": "刺钩弩箭", "school": School.LIGHT_CROSSBOW, "tier": SkillTier.T2,
 		"name": "刺钩弩箭 / Barbed Bolt", "type": "active",
-		"damage_mult": 1.1, "hit_bonus": 0.0, "cooldown": 5.0, "cast_time": 1.0,
+		"damage_mult": 1.1, "cooldown": 5.0, "cast_time": 1.0,
 		"range_m": 6.0, "aoe_shape": "none", "aoe_radius": 0.0,
-		"knockback_m": 1.5, "stun_sec": 0.0, "buff_sec": 2.0,
+		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 2.0,
 		"buff_type": "slow", "buff_value": 30,
 		"ignore_def": 0.0, "ignore_block": false, "lifesteal": 0.0,
-		"desc": "110% 伤害 + 击退 1 米 + 2 秒减速 30%",
+		"desc": "110% 伤害 + 2 秒减速 30%（仅踢击/冲撞有击退）",
 	},
 	{
 		"id": "弩箭齐射", "school": School.LIGHT_CROSSBOW, "tier": SkillTier.T3,
 		"name": "弩箭齐射 / Volley of Bolts", "type": "active",
-		"damage_mult": 1.3, "hit_bonus": 10.0, "cooldown": 8.0, "cast_time": 2.0,
+		"damage_mult": 1.3, "cooldown": 8.0, "cast_time": 2.0,
 		"range_m": 4.5, "aoe_shape": "cone", "aoe_radius": 4.5,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 0.0,
 		"buff_type": "", "buff_value": 0,
@@ -321,7 +321,7 @@ const SKILLS: Array = [
 	{
 		"id": "元素弹", "school": School.ENCHANT_WAND, "tier": SkillTier.T1,
 		"name": "元素弹 / Elemental Bolt", "type": "active",
-		"damage_mult": 1.0, "hit_bonus": 0.0, "cooldown": 2.0, "cast_time": 1.0,
+		"damage_mult": 1.0, "cooldown": 2.0, "cast_time": 1.0,
 		"range_m": 4.5, "aoe_shape": "none", "aoe_radius": 0.0,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 0.0,
 		"buff_type": "", "buff_value": 0,
@@ -331,7 +331,7 @@ const SKILLS: Array = [
 	{
 		"id": "寒冰新星", "school": School.ENCHANT_WAND, "tier": SkillTier.T2,
 		"name": "寒冰新星 / Frost Nova", "type": "active",
-		"damage_mult": 0.8, "hit_bonus": 0.0, "cooldown": 5.0, "cast_time": 1.0,
+		"damage_mult": 0.8, "cooldown": 5.0, "cast_time": 1.0,
 		"range_m": 2.25, "aoe_shape": "circle", "aoe_radius": 2.25,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 2.0,
 		"buff_type": "ground_ice", "buff_value": 30,
@@ -341,7 +341,7 @@ const SKILLS: Array = [
 	{
 		"id": "雷暴术", "school": School.ENCHANT_WAND, "tier": SkillTier.T3,
 		"name": "雷暴术 / Thunderstorm", "type": "active",
-		"damage_mult": 1.5, "hit_bonus": 0.0, "cooldown": 8.0, "cast_time": 1.0,
+		"damage_mult": 1.5, "cooldown": 8.0, "cast_time": 1.0,
 		"range_m": 4.5, "aoe_shape": "circle", "aoe_radius": 4.5,
 		"knockback_m": 0.0, "stun_sec": 1.0, "buff_sec": 0.0,
 		"buff_type": "stun_chance", "buff_value": 30,
@@ -352,17 +352,17 @@ const SKILLS: Array = [
 	{
 		"id": "魔力涌动", "school": School.GRIMOIRE, "tier": SkillTier.T1,
 		"name": "魔力涌动 / Mana Surge", "type": "passive",
-		"damage_mult": 0.0, "hit_bonus": 0.0, "cooldown": 0.0, "cast_time": 0.0,
+		"damage_mult": 0.0, "cooldown": 0.0, "cast_time": 0.0,
 		"range_m": 0.0, "aoe_shape": "none", "aoe_radius": 0.0,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 0.0,
 		"buff_type": "spell_damage_up", "buff_value": 5,
 		"ignore_def": 0.0, "ignore_block": false, "lifesteal": 0.0,
-		"desc": "副手魔导书时法术伤害投骰 +5%",
+		"desc": "副手魔导书时法术伤害 +5%",
 	},
 	{
 		"id": "防护结界", "school": School.GRIMOIRE, "tier": SkillTier.T2,
 		"name": "防护结界 / Ward Barrier", "type": "active",
-		"damage_mult": 0.0, "hit_bonus": 0.0, "cooldown": 6.0, "cast_time": 1.0,
+		"damage_mult": 0.0, "cooldown": 6.0, "cast_time": 1.0,
 		"range_m": 0.0, "aoe_shape": "none", "aoe_radius": 0.0,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 3.0,
 		"buff_type": "damage_absorb", "buff_value": 20,
@@ -372,7 +372,7 @@ const SKILLS: Array = [
 	{
 		"id": "迟缓术", "school": School.GRIMOIRE, "tier": SkillTier.T3,
 		"name": "迟缓术 / Slow", "type": "active",
-		"damage_mult": 0.0, "hit_bonus": 0.0, "cooldown": 10.0, "cast_time": 1.0,
+		"damage_mult": 0.0, "cooldown": 10.0, "cast_time": 1.0,
 		"range_m": 4.5, "aoe_shape": "none", "aoe_radius": 0.0,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 3.0,
 		"buff_type": "slow_and_haste", "buff_value": {"slow_target": 30, "haste_self": 20},
@@ -383,17 +383,17 @@ const SKILLS: Array = [
 	{
 		"id": "刺拳", "school": School.UNARMED, "tier": SkillTier.T1,
 		"name": "刺拳 / Jab", "type": "active",
-		"damage_mult": 1.0, "hit_bonus": 10.0, "cooldown": 2.0, "cast_time": 1.0,
+		"damage_mult": 1.0, "cooldown": 2.0, "cast_time": 1.0,
 		"range_m": 1.5, "aoe_shape": "none", "aoe_radius": 0.0,
-		"knockback_m": 1.5, "stun_sec": 0.0, "buff_sec": 0.0,
+		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 0.0,
 		"buff_type": "", "buff_value": 0,
 		"ignore_def": 0.0, "ignore_block": false, "lifesteal": 0.0,
-		"desc": "双手空置，100% 伤害 + 击退 1 米 + 命中 +10%",
+		"desc": "双手空置，100% 伤害 + 命中 +10%（仅踢击/冲撞有击退）",
 	},
 	{
 		"id": "关节锁", "school": School.UNARMED, "tier": SkillTier.T2,
 		"name": "关节锁 / Joint Lock", "type": "active",
-		"damage_mult": 0.9, "hit_bonus": 0.0, "cooldown": 5.0, "cast_time": 1.0,
+		"damage_mult": 0.9, "cooldown": 5.0, "cast_time": 1.0,
 		"range_m": 1.5, "aoe_shape": "none", "aoe_radius": 0.0,
 		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 3.0,
 		"buff_type": "root_and_dmg_down", "buff_value": {"root": true, "dmg_down": 20},
@@ -403,12 +403,12 @@ const SKILLS: Array = [
 	{
 		"id": "碎骨重拳", "school": School.UNARMED, "tier": SkillTier.T3,
 		"name": "碎骨重拳 / Skullbreaker Punch", "type": "active",
-		"damage_mult": 1.8, "hit_bonus": 0.0, "cooldown": 8.0, "cast_time": 1.0,
+		"damage_mult": 1.8, "cooldown": 8.0, "cast_time": 1.0,
 		"range_m": 1.5, "aoe_shape": "none", "aoe_radius": 0.0,
-		"knockback_m": 1.5, "stun_sec": 0.0, "buff_sec": 0.0,
+		"knockback_m": 0.0, "stun_sec": 0.0, "buff_sec": 0.0,
 		"buff_type": "blocked_kb_bonus", "buff_value": 50,
 		"ignore_def": 0.0, "ignore_block": false, "lifesteal": 0.0,
-		"desc": "180% 伤害，被墙阻挡无法击退时基础伤害 ×1.5",
+		"desc": "180% 伤害（仅踢击/冲撞有击退）",
 	},
 ]
 
@@ -433,7 +433,7 @@ const ATTR_MILESTONES: Array = [
 		"desc": "近战命中 15% 概率击退 1 米；撞墙追加自防 20% 碰撞伤害"},
 	{"attr": "str", "tier": AttrMilestone.T2, "id": "重力击", "name": "重力击 / Heavy Stride",
 		"type": "passive", "effect_type": "melee_dmg_up", "value": 5,
-		"desc": "近战伤害投骰 +5%，暴击必触发击退"},
+		"desc": "近战伤害 +5%，暴击必触发击退"},
 	{"attr": "str", "tier": AttrMilestone.T3, "id": "蛮力负荷", "name": "蛮力负荷 / Brute Load",
 		"type": "passive", "effect_type": "carry_and_twohand_dmg", "value": {"carry": 15, "dmg": 5},
 		"desc": "负重 +15，双手武器基础伤害倍率 +5%"},
@@ -442,11 +442,11 @@ const ATTR_MILESTONES: Array = [
 		"type": "active", "effect_type": "leap", "value": 1.5,
 		"desc": "主动跳跃 1 米，越过地形裂隙；CD 3 秒"},
 	{"attr": "dex", "tier": AttrMilestone.T2, "id": "神射手", "name": "神射手 / Sharpshooter",
-		"type": "passive", "effect_type": "ranged_hit_up", "value": 10,
-		"desc": "长弓/轻弩远程命中率 +10%"},
+		"type": "passive", "effect_type": "ranged_crit_up", "value": 10,
+		"desc": "长弓/轻弩远程暴击率 +10%（动作化替代命中率）"},
 	{"attr": "dex", "tier": AttrMilestone.T3, "id": "穿透打击", "name": "穿透打击 / Penetrating Strike",
-		"type": "passive", "effect_type": "ignore_def_ranged", "value": 10,
-		"desc": "远程攻击 100% 概率无视 10% 物防"},
+		"type": "passive", "effect_type": "ranged_dmg_up", "value": 12,
+		"desc": "远程伤害 +12%（动作化替代无视物防）"},
 	# ===== 灵巧 AGI =====
 	{"attr": "agi", "tier": AttrMilestone.T1, "id": "侧垫步", "name": "侧垫步 / Sidestep",
 		"type": "passive", "effect_type": "dodge_chance", "value": 10,
@@ -486,7 +486,7 @@ const ATTR_MILESTONES: Array = [
 		"desc": "基础暴击率 +5%"},
 	{"attr": "per", "tier": AttrMilestone.T3, "id": "直觉闪避", "name": "直觉闪避 / Intuitive Evade",
 		"type": "passive", "effect_type": "negate_flank", "value": 100,
-		"desc": "侧击/背袭不再享有命中与伤害加成"},
+		"desc": "侧击/背袭不再享有额外伤害加成（命中由动作判定，不计入）"},
 ]
 
 # ============================================================================

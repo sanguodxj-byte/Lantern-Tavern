@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites id="2026-07-22" name="report_1086" tests="12" failures="0" skipped="0" flaky="0" time="0.000">
+	<testsuite id="0" name="voxel_shortsword_asset_test" package="tests/gdunit" timestamp="2026-07-21T21:05:07" hostname="localhost" tests="12" failures="0" errors="0" skipped="0" flaky="0" time="0.165">
+		<testcase name="test_shortsword_generator_is_fixed_identity_and_documents_pixel_dimensions" classname="voxel_shortsword_asset_test" time="0.007">
+		</testcase>
+		<testcase name="test_shortsword_is_registered_to_the_dedicated_glb" classname="voxel_shortsword_asset_test" time="0.005">
+		</testcase>
+		<testcase name="test_shortsword_glb_loads_with_authored_semantic_parts" classname="voxel_shortsword_asset_test" time="0.005">
+		</testcase>
+		<testcase name="test_shortsword_dimensions_match_15x6x33_pixel_envelope" classname="voxel_shortsword_asset_test" time="0.008">
+		</testcase>
+		<testcase name="test_shortsword_geometry_and_materials_are_bilaterally_symmetric" classname="voxel_shortsword_asset_test" time="0.006">
+		</testcase>
+		<testcase name="test_shortsword_imported_material_palette_keeps_authored_hues" classname="voxel_shortsword_asset_test" time="0.006">
+		</testcase>
+		<testcase name="test_shortsword_boxes_have_no_positive_overlap_and_are_face_connected" classname="voxel_shortsword_asset_test" time="0.013">
+		</testcase>
+		<testcase name="test_shortsword_glb_exports_vertex_colors" classname="voxel_shortsword_asset_test" time="0.008">
+		</testcase>
+		<testcase name="test_shortsword_capture_is_registered_for_exact_asset_selection" classname="voxel_shortsword_asset_test" time="0.006">
+		</testcase>
+		<testcase name="test_pickable_shortsword_relies_on_one_runtime_glb_instance" classname="voxel_shortsword_asset_test" time="0.005">
+		</testcase>
+		<testcase name="test_shortsword_structural_three_views_are_readable_and_nonblank" classname="voxel_shortsword_asset_test" time="0.008">
+		</testcase>
+		<testcase name="test_shortsword_blender_true_3d_views_are_readable_and_nonblank" classname="voxel_shortsword_asset_test" time="0.050">
+		</testcase>
+	</testsuite>
+</testsuites>

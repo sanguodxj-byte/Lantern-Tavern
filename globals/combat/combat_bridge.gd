@@ -35,11 +35,10 @@ static func build_player_attack(player: Node3D, weapon, main_hand_type: String, 
 	if weapon != null:
 		_apply_weapon_to_attack(attack, weapon)
 	else:
-		# 徒手：低伤害投骰
+		# 徒手：低基础伤害（确定性，正常攻击无击退）
 		attack.weapon_damage_dice = {"count": 1, "sides": 4}
 		attack.weapon_damage_flat = 0.0
 		attack.weapon_damage_mult = 1.0
-		attack.knockback_force = 1.5
 	_apply_skill_to_attack(attack, skill)
 	_apply_milestones_to_attack(attack, main_hand_type, skill)
 	return attack
@@ -61,7 +60,6 @@ static func build_enemy_attack(enemy: Node3D, weapon, target_player: Node3D) -> 
 	else:
 		attack.weapon_damage_dice = {"count": 1, "sides": 4}
 		attack.weapon_damage_flat = 0.0
-		attack.knockback_force = 1.5
 	return attack
 
 # ============================================================================
@@ -231,32 +229,35 @@ static func _apply_weapon_to_attack(attack: CE.AttackInput, weapon) -> void:
 			"sides": max(int(weapon.damage_dice_sides), 0),
 		}
 		attack.weapon_damage_flat = float(weapon.damage_flat)
-		attack.weapon_hit_bonus = float(weapon.hit_bonus_percent)
 		attack.crit_bonus = float(weapon.crit_bonus_percent)
 		attack.crit_damage_bonus = float(weapon.crit_damage_bonus)
 		attack.ignore_def_percent = float(weapon.armor_pierce_percent)
-		attack.knockback_force = maxf(float(weapon.knockback_m), 2.0)
+		# 策划案调整：正常攻击不施加击退，武器 knockback_m 仅作数据参考不参与结算
+		# 仅踢击/冲撞等特定技能通过 skill.knockback_m 设置击退力
 		attack.bonus_stun_duration = maxf(attack.bonus_stun_duration, float(weapon.stun_sec))
-		# 应用词缀伤害倍率（策划案 06 §3）
+		# 应用词缀伤害倍率与吸血（策划案 34 实装）
 		if "damage_mult" in weapon:
 			attack.weapon_damage_mult *= float(weapon.damage_mult)
+		if "lifesteal_percent" in weapon:
+			attack.lifesteal_percent += float(weapon.lifesteal_percent)
+		# 武器物理冲量倍率（大部分伤害带物理冲量，默认 1.0 恒等）
+		if "impulse_mult" in weapon:
+			attack.physical_impulse_multiplier *= maxf(float(weapon.impulse_mult), 0.0)
 		return
 	attack.weapon_damage_dice = {"count": 1, "sides": max(weapon.damage_max - weapon.damage_min + 1, 1)}
 	attack.weapon_damage_flat = float(weapon.damage_min) - 1.0
 	attack.weapon_damage_mult = 1.0
-	attack.weapon_hit_bonus = 0.0
-	attack.knockback_force = 2.0
 
 
 static func _apply_milestones_to_attack(attack: CE.AttackInput, main_hand_type: String, skill: Dictionary = {}) -> void:
 	var is_melee := attack.attack_type == "melee"
 	var is_ranged := attack.attack_type == "ranged"
 	var is_spell := attack.attack_type == "spell"
-	attack.weapon_hit_bonus = ME.apply_sharpshooter(attack.weapon_hit_bonus, is_ranged)
-	attack.ignore_def_percent = ME.apply_penetrating_strike(attack.ignore_def_percent, is_ranged)
+	# 神射手（DEX T2）：远程暴击率 +10%（动作化替代原"命中率+10%"）
+	attack.crit_bonus = ME.apply_sharpshooter_crit(attack.crit_bonus, is_ranged)
+	# 穿透打击（DEX T3）：远程伤害 +12%（动作化替代原"无视10%物防"）
+	attack.weapon_damage_mult = ME.apply_penetrating_damage(attack.weapon_damage_mult, is_ranged)
 	attack.crit_bonus = ME.apply_mana_surge_crit(attack.crit_bonus, is_spell and not skill.is_empty())
-	if is_melee and ME.try_knockback_chance(true) > 0.0:
-		attack.knockback_force = maxf(attack.knockback_force, 1.5)
 	if is_melee and ME.apply_heavy_stride(100, true) > 100:
 		attack.base_damage_bonus_percent += 5.0
 	if main_hand_type == "two_hand":
@@ -271,7 +272,6 @@ static func _apply_skill_to_attack(attack: CE.AttackInput, skill: Dictionary) ->
 	var damage_mult := float(skill.get("damage_mult", 1.0))
 	if damage_mult > 0.0:
 		attack.weapon_damage_mult *= damage_mult
-	attack.weapon_hit_bonus += float(skill.get("hit_bonus", 0.0))
 	attack.ignore_def_percent = maxf(attack.ignore_def_percent, float(skill.get("ignore_def", 0.0)))
 	attack.ignore_block = bool(skill.get("ignore_block", false))
 	attack.lifesteal_percent = maxf(attack.lifesteal_percent, float(skill.get("lifesteal", 0.0)))
@@ -281,6 +281,10 @@ static func _apply_skill_to_attack(attack: CE.AttackInput, skill: Dictionary) ->
 	var stun_sec := float(skill.get("stun_sec", 0.0))
 	if stun_sec > 0.0:
 		attack.bonus_stun_duration = maxf(attack.bonus_stun_duration, stun_sec)
+	# 技能物理冲量倍率：缩放命中后的击退冲量（默认 1.0 不影响既有行为）
+	var impulse_mult := float(skill.get("impulse_mult", 1.0))
+	if impulse_mult > 0.0:
+		attack.physical_impulse_multiplier *= impulse_mult
 	if String(skill.get("id", "")) == "精准刺击":
 		attack.force_crit = true
 

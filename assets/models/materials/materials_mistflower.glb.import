@@ -3,7 +3,7 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://don6ag4fxip8h"
+uid="uid://dvmghr211iolw"
 path="res://.godot/imported/materials_mistflower.glb-8edcda205b9f345dfe969f855e70e6e1.scn"
 
 [deps]
@@ -42,4 +42,4 @@ materials/extract_path=""
 _subresources={}
 gltf/naming_version=2
 gltf/embedded_image_handling=1
-gltf/texture_map_mode=1
+gltf/texture_map_mode=0

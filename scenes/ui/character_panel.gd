@@ -50,21 +50,21 @@ var current_eq_mesh: Node3D = null
 
 # Skills Database
 var skills_database: Array = [
-	{"name": "Heavy Strike (重击)", "desc": "Channels physical power into a single devastating blow, dealing 150% physical damage. Can stun low-tier enemies on impact.", "cooldown": "6.0 seconds", "cost": "15 Stamina"},
-	{"name": "Swift Slash (迅捷回旋)", "desc": "Performs a rapid 360-degree sweep with the main-hand weapon, hitting all nearby monsters and dealing 80% slash damage.", "cooldown": "4.0 seconds", "cost": "10 Stamina"},
-	{"name": "Shield Wall (坚盾壁垒)", "desc": "Raises the shield in defense, raising Guard Rating and damage reduction by 100% for 3 seconds. Blocked attacks recovery speed increases.", "cooldown": "12.0 seconds", "cost": "20 Stamina"},
+	{"name": "Heavy Strike (重击)", "desc": "Channels physical power into a single devastating blow, dealing 150% physical damage. Can stun low-tier enemies on impact.", "cooldown": "6.0 seconds", "cost": "None"},
+	{"name": "Swift Slash (迅捷回旋)", "desc": "Performs a rapid 360-degree sweep with the main-hand weapon, hitting all nearby monsters and dealing 80% slash damage.", "cooldown": "4.0 seconds", "cost": "None"},
+	{"name": "Shield Wall (坚盾壁垒)", "desc": "Raises the shield in defense, raising Guard Rating and damage reduction by 100% for 3 seconds. Blocked attacks recovery speed increases.", "cooldown": "12.0 seconds", "cost": "None"},
 	{"name": "Adrenaline Rush (绝境苏醒)", "desc": "Passive: When HP drops below 30%, increases attack speed, recovery speed and movement speed by 40% until health is restored.", "cooldown": "Passive", "cost": "None"},
 ]
 
 # 武器/流派中文名映射
-const WEAPON_TYPE_NAMES: Dictionary = {
-	"one_hand_melee": "单手近战",
-	"two_hand": "双手武器",
-	"longbow": "长弓",
-	"crossbow": "轻弩",
-	"wand": "法杖",
-	"grimoire": "魔导书",
-	"unarmed": "徒手",
+var WEAPON_TYPE_NAMES: Dictionary = {
+	"one_hand_melee": tr("单手近战"),
+	"two_hand": tr("双手武器"),
+	"longbow": tr("长弓"),
+	"crossbow": tr("轻弩"),
+	"wand": tr("法杖"),
+	"grimoire": tr("魔导书"),
+	"unarmed": tr("徒手"),
 }
 
 func _ready() -> void:
@@ -80,7 +80,7 @@ func _ready() -> void:
 	slot_main_hand.pressed.connect(_on_main_hand_pressed)
 	slot_off_hand.pressed.connect(_on_off_hand_pressed)
 	slot_back.pressed.connect(func(): _inspect_slot("Back", tr("Back Slot [Empty]"), tr("Can hold spare ranged weapons like Short Bows or Crossbows.")))
-	slot_ring.pressed.connect(func(): _inspect_slot("Accessory", tr("Accessory Ring"), tr("Copper signet ring carved with tiny tavern engravings. Increases max stamina slightly.")))
+	slot_ring.pressed.connect(func(): _inspect_slot("Accessory", tr("Accessory Ring"), tr("Copper signet ring carved with tiny tavern engravings. Increases max health slightly.")))
 	
 	gear_list.item_selected.connect(_on_gear_selected)
 	skills_list.item_selected.connect(_on_skill_selected)
@@ -131,12 +131,12 @@ func _refresh_battle_stats() -> void:
 	battle_stats_container.add_child(title)
 	
 	# 等级
-	_add_stat_row("等级 Lv", str(level))
+	_add_stat_row(tr("等级 Lv"), str(level))
 	
 	# 6 属性
 	var attr_labels := {
-		"str": "STR 力量", "dex": "DEX 敏捷", "mag": "MAG 魔力",
-		"con": "CON 体质", "agi": "AGI 灵巧", "per": "PER 感知"
+		"str": tr("STR 力量"), "dex": tr("DEX 敏捷"), "mag": tr("MAG 魔力"),
+		"con": tr("CON 体质"), "agi": tr("AGI 灵巧"), "per": tr("PER 感知")
 	}
 	for key in ["str", "dex", "mag", "con", "agi", "per"]:
 		var val: int = int(attrs.get(key, 0))
@@ -147,12 +147,12 @@ func _refresh_battle_stats() -> void:
 	battle_stats_container.add_child(sep)
 	
 	# 衍生面板数值
-	_add_stat_row("HP 上限", str(ap_ref.compute_max_hp()))
-	_add_stat_row("物防", str(ap_ref.compute_physical_def()))
-	_add_stat_row("闪避率", "%.1f%%" % ap_ref.compute_evade_rate())
-	_add_stat_row("暴击率", "%.1f%%" % ap_ref.compute_crit_rate())
-	_add_stat_row("移速倍率", "%.0f%%" % (ap_ref.compute_move_speed_mult() * 100.0))
-	_add_stat_row("负重上限", str(ap_ref.compute_carry_weight()))
+	_add_stat_row(tr("HP 上限"), str(ap_ref.compute_max_hp()))
+	_add_stat_row(tr("物防"), str(ap_ref.compute_physical_def()))
+	_add_stat_row(tr("闪避率"), "%.1f%%" % ap_ref.compute_evade_rate())
+	_add_stat_row(tr("暴击率"), "%.1f%%" % ap_ref.compute_crit_rate())
+	_add_stat_row(tr("移速倍率"), "%.0f%%" % (ap_ref.compute_move_speed_mult() * 100.0))
+	_add_stat_row(tr("负重上限"), str(ap_ref.compute_carry_weight()))
 	
 	# 分隔线
 	var sep2 := HSeparator.new()
@@ -209,23 +209,56 @@ func _refresh_proficiency() -> void:
 	for wt in type_order:
 		var label: String = WEAPON_TYPE_NAMES.get(wt, wt)
 		var val: int = int(prof.get(wt, 0))
-		prof_list.add_item("%s: 熟练度 Lv %d" % [label, val])
+		prof_list.add_item(tr("%s: 熟练度 Lv %d") % [label, val])
 
 # ==================== Existing Functions ====================
 
 func _setup_slots_text() -> void:
+	_setup_slot_icon_display(slot_main_hand)
+	_setup_slot_icon_display(slot_off_hand)
 	if current_player and is_instance_valid(current_player) and current_player.equipment:
 		if current_player.equipment.has_weapon():
-			slot_main_hand.text = tr("Main Hand\n[%s]") % current_player.equipment.weapon_data.get_full_display_name()
+			var w := current_player.equipment.weapon_data
+			var display_name = w.get_full_display_name() if w.has_method("get_full_display_name") else w.name
+			var icon: Texture2D = DETAIL_POPUP_SCRIPT.icon_for_equipment_id(w.id) if WeaponRegistry != null else null
+			if icon != null:
+				slot_main_hand.icon = icon
+				slot_main_hand.text = ""
+				slot_main_hand.tooltip_text = display_name
+			else:
+				slot_main_hand.text = tr("Main Hand\n[%s]") % display_name
+				slot_main_hand.tooltip_text = ""
 		else:
+			slot_main_hand.icon = null
 			slot_main_hand.text = tr("Main Hand\n[Fists]")
+			slot_main_hand.tooltip_text = ""
 		if current_player.equipment.has_shield():
-			slot_off_hand.text = tr("Off Hand\n[%s]") % current_player.equipment.shield_data.name
+			var s := current_player.equipment.shield_data
+			var s_display = s.get_full_display_name() if s.has_method("get_full_display_name") else s.name
+			var s_icon: Texture2D = DETAIL_POPUP_SCRIPT.icon_for_equipment_id(s.id) if WeaponRegistry != null else null
+			if s_icon != null:
+				slot_off_hand.icon = s_icon
+				slot_off_hand.text = ""
+				slot_off_hand.tooltip_text = s_display
+			else:
+				slot_off_hand.text = tr("Off Hand\n[%s]") % s_display
+				slot_off_hand.tooltip_text = ""
 		else:
+			slot_off_hand.icon = null
 			slot_off_hand.text = tr("Off Hand\n[Empty]")
+			slot_off_hand.tooltip_text = ""
 	else:
+		slot_main_hand.icon = null
 		slot_main_hand.text = tr("Main Hand\n[Sword]")
+		slot_main_hand.tooltip_text = ""
+		slot_off_hand.icon = null
 		slot_off_hand.text = tr("Off Hand\n[Shield]")
+		slot_off_hand.tooltip_text = ""
+
+## 配置装备槽按钮的图标显示属性
+func _setup_slot_icon_display(button: Button) -> void:
+	button.expand_icon = true
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 func _load_attributes() -> void:
 	if current_player and is_instance_valid(current_player):
@@ -254,29 +287,51 @@ func _load_attributes() -> void:
 
 func _load_gear_list() -> void:
 	gear_list.clear()
+	# 配置为网格图标模式
+	gear_list.icon_mode = ItemList.ICON_MODE_TOP
+	gear_list.fixed_icon_size = Vector2i(64, 64)
+	gear_list.max_columns = 0  # 自动换行
+	gear_list.same_column_width = true
+	gear_list.fixed_column_width = 80
 	if current_player and is_instance_valid(current_player) and current_player.equipment:
 		if current_player.equipment.has_weapon():
 			var w = current_player.equipment.weapon_data
-			gear_list.add_item(w.name + tr(" (Equipped)"))
-			gear_list.set_item_metadata(gear_list.item_count - 1, {"type": "weapon", "data": w})
+			var display_name = w.get_full_display_name() if w.has_method("get_full_display_name") else w.name
+			var icon: Texture2D = DETAIL_POPUP_SCRIPT.icon_for_equipment_id(w.id) if WeaponRegistry != null else null
+			var idx: int = gear_list.add_item("", icon)
+			gear_list.set_item_metadata(idx, {"type": "weapon", "data": w})
+			gear_list.set_item_tooltip(idx, _build_equipment_tooltip(display_name, w))
 		if current_player.equipment.has_shield():
 			var s = current_player.equipment.shield_data
-			gear_list.add_item(s.name + tr(" (Equipped)"))
-			gear_list.set_item_metadata(gear_list.item_count - 1, {"type": "shield", "data": s})
+			var s_icon: Texture2D = DETAIL_POPUP_SCRIPT.icon_for_equipment_id(s.id) if WeaponRegistry != null else null
+			var s_idx: int = gear_list.add_item("", s_icon)
+			gear_list.set_item_metadata(s_idx, {"type": "shield", "data": s})
+			gear_list.set_item_tooltip(s_idx, _build_equipment_tooltip(s.name, s))
 	if TavernManager:
 		for mat_id in TavernManager.inventory.keys():
 			var count = TavernManager.inventory[mat_id]
 			if count > 0:
-				var mat_name = mat_id.capitalize().replace("_", " ")
-				if TavernManager.materials_db.has(mat_id):
-					mat_name = tr(TavernManager.materials_db[mat_id]["name"])
-				gear_list.add_item("%s (x%d)" % [mat_name, count])
-				gear_list.set_item_metadata(gear_list.item_count - 1, {"type": "material", "id": mat_id})
+				var mat_name = load("res://globals/tavern/brewing_data.gd").get_material_name(String(mat_id))
+				var mat_icon: Texture2D = DETAIL_POPUP_SCRIPT.icon_for_material(mat_id)
+				var m_idx: int = gear_list.add_item("x%d" % count, mat_icon)
+				gear_list.set_item_metadata(m_idx, {"type": "material", "id": mat_id})
+				gear_list.set_item_tooltip(m_idx, "%s x%d" % [mat_name, count])
 	else:
 		gear_list.add_item("Wild Glowcap (x3)")
 		gear_list.set_item_metadata(0, {"type": "material", "id": "wild_glowcap"})
 		gear_list.add_item("Frost Berry (x2)")
 		gear_list.set_item_metadata(1, {"type": "material", "id": "frost_berry"})
+
+## 构建装备 tooltip（含词缀信息）
+func _build_equipment_tooltip(display_name: String, data) -> String:
+	var parts: Array[String] = [display_name]
+	if data != null and "affixes" in data and not data.affixes.is_empty():
+		var quality_label := WeaponData.get_affix_quality_label(data.affixes)
+		if not quality_label.is_empty():
+			parts.append("[%s]" % quality_label)
+		for affix_line in WeaponData.get_affix_detail_lines(data.affixes):
+			parts.append(affix_line)
+	return "\n".join(parts)
 
 func _load_skills_list() -> void:
 	skills_list.clear()
@@ -318,10 +373,23 @@ func _on_gear_selected(index: int) -> void:
 			_inspect_material(meta["id"])
 
 func _inspect_weapon(w) -> void:
-	eq_name_lbl.text = w.name
+	# 使用含词缀前缀的完整显示名
+	var display_name = w.get_full_display_name() if w.has_method("get_full_display_name") else w.name
+	eq_name_lbl.text = display_name
+	# 根据词缀品质设置名称颜色
+	if "affixes" in w and not w.affixes.is_empty():
+		eq_name_lbl.add_theme_color_override("font_color", WeaponData.get_affix_color(w.affixes))
+	else:
+		eq_name_lbl.remove_theme_color_override("font_color")
 	eq_dmg_lbl.text = tr("%d - %d Physical") % [w.damage_min, w.damage_max]
 	eq_cond_lbl.text = tr("%d / %d") % [w.condition, w.max_condition]
-	eq_desc_lbl.text = tr("A close-combat weapon suited for slashing dungeon monsters.")
+	# 描述中包含词缀效果
+	var desc := tr("A close-combat weapon suited for slashing dungeon monsters.")
+	if "affixes" in w and not w.affixes.is_empty():
+		var affix_lines := WeaponData.get_affix_detail_lines(w.affixes)
+		if not affix_lines.is_empty():
+			desc += "\n" + "\n".join(affix_lines)
+	eq_desc_lbl.text = desc
 	# 显示角色持该武器，并从当前玩家复制盾牌
 	var shield_data = null
 	if current_player != null and is_instance_valid(current_player) and current_player.equipment != null and current_player.equipment.has_shield():
@@ -329,10 +397,20 @@ func _inspect_weapon(w) -> void:
 	_spawn_preview_character(w, shield_data)
 
 func _inspect_shield(s) -> void:
-	eq_name_lbl.text = s.name
+	var display_name = s.get_full_display_name() if s.has_method("get_full_display_name") else s.name
+	eq_name_lbl.text = display_name
+	if "affixes" in s and not s.affixes.is_empty():
+		eq_name_lbl.add_theme_color_override("font_color", WeaponData.get_affix_color(s.affixes))
+	else:
+		eq_name_lbl.remove_theme_color_override("font_color")
 	eq_dmg_lbl.text = tr("N/A")
 	eq_cond_lbl.text = tr("%d / %d") % [s.condition, s.max_condition]
-	eq_desc_lbl.text = tr("A sturdy buckler used to block attacks and stun opponents.")
+	var desc := tr("A sturdy buckler used to block attacks and stun opponents.")
+	if "affixes" in s and not s.affixes.is_empty():
+		var affix_lines := WeaponData.get_affix_detail_lines(s.affixes)
+		if not affix_lines.is_empty():
+			desc += "\n" + "\n".join(affix_lines)
+	eq_desc_lbl.text = desc
 	# 显示角色持该盾，并从当前玩家复制武器
 	var weapon_data = null
 	if current_player != null and is_instance_valid(current_player) and current_player.equipment != null and current_player.equipment.has_weapon():
@@ -340,10 +418,9 @@ func _inspect_shield(s) -> void:
 	_spawn_preview_character(weapon_data, s)
 
 func _inspect_material(mat_id: String) -> void:
-	var mat_name = mat_id.capitalize().replace("_", " ")
+	var mat_name = load("res://globals/tavern/brewing_data.gd").get_material_name(String(mat_id))
 	var desc = tr("An ingredient collected from the deep dungeon vaults.")
 	if TavernManager and TavernManager.materials_db.has(mat_id):
-		mat_name = tr(TavernManager.materials_db[mat_id]["name"])
 		desc = tr(TavernManager.materials_db[mat_id].get("desc", "An ingredient collected from the deep dungeon vaults."))
 	eq_name_lbl.text = mat_name
 	eq_dmg_lbl.text = tr("N/A")
@@ -417,6 +494,7 @@ func _update_ui_translations() -> void:
 
 # 3D Preview Functions — 显示玩家角色模型+装备
 
+const DETAIL_POPUP_SCRIPT := preload("res://scenes/ui/equipment_detail_popup.gd")
 const PLAYER_PREFAB := preload("res://scenes/characters/player/player.tscn")
 
 func _inspect_dummy_model() -> void:
@@ -473,7 +551,7 @@ func _spawn_preview_character(weapon_data, shield_data) -> void:
 		game_state.current_player = previous_player
 	current_eq_mesh = player_instance
 	player_instance.position = Vector3(0, -0.8, 0)
-	player_instance.rotation = Vector3(0, deg_to_rad(45), 0)
+	player_instance.rotation = Vector3(0, deg_to_rad(225), 0)
 	
 	# 此时 @onready 变量可用：关闭 UI 信号、移除多余组件
 	if player_instance.equipment:

@@ -59,6 +59,50 @@ func _build_all() -> void:
 		if tex == null:
 			tex = _make_weapon_icon(skill.school, skill.tier)
 		_cache[skill.id] = tex
+
+	# 加载或全量为 38 个纯被动技能构建 64x64 标准图标 (支持优先磁盘 PNG，自动程序化退回 64x64 徽章)
+	_build_all_passive_icons()
+
+func _build_all_passive_icons() -> void:
+	var skills_json = _load_skills_json()
+	for item in skills_json:
+		var skill_id: String = String(item.get("id", ""))
+		if skill_id.is_empty():
+			continue
+		var custom_tex: Texture2D = _load_pixel_icon(SKILL_ICON_DIR + "/" + skill_id + ".png")
+		if custom_tex != null:
+			_cache[skill_id] = custom_tex
+		else:
+			_cache[skill_id] = _make_passive_icon_64(skill_id, String(item.get("category", "GENERAL")))
+
+func _load_skills_json() -> Array:
+	var f = FileAccess.open("res://data/skills.json", FileAccess.READ)
+	if f == null:
+		return []
+	var txt := f.get_as_text()
+	f.close()
+	var json := JSON.new()
+	if json.parse(txt) == OK and json.data is Dictionary and json.data.has("skills"):
+		return json.data["skills"]
+	return []
+
+func _make_passive_icon_64(skill_id: String, category: String) -> ImageTexture:
+	var img := Image.create(ICON_SIZE, ICON_SIZE, false, Image.FORMAT_RGBA8)
+	var bg_color := Color(0.15, 0.15, 0.2, 1.0)
+	if category == "STYLE":
+		bg_color = Color(0.25, 0.18, 0.1, 1.0)
+	elif category == "WEAPON":
+		bg_color = Color(0.1, 0.22, 0.15, 1.0)
+	img.fill(bg_color)
+	
+	# 绘制 64x64 外包轮廓框
+	var border_color := Color(0.8, 0.65, 0.3, 1.0)
+	for i in range(ICON_SIZE):
+		img.set_pixel(i, 0, border_color)
+		img.set_pixel(i, ICON_SIZE - 1, border_color)
+		img.set_pixel(0, i, border_color)
+		img.set_pixel(ICON_SIZE - 1, i, border_color)
+	return ImageTexture.create_from_image(img)
 	# 5 动作技能
 	for skill in AS.SKILLS:
 		var tex: Texture2D = _load_pixel_icon(icon_path_for_skill_id(skill.id))

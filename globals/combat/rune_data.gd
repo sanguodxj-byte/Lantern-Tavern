@@ -6,7 +6,7 @@ const RUNES: Dictionary = {
 	"ember": {
 		"id": "ember",
 		"name": "余烬符文",
-		"runic_name": "ᛖᛗᛒᛖᚱ",
+		"runic_name": "ᚲ",
 		"rarity": "common",
 		"mods": {"damage_mult": {"mul": 1.20}},
 		"mechanics": {"burn_chance": 25, "burn_sec": 3.0},
@@ -15,7 +15,7 @@ const RUNES: Dictionary = {
 	"quick": {
 		"id": "quick",
 		"name": "迅捷符文",
-		"runic_name": "ᚲᚹᛁᚲ",
+		"runic_name": "ᚱ",
 		"rarity": "common",
 		"mods": {"cooldown": {"mul": 0.80}, "cast_time": {"mul": 0.80}},
 		"mechanics": {"quickened": true},
@@ -24,7 +24,7 @@ const RUNES: Dictionary = {
 	"force": {
 		"id": "force",
 		"name": "冲击符文",
-		"runic_name": "ᚠᛟᚱᚲᛖ",
+		"runic_name": "ᚦ",
 		"rarity": "uncommon",
 		"mods": {"knockback_m": {"mul": 1.50}, "stun_sec": {"add": 0.2}},
 		"mechanics": {"impact_bonus": true},
@@ -33,7 +33,7 @@ const RUNES: Dictionary = {
 	"surge": {
 		"id": "surge",
 		"name": "奔涌符文",
-		"runic_name": "ᛋᚢᚱᚷᛖ",
+		"runic_name": "ᛋ",
 		"rarity": "uncommon",
 		"mods": {"dash_speed_mps": {"add": 2.0}, "physical_impact_damage_mult": {"add": 0.18}},
 		"mechanics": {"charge_impulse_bonus": true},
@@ -42,7 +42,7 @@ const RUNES: Dictionary = {
 	"launch": {
 		"id": "launch",
 		"name": "抛掷符文",
-		"runic_name": "ᛚᚨᚢᚾᚲᚺ",
+		"runic_name": "ᛇ",
 		"rarity": "uncommon",
 		"mods": {"knockback_m": {"mul": 1.35}, "physical_impact_damage_mult": {"add": 0.20}},
 		"mechanics": {"launch_distance_bonus": true},
@@ -51,7 +51,7 @@ const RUNES: Dictionary = {
 	"echo": {
 		"id": "echo",
 		"name": "回响符文",
-		"runic_name": "ᛖᚲᚺᛟ",
+		"runic_name": "ᚨ",
 		"rarity": "rare",
 		"mods": {"cooldown": {"mul": 1.10}},
 		"mechanics": {"extra_projectiles": 1, "repeat_count": 1},
@@ -60,7 +60,7 @@ const RUNES: Dictionary = {
 	"guardian": {
 		"id": "guardian",
 		"name": "守护符文",
-		"runic_name": "ᚷᚢᚨᚱᛞ",
+		"runic_name": "ᛉ",
 		"rarity": "uncommon",
 		"mods": {"buff_value": {"mul": 1.20}, "buff_sec": {"add": 1.0}},
 		"mechanics": {"passive_guard": true},
@@ -85,7 +85,46 @@ static func get_all_rune_ids() -> Array:
 
 static func get_rune_name(rune_id: String) -> String:
 	var rune := get_rune(rune_id)
-	return String(rune.get("runic_name", rune.get("name", rune_id)))
+	if rune.is_empty():
+		return rune_id
+	return to_runic(rune_id)
+
+## 将拉丁字母文本转换为古弗萨克 (Elder Futhark) 如尼文字。
+static func to_runic(text: String) -> String:
+	var result := ""
+	for ch in text.to_lower():
+		result += _latin_to_runic(ch)
+	return result
+
+static func _latin_to_runic(ch: String) -> String:
+	match ch:
+		"a": return "ᚨ"
+		"b": return "ᛒ"
+		"c": return "ᚲ"
+		"d": return "ᛞ"
+		"e": return "ᛖ"
+		"f": return "ᚠ"
+		"g": return "ᚷ"
+		"h": return "ᚺ"
+		"i": return "ᛁ"
+		"j": return "ᛃ"
+		"k": return "ᚲ"
+		"l": return "ᛚ"
+		"m": return "ᛗ"
+		"n": return "ᚾ"
+		"o": return "ᛟ"
+		"p": return "ᛈ"
+		"q": return "ᚲ"
+		"r": return "ᚱ"
+		"s": return "ᛋ"
+		"t": return "ᛏ"
+		"u": return "ᚢ"
+		"v": return "ᚹ"
+		"w": return "ᚹ"
+		"x": return "ᚲ"
+		"y": return "ᛁ"
+		"z": return "ᛉ"
+		_: return ch
 
 static func apply_runes(skill: Dictionary, rune_ids: Array) -> Dictionary:
 	if skill.is_empty():

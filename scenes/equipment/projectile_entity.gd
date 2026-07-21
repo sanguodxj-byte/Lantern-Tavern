@@ -62,19 +62,29 @@ var _is_destroyed: bool = false
 ## 存活计时器
 var _lifetime_timer: SceneTreeTimer = null
 
+## 共享材质缓存——按 projectile_data 的资源路径索引，避免每次生成创建新 StandardMaterial3D
+static var _shared_spell_materials: Dictionary = {}  # { resource_path: StandardMaterial3D }
+static var _shared_arrow_shaft_materials: Dictionary = {}
+static var _shared_arrow_head_materials: Dictionary = {}
+
 
 func _ready() -> void:
 	if projectile_data == null:
 		push_warning("ProjectileEntity: projectile_data 为空，立即销毁")
 		queue_free()
 		return
+	# 重置状态（对象池复用时需要）
+	_is_destroyed = false
+	_hit_targets.clear()
+	_current_damage_mult = 1.0
 	# 物理设置
 	PhysicsSetup.setup_projectile(self)
 	gravity_scale = projectile_data.gravity_scale
 	_pierce_remaining = projectile_data.pierce_count
 	# 碰撞形状
 	_build_collision_shape()
-	# 视觉外观
+	# 视觉外观（先清理旧视觉，再构建新视觉）
+	_clear_visual()
 	_build_visual()
 	# 飞行方向 = -Z（spawn_transform 的前方）
 	_flight_direction = -global_transform.basis.z.normalized()
@@ -86,11 +96,20 @@ func _ready() -> void:
 	# 飞行音效
 	if projectile_data.flight_sound_key != "" and audio_stream_player_3d != null:
 		AudioManager.play(projectile_data.flight_sound_key, audio_stream_player_3d)
-	# 碰撞信号
-	body_entered.connect(_on_body_entered)
+	# 碰撞信号（对象池复用时可能已连接，需检查）
+	if not body_entered.is_connected(_on_body_entered):
+		body_entered.connect(_on_body_entered)
 	# 存活计时
 	_lifetime_timer = get_tree().create_timer(projectile_data.lifetime)
 	_lifetime_timer.timeout.connect(_on_lifetime_expired)
+
+## 清理视觉子节点（对象池复用前调用）
+## 使用 free() 立即释放，避免 queue_free() 延迟导致复用时新旧视觉并存。
+func _clear_visual() -> void:
+	if visual_root == null:
+		return
+	for child in visual_root.get_children():
+		child.free()
 
 
 ## 构建碰撞形状（盒形，沿 Z 轴拉长）
@@ -129,14 +148,7 @@ func _build_default_spell_visual() -> void:
 	sphere.radius = projectile_data.collision_radius
 	sphere.height = projectile_data.collision_radius * 2.0
 	mi.mesh = sphere
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = projectile_data.default_color
-	mat.emission_enabled = true
-	mat.emission = projectile_data.default_color
-	mat.emission_energy_multiplier = maxf(projectile_data.default_emission, 1.5)
-	mat.roughness = 0.3
-	mat.metallic = 0.0
-	mi.material_override = mat
+	mi.material_override = _get_shared_spell_material()
 	visual_root.add_child(mi)
 	# 附加点光源
 	var light := OmniLight3D.new()
@@ -145,6 +157,22 @@ func _build_default_spell_visual() -> void:
 	light.omni_range = 3.0
 	light.omni_attenuation = 1.5
 	visual_root.add_child(light)
+
+
+## 获取共享的法术弹材质（同一 projectile_data 资源复用同一个材质实例）
+func _get_shared_spell_material() -> StandardMaterial3D:
+	var key := projectile_data.resource_path
+	if _shared_spell_materials.has(key):
+		return _shared_spell_materials[key] as StandardMaterial3D
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = projectile_data.default_color
+	mat.emission_enabled = true
+	mat.emission = projectile_data.default_color
+	mat.emission_energy_multiplier = maxf(projectile_data.default_emission, 1.5)
+	mat.roughness = 0.3
+	mat.metallic = 0.0
+	_shared_spell_materials[key] = mat
+	return mat
 
 
 ## 默认箭矢外观：细长圆柱 + 箭头
@@ -156,10 +184,7 @@ func _build_default_arrow_visual() -> void:
 	cylinder.height = projectile_data.collision_length * 0.7
 	shaft.mesh = cylinder
 	shaft.rotation_degrees.x = 90.0  # 圆柱默认沿 Y，旋转到沿 Z
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = projectile_data.default_color
-	mat.roughness = 0.6
-	shaft.material_override = mat
+	shaft.material_override = _get_shared_arrow_shaft_material()
 	visual_root.add_child(shaft)
 	# 箭头（小锥体）
 	var head := MeshInstance3D.new()
@@ -170,12 +195,33 @@ func _build_default_arrow_visual() -> void:
 	head.mesh = cone
 	head.rotation_degrees.x = 90.0
 	head.position.z = -projectile_data.collision_length * 0.4
-	var head_mat := StandardMaterial3D.new()
-	head_mat.albedo_color = Color(0.7, 0.7, 0.75)
-	head_mat.metallic = 0.8
-	head_mat.roughness = 0.3
-	head.material_override = head_mat
+	head.material_override = _get_shared_arrow_head_material()
 	visual_root.add_child(head)
+
+
+## 获取共享的箭杆材质
+func _get_shared_arrow_shaft_material() -> StandardMaterial3D:
+	var key := projectile_data.resource_path
+	if _shared_arrow_shaft_materials.has(key):
+		return _shared_arrow_shaft_materials[key] as StandardMaterial3D
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = projectile_data.default_color
+	mat.roughness = 0.6
+	_shared_arrow_shaft_materials[key] = mat
+	return mat
+
+
+## 获取共享的箭头材质（全局唯一，不随 projectile_data 变化）
+func _get_shared_arrow_head_material() -> StandardMaterial3D:
+	const HEAD_KEY := "__arrow_head__"
+	if _shared_arrow_head_materials.has(HEAD_KEY):
+		return _shared_arrow_head_materials[HEAD_KEY] as StandardMaterial3D
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.7, 0.7, 0.75)
+	mat.metallic = 0.8
+	mat.roughness = 0.3
+	_shared_arrow_head_materials[HEAD_KEY] = mat
+	return mat
 
 
 ## 碰撞体进入
@@ -338,6 +384,7 @@ func _apply_lifesteal(result) -> void:
 		var health: Node = source_player.get("health")
 		if health != null and health.has_method("heal"):
 			health.heal(result.lifesteal_amount)
+			FxHelper.create_heal_number(source_player.global_position, result.lifesteal_amount)
 
 
 ## 命中音效
@@ -365,7 +412,11 @@ func _destroy_with_impact() -> void:
 	# 取消计时器
 	if _lifetime_timer != null and _lifetime_timer.timeout.is_connected(_on_lifetime_expired):
 		_lifetime_timer.timeout.disconnect(_on_lifetime_expired)
-	queue_free()
+	# 停止物理运动
+	linear_velocity = Vector3.ZERO
+	angular_velocity = Vector3.ZERO
+	# 归还到对象池（而非直接 queue_free）
+	_return_to_pool()
 
 
 ## 存活超时
@@ -373,7 +424,20 @@ func _on_lifetime_expired() -> void:
 	if _is_destroyed:
 		return
 	_is_destroyed = true
-	queue_free()
+	# 停止物理运动
+	linear_velocity = Vector3.ZERO
+	angular_velocity = Vector3.ZERO
+	# 归还到对象池（而非直接 queue_free）
+	_return_to_pool()
+
+
+## 将投射物归还到对象池，供下次复用
+func _return_to_pool() -> void:
+	var ps: Node = Service.projectile_service()
+	if ps != null and ps.has_method("return_projectile_to_pool"):
+		ps.return_projectile_to_pool(self)
+	else:
+		queue_free()
 
 
 ## 获取生成父节点（当前关卡）

@@ -1,7 +1,12 @@
 extends Node
 ## 区域选择管理器（autoload: ZoneManager）。
 ## 保存玩家选定的探险区域，供 procedural_dungeon 读取以配置宝箱 zone 与散落材料池。
-## 同时承载四区的显示名/描述/推荐等级等元数据，供区域选择 UI 渲染。
+## 同时承载六区的显示名/描述/推荐等级等元数据，供区域选择 UI 渲染。
+##
+## 散落材料池已统一至 LootTable.ZONE_SCATTER_WEIGHTS（单一数据源），
+## 本模块通过 get_scatter_materials() 委托查询。
+
+const Service := preload("res://globals/core/service.gd")
 
 # 当前选定区域（BrewingData.Zone 枚举值），-1 表示未选定
 var selected_zone: int = 0
@@ -16,16 +21,6 @@ const ZONE_META: Dictionary = {
 	5: {"name": "古代遗迹", "desc": "极危区。水晶泪滴、远古符文碎、星光苔等灵界材料。幽灵守卫徘徊。", "difficulty": 6, "color": Color(0.35, 0.25, 0.55)},
 }
 
-# 各区域散落采集材料池（与 LootTable.ZONE_MATERIAL_WEIGHTS 对齐，供地牢散落点使用）
-const ZONE_SCATTER_MATERIALS: Dictionary = {
-	0: {"rat_tail": 15, "moldy_bread": 12, "rusty_nail": 10, "dungeon_moss": 10, "bone_shard": 8, "stale_water": 8, "prison_lichen": 5, "cellar_mushroom": 4},
-	1: {"blackberry": 15, "glowshroom": 12, "moongrass": 10, "goblin_nail": 8, "mistflower": 8, "wolfear_herb": 8, "pixie_dust": 5, "poison_berry": 4},
-	2: {"deeprock_moss": 12, "black_rye_root": 12, "cyclops_beard": 8, "stalactite_sap": 8, "geothermal_ear": 8, "luminous_fern": 8, "quartz_dust": 5, "blindfish_jerky": 4},
-	3: {"soulmint": 12, "moon_lily": 10, "mandrake_root": 8, "tomb_moss": 8, "ghost_tear": 8, "grave_truffle": 6, "bone_nectar": 5, "forgotten_ash": 4},
-	4: {"firegrape": 12, "lava_malt": 10, "salamander_skin": 8, "ash_lotus": 8, "burst_pepper": 8, "charred_root": 8, "firebird_dust": 5, "lava_jelly": 3},
-	5: {"crystal_tear": 12, "ancient_rune": 10, "starlight_moss": 10, "ethereal_essence": 8, "phantom_petal": 8, "ruin_honey": 6, "ghost_mushroom": 5, "arcane_dust": 4},
-}
-
 func set_zone(zone: int) -> void:
 	selected_zone = clampi(zone, 0, 5)
 
@@ -34,11 +29,11 @@ func get_zone() -> int:
 
 func get_zone_name(zone: int = -1) -> String:
 	var z: int = zone if zone >= 0 else selected_zone
-	return ZONE_META.get(z, {}).get("name", "未知区域")
+	return TranslationServer.translate(ZONE_META.get(z, {}).get("name", "未知区域"))
 
 func get_zone_desc(zone: int = -1) -> String:
 	var z: int = zone if zone >= 0 else selected_zone
-	return ZONE_META.get(z, {}).get("desc", "")
+	return TranslationServer.translate(ZONE_META.get(z, {}).get("desc", ""))
 
 func get_zone_difficulty(zone: int = -1) -> int:
 	var z: int = zone if zone >= 0 else selected_zone
@@ -48,10 +43,14 @@ func get_zone_color(zone: int = -1) -> Color:
 	var z: int = zone if zone >= 0 else selected_zone
 	return ZONE_META.get(z, {}).get("color", Color.WHITE)
 
-## 获取当前区域的散落材料池 {material_id: weight}
+## 获取当前区域的散落材料池 {material_id: weight}。
+## 委托 LootTable.get_scatter_materials()，确保区域材料映射单一数据源。
 func get_scatter_materials(zone: int = -1) -> Dictionary:
 	var z: int = zone if zone >= 0 else selected_zone
-	return ZONE_SCATTER_MATERIALS.get(z, {}).duplicate()
+	var lt: Node = Service.loot_table()
+	if lt != null and lt.has_method("get_scatter_materials"):
+		return lt.get_scatter_materials(z)
+	return {}
 
 func all_zones() -> Array:
 	return [0, 1, 2, 3, 4, 5]

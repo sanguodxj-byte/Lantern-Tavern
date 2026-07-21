@@ -1,0 +1,291 @@
+{
+  "skills": [
+    {
+      "id": "passive_toughness",
+      "name_zh": "坚韧",
+      "type": "PASSIVE",
+      "category": "GENERAL",
+      "description_zh": "每 5 秒自动恢复 2% 的最大生命值。"
+    },
+    {
+      "id": "passive_lifedrain",
+      "name_zh": "汲取",
+      "type": "PASSIVE",
+      "category": "GENERAL",
+      "lifesteal_percent": 10.0,
+      "description_zh": "吸取造成伤害的 10% 治愈自身。"
+    },
+    {
+      "id": "passive_style_onehand_duelist",
+      "name_zh": "决斗者",
+      "type": "PASSIVE",
+      "category": "STYLE",
+      "style_required": "ONE_HAND",
+      "description_zh": "准心指向敌人长按右键 3 秒后锁定对方，获得仅针对目标的 +50% 攻击力、+50% 暴击率、+50% 闪避率，准心偏离立即失效。"
+    },
+    {
+      "id": "passive_style_onehand_spellblade",
+      "name_zh": "奥法之剑",
+      "type": "PASSIVE",
+      "category": "STYLE",
+      "style_required": "ONE_HAND",
+      "description_zh": "右键可呼出魔法选择界面；满蓄力攻击释放时，自动无前摇同时释放选中的魔法。"
+    },
+    {
+      "id": "passive_style_shield_bash",
+      "name_zh": "盾击",
+      "type": "PASSIVE",
+      "category": "STYLE",
+      "style_required": "ONE_HAND_SHIELD",
+      "description_zh": "格挡状态下按左键可使用盾牌攻击；若在敌人攻击后 0.3s 内盾击命中，造成 3 秒压制（敌方无法行动且防抗视为0）。"
+    },
+    {
+      "id": "passive_style_shield_refraction",
+      "name_zh": "折射",
+      "type": "PASSIVE",
+      "category": "STYLE",
+      "style_required": "ONE_HAND_SHIELD",
+      "description_zh": "防御远程与法系攻击时，盾牌耐久消耗加倍，但会将攻击效果 100% 原路反射回对方。"
+    },
+    {
+      "id": "passive_style_twohand_accumulation",
+      "name_zh": "蓄势",
+      "type": "PASSIVE",
+      "category": "STYLE",
+      "style_required": "TWO_HAND",
+      "description_zh": "双手蓄力挥砍时不会被普通受击打断前摇，减伤 30%，受击伤害转化为释放时的追加伤害。"
+    },
+    {
+      "id": "passive_style_twohand_heavy_swing",
+      "name_zh": "重型挥舞",
+      "type": "PASSIVE",
+      "category": "STYLE",
+      "style_required": "TWO_HAND",
+      "description_zh": "替换基础攻击动作，改变为大范围的大弧度横扫骨骼动画动作。"
+    },
+    {
+      "id": "passive_style_dual_cross_strike",
+      "name_zh": "交错挥砍",
+      "type": "PASSIVE",
+      "category": "STYLE",
+      "style_required": "DUAL_WIELD",
+      "description_zh": "左右手 0.5s 内连续命中目标触发暴击或无视 50% 防御；攻击落空即断开连携，且带有 3s 内内置 CD。"
+    },
+    {
+      "id": "passive_style_dual_cross_counter",
+      "name_zh": "十字返",
+      "type": "PASSIVE",
+      "category": "STYLE",
+      "style_required": "DUAL_WIELD",
+      "description_zh": "在受到敌人近战挥刀 0.3s 窗口内同时按左右键，交叉架住敌方武器打断攻击并双刀切反击。"
+    },
+    {
+      "id": "passive_style_unarmed_flurry_storm",
+      "name_zh": "暴风骤雨",
+      "type": "PASSIVE",
+      "category": "STYLE",
+      "style_required": "UNARMED",
+      "description_zh": "左右手交替的徒手攻击每次减少 5% 攻击冷却，最高缩短 60%，持续 3 秒。"
+    },
+    {
+      "id": "passive_style_unarmed_over_shoulder_slam",
+      "name_zh": "过肩摔",
+      "type": "PASSIVE",
+      "category": "STYLE",
+      "style_required": "UNARMED",
+      "description_zh": "双键按住 5 秒后对 0.25m 内目标释放，普通敌人造成 100% 最大血量真实伤害（秒杀），Boss 造成 25% 真实伤，5m 范围等额波及。"
+    },
+    {
+      "id": "passive_style_ranged_weakpoint_sight",
+      "name_zh": "看破弱点",
+      "type": "PASSIVE",
+      "category": "STYLE",
+      "style_required": "RANGED",
+      "description_zh": "举弓/举弩准星瞄准 1.5 秒后显示红色弱点标记，射中弱点必定引发致命爆头暴击。"
+    },
+    {
+      "id": "passive_style_ranged_piercing",
+      "name_zh": "贯穿",
+      "type": "PASSIVE",
+      "category": "STYLE",
+      "style_required": "RANGED",
+      "description_zh": "弩和满弓弹道可贯穿至多 5 个敌人，每多贯穿一个递减 20% 伤害。"
+    },
+    {
+      "id": "passive_style_spell_arcane_barrier",
+      "name_zh": "奥术护盾",
+      "type": "PASSIVE",
+      "category": "STYLE",
+      "style_required": "SPELL",
+      "description_zh": "每次施放法术消耗的蓝量直接转化为等额护盾，并且该护盾可以无限叠加。"
+    },
+    {
+      "id": "passive_style_spell_elemental_ring",
+      "name_zh": "元素环",
+      "type": "PASSIVE",
+      "category": "STYLE",
+      "style_required": "SPELL",
+      "description_zh": "施法后周围生成持续 5 秒随身元素环，近战靠近的敌人自动挂载燃烧或冰冻状态。"
+    },
+    {
+      "id": "passive_weapon_sword_backstab",
+      "name_zh": "突袭背刺",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Sword",
+      "description_zh": "从敌人的侧面或正后方挥剑攻击时，伤害倍率提升 30%。"
+    },
+    {
+      "id": "passive_weapon_sword_bleed_edge",
+      "name_zh": "割裂流血",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Sword",
+      "description_zh": "剑类攻击有 15% 概率挂载 3 秒流血；背刺攻击退阶磨损概率降低 50%。"
+    },
+    {
+      "id": "passive_weapon_axe_wood_chop",
+      "name_zh": "木质摧碎",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Axe",
+      "description_zh": "对地牢木门、宝箱与木质设施伤害提升 50%。"
+    },
+    {
+      "id": "passive_weapon_axe_heavy_slow",
+      "name_zh": "重能迟钝",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Axe",
+      "description_zh": "长按攻击键释放的充能重击命中敌人时，施加 3 秒减速。"
+    },
+    {
+      "id": "passive_weapon_hammer_skeleton_smash",
+      "name_zh": "骷髅粉碎",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Hammer",
+      "description_zh": "对骷髅与死灵类目标物理伤害提升 40%，且无视基础物理防御。"
+    },
+    {
+      "id": "passive_weapon_hammer_heavy_stun",
+      "name_zh": "重击停顿",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Hammer",
+      "description_zh": "长按攻击键释放的充能重击命中敌人时，有 15% 概率使目标硬直 1.0 秒。"
+    },
+    {
+      "id": "passive_weapon_spear_reach_pierce",
+      "name_zh": "超距刺穴",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Spear",
+      "description_zh": "长枪物理碰撞半径扩大 15%，直线远端命中目标造成 +5% 额外穿刺伤。"
+    },
+    {
+      "id": "passive_weapon_spear_brace_stance",
+      "name_zh": "立定架枪",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Spear",
+      "description_zh": "保持站立不动时，受到正面对自身突进的敌人攻击，自动减免 15% 受击伤害。"
+    },
+    {
+      "id": "passive_weapon_bow_draw_charge",
+      "name_zh": "弦弓拉满",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Bow",
+      "description_zh": "拉满弓释放出的箭矢飞行速度提升 25%，降低 20% 的磨损退阶概率。"
+    },
+    {
+      "id": "passive_weapon_bow_longrange_shot",
+      "name_zh": "远距狙击",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Bow",
+      "description_zh": "命中 5 米以外的敌人时，暴击率 +4%。"
+    },
+    {
+      "id": "passive_weapon_crossbow_fast_latch",
+      "name_zh": "速装机关",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Crossbow",
+      "description_zh": "轻弩装弹耗时缩短 10%，装弹后首发弩箭穿透率 +8%。"
+    },
+    {
+      "id": "passive_weapon_crossbow_armor_breaker",
+      "name_zh": "穿甲重煞",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Crossbow",
+      "description_zh": "弩箭命中带重甲敌人时，使其护甲物理防御临时降低 3 点，持续 4 秒。"
+    },
+    {
+      "id": "passive_weapon_wand_element_touch",
+      "name_zh": "元素触点",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Wand",
+      "description_zh": "法杖物理敲击附带 +4% 当前属性的元素伤害。"
+    },
+    {
+      "id": "passive_weapon_wand_mana_conduit",
+      "name_zh": "法力充盈",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Wand",
+      "description_zh": "法力值低于 30% 时，法术吟唱耗蓝降低 6%。"
+    },
+    {
+      "id": "passive_weapon_grimoire_page_mastery",
+      "name_zh": "秘典熟能",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Grimoire",
+      "description_zh": "使用魔导书施法哑火失败的概率降低 50%。"
+    },
+    {
+      "id": "passive_weapon_grimoire_glyph_mark",
+      "name_zh": "印记施印",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Grimoire",
+      "description_zh": "使用魔导书成功施法后，下一次近战攻击对目标挂载一个持续 4 秒的减损印记。"
+    },
+    {
+      "id": "passive_weapon_unarmed_fist_brawl",
+      "name_zh": "拳肉相搏",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Unarmed",
+      "description_zh": "徒手近战攻击前摇缩短 8%，每次命中加 2% 暴击率（最高 3 层）。"
+    },
+    {
+      "id": "passive_weapon_unarmed_stealth_grab",
+      "name_zh": "潜行扣抓",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Unarmed",
+      "description_zh": "处于未被发现状态从后方徒手攻击敌人时，造成 1.5 秒硬直停顿。"
+    },
+    {
+      "id": "passive_weapon_shield_iron_guard",
+      "name_zh": "铁壁防守",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Shield",
+      "description_zh": "举盾防守姿态下，正向物理减伤物防 +3 点。"
+    },
+    {
+      "id": "passive_weapon_shield_durable_facing",
+      "name_zh": "耐久坚守",
+      "type": "PASSIVE",
+      "category": "WEAPON",
+      "weapon_category": "Shield",
+      "description_zh": "格挡成功时，盾牌品质退阶概率降低 30%。"
+    }
+  ]
+}

@@ -3,7 +3,7 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://bx0vxes5xubkk"
+uid="uid://isn6slisdys6"
 path="res://.godot/imported/materials_moongrass.glb-d7fb27511d5bfbc4b18d2f78eb56c213.scn"
 
 [deps]
@@ -42,4 +42,4 @@ materials/extract_path=""
 _subresources={}
 gltf/naming_version=2
 gltf/embedded_image_handling=1
-gltf/texture_map_mode=1
+gltf/texture_map_mode=0

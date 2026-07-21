@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites id="2026-07-22" name="report_1091" tests="33" failures="0" skipped="0" flaky="0" time="0.000">
+	<testsuite id="0" name="weapon_registry_test" package="tests/gdunit" timestamp="2026-07-21T21:07:25" hostname="localhost" tests="33" failures="0" errors="1" skipped="0" flaky="0" time="0.277">
+		<testcase name="test_registry_loads_all_weapons" classname="weapon_registry_test" time="0.006">
+		</testcase>
+		<testcase name="test_shortsword_has_glb_and_tiers" classname="weapon_registry_test" time="0.005">
+		</testcase>
+		<testcase name="test_greatsword_has_three_tiers" classname="weapon_registry_test" time="0.003">
+		</testcase>
+		<testcase name="test_warhammer_has_knockback_and_stun" classname="weapon_registry_test" time="0.004">
+		</testcase>
+		<testcase name="test_dagger_has_high_crit" classname="weapon_registry_test" time="0.006">
+		</testcase>
+		<testcase name="test_shield_has_three_tiers" classname="weapon_registry_test" time="0.003">
+		</testcase>
+		<testcase name="test_get_model_viewer_entries_returns_categories" classname="weapon_registry_test" time="0.003">
+		</testcase>
+		<testcase name="test_get_gear_list_entries_returns_objects_with_glb" classname="weapon_registry_test" time="0.019">
+		</testcase>
+		<testcase name="test_get_gear_list_by_category_filters_correctly" classname="weapon_registry_test" time="0.026">
+		</testcase>
+		<testcase name="test_registry_exposes_weapon_taxonomy_metadata" classname="weapon_registry_test" time="0.004">
+		</testcase>
+		<testcase name="test_gear_list_entries_include_taxonomy_metadata" classname="weapon_registry_test" time="0.019">
+		</testcase>
+		<testcase name="test_registered_shortsword_data_carries_visual_profile" classname="weapon_registry_test" time="0.004">
+			<error message="ERROR: res://tests/gdunit/weapon_registry_test.gd:110" type="ABORT">
+<![CDATA[
+Godot Runtime Error !
+  'Invalid call. Nonexistent function 'get_weapon' in base 'Node (weapon_registry.gd)'.'
+	at 'test_registered_shortsword_data_carries_visual_profile' in res://tests/gdunit/weapon_registry_test.gd:110
+]]>
+			</error>
+		</testcase>
+		<testcase name="test_armor_has_tiers" classname="weapon_registry_test" time="0.004">
+		</testcase>
+		<testcase name="test_weight_accessory_carry_bonus" classname="weapon_registry_test" time="0.004">
+		</testcase>
+		<testcase name="test_get_weapon_data_returns_weapondata_resource" classname="weapon_registry_test" time="0.003">
+		</testcase>
+		<testcase name="test_find_id_by_glb_resolves_shortsword" classname="weapon_registry_test" time="0.004">
+		</testcase>
+		<testcase name="test_find_id_by_glb_resolves_axe" classname="weapon_registry_test" time="0.004">
+		</testcase>
+		<testcase name="test_find_id_by_glb_returns_empty_for_null" classname="weapon_registry_test" time="0.004">
+		</testcase>
+		<testcase name="test_find_id_by_glb_returns_empty_for_empty_path" classname="weapon_registry_test" time="0.004">
+		</testcase>
+		<testcase name="test_resolve_weapon_data_returns_null_unchanged" classname="weapon_registry_test" time="0.004">
+		</testcase>
+		<testcase name="test_resolve_weapon_data_returns_weapon_with_id_unchanged" classname="weapon_registry_test" time="0.005">
+		</testcase>
+		<testcase name="test_resolve_weapon_data_resolves_legacy_tres_shortsword" classname="weapon_registry_test" time="0.007">
+		</testcase>
+		<testcase name="test_resolve_weapon_data_resolves_legacy_tres_axe" classname="weapon_registry_test" time="0.005">
+		</testcase>
+		<testcase name="test_resolve_weapon_data_returns_unchanged_for_unknown_glb" classname="weapon_registry_test" time="0.003">
+		</testcase>
+		<testcase name="test_resolve_weapon_data_returns_unchanged_for_no_glb" classname="weapon_registry_test" time="0.003">
+		</testcase>
+		<testcase name="test_weapon_data_carries_combat_taxonomy_and_tier_values" classname="weapon_registry_test" time="0.004">
+		</testcase>
+		<testcase name="test_shield_weapon_data_carries_phys_def_only" classname="weapon_registry_test" time="0.004">
+		</testcase>
+		<testcase name="test_armor_weapon_data_carries_defense_stats" classname="weapon_registry_test" time="0.003">
+		</testcase>
+		<testcase name="test_get_display_name_localized" classname="weapon_registry_test" time="0.003">
+		</testcase>
+		<testcase name="test_get_display_name_uses_chinese_json_name_in_chinese_locale" classname="weapon_registry_test" time="0.003">
+		</testcase>
+		<testcase name="test_model_viewer_entries_use_chinese_weapon_names_in_chinese_locale" classname="weapon_registry_test" time="0.005">
+		</testcase>
+		<testcase name="test_get_by_category_returns_all_categories" classname="weapon_registry_test" time="0.003">
+		</testcase>
+		<testcase name="test_get_category_name_returns_display_name" classname="weapon_registry_test" time="0.004">
+		</testcase>
+	</testsuite>
+</testsuites>

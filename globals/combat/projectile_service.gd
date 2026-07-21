@@ -19,11 +19,21 @@ const Service := preload("res://globals/core/service.gd")
 const PD := preload("res://data/projectile_data.gd")
 const PROJECTILE_PREFAB := preload("res://scenes/equipment/projectile_entity.tscn")
 
+# 体素投射物视觉场景（箭矢 / 弩箭）
+const VOXEL_ARROW_SCENE := preload("res://assets/meshes/projectiles/voxel_arrow.tscn")
+const VOXEL_BOLT_SCENE := preload("res://assets/meshes/projectiles/voxel_bolt.tscn")
+
 # 武器耐久磨损（与 PlayerStateSlashing 一致）
 const WEAPON_CONDITION_WEAR := 2
 
+# 对象池最大容量
+const POOL_MAX_SIZE := 32
+
 ## 注册表：id → ProjectileData
 var _registry: Dictionary = {}
+
+## 投射物对象池：已停用、可复用的 ProjectileEntity 列表
+var _projectile_pool: Array[Node3D] = []
 
 ## 武器类型 → 默认投射物 id 映射
 const WEAPON_PROJECTILE_MAP: Dictionary = {
@@ -62,7 +72,7 @@ func _ready() -> void:
 func _register_defaults() -> void:
 	# ── 箭矢（长弓）── 中等下坠
 	var arrow: Resource = PD.create("arrow", 22.0, "ranged")
-	arrow.display_name = "箭矢"
+	arrow.display_name = tr("箭矢")
 	arrow.gravity_scale = 0.20
 	arrow.collision_radius = 0.08
 	arrow.collision_length = 0.6
@@ -70,11 +80,12 @@ func _register_defaults() -> void:
 	arrow.default_color = Color(0.7, 0.5, 0.25)
 	arrow.flight_sound_key = "sword-fly"
 	arrow.impact_sound_key = "sword-hit-wall"
+	arrow.visual_scene = VOXEL_ARROW_SCENE
 	register(arrow)
 
 	# ── 弩箭（轻弩）── 下坠最小（近乎直线，极微弱抛物线）
 	var bolt: Resource = PD.create("bolt", 28.0, "ranged")
-	bolt.display_name = "弩箭"
+	bolt.display_name = tr("弩箭")
 	bolt.gravity_scale = 0.04
 	bolt.collision_radius = 0.07
 	bolt.collision_length = 0.5
@@ -82,11 +93,12 @@ func _register_defaults() -> void:
 	bolt.default_color = Color(0.6, 0.6, 0.65)
 	bolt.flight_sound_key = "sword-fly"
 	bolt.impact_sound_key = "sword-hit-wall"
+	bolt.visual_scene = VOXEL_BOLT_SCENE
 	register(bolt)
 
 	# ── 贯穿箭（贯穿射击技能，穿透多目标）──
 	var piercing_arrow: Resource = PD.create("piercing_arrow", 24.0, "ranged")
-	piercing_arrow.display_name = "贯穿箭"
+	piercing_arrow.display_name = tr("贯穿箭")
 	piercing_arrow.gravity_scale = 0.0
 	piercing_arrow.collision_radius = 0.08
 	piercing_arrow.collision_length = 0.7
@@ -96,6 +108,7 @@ func _register_defaults() -> void:
 	piercing_arrow.default_color = Color(0.9, 0.85, 0.5)
 	piercing_arrow.default_emission = 1.0
 	piercing_arrow.flight_sound_key = "sword-fly"
+	piercing_arrow.visual_scene = VOXEL_ARROW_SCENE
 	register(piercing_arrow)
 
 	# ── 刺钩弩箭（击退+减速）──
@@ -106,27 +119,30 @@ func _register_defaults() -> void:
 	barbed_bolt.collision_length = 0.55
 	barbed_bolt.lifetime = 3.5
 	barbed_bolt.default_color = Color(0.8, 0.3, 0.2)
+	barbed_bolt.visual_scene = VOXEL_BOLT_SCENE
 	register(barbed_bolt)
 
 	# ── 齐射箭（压制齐射/弩箭齐射，AoE 爆炸）──
 	var volley_arrow: Resource = PD.create("volley_arrow", 20.0, "ranged")
-	volley_arrow.display_name = "齐射箭"
+	volley_arrow.display_name = tr("齐射箭")
 	volley_arrow.gravity_scale = 0.3
 	volley_arrow.collision_radius = 0.08
 	volley_arrow.collision_length = 0.5
 	volley_arrow.lifetime = 3.0
 	volley_arrow.impact_aoe_radius = 2.0
 	volley_arrow.default_color = Color(0.6, 0.5, 0.3)
+	volley_arrow.visual_scene = VOXEL_ARROW_SCENE
 	register(volley_arrow)
 
 	var volley_bolt: Resource = PD.create("volley_bolt", 24.0, "ranged")
-	volley_bolt.display_name = "齐射弩箭"
+	volley_bolt.display_name = tr("齐射弩箭")
 	volley_bolt.gravity_scale = 0.1
 	volley_bolt.collision_radius = 0.08
 	volley_bolt.collision_length = 0.5
 	volley_bolt.lifetime = 3.0
 	volley_bolt.impact_aoe_radius = 2.5
 	volley_bolt.default_color = Color(0.7, 0.6, 0.4)
+	volley_bolt.visual_scene = VOXEL_BOLT_SCENE
 	register(volley_bolt)
 
 	# ── 元素弹（附魔法杖）──
@@ -143,7 +159,7 @@ func _register_defaults() -> void:
 
 	# ── 奥术弹（魔导书）──
 	var arcane_bolt: Resource = PD.create("arcane_bolt", 14.0, "spell")
-	arcane_bolt.display_name = "奥术弹"
+	arcane_bolt.display_name = tr("奥术弹")
 	arcane_bolt.gravity_scale = 0.0
 	arcane_bolt.collision_radius = 0.2
 	arcane_bolt.collision_length = 0.2
@@ -166,7 +182,7 @@ func _register_defaults() -> void:
 
 	# ── 雷暴弹（命中后 AoE 眩晕）──
 	var thunder: Resource = PD.create("thunder_bolt", 18.0, "spell")
-	thunder.display_name = "雷暴"
+	thunder.display_name = tr("雷暴")
 	thunder.gravity_scale = 0.0
 	thunder.collision_radius = 0.2
 	thunder.collision_length = 0.2
@@ -237,7 +253,8 @@ func spawn(projectile_id: String, spawn_transform: Transform3D, source_player: N
 	if parent == null:
 		push_warning("ProjectileService: 无法获取生成父节点")
 		return null
-	var projectile: Node3D = PROJECTILE_PREFAB.instantiate() as Node3D
+	# 从对象池获取或实例化新投射物
+	var projectile: Node3D = _acquire_projectile()
 	if projectile == null:
 		push_warning("ProjectileService: ProjectileEntity 场景实例化失败")
 		return null
@@ -254,6 +271,9 @@ func spawn(projectile_id: String, spawn_transform: Transform3D, source_player: N
 	projectile.set("weapon_condition_wear", WEAPON_CONDITION_WEAR)
 	# 先设置本地 transform（add_child 前 global_transform 不可用）
 	projectile.transform = spawn_transform
+	# 如果是池中复用的节点，标记需要重新 _ready
+	if projectile.get_parent() == null and projectile.is_inside_tree() == false:
+		projectile.request_ready()
 	# 添加到场景树（触发 _ready，此时所有属性已就绪）
 	parent.add_child(projectile)
 	# 确保全局变换正确（父节点非原点时需要）
@@ -302,6 +322,46 @@ func spawn_spread(projectile_id: String, spawn_transform: Transform3D, source_pl
 			results.append(proj)
 	return results
 
+
+# ============================================================================
+# 对象池
+# ============================================================================
+
+## 从对象池获取投射物，池空时实例化新的
+func _acquire_projectile() -> Node3D:
+	while not _projectile_pool.is_empty():
+		var projectile: Node3D = _projectile_pool.pop_back()
+		if is_instance_valid(projectile):
+			return projectile
+	# 池空或已失效，实例化新的
+	return PROJECTILE_PREFAB.instantiate() as Node3D
+
+## 将投射物归还到对象池供下次复用
+func return_projectile_to_pool(projectile: Node3D) -> void:
+	if projectile == null or not is_instance_valid(projectile):
+		return
+	# 池已满，直接释放
+	if _projectile_pool.size() >= POOL_MAX_SIZE:
+		projectile.queue_free()
+		return
+	# 从场景树移除（但不释放）
+	if projectile.get_parent() != null:
+		projectile.get_parent().remove_child(projectile)
+	# 停止物理与处理
+	projectile.set_physics_process(false)
+	projectile.set_process(false)
+	_projectile_pool.append(projectile)
+
+## 清空对象池（关卡切换时调用）
+func clear_pool() -> void:
+	for projectile in _projectile_pool:
+		if is_instance_valid(projectile):
+			projectile.queue_free()
+	_projectile_pool.clear()
+
+## 获取当前对象池大小（测试/调试用）
+func get_pool_size() -> int:
+	return _projectile_pool.size()
 
 # ============================================================================
 # 内部辅助

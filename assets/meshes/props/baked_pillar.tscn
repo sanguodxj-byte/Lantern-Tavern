@@ -1,0 +1,63 @@
+[gd_scene format=4]
+
+[ext_resource type="Shader" path="res://assets/shaders/dungeon_terrain.gdshader" id="1_3ls3y"]
+[ext_resource type="Texture2D" path="res://assets/textures/props/voxel/voxel_prop_material_atlas_32px.png" id="2_1l7ub"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_7ew6t"]
+render_priority = 0
+shader = ExtResource("1_3ls3y")
+shader_parameter/atlas = ExtResource("2_1l7ub")
+shader_parameter/tile_col_row = Vector2(3, 0)
+shader_parameter/tile_span = Vector2(1, 1)
+shader_parameter/atlas_grid = Vector2(8, 4)
+shader_parameter/tile_repeat = Vector2(1, 1)
+shader_parameter/roughness = 0.95
+shader_parameter/specular = 0.12
+shader_parameter/voxel_light_wrap = 0.58
+shader_parameter/voxel_light_floor = 0.3
+shader_parameter/voxel_light_steps = 4.0
+shader_parameter/voxel_light_quantize = 0.85
+shader_parameter/voxel_light_strength = 1.0
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_e41cq"]
+_surfaces = [{
+"aabb": AABB(-0.328125, 0, -0.328125, 0.65625, 3.0625, 0.65625),
+"attribute_data": PackedByteArray("AAAAAAAAAACrqio/AAAAAKuqqj4AAAAAAACAPwAAAAAAAAAAAAAAP6uqKj8AAAA/q6qqPgAAAD8AAIA/AAAAP6uqqj4AAAAAAAAAAAAAAD+rqio/AAAAAKuqqj4AAAA/q6qqPgAAAD8AAAAAAACAP6uqKj8AAAA/q6qqPgAAgD+rqqo+AAAAP6uqKj8AAAA/q6oqPwAAAD8AAIA/AAAAP6uqqj4AAIA/q6oqPwAAgD+rqio/AACAPwAAgD8AAIA/AAAAAAAAAACrqio/AAAAAKuqqj4AAAAAAACAPwAAAAAAAAAAAAAAP6uqKj8AAAA/q6qqPgAAAD8AAIA/AAAAP6uqqj4AAAAAAAAAAAAAAD+rqio/AAAAAKuqqj4AAAA/q6qqPgAAAD8AAAAAAACAP6uqKj8AAAA/q6qqPgAAgD+rqqo+AAAAP6uqKj8AAAA/q6oqPwAAAD8AAIA/AAAAP6uqqj4AAIA/q6oqPwAAgD+rqio/AACAPwAAgD8AAIA/AAAAAAAAAACrqio/AAAAAKuqqj4AAAAAAACAPwAAAAAAAAAAAAAAP6uqKj8AAAA/q6qqPgAAAD8AAIA/AAAAP6uqqj4AAAAAAAAAAAAAAD+rqio/AAAAAKuqqj4AAAA/q6qqPgAAAD8AAAAAAACAP6uqKj8AAAA/q6qqPgAAgD+rqqo+AAAAP6uqKj8AAAA/q6oqPwAAAD8AAIA/AAAAP6uqqj4AAIA/q6oqPwAAgD+rqio/AACAPwAAgD8AAIA/"),
+"format": 34359742487,
+"index_count": 108,
+"index_data": PackedByteArray("AAACAAQAAgAGAAQAAQADAAUAAwAHAAUACAAKAAwACgAOAAwACQALAA0ACwAPAA0AEAASABQAEgAWABQAEQATABUAEwAXABUAGAAaABwAGgAeABwAGQAbAB0AGwAfAB0AIAAiACQAIgAmACQAIQAjACUAIwAnACUAKAAqACwAKgAuACwAKQArAC0AKwAvAC0AMAAyADQAMgA2ADQAMQAzADUAMwA3ADUAOAA6ADwAOgA+ADwAOQA7AD0AOwA/AD0AQABCAEQAQgBGAEQAQQBDAEUAQwBHAEUA"),
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 72,
+"vertex_data": PackedByteArray("AACYvgAAID4AAJg+AACYPgAAID4AAJi+AACYPgAAID4AAJg+AACYvgAAID4AAJi+AACYvgAAAAAAAJg+AACYPgAAAAAAAJi+AACYPgAAAAAAAJg+AACYvgAAAAAAAJi+AACYPgAAID4AAJg+AACYvgAAID4AAJi+AACYPgAAID4AAJi+AACYvgAAID4AAJg+AACYPgAAAAAAAJg+AACYvgAAAAAAAJi+AACYPgAAAAAAAJi+AACYvgAAAAAAAJg+AACYPgAAID4AAJg+AACYvgAAAAAAAJg+AACYvgAAID4AAJg+AACYPgAAAAAAAJg+AACYPgAAID4AAJi+AACYvgAAAAAAAJi+AACYvgAAID4AAJi+AACYPgAAAAAAAJi+AABQvgAANkAAAFA+AABQPgAANkAAAFC+AABQPgAANkAAAFA+AABQvgAANkAAAFC+AABQvgAAID4AAFA+AABQPgAAID4AAFC+AABQPgAAID4AAFA+AABQvgAAID4AAFC+AABQPgAANkAAAFA+AABQvgAANkAAAFC+AABQPgAANkAAAFC+AABQvgAANkAAAFA+AABQPgAAID4AAFA+AABQvgAAID4AAFC+AABQPgAAID4AAFC+AABQvgAAID4AAFA+AABQPgAANkAAAFA+AABQvgAAID4AAFA+AABQvgAANkAAAFA+AABQPgAAID4AAFA+AABQPgAANkAAAFC+AABQvgAAID4AAFC+AABQvgAANkAAAFC+AABQPgAAID4AAFC+AACovgAAREAAAKg+AACoPgAAREAAAKi+AACoPgAAREAAAKg+AACovgAAREAAAKi+AACovgAANkAAAKg+AACoPgAANkAAAKi+AACoPgAANkAAAKg+AACovgAANkAAAKi+AACoPgAAREAAAKg+AACovgAAREAAAKi+AACoPgAAREAAAKi+AACovgAAREAAAKg+AACoPgAANkAAAKg+AACovgAANkAAAKi+AACoPgAANkAAAKi+AACovgAANkAAAKg+AACoPgAAREAAAKg+AACovgAANkAAAKg+AACovgAAREAAAKg+AACoPgAANkAAAKg+AACoPgAAREAAAKi+AACovgAANkAAAKi+AACovgAAREAAAKi+AACoPgAANkAAAKi+/3//f////7//////AAD/v/9//3////+//////wAA/7//f/9/////v/////8AAP+//3//f////7//////AAD/v///AID/////AAAAgP9//7///wCA/////wAAAID/f/+///8AgP////8AAACA/3//v///AID/////AAAAgP9//78AgP//AAD/vwCAAAD///+/AID//wAA/78AgAAA////vwCA//8AAP+/AIAAAP///78AgP//AAD/vwCAAAD///+//3//f////7//////AAD/v/9//3////+//////wAA/7//f/9/////v/////8AAP+//3//f////7//////AAD/v///AID/////AAAAgP9//7///wCA/////wAAAID/f/+///8AgP////8AAACA/3//v///AID/////AAAAgP9//78AgP//AAD/vwCAAAD///+/AID//wAA/78AgAAA////vwCA//8AAP+/AIAAAP///78AgP//AAD/vwCAAAD///+//3//f////7//////AAD/v/9//3////+//////wAA/7//f/9/////v/////8AAP+//3//f////7//////AAD/v///AID/////AAAAgP9//7///wCA/////wAAAID/f/+///8AgP////8AAACA/3//v///AID/////AAAAgP9//78AgP//AAD/vwCAAAD///+/AID//wAA/78AgAAA////vwCA//8AAP+/AIAAAP///78AgP//AAD/vwCAAAD///+/")
+}]
+
+[sub_resource type="BoxMesh" id="BoxMesh_k7vcg"]
+size = Vector3(0.65625, 3.0625, 0.65625)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_w3008"]
+size = Vector3(0.65625, 3.0625, 0.65625)
+
+[node name="BakedProp_pillar" type="StaticBody3D" unique_id=880212741]
+
+[node name="VoxelMesh_0" type="MeshInstance3D" parent="." unique_id=1917742007]
+material_override = SubResource("ShaderMaterial_7ew6t")
+visibility_range_end = 25.0
+visibility_range_end_margin = 6.0
+visibility_range_fade_mode = 1
+mesh = SubResource("ArrayMesh_e41cq")
+metadata/voxel_generated = true
+
+[node name="VoxelMeshLOD_0" type="MeshInstance3D" parent="." unique_id=449990916]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.53125, 0)
+material_override = SubResource("ShaderMaterial_7ew6t")
+visibility_range_begin = 25.0
+visibility_range_begin_margin = 6.0
+visibility_range_fade_mode = 1
+mesh = SubResource("BoxMesh_k7vcg")
+metadata/voxel_generated = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=591787721]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.53125, 0)
+shape = SubResource("BoxShape3D_w3008")
+metadata/voxel_generated = true

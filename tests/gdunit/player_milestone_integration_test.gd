@@ -3,8 +3,8 @@ extends GdUnitTestSuite
 ## 验证：player_state_slashing 从 AttrPanel 读属性、命中累积经验、
 ## player_state_hurt 厚皮减伤、player 侧垫步免伤、process_movement 轻捷移速加成
 
-const CE := preload("res://globals/combat_engine.gd")
-const ME := preload("res://globals/milestone_effects.gd")
+const CE := preload("res://globals/combat/combat_engine.gd")
+const ME := preload("res://globals/combat/milestone_effects.gd")
 
 var ap: Node
 
@@ -87,7 +87,7 @@ func test_attr_panel_provides_attrs_for_combat_bridge() -> void:
 	var attrs: Dictionary = ap.get_player_attrs()
 	assert_int(int(attrs["str"])).is_equal(15)
 	# CombatBridge.build_player_attack 应能使用这些属性
-	const CB := preload("res://globals/combat_bridge.gd")
+	const CB := preload("res://globals/combat/combat_bridge.gd")
 	var player := Node3D.new()
 	add_child(player)
 	var weapon := WeaponData.new()

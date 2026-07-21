@@ -1,7 +1,7 @@
 class_name EnemyStateStunned
 extends EnemyState
 
-const KNOCKBACK_FORCE := 2.0
+const KNOCKBACK_FORCE := 0.0
 const GROUND_FRICTION := 10.0
 
 var time_start := Time.get_ticks_msec()

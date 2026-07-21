@@ -1,4 +1,4 @@
-class_name Service
+﻿class_name Service
 ## 类型安全的单例访问器。
 ## 替代全项目泛滥的 Engine.get_main_loop().root.get_node_or_null("XxxManager") 模式。
 ## 用法： var sr := Service.skill_runtime()
@@ -22,6 +22,10 @@ static func game_events() -> Node:
 static func physics_setup() -> Node:
 	var r := _root()
 	return r.get_node_or_null("PhysicsSetup") if r != null else null
+
+static func network_manager() -> Node:
+	var r := _root()
+	return r.get_node_or_null("NetworkManager") if r != null else null
 
 static func fx_helper() -> Node:
 	var r := _root()
@@ -102,3 +106,12 @@ static func affix_system() -> Node:
 static func item_spawner() -> Node:
 	var r := _root()
 	return r.get_node_or_null("ItemSpawner") if r != null else null
+
+# ── other ─────────────────────────────────────────────
+static func lighting_controller() -> Node:
+	var r := _root()
+	return r.get_node_or_null("LightingController") if r != null else null
+
+static func settings() -> Node:
+	var r := _root()
+	return r.get_node_or_null("Settings") if r != null else null

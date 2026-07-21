@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3]
+
+[sub_resource type="StandardMaterial3D" id="Material_shoulder"]
+albedo_color = Color(0.09, 0.14, 0.08, 1)
+roughness = 1.0
+
+[sub_resource type="BoxMesh" id="Mesh_shoulder"]
+size = Vector3(4.1875, 0.125, 4.1875)
+material = SubResource("Material_shoulder")
+
+[node name="VoxelRoadShoulder" type="Node3D"]
+metadata/voxel_px_per_meter = 32
+
+[node name="Shoulder" type="MeshInstance3D" parent="."]
+mesh = SubResource("Mesh_shoulder")

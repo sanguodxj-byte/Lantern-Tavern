@@ -1,8 +1,8 @@
 extends GdUnitTestSuite
 ## 区域选择系统 (ZoneManager) + 对接测试。
-## 验证四区元数据、散落材料池、chest/dungeon 接入、main_menu 跳转。
+## 验证五区元数据、散落材料池、chest/dungeon 接入、main_menu 跳转。
 
-const ZM := preload("res://globals/zone_manager.gd")
+const ZM := preload("res://globals/dungeon/zone_manager.gd")
 var zm: Node
 
 func before_test() -> void:
@@ -14,12 +14,12 @@ func before_test() -> void:
 func test_zone_manager_autoload_exists() -> void:
 	assert_object(zm).is_not_null()
 
-func test_four_zones_defined() -> void:
-	assert_int(ZM.ZONE_META.size()).is_equal(4)
-	assert_int(zm.all_zones().size()).is_equal(4)
+func test_five_zones_defined() -> void:
+	assert_int(ZM.ZONE_META.size()).is_equal(6)
+	assert_int(zm.all_zones().size()).is_equal(6)
 
 func test_zone_meta_has_required_fields() -> void:
-	for zone_id in [0, 1, 2, 3]:
+	for zone_id in [0, 1, 2, 3, 4, 5]:
 		var meta: Dictionary = ZM.ZONE_META[zone_id]
 		assert_bool(meta.has("name") and meta.name.length() > 0).is_true()
 		assert_bool(meta.has("desc") and meta.desc.length() > 0).is_true()
@@ -27,7 +27,7 @@ func test_zone_meta_has_required_fields() -> void:
 		assert_bool(meta.has("color")).is_true()
 
 func test_zone_names_are_chinese() -> void:
-	for zone_id in [0, 1, 2, 3]:
+	for zone_id in [0, 1, 2, 3, 4, 5]:
 		var name: String = zm.get_zone_name(zone_id)
 		var has_cjk: bool = false
 		for ch in name:
@@ -37,16 +37,18 @@ func test_zone_names_are_chinese() -> void:
 		assert_bool(has_cjk).is_true()
 
 func test_difficulty_progression() -> void:
-	# 难度递增：森林1 < 洞窟2 < 墓园3 < 火山4
+	# 难度递增：地牢1 < 森林2 < 洞窟3 < 墓园4 < 火山5 < 遗迹6
 	assert_int(zm.get_zone_difficulty(0)).is_equal(1)
 	assert_int(zm.get_zone_difficulty(1)).is_equal(2)
 	assert_int(zm.get_zone_difficulty(2)).is_equal(3)
 	assert_int(zm.get_zone_difficulty(3)).is_equal(4)
+	assert_int(zm.get_zone_difficulty(4)).is_equal(5)
+	assert_int(zm.get_zone_difficulty(5)).is_equal(6)
 
 # ---------- 散落材料池 ----------
 
 func test_scatter_materials_all_valid() -> void:
-	for zone_id in [0, 1, 2, 3]:
+	for zone_id in [0, 1, 2, 3, 4, 5]:
 		var pool: Dictionary = zm.get_scatter_materials(zone_id)
 		assert_bool(not pool.is_empty()).is_true()
 		for mat_id in pool:
@@ -56,7 +58,7 @@ func test_scatter_materials_all_valid() -> void:
 
 func test_scatter_materials_no_old_fictional_ids() -> void:
 	var old_ids: Array = ["wild_glowcap", "frost_berry", "fire_bloom", "cave_lichen", "honeycomb", "sweet_grass", "bitter_root", "mountain_barley"]
-	for zone_id in [0, 1, 2, 3]:
+	for zone_id in [0, 1, 2, 3, 4, 5]:
 		var pool: Dictionary = zm.get_scatter_materials(zone_id)
 		for mat_id in pool:
 			assert_bool(not old_ids.has(mat_id)) \
@@ -65,12 +67,12 @@ func test_scatter_materials_no_old_fictional_ids() -> void:
 
 func test_scatter_materials_match_zone_theme() -> void:
 	# 火山区散落池应含 firegrape/lava_malt，不含 blackberry
-	var volcano_pool: Dictionary = zm.get_scatter_materials(3)
+	var volcano_pool: Dictionary = zm.get_scatter_materials(4)
 	assert_bool(volcano_pool.has("firegrape")).is_true()
 	assert_bool(volcano_pool.has("lava_malt")).is_true()
 	assert_bool(not volcano_pool.has("blackberry")).is_true()
 	# 森林区应含 blackberry，不含 firegrape
-	var forest_pool: Dictionary = zm.get_scatter_materials(0)
+	var forest_pool: Dictionary = zm.get_scatter_materials(1)
 	assert_bool(forest_pool.has("blackberry")).is_true()
 	assert_bool(not forest_pool.has("firegrape")).is_true()
 
@@ -80,20 +82,23 @@ func test_set_zone_clamps_value() -> void:
 	zm.set_zone(-1)
 	assert_int(zm.get_zone()).is_equal(0)
 	zm.set_zone(99)
-	assert_int(zm.get_zone()).is_equal(3)
+	assert_int(zm.get_zone()).is_equal(5)
 
 func test_set_zone_persists() -> void:
-	zm.set_zone(2)
-	assert_int(zm.get_zone()).is_equal(2)
+	zm.set_zone(3)
+	assert_int(zm.get_zone()).is_equal(3)
 	assert_str(zm.get_zone_name()).is_equal("荒芜墓园")
 
 # ---------- main_menu 接入 ----------
 
-func test_main_menu_routes_to_tavern() -> void:
+func test_main_menu_routes_to_world_root() -> void:
 	var script: Resource = load("res://scenes/ui/main_menu.gd")
 	var source: String = (script as GDScript).source_code
-	assert_bool(source.find('change_scene_to_file("res://scenes/tavern/tavern.tscn")') != -1) \
-		.override_failure_message("main_menu 未跳转酒馆场景").is_true()
+	assert_bool(source.find("start_new_game") != -1).is_true()
+	assert_bool(source.find("res://scenes/world/world.tscn") != -1) \
+		.override_failure_message("main_menu 兜底入口应进入 World 根场景").is_true()
+	assert_bool(source.find('change_scene_to_file("res://scenes/tavern/tavern.tscn")') == -1) \
+		.override_failure_message("main_menu 不应直接切酒馆场景").is_true()
 	assert_bool(source.find('change_scene_to_file("res://scenes/expedition/procedural_dungeon.tscn")') == -1) \
 		.override_failure_message("main_menu 仍直接跳地牢").is_true()
 
@@ -132,3 +137,14 @@ func test_zone_select_no_invalid_button_alignment_property() -> void:
 	var source: String = (script as GDScript).source_code
 	assert_bool(source.find("text_vertical_alignment") == -1) \
 		.override_failure_message("zone_select.gd 仍对 Button 设置不存在的 text_vertical_alignment 属性").is_true()
+
+func test_zone_select_adds_to_character_panel_group() -> void:
+	var zone_select = auto_free(load("res://scenes/ui/zone_select.tscn").instantiate())
+	var root = Engine.get_main_loop().root
+	root.add_child(zone_select)
+	
+	assert_bool(zone_select.is_in_group("character_panel"))\
+		.override_failure_message("zone_select 节点应该被加入 character_panel 组，以防点击时被 player.gd 异常捕获鼠标")\
+		.is_true()
+		
+	root.remove_child(zone_select)

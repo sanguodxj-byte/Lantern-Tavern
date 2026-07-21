@@ -286,12 +286,25 @@ static func match_recipe(ingredients: Dictionary) -> String:
 			return recipe_id
 	return ""
 
-## 获取材料中文名（带 fallback）
+## 获取材料显示名（游戏内与图鉴一致）。
+## 解析顺序：MATERIALS_DB → MaterialModelRegistry(name_zh) → 英文标识美化。
 static func get_material_name(mat_id: String) -> String:
+	if mat_id.is_empty():
+		return ""
 	var mat: Dictionary = MATERIALS_DB.get(mat_id, {})
-	return mat.get("name", mat_id)
+	if not mat.is_empty():
+		return TranslationServer.translate(String(mat.get("name", mat_id)))
+	# 怪物掉落等：仅有体素模型清单时仍要本地化（只读 entry，避免与 get_display_name 循环）
+	var registry: GDScript = load("res://data/material_model_registry.gd") as GDScript
+	if registry != null:
+		var entry: Dictionary = registry.call("get_entry", mat_id)
+		if not entry.is_empty():
+			var zh := String(entry.get("name_zh", ""))
+			if not zh.is_empty():
+				return TranslationServer.translate(zh)
+	return TranslationServer.translate(mat_id.replace("_", " ").capitalize())
 
 ## 获取酒谱中文名
 static func get_recipe_name(recipe_id: String) -> String:
 	var recipe: Dictionary = RECIPES_DB.get(recipe_id, {})
-	return recipe.get("name", recipe_id)
+	return TranslationServer.translate(recipe.get("name", recipe_id))

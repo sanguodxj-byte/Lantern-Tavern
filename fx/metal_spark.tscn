@@ -1,6 +1,7 @@
-[gd_scene format=3 uid="uid://fgs7loj8ux74"]
+[gd_scene format=3]
 
-[ext_resource type="Script" uid="uid://cw3q6g8ngc68o" path="res://fx/metal_spark.gd" id="1_a2lp5"]
+[ext_resource type="Shader" path="res://shaders/metal_spark_particle.gdshader" id="1_shader"]
+[ext_resource type="Script" path="res://fx/metal_spark.gd" id="1_script"]
 
 [sub_resource type="Curve" id="Curve_npbdw"]
 _data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
@@ -16,7 +17,7 @@ point_count = 2
 [sub_resource type="CurveTexture" id="CurveTexture_g05i6"]
 curve = SubResource("Curve_y4u31")
 
-[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_mb2a0"]
+[sub_resource type="ParticleProcessMaterial" id="PPM_mb2a0"]
 lifetime_randomness = 0.5
 emission_shape = 1
 emission_sphere_radius = 0.4
@@ -28,30 +29,19 @@ gravity = Vector3(0, -4, 0)
 scale_curve = SubResource("CurveTexture_g05i6")
 alpha_curve = SubResource("CurveTexture_a2lp5")
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_m3jof"]
-transparency = 1
-blend_mode = 1
-vertex_color_use_as_albedo = true
-albedo_color = Color(0, 0.42915824, 0.944158, 1)
-emission_enabled = true
-emission = Color(0.046002887, 0.28383717, 1, 1)
-emission_energy_multiplier = 2.0
-billboard_mode = 3
-billboard_keep_scale = true
-particles_anim_h_frames = 1
-particles_anim_v_frames = 1
-particles_anim_loop = false
+[sub_resource type="ShaderMaterial" id="SM_m3jof"]
+shader = ExtResource("1_shader")
 
 [sub_resource type="QuadMesh" id="QuadMesh_ioi8m"]
-material = SubResource("StandardMaterial3D_m3jof")
-size = Vector2(0.05, 0.05)
+material = SubResource("SM_m3jof")
+size = Vector2(0.06, 0.06)
 
-[node name="MetalSpark" type="GPUParticles3D" unique_id=138687474]
+[node name="MetalSpark" type="GPUParticles3D"]
 emitting = false
 amount = 40
 one_shot = true
 explosiveness = 1.0
 randomness = 0.9
-process_material = SubResource("ParticleProcessMaterial_mb2a0")
+process_material = SubResource("PPM_mb2a0")
 draw_pass_1 = SubResource("QuadMesh_ioi8m")
-script = ExtResource("1_a2lp5")
+script = ExtResource("1_script")

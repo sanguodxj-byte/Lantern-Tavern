@@ -20,3 +20,36 @@ export_credentials.cfg
 
 # Local test runner binary
 godot_bin
+
+# 联机双进程集成测试临时目录
+.tmp_ittest/
+.tmp_ittest_avatar/
+.tmp_apdata_srv/
+.tmp_apdata_cli/
+
+# ===== 临时 / 无关文件：仅本地保留，不入库 =====
+# 根目录随手脚本与日志
+_*.py
+_*.bat
+*_tmp.py
+probe_*.txt
+core_test_log.txt
+test_log.txt
+test_out3.log
+*.log
+*.tmp
+*.TMP
+project.godot~*
+gdscript_codemap.json
+
+# Python 缓存
+__pycache__/
+
+# 临时 / 无关文件夹
+tmp/
+tests/tmp/
+
+# 生成式报告日志（保留 reports/report_*/ 下的 HTML 测试报告）
+reports/*.log
+reports/*.txt
+reports/*.xml

@@ -185,15 +185,15 @@ func seal_for_aging(keg_index: int) -> bool:
 ## 获取酒桶状态描述（供 UI 指示灯）
 func get_keg_status_text(keg_index: int) -> String:
 	if keg_index < 0 or keg_index >= kegs.size():
-		return "无效桶位"
+		return tr("无效桶位")
 	var keg: BrewingKeg = kegs[keg_index]
 	match keg.state:
-		KegState.EMPTY: return "空桶"
-		KegState.FERMENTING: return "发酵中"
-		KegState.READY: return "已熟成"
-		KegState.AGING: return "陈酿中 (%d/%d)" % [keg.aging_days, AGING_MAX_DAYS]
-		KegState.AGED: return "陈酿封顶"
-	return "未知"
+		KegState.EMPTY: return tr("空桶")
+		KegState.FERMENTING: return tr("发酵中")
+		KegState.READY: return tr("已熟成")
+		KegState.AGING: return tr("陈酿中 (%d/%d)") % [keg.aging_days, AGING_MAX_DAYS]
+		KegState.AGED: return tr("陈酿封顶")
+	return tr("未知")
 
 ## 获取所有可开缸的酒桶索引（READY/AGING/AGED）
 func get_openable_kegs() -> Array:
@@ -211,3 +211,56 @@ func get_fermenting_kegs() -> Array:
 		if kegs[i].state == KegState.FERMENTING:
 			result.append(i)
 	return result
+
+# ============================================================================
+# 6. 存档/读档
+# ============================================================================
+
+## 序列化为字典（供 SaveManager 存档）
+func serialize() -> Dictionary:
+	var kegs_data: Array = []
+	for keg in kegs:
+		kegs_data.append({
+			"state": keg.state,
+			"ingredients": keg.ingredients.duplicate(),
+			"base_flavors": keg.base_flavors.duplicate(),
+			"resonance_flavors": keg.resonance_flavors.duplicate(),
+			"final_flavors": keg.final_flavors.duplicate(),
+			"brew_day": keg.brew_day,
+			"ferment_complete_day": keg.ferment_complete_day,
+			"aging_days": keg.aging_days,
+			"recipe_id": keg.recipe_id,
+			"recipe_name": keg.recipe_name,
+			"sealed": keg.sealed,
+		})
+	return {
+		"kegs": kegs_data,
+		"max_kegs": max_kegs,
+	}
+
+## 从字典恢复
+func deserialize(data: Dictionary) -> void:
+	if data.has("max_kegs"):
+		max_kegs = int(data["max_kegs"])
+	kegs.clear()
+	if data.has("kegs") and data["kegs"] is Array:
+		for keg_data in data["kegs"]:
+			var keg := BrewingKeg.new()
+			keg.state = int(keg_data.get("state", KegState.EMPTY))
+			keg.ingredients = (keg_data.get("ingredients", {}) as Dictionary).duplicate()
+			keg.base_flavors = (keg_data.get("base_flavors", {}) as Dictionary).duplicate()
+			keg.resonance_flavors = (keg_data.get("resonance_flavors", {}) as Dictionary).duplicate()
+			keg.final_flavors = (keg_data.get("final_flavors", {}) as Dictionary).duplicate()
+			keg.brew_day = int(keg_data.get("brew_day", -1))
+			keg.ferment_complete_day = int(keg_data.get("ferment_complete_day", -1))
+			keg.aging_days = int(keg_data.get("aging_days", 0))
+			keg.recipe_id = String(keg_data.get("recipe_id", ""))
+			keg.recipe_name = String(keg_data.get("recipe_name", ""))
+			keg.sealed = bool(keg_data.get("sealed", false))
+			kegs.append(keg)
+
+## 重置为初始状态
+func reset() -> void:
+	kegs.clear()
+	max_kegs = 1
+	setup_kegs(max_kegs)

@@ -19,6 +19,19 @@ func _initialize() -> void:
 	# Build the debug arguments. GdUnit4 expects "GdUnitCmdTool.gd" as the script identifier.
 	var runner_args: Array[String] = ["GdUnitCmdTool.gd"]
 	var user_args := OS.get_cmdline_user_args()
+	# Check if user_args contains a -a flag with a test path
+	var has_test_arg := false
+	for arg in user_args:
+		if arg == "-a":
+			has_test_arg = true
+	# Also check OS.get_cmdline_args() for -a (Windows CMD may not pass -- correctly)
+	if not has_test_arg:
+		var cmd_args := OS.get_cmdline_args()
+		for i in range(cmd_args.size()):
+			if cmd_args[i] == "-a" and i + 1 < cmd_args.size():
+				user_args = ["--ignoreHeadlessMode", "-a", cmd_args[i + 1]]
+				has_test_arg = true
+				break
 	if not user_args.is_empty():
 		for arg in user_args:
 			runner_args.append(arg)

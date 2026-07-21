@@ -1,9 +1,11 @@
 extends GdUnitTestSuite
 
-# 阶段 E 步3：DungeonRuntimeConfig 呑约测试
+# 阶段 E：DungeonRuntimeConfig 契约测试
 
 func before() -> void:
 	load("res://scenes/expedition/dungeon_runtime_config.gd")
+	load("res://scenes/expedition/dungeon_scene_builder.gd")
+	load("res://scenes/expedition/procedural_dungeon.gd")
 
 func test_default_config_has_materials_and_decor() -> void:
 	var cfg := DungeonRuntimeConfig.default()
@@ -24,9 +26,12 @@ func test_fields_are_mutable() -> void:
 	cfg.materials_config["custom_herb"] = 99
 	assert_int(int(cfg.materials_config["custom_herb"])).is_equal(99)
 
-func test_procedural_top_consts_match_default_config() -> void:
-	# procedural 顶仍持旧 const（迁移期暂保，下回合删改读 cfg.*）
-	var src := (load("res://scenes/expedition/procedural_dungeon.gd") as GDScript).source_code
-	assert_bool(src.contains('"blackberry": 15')).is_true()
-	assert_bool(src.contains('"res://scenes/props/decor/bones.tscn": 20')).is_true()
-	assert_bool(src.contains('"res://scenes/props/structures/pillar.tscn": true')).is_true()
+func test_builder_and_procedural_use_runtime_config_source() -> void:
+	# decor/materials 配置已迁到 DungeonRuntimeConfig；builder 使用 default()，procedural 持 _runtime_cfg
+	var cfg := DungeonRuntimeConfig.default()
+	var builder_src := (load("res://scenes/expedition/dungeon_scene_builder.gd") as GDScript).source_code
+	var pd_src := (load("res://scenes/expedition/procedural_dungeon.gd") as GDScript).source_code
+	assert_bool(builder_src.contains("DungeonRuntimeConfig")).is_true()
+	assert_bool(pd_src.contains("DungeonRuntimeConfig") and pd_src.contains("_runtime_cfg")).is_true()
+	assert_bool(cfg.materials_config.has("blackberry")).is_true()
+	assert_bool(cfg.batched_decor_scenes.has("res://scenes/props/structures/pillar.tscn")).is_true()

@@ -3,7 +3,7 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://d255h4grhil0r"
+uid="uid://buro1303qudmi"
 path="res://.godot/imported/materials_luminous_fern.glb-f0c982757ab61e061a78838d9ecf068c.scn"
 
 [deps]
@@ -42,4 +42,4 @@ materials/extract_path=""
 _subresources={}
 gltf/naming_version=2
 gltf/embedded_image_handling=1
-gltf/texture_map_mode=1
+gltf/texture_map_mode=0

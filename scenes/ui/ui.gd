@@ -14,9 +14,15 @@ const INTERACT_HINT_SCRIPT := preload("res://scenes/ui/interact_hint.gd")
 var world_space: String = "dungeon"
 var item_detail_popup
 var death_tween: Tween = null
+var hurt_flash_tween: Tween = null
 var _pickup_hint: PickupHint
 var _interact_hint: InteractHint
 var _current_hint_type: String = ""
+
+## 受击闪红：边缘 vignette 峰值透明度 / 时长
+const HURT_FLASH_PEAK_A := 0.92
+const HURT_FLASH_IN_SEC := 0.05
+const HURT_FLASH_OUT_SEC := 0.22
 
 func _ready() -> void:
 	item_detail_popup = DETAIL_POPUP_SCRIPT.new()
@@ -30,12 +36,25 @@ func _ready() -> void:
 	GameEvents.interaction_hint_changed.connect(on_interaction_hint_changed)
 	_setup_interaction_hints()
 	
-func on_player_hurt(player: Player) -> void:
-	if world_space != "dungeon":
+func on_player_hurt(_player: Player = null) -> void:
+	# intro 过场不闪；酒馆/地牢战斗受击均闪红
+	if world_space == "intro":
 		return
-	var tween := create_tween()
-	tween.tween_property(hurt_vignette, "modulate:a", 1.0, 0.1)
-	tween.tween_property(hurt_vignette, "modulate:a", 0.0, 0.1)
+	play_hurt_flash()
+
+
+## 受击全屏边缘闪红（可被连续受击打断并重播）
+func play_hurt_flash() -> void:
+	if not is_instance_valid(hurt_vignette):
+		return
+	if hurt_flash_tween != null and hurt_flash_tween.is_valid():
+		hurt_flash_tween.kill()
+	hurt_vignette.modulate.a = 0.0
+	hurt_flash_tween = create_tween()
+	hurt_flash_tween.tween_property(hurt_vignette, "modulate:a", HURT_FLASH_PEAK_A, HURT_FLASH_IN_SEC)\
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	hurt_flash_tween.tween_property(hurt_vignette, "modulate:a", 0.0, HURT_FLASH_OUT_SEC)\
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 
 func on_player_dead() -> void:
 	if is_instance_valid(death_label):
@@ -48,6 +67,11 @@ func on_player_dead() -> void:
 		.set_ease(Tween.EASE_OUT)
 
 func on_level_restart() -> void:
+	if hurt_flash_tween != null and hurt_flash_tween.is_valid():
+		hurt_flash_tween.kill()
+		hurt_flash_tween = null
+	if is_instance_valid(hurt_vignette):
+		hurt_vignette.modulate.a = 0.0
 	death_screen.modulate = Color.TRANSPARENT
 
 ## 创建交互悬浮窗实例（拾取 + 交互共用基类 InteractionHintBase）
@@ -78,7 +102,7 @@ func _show_hint_by_type(hint_type: String, text: String, screen_position: Vector
 		"pickup":
 			# 可拾取物：详情悬浮窗已占据物体右侧的原 hint 位，
 			# 拾取提示关闭自动定位，由下方 _position_pickup_hint_below_popup 放到详情正下方。
-			var popup_visible := item_detail_popup != null and is_instance_valid(item_detail_popup) and item_detail_popup.visible
+			var popup_visible: bool = item_detail_popup != null and is_instance_valid(item_detail_popup) and item_detail_popup.visible
 			_pickup_hint.show_for_item(text, screen_position, not popup_visible)
 			if popup_visible:
 				_position_pickup_hint_below_popup()
@@ -116,8 +140,8 @@ func _position_pickup_hint_below_popup() -> void:
 		return
 	# 同步刷新拾取提示尺寸，确保读取到的 height 反映当前文本
 	_pickup_hint.reset_size()
-	var below := item_detail_popup.global_position + Vector2(0.0, item_detail_popup.size.y + 6.0)
-	var vp := get_viewport_rect().size
+	var below: Vector2 = item_detail_popup.global_position + Vector2(0.0, item_detail_popup.size.y + 6.0)
+	var vp := get_viewport().get_visible_rect().size
 	below.x = clampf(below.x, 12.0, maxf(12.0, vp.x - _pickup_hint.size.x - 12.0))
 	below.y = clampf(below.y, 12.0, maxf(12.0, vp.y - _pickup_hint.size.y - 12.0))
 	_pickup_hint.global_position = below
@@ -133,7 +157,7 @@ func on_tutorial_hint_changed(text: String) -> void:
 func set_world_space(space: String) -> void:
 	world_space = space
 	# 交互 / 字幕 / 教程 / 装备检视等通用 UI 在酒馆与地牢都显示，
-	# 仅开场 intro 隐藏（避免遮挡过场）。战斗向 HUD（血量/护盾/武器/钥匙/小地图）
+	# 仅开场 intro 隐藏（避免遮挡过场）。战斗向 HUD（血量/护盾/武器/小地图）
 	# 已统一收口到 CombatHUD 并在所有空间显示，UI 层不再重复绘制。
 	visible = world_space != "intro"
 	if visible:
@@ -143,6 +167,9 @@ func set_world_space(space: String) -> void:
 	if death_tween != null and death_tween.is_valid():
 		death_tween.kill()
 		death_tween = null
+	if hurt_flash_tween != null and hurt_flash_tween.is_valid():
+		hurt_flash_tween.kill()
+		hurt_flash_tween = null
 	if is_instance_valid(death_screen):
 		death_screen.modulate = Color.TRANSPARENT
 	if is_instance_valid(hurt_vignette):

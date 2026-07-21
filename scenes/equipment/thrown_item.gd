@@ -3,10 +3,14 @@ extends RigidBody3D
 
 const DESTRUCTIBLE_ITEM_PREFAB := preload("res://scenes/props/destructible_item.tscn")
 const PICKABLE_ITEM_PREFAB := preload("res://scenes/equipment/pickable_item.tscn")
+const VOXEL_LIGHTING := preload("res://globals/visual/voxel_lighting_adapter.gd")
 
 @export var furniture_data: FurnitureData
 @export var shield_data: ShieldData
 @export var weapon_data: WeaponData
+
+## 投掷源（玩家/敌人），用于排除自碰撞，防止出生时立即触发 body_entered
+var source: CollisionObject3D = null
 
 @onready var audio_stream_player_3d: AudioStreamPlayer3D = %AudioStreamPlayer3D
 @onready var collision_shape: CollisionShape3D = %CollisionShape
@@ -18,6 +22,9 @@ var original_basis: Basis
 
 func _ready() -> void:
 	PhysicsSetup.setup_rigidbody(self)
+	# 排除与投掷源的物理碰撞，防止出生在源体内立即触发碎裂/卡死
+	if source != null and is_instance_valid(source):
+		add_collision_exception_with(source)
 	var thrown_object: Node3D = null
 	original_basis = global_transform.basis if is_inside_tree() else transform.basis
 	var throw_movement_speed := 0.0
@@ -39,6 +46,11 @@ func _ready() -> void:
 	if thrown_object != null:
 		add_child(thrown_object)
 		_disable_visual_physics(thrown_object)
+		if weapon_data != null or shield_data != null:
+			var material_tier := weapon_data.material_tier if weapon_data != null else ""
+			VOXEL_LIGHTING.apply_weapon_tree(thrown_object, material_tier)
+		else:
+			VOXEL_LIGHTING.apply_to_tree(thrown_object, true)
 		if thrown_object is VoxelProp:
 			_fit_collision_to_visual(thrown_object)
 		else:
@@ -141,6 +153,9 @@ func _disable_visual_physics(node: Node) -> void:
 		_disable_visual_physics(child)
 
 func on_body_entered(body: Node) -> void:
+	# 忽略投掷源自身碰撞（双保险：add_collision_exception_with 已排除物理层碰撞）
+	if body == source:
+		return
 	if has_resolved_collision:
 		return
 	has_resolved_collision = true

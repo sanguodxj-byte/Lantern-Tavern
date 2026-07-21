@@ -17,32 +17,28 @@ func test_chest_open_chest_method() -> void:
 	var script: Resource = load("res://scenes/props/chest/chest.gd")
 	var source: String = (script as GDScript).source_code
 	assert_bool(source.find("func open_chest") != -1).is_true()
-	assert_bool(source.find("func _spawn_loot") != -1).is_true()
+	assert_bool(source.find("func _spawn_loot_physical") != -1).is_true()
+	assert_bool(source.find("func _generate_loot_data") != -1).is_true()
+	assert_bool(source.find("func close_loot_panel") != -1).is_true()
 
 func test_procedural_dungeon_injects_zone_to_chest() -> void:
-	var script: Resource = load("res://scenes/expedition/procedural_dungeon.gd")
-	var source: String = (script as GDScript).source_code
-	assert_bool(source.find("instance.zone = dungeon_zone") != -1) \
-		.override_failure_message("procedural_dungeon 未对宝箱注入 zone").is_true()
-
-# ---------- 撤离点 ----------
+	# chest zone 注入已迁入 DungeonSceneBuilder（layout.zone）
+	var source: String = (load("res://scenes/expedition/dungeon_scene_builder.gd") as GDScript).source_code
+	assert_bool(source.find("layout.zone") != -1) \
+		.override_failure_message("DungeonSceneBuilder 未对宝箱注入 zone").is_true()
 
 func test_procedural_dungeon_has_extraction_portal() -> void:
-	var script: Resource = load("res://scenes/expedition/procedural_dungeon.gd")
-	var source: String = (script as GDScript).source_code
-	assert_bool(source.find("_spawn_extraction_portal") != -1).is_true()
-	assert_bool(source.find("ExtractionPortal") != -1).is_true()
+	var builder_src: String = (load("res://scenes/expedition/dungeon_scene_builder.gd") as GDScript).source_code
+	assert_bool(builder_src.find("_build_extraction_portal") != -1 or builder_src.find("ExtractionPortal") != -1).is_true()
 
 func test_extraction_triggers_tavern_return() -> void:
-	var script: Resource = load("res://scenes/expedition/procedural_dungeon.gd")
-	var source: String = (script as GDScript).source_code
-	assert_bool(source.find("_on_extraction_entered") != -1).is_true()
-	assert_bool(source.find("extract_to_tavern") != -1).is_true()
+	var runtime_src: String = (load("res://scenes/expedition/dungeon_runtime.gd") as GDScript).source_code
+	assert_bool(runtime_src.find("on_extraction_requested") != -1).is_true()
+	assert_bool(runtime_src.find("extract_to_tavern") != -1).is_true()
 
 func test_extraction_settles_loot() -> void:
-	var script: Resource = load("res://scenes/expedition/procedural_dungeon.gd")
-	var source: String = (script as GDScript).source_code
-	assert_bool(source.find("_settle_extraction_loot") != -1) \
+	var runtime_src: String = (load("res://scenes/expedition/dungeon_runtime.gd") as GDScript).source_code
+	assert_bool(runtime_src.find("_settle_extraction_loot") != -1) \
 		.override_failure_message("撤离点未结算携带物品").is_true()
 
 # ---------- 可拾取物体 ----------
@@ -84,11 +80,15 @@ func test_dungeon_spawner_registered() -> void:
 	assert_object(Engine.get_main_loop().root.get_node_or_null("DungeonSpawner")).is_not_null()
 
 func test_procedural_dungeon_calls_spawner() -> void:
-	var script: Resource = load("res://scenes/expedition/procedural_dungeon.gd")
-	var source: String = (script as GDScript).source_code
-	assert_bool(source.find("_spawn_dungeon_enemies") != -1).is_true()
-	assert_bool(source.find("DungeonSpawner") != -1).is_true()
+	# 敌人生成已迁入 DungeonRuntime；仍应走 DungeonSpawner layout 接口
+	var runtime_src: String = (load("res://scenes/expedition/dungeon_runtime.gd") as GDScript).source_code
+	assert_bool(runtime_src.find("spawn_enemies_from_layout") != -1).is_true()
+	assert_bool(runtime_src.find("Service.dungeon_spawner()") != -1 or runtime_src.find("DungeonSpawner") != -1).is_true()
+	var pd_src: String = (load("res://scenes/expedition/procedural_dungeon.gd") as GDScript).source_code
+	assert_bool(pd_src.find("_runtime.start()") != -1 or pd_src.find("DungeonRuntime") != -1).is_true()
 
-func test_enemy_prefabs_exist() -> void:
-	assert_bool(ResourceLoader.exists("res://scenes/characters/enemies/goblin.tscn")).is_true()
-	assert_bool(ResourceLoader.exists("res://scenes/characters/enemies/kobold.tscn")).is_true()
+func test_retained_enemy_prefabs_exist() -> void:
+	for enemy_id in ["goblin", "dragon", "rock_golem", "orc_raider", "skeleton"]:
+		var path := "res://scenes/characters/enemies/%s.tscn" % enemy_id
+		assert_bool(ResourceLoader.exists(path)) \
+			.override_failure_message("保留的敌人场景不存在: %s" % path).is_true()

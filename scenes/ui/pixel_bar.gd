@@ -5,8 +5,8 @@ extends Control
 ## 使用纯色方块绘制，关闭抗锯齿，配合 ark-pixel 字体实现像素风。
 
 @export var bar_color: Color = Color.RED
-@export var bg_color: Color = Color(0.08, 0.06, 0.12, 0.85)
-@export var frame_color: Color = Color(0.3, 0.22, 0.15, 0.9)
+@export var bg_color: Color = Color(0.035, 0.037, 0.043, 0.94)
+@export var frame_color: Color = Color(0.72, 0.43, 0.20, 0.96)
 @export var label_text: String = ""
 @export var show_numeric: bool = true
 @export var pixel_size: int = 4  # 每个"像素方块"的屏幕像素边长
@@ -15,14 +15,14 @@ var _current: int = 0
 var _max: int = 100
 var _display_ratio: float = 1.0  # 平滑插值用
 
-@onready var _label: Label = $Label
+@onready var _label: Label = get_node_or_null("Label") as Label
 
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(180, 28)
+	custom_minimum_size = Vector2(320, 36)
 	if _label:
 		_label.add_theme_font_override("font", _pixel_font())
-		_label.add_theme_font_size_override("font_size", 12)
+		_label.add_theme_font_size_override("font_size", 18)
 
 
 func _pixel_font() -> Font:
@@ -54,11 +54,22 @@ func _draw() -> void:
 			Rect2(fill_rect.position, Vector2(fill_rect.size.x, pixel_size)),
 			hl, true
 		)
+		# 稀疏的阶梯纹理让大色块保留体素/像素质感，同时不干扰读数。
+		var texture_color := bar_color.darkened(0.16)
+		texture_color.a = 0.55
+		for x in range(pixel_size * 4, fill_w, pixel_size * 6):
+			var block_y := pixel_size * (2 if int(x / pixel_size) % 2 == 0 else 4)
+			draw_rect(Rect2(bg_rect.position + Vector2(x, block_y), Vector2(pixel_size * 2, pixel_size)), texture_color, true)
 
 
 func set_values(current: int, maximum: int) -> void:
-	_current = maxi(current, 0)
-	_max = maxi(maximum, 1)
+	current = maxi(current, 0)
+	maximum = maxi(maximum, 1)
+	# 值未变时跳过字符串格式化与重绘，避免每帧无意义开销
+	if current == _current and maximum == _max:
+		return
+	_current = current
+	_max = maximum
 	var target := float(_current) / float(_max)
 	_display_ratio = target
 	if show_numeric and _label:

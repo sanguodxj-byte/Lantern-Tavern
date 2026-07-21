@@ -4,16 +4,14 @@
         "name": "哥布林",
         "voxel_model": "res://assets/meshes/characters/voxel_goblin_32px.glb",
         "liked_flavors": [
-            "sweet",
+            "earthy",
             "umami"
         ],
         "disliked_flavors": [
-            "bitter",
-            "salty"
+            "sweet"
         ],
         "drops": [
-            "goblin_ear",
-            "goblin_tooth"
+            "goblin_ear"
         ]
     },
     {
@@ -21,16 +19,14 @@
         "name": "巨鼠",
         "voxel_model": "res://assets/meshes/characters/voxel_rat_12px.glb",
         "liked_flavors": [
-            "gaminess",
-            "earthy"
+            "earthy",
+            "umami"
         ],
         "disliked_flavors": [
-            "sour",
-            "spicy"
+            "sweet"
         ],
         "drops": [
-            "giant_rat_tail",
-            "rat_whisker"
+            "giant_rat_tail"
         ]
     },
     {
@@ -39,32 +35,45 @@
         "voxel_model": "res://assets/meshes/characters/voxel_skeleton_48px.glb",
         "liked_flavors": [
             "earthy",
-            "dry"
+            "umami"
         ],
         "disliked_flavors": [
-            "umami",
             "sweet"
         ],
         "drops": [
-            "skeleton_dust",
-            "fossil_bone"
+            "skeleton_dust"
         ]
     },
     {
         "id": "slime",
         "name": "史莱姆",
-        "voxel_model": "res://assets/meshes/characters/voxel_slime_18px.glb",
+        "voxel_model": "res://assets/meshes/characters/voxel_slime_24px.glb",
         "liked_flavors": [
-            "sour",
-            "sweet"
+            "earthy",
+            "umami"
         ],
         "disliked_flavors": [
-            "salty",
-            "earthy"
+            "sweet"
         ],
         "drops": [
-            "slime_core",
             "slime_jelly"
+        ]
+    },
+    {
+        "id": "spider",
+        "name": "巨型蜘蛛",
+        "voxel_model": "res://assets/meshes/characters/voxel_spider_30px.glb",
+        "liked_flavors": [
+            "gaminess",
+            "salty"
+        ],
+        "disliked_flavors": [
+            "spicy",
+            "sweet"
+        ],
+        "drops": [
+            "spider_poison_sac",
+            "spider_web"
         ]
     },
     {
@@ -72,16 +81,14 @@
         "name": "巨魔",
         "voxel_model": "res://assets/meshes/characters/voxel_troll_64x.glb",
         "liked_flavors": [
-            "salty",
-            "metallic"
+            "earthy",
+            "umami"
         ],
         "disliked_flavors": [
-            "sweet",
-            "earthy"
+            "sweet"
         ],
         "drops": [
-            "troll_blood",
-            "troll_skin"
+            "troll_blood"
         ]
     },
     {
@@ -89,15 +96,13 @@
         "name": "死灵领主",
         "voxel_model": "res://assets/meshes/characters/voxel_necrolord_80px.glb",
         "liked_flavors": [
-            "pungent",
-            "smoky"
+            "earthy",
+            "umami"
         ],
         "disliked_flavors": [
-            "fresh",
-            "floral"
+            "sweet"
         ],
         "drops": [
-            "necrolord_scepter",
             "soul_gem"
         ]
     },
@@ -106,16 +111,494 @@
         "name": "巨龙",
         "voxel_model": "res://assets/meshes/characters/voxel_dragon_256px.glb",
         "liked_flavors": [
-            "spicy",
-            "smoky"
+            "earthy",
+            "umami"
         ],
         "disliked_flavors": [
-            "sour",
-            "fresh"
+            "sweet"
         ],
         "drops": [
-            "dragon_scale",
-            "dragon_tooth"
+            "dragon_scale"
+        ]
+    },
+    {
+        "id": "minotaur",
+        "name": "牛头怪",
+        "voxel_model": "res://assets/meshes/characters/voxel_minotaur_72px.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "troll_blood"
+        ]
+    },
+    {
+        "id": "rock_golem",
+        "name": "岩石魔像",
+        "voxel_model": "res://assets/meshes/characters/voxel_rock_golem_80px.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "soul_gem"
+        ]
+    },
+    {
+        "id": "orc_raider",
+        "name": "兽人掠夺者",
+        "voxel_model": "res://assets/meshes/characters/voxel_orc_raider_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "goblin_ear"
+        ]
+    },
+    {
+        "id": "hobgoblin_legionary",
+        "name": "大地精军团士兵",
+        "voxel_model": "res://assets/meshes/characters/voxel_hobgoblin_legionary_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "goblin_ear"
+        ]
+    },
+    {
+        "id": "bugbear_brute",
+        "name": "熊地精暴徒",
+        "voxel_model": "res://assets/meshes/characters/voxel_bugbear_brute_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "troll_blood"
+        ]
+    },
+    {
+        "id": "gnoll_hyena",
+        "name": "豺狼人鬣狗战士",
+        "voxel_model": "res://assets/meshes/characters/voxel_gnoll_hyena_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "giant_rat_tail"
+        ]
+    },
+    {
+        "id": "lizardfolk_scout",
+        "name": "蜥蜴人斥候",
+        "voxel_model": "res://assets/meshes/characters/voxel_lizardfolk_scout_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "slime_jelly"
+        ]
+    },
+    {
+        "id": "troglodyte",
+        "name": "穴居人",
+        "voxel_model": "res://assets/meshes/characters/voxel_troglodyte_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "slime_jelly"
+        ]
+    },
+    {
+        "id": "duergar_miner",
+        "name": "灰矮人矿工",
+        "voxel_model": "res://assets/meshes/characters/voxel_duergar_miner_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "skeleton_dust"
+        ]
+    },
+    {
+        "id": "dark_elf_hexer",
+        "name": "暗精灵咒术师",
+        "voxel_model": "res://assets/meshes/characters/voxel_dark_elf_hexer_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "soul_gem"
+        ]
+    },
+    {
+        "id": "drow_blade",
+        "name": "卓尔剑士",
+        "voxel_model": "res://assets/meshes/characters/voxel_drow_blade_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "skeleton_dust"
+        ]
+    },
+    {
+        "id": "satyr_marauder",
+        "name": "半羊人掠夺者",
+        "voxel_model": "res://assets/meshes/characters/voxel_satyr_marauder_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "goblin_ear"
+        ]
+    },
+    {
+        "id": "harpy_matriarch",
+        "name": "鹰身女妖女族长",
+        "voxel_model": "res://assets/meshes/characters/voxel_harpy_matriarch_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "dragon_scale"
+        ]
+    },
+    {
+        "id": "werewolf_stalker",
+        "name": "狼人潜行者",
+        "voxel_model": "res://assets/meshes/characters/voxel_werewolf_stalker_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "giant_rat_tail"
+        ]
+    },
+    {
+        "id": "vampire_thrall",
+        "name": "吸血鬼仆从",
+        "voxel_model": "res://assets/meshes/characters/voxel_vampire_thrall_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "soul_gem"
+        ]
+    },
+    {
+        "id": "wight_guard",
+        "name": "尸妖守卫",
+        "voxel_model": "res://assets/meshes/characters/voxel_wight_guard_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "skeleton_dust"
+        ]
+    },
+    {
+        "id": "ghoul_feaster",
+        "name": "食尸鬼饕客",
+        "voxel_model": "res://assets/meshes/characters/voxel_ghoul_feaster_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "skeleton_dust"
+        ]
+    },
+    {
+        "id": "mummy_cursebearer",
+        "name": "木乃伊咒缚者",
+        "voxel_model": "res://assets/meshes/characters/voxel_mummy_cursebearer_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "soul_gem"
+        ]
+    },
+    {
+        "id": "plague_doctor",
+        "name": "瘟疫医生",
+        "voxel_model": "res://assets/meshes/characters/voxel_plague_doctor_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "slime_jelly"
+        ]
+    },
+    {
+        "id": "cultist_pyromancer",
+        "name": "邪教火法师",
+        "voxel_model": "res://assets/meshes/characters/voxel_cultist_pyromancer_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "soul_gem"
+        ]
+    },
+    {
+        "id": "cultist_zealot",
+        "name": "邪教狂信徒",
+        "voxel_model": "res://assets/meshes/characters/voxel_cultist_zealot_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "goblin_ear"
+        ]
+    },
+    {
+        "id": "bandit_cutthroat",
+        "name": "强盗割喉者",
+        "voxel_model": "res://assets/meshes/characters/voxel_bandit_cutthroat_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "goblin_ear"
+        ]
+    },
+    {
+        "id": "bandit_crossbowman",
+        "name": "强盗弩手",
+        "voxel_model": "res://assets/meshes/characters/voxel_bandit_crossbowman_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "skeleton_dust"
+        ]
+    },
+    {
+        "id": "fungal_shambler",
+        "name": "真菌行尸",
+        "voxel_model": "res://assets/meshes/characters/voxel_fungal_shambler_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "slime_jelly"
+        ]
+    },
+    {
+        "id": "myconid_sporekeeper",
+        "name": "蘑菇人孢子守卫",
+        "voxel_model": "res://assets/meshes/characters/voxel_myconid_sporekeeper_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "slime_jelly"
+        ]
+    },
+    {
+        "id": "elemental_ash",
+        "name": "灰烬元素",
+        "voxel_model": "res://assets/meshes/characters/voxel_elemental_ash_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "dragon_scale"
+        ]
+    },
+    {
+        "id": "elemental_frost",
+        "name": "寒霜元素",
+        "voxel_model": "res://assets/meshes/characters/voxel_elemental_frost_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "soul_gem"
+        ]
+    },
+    {
+        "id": "elemental_storm",
+        "name": "风暴元素",
+        "voxel_model": "res://assets/meshes/characters/voxel_elemental_storm_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "soul_gem"
+        ]
+    },
+    {
+        "id": "gargoyle_sentinel",
+        "name": "石像鬼哨兵",
+        "voxel_model": "res://assets/meshes/characters/voxel_gargoyle_sentinel_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "skeleton_dust"
+        ]
+    },
+    {
+        "id": "animated_armor",
+        "name": "活化盔甲",
+        "voxel_model": "res://assets/meshes/characters/voxel_animated_armor_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "skeleton_dust"
+        ]
+    },
+    {
+        "id": "oni_revenant",
+        "name": "鬼族怨灵",
+        "voxel_model": "res://assets/meshes/characters/voxel_oni_revenant_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "soul_gem"
+        ]
+    },
+    {
+        "id": "shadow_assassin",
+        "name": "暗影刺客",
+        "voxel_model": "res://assets/meshes/characters/voxel_shadow_assassin_48px_rig.glb",
+        "liked_flavors": [
+            "earthy",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet"
+        ],
+        "drops": [
+            "soul_gem"
         ]
     }
 ]

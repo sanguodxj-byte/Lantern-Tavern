@@ -1,13 +1,13 @@
 [gd_resource type="Resource" script_class="WeaponData" format=3 uid="uid://b85xdn0cdw6p1"]
 
 [ext_resource type="Script" uid="uid://duyj4lg5yvlvc" path="res://data/weapon_data.gd" id="1_ccd1n"]
-[ext_resource type="PackedScene" uid="uid://cpnnn5ypdnt0y" path="res://assets/meshes/weapons/axe.glb" id="1_ev13c"]
+[ext_resource type="PackedScene" uid="uid://db6vjrbwbt35h" path="res://assets/meshes/weapons/weapons_voxel_axe.glb" id="1_ev13c"]
 
 [resource]
 script = ExtResource("1_ccd1n")
 name = "Axe"
-condition = 25
-max_condition = 25
+condition = 1000
+max_condition = 1000
 damage_min = 4
 damage_max = 5
 impale_local_translation = Vector3(0, 0, 1)

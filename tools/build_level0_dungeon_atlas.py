@@ -243,7 +243,11 @@ def make_pillar_stone_side() -> Image.Image:
 
 
 def make_door_oak_iron() -> Image.Image:
-    image = Image.new("RGBA", (TILE, TILE * 2), PALETTE["wood_dark"])
+    # Oak body uses the mid-tone brown base so the planks read as warm aged oak
+    # (luminance ~76, well inside the 70-120 "warm wood" band the art gate checks)
+    # instead of collapsing into near-black that scans as solid iron. Grooves and
+    # edge shadows still darken enough to supply the dark-iron contrast.
+    image = Image.new("RGBA", (TILE, TILE * 2), PALETTE["wood_mid"])
     px = image.load()
     for y in range(TILE * 2):
         for x in range(TILE):
@@ -255,8 +259,8 @@ def make_door_oak_iron() -> Image.Image:
             grain = -8 if (x * 5 + y * 3 + plank) % 13 == 0 else 0
             vertical_wear = -5 if y > 42 and x % 8 in (3, 4) else 0
             px[x, y] = shade(
-                PALETTE["wood_dark"],
-                [-8, 2, -3, 5][plank % 4]
+                PALETTE["wood_mid"],
+                [-6, 3, -2, 6][plank % 4]
                 + groove
                 + top_light
                 + bottom_shadow

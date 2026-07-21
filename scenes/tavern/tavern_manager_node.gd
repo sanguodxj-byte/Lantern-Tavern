@@ -25,20 +25,28 @@ var tavern_equipment_panel: Control = null
 var tavern_hud_layer: CanvasLayer = null
 
 func _ready() -> void:
+	# 标记为酒馆场景，供子节点（如 VoxelProp._is_in_tavern）向上检测上下文。
+	set_meta("is_tavern", true)
 	_configure_scene_objects()
+	_freeze_tavern_pickables()
 	_configure_bar_interaction()
+	# 先注册为当前关卡，再生成玩家：确保 player._ready() 中的
+	# register_player 能正确识别酒馆为 current_level，避免
+	# EquipmentPanelPlayerFinder 在旧场景中查找失效玩家。
+	if GameState:
+		GameState.register_level(self)
 	_spawn_player()
+	# 抑制已被玩家拥有的固定拾取物（如 PickableShortSword）在场景重载后重复刷新：
+	# 酒馆在"下一天"/"出发返回"时会被重新实例化，若玩家已拾取并装备该武器，
+	# 则场景里手放的同一物件不应再次出现，避免重复拾取。
+	_suppress_owned_pickables()
 	_collect_seats()
 	_setup_hud_if_night_phase()
 	call("_mount_tutorial_flow_if_needed")
-	# 注册为当前关卡，供丢出物品等 add_child 使用
-	if GameState:
-		GameState.register_level(self)
 	# 应用酒馆光照档案：把动态火把范围收束成温暖光池、启用火光闪烁。
 	# 地牢副本不受影响（其火把仍保持远距离可见性所需的 range/energy）。
 	if LightingController != null:
 		LightingController.apply_tavern_profile(self)
-	print("[TavernInterior] Ready. Seats available: ", seat_markers.size())
 
 func _configure_scene_objects() -> void:
 	for root in [lights, decor, stations, customer_seats]:
@@ -49,6 +57,20 @@ func _configure_scene_objects() -> void:
 				continue
 			_ensure_collision_on_instance(child)
 			_configure_scene_object(child)
+
+## 冻结酒馆场景中固定摆放的 PickableItem（RigidBody3D）。
+## 酒馆内的酒桶/武器等摆件在场景加载时应保持静止，不受重力或同层可拾取物
+## 之间的碰撞推力影响（MASK_PICKABLE 已包含 LAYER_PICKABLE，叠放的酒桶
+## 会互相碰撞飞散）。玩家拾取时 PickableItem 被 queue_free 销毁，投掷时
+## 生成新的 ThrownItem，因此冻结不影响拾取/投掷流程。动态生成的物品
+## （教程酒桶、地牢掉落）在 _ready 之后才进树，不受此方法影响。
+func _freeze_tavern_pickables() -> void:
+	for node in find_children("*", "PickableItem", true, false):
+		var pickable := node as PickableItem
+		if pickable == null:
+			continue
+		pickable.freeze = true
+		pickable.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
 
 func _ensure_collision_on_instance(instance: Node) -> void:
 	if _has_physics_body(instance):
@@ -63,7 +85,7 @@ func _ensure_collision_on_instance(instance: Node) -> void:
 	var has_aabb := false
 	for m in meshes:
 		var mi: MeshInstance3D = m
-		var aabb: AABB = mi.get_aabb()
+		var aabb: AABB = _mesh_aabb_in_node_space(node3d, mi)
 		if aabb.size != Vector3.ZERO:
 			if not has_aabb:
 				combined_aabb = aabb
@@ -84,6 +106,17 @@ func _ensure_collision_on_instance(instance: Node) -> void:
 	col.position = combined_aabb.position + combined_aabb.size * 0.5
 	body.add_child(col, true)
 	node3d.add_child(body, true)
+
+func _mesh_aabb_in_node_space(root: Node3D, mesh_instance: MeshInstance3D) -> AABB:
+	var relative := Transform3D.IDENTITY
+	var current: Node = mesh_instance
+	while current != null and current != root:
+		if current is Node3D:
+			relative = (current as Node3D).transform * relative
+		current = current.get_parent()
+	if current != root:
+		return mesh_instance.get_aabb()
+	return relative * mesh_instance.get_aabb()
 
 func _configure_scene_object(node: Node) -> void:
 	if node is StaticBody3D:
@@ -113,7 +146,27 @@ func _spawn_player() -> void:
 			GameState.register_player(player)
 		if TavernManager != null and TavernManager.tutorial_completed and not TavernManager.has_confirmed_character_name:
 			player.set_tutorial_input_enabled(true, true, true)
-		print("[TavernInterior] Player spawned at bar counter")
+
+## 抑制已被玩家拥有的固定拾取物刷新。
+## 仅对设置了 owner_weapon_id 的 PickableItem 生效（即场景手放的固定摆件，
+## 如酒馆 PickableShortSword）。地牢宝箱 / 怪物掉落等动态战利品不设置该字段，
+## 因此不受影响。主菜单背景视口中也不抑制，保持背景视觉完整。
+func _suppress_owned_pickables() -> void:
+	if get_viewport() is SubViewport:
+		return
+	if GameState == null or not GameState.has_method("is_weapon_owned"):
+		return
+	for node in find_children("*", "PickableItem", true, false):
+		var pickable := node as PickableItem
+		if pickable == null:
+			continue
+		if not "owner_weapon_id" in pickable:
+			continue
+		var wid := String(pickable.owner_weapon_id)
+		if wid.is_empty():
+			continue
+		if GameState.is_weapon_owned(wid):
+			pickable.queue_free()
 
 # 仅在夜晚营业阶段挂载经营 HUD；主菜单背景视口等非营业场景保持纯 3D。
 # 判断依据全局 TavernManager.current_phase，避免被误识别为 UI 界面。
@@ -167,8 +220,13 @@ func toggle_tavern_hud() -> void:
 		_mount_tavern_hud()
 	if tavern_hud_layer == null:
 		return
-	tavern_hud_layer.visible = not tavern_hud_layer.visible
-	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE if tavern_hud_layer.visible else Input.MOUSE_MODE_CAPTURED)
+	var will_show: bool = not tavern_hud_layer.visible
+	tavern_hud_layer.visible = will_show
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE if will_show else Input.MOUSE_MODE_CAPTURED)
+	# 经营 HUD 打开时通知战斗 HUD 整层隐藏，避免战斗 UI 泄露到经营界面上方
+	# 并拦截鼠标点击（CombatHUD 边角 Control 默认 mouse_filter=STOP 会吞掉点击）。
+	if GameEvents != null:
+		GameEvents.tavern_hud_visibility_changed.emit(will_show)
 
 func _mount_tavern_hud() -> void:
 	var hud_scene: PackedScene = load("res://scenes/ui/tavern_ui.tscn")
@@ -177,7 +235,15 @@ func _mount_tavern_hud() -> void:
 	var hud: Control = hud_scene.instantiate() as Control
 	tavern_hud_layer = CanvasLayer.new()
 	tavern_hud_layer.name = "HUDLayer"
+	# 高于 CombatHUD(layer=15) 与 UI CanvasLayer(layer=20)，
+	# 确保经营界面在视觉与输入层叠上都位于所有战斗/通用 UI 之上。
+	# UI 层的 DeathScreen/HurtVignette 是全屏透明控件（mouse_filter=IGNORE 已修），
+	# 但仍提升层级作为防御性措施，避免任何其他全屏 STOP 控件拦截经营面板点击。
+	tavern_hud_layer.layer = 25
 	tavern_hud_layer.visible = false
+	# 加入 character_panel 组：visible 时 is_character_panel_visible() 自动返回 true，
+	# player.gd 据此跳过鼠标强制捕获与移动，无需信号/标志耦合。
+	tavern_hud_layer.add_to_group("character_panel")
 	tavern_hud_layer.add_child(hud)
 	add_child(tavern_hud_layer)
 

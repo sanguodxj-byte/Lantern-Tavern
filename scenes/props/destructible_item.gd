@@ -5,6 +5,7 @@ const EXPLOSION_FORCE := 5.0
 const VOXEL_UNIT := 1.0 / 32.0
 const PROP_ATLAS := preload("res://assets/textures/props/voxel/voxel_prop_material_atlas_32px.png")
 const PROP_SHADER := preload("res://assets/shaders/dungeon_terrain.gdshader")
+const VOXEL_LIGHTING := preload("res://globals/visual/voxel_lighting_adapter.gd")
 
 @export var furniture_data: FurnitureData
 
@@ -126,4 +127,5 @@ func _get_fragment_material() -> ShaderMaterial:
 		_fragment_material.set_shader_parameter("tile_repeat", Vector2(1, 1))
 		_fragment_material.set_shader_parameter("roughness", 0.86)
 		_fragment_material.set_shader_parameter("specular", 0.1)
+		VOXEL_LIGHTING.apply_shader_profile(_fragment_material, VOXEL_LIGHTING.PROP_SHADER_PROFILE)
 	return _fragment_material

@@ -7,9 +7,9 @@ extends Control
 
 const PIXEL_FONT := preload("res://assets/fonts/ark-pixel-12px-proportional-zh_cn.ttf")
 
-@export var max_lines: int = 9
-@export var line_height: int = 16
-@export var bg_alpha: float = 0.55
+@export var max_lines: int = 7
+@export var line_height: int = 22
+@export var bg_alpha: float = 0.78
 
 var _entries: Array[Dictionary] = []  # {text, color, time}
 var _connected_enemies: Array[Node] = []
@@ -18,7 +18,7 @@ var _dirty: bool = true  # 条目变化时置位，触发重绘
 
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(360, max_lines * line_height + 12)
+	custom_minimum_size = Vector2(430, max_lines * line_height + 16)
 	_connect_signals()
 
 
@@ -29,7 +29,6 @@ func _connect_signals() -> void:
 		GameEvents.player_spawned.connect(_on_player_spawned)
 		GameEvents.shield_changed.connect(_on_shield_changed)
 		GameEvents.weapon_changed.connect(_on_weapon_changed)
-		GameEvents.current_keys_changed.connect(_on_keys_changed)
 
 
 func _process(delta: float) -> void:
@@ -75,17 +74,13 @@ func _on_shield_changed(shield_data: Resource) -> void:
 		if "name" in shield_data:
 			sname = String(shield_data.name)
 		if sname.is_empty():
-			sname = tr("盾牌")
+			sname = tr("Shield")
 		push_entry(tr("装备盾牌: %s") % sname, Color(0.8, 0.8, 0.9))
 
 
 func _on_weapon_changed(weapon_data: WeaponData) -> void:
 	if weapon_data:
 		push_entry(tr("装备武器: %s") % weapon_data.name, Color(0.9, 0.85, 0.5))
-
-
-func _on_keys_changed(_color) -> void:
-	push_entry(tr("获得钥匙"), Color(1.0, 0.85, 0.3))
 
 
 func _on_enemy_dead(_transform: Transform3D, enemy: Node) -> void:
@@ -102,7 +97,14 @@ func _enemy_display_name(enemy: Node) -> String:
 
 
 func _base_enemy_name(enemy: Node) -> String:
-	var n := String(enemy.name).to_lower()
+	if enemy != null and enemy.has_meta("enemy_base_type"):
+		var base_type := String(enemy.get_meta("enemy_base_type"))
+		var spawner: Node = Engine.get_main_loop().root.get_node_or_null("DungeonSpawner")
+		if spawner != null and spawner.has_method("get_display_name"):
+			var dn := String(spawner.call("get_display_name", base_type))
+			if not dn.is_empty():
+				return tr(dn)
+	var n := String(enemy.name).to_lower() if enemy != null else ""
 	if n.contains("goblin"):
 		return tr("哥布林")
 	if n.contains("rat"):
@@ -117,6 +119,10 @@ func _base_enemy_name(enemy: Node) -> String:
 		return tr("死灵领主")
 	if n.contains("dragon"):
 		return tr("巨龙")
+	if n.contains("minotaur"):
+		return tr("牛头怪")
+	if n.contains("rock_golem") or n.contains("golem"):
+		return tr("岩石魔像")
 	return tr("怪物")
 
 
@@ -147,14 +153,15 @@ func get_entries() -> Array:
 func _draw() -> void:
 	var panel_rect := Rect2(0, 0, size.x, size.y)
 	# 半透明背景
-	draw_rect(panel_rect, Color(0.04, 0.03, 0.06, bg_alpha), true)
+	draw_rect(panel_rect, Color(0.025, 0.026, 0.030, bg_alpha), true)
 	# 像素边框
-	draw_rect(panel_rect, Color(0.25, 0.18, 0.10, 0.7), false, 2)
+	draw_rect(panel_rect, Color(0.72, 0.43, 0.20, 0.92), false, 3)
+	draw_rect(Rect2(5, 5, 3, size.y - 10), Color(0.64, 0.67, 0.72, 0.9), true)
 
 	if _entries.is_empty():
 		return
 
-	var y_offset: float = 6.0
+	var y_offset: float = 8.0
 	var count := _entries.size()
 	for i in range(count):
 		var entry: Dictionary = _entries[i]
@@ -168,7 +175,7 @@ func _draw() -> void:
 		color.a *= alpha
 		var text: String = entry["text"]
 		# 截断过长文本
-		if text.length() > 28:
-			text = text.substr(0, 27) + "…"
-		draw_string(PIXEL_FONT, Vector2(8, y_offset + 12), text, HORIZONTAL_ALIGNMENT_LEFT, size.x - 16, 12, color)
+		if text.length() > 42:
+			text = text.substr(0, 41) + "…"
+		draw_string(PIXEL_FONT, Vector2(14, y_offset + 16), text, HORIZONTAL_ALIGNMENT_LEFT, size.x - 24, 16, color)
 		y_offset += line_height

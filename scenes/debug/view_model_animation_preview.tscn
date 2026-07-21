@@ -1,0 +1,86 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scenes/debug/view_model_animation_preview.gd" id="1_preview"]
+[ext_resource type="PackedScene" path="res://scenes/characters/player/view_model.tscn" id="2_view_model"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_marker"]
+radius = 0.015
+height = 0.03
+
+[sub_resource type="StandardMaterial3D" id="Material_marker"]
+albedo_color = Color(1, 0.2, 0.1, 1)
+emission_enabled = true
+emission = Color(1, 0.05, 0.01, 1)
+
+[node name="ViewModelAnimationPreview" type="Node3D"]
+script = ExtResource("1_preview")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+current = true
+fov = 75.0
+cull_mask = 1
+
+[node name="ViewModel" parent="Camera3D" instance=ExtResource("2_view_model")]
+
+[node name="MuzzleMarker" type="MeshInstance3D" parent="Camera3D/ViewModel"]
+mesh = SubResource("SphereMesh_marker")
+material_override = SubResource("Material_marker")
+cast_shadow = 0
+
+[node name="KeyLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-35, -25, 0)
+light_energy = 1.2
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="Panel" type="PanelContainer" parent="CanvasLayer"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 390.0
+offset_bottom = 225.0
+
+[node name="Margin" type="MarginContainer" parent="CanvasLayer/Panel"]
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="Controls" type="VBoxContainer" parent="CanvasLayer/Panel/Margin"]
+theme_override_constants/separation = 6
+
+[node name="Title" type="Label" parent="CanvasLayer/Panel/Margin/Controls"]
+text = "ViewModel Animation Preview"
+
+[node name="WeaponSelector" type="OptionButton" parent="CanvasLayer/Panel"]
+offset_left = 12.0
+offset_top = 42.0
+offset_right = 362.0
+offset_bottom = 70.0
+
+[node name="ActionSelector" type="OptionButton" parent="CanvasLayer/Panel"]
+offset_left = 12.0
+offset_top = 76.0
+offset_right = 362.0
+offset_bottom = 104.0
+
+[node name="Progress" type="HSlider" parent="CanvasLayer/Panel"]
+offset_left = 12.0
+offset_top = 112.0
+offset_right = 362.0
+offset_bottom = 132.0
+max_value = 1.0
+step = 0.01
+
+[node name="AimToggle" type="CheckButton" parent="CanvasLayer/Panel"]
+offset_left = 12.0
+offset_top = 138.0
+offset_right = 180.0
+offset_bottom = 166.0
+text = "Aim pose"
+
+[node name="Status" type="Label" parent="CanvasLayer/Panel"]
+offset_left = 12.0
+offset_top = 172.0
+offset_right = 362.0
+offset_bottom = 204.0
+autowrap_mode = 2

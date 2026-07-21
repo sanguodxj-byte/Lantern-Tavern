@@ -16,6 +16,7 @@ extends GdUnitTestSuite
 # 独立可实例化的 UI 根场景白名单。
 const SCENES := [
 	"res://scenes/ui/main_menu.tscn",
+	"res://scenes/ui/settings_menu.tscn",
 	"res://scenes/ui/zone_select.tscn",
 	"res://scenes/ui/tavern_ui.tscn",
 	"res://scenes/ui/model_viewer.tscn",

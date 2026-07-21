@@ -1,13 +1,13 @@
 [gd_resource type="Resource" script_class="WeaponData" format=3 uid="uid://b41m2wvjvx3ks"]
 
 [ext_resource type="Script" uid="uid://duyj4lg5yvlvc" path="res://data/weapon_data.gd" id="1_cd7e2"]
-[ext_resource type="PackedScene" uid="uid://3vv335ytiu4p" path="res://assets/meshes/weapons/greatsword.glb" id="1_jtr5g"]
+[ext_resource type="PackedScene" path="res://assets/meshes/weapons/weapons_voxel_greatsword.glb" id="1_jtr5g"]
 
 [resource]
 script = ExtResource("1_cd7e2")
 name = "Greatsword"
-condition = 35
-max_condition = 35
+condition = 1400
+max_condition = 1400
 damage_min = 5
 damage_max = 8
 impale_local_translation = Vector3(0, 0, 0.9)

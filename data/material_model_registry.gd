@@ -14,7 +14,15 @@ static func get_model_path(material_id: String) -> String:
 	return String(get_entry(material_id).get("glb_path", ""))
 
 static func get_display_name(material_id: String) -> String:
-	return String(get_entry(material_id).get("name_zh", material_id.capitalize().replace("_", " ")))
+	# 委托 BrewingData：MATERIALS_DB → 本表 name_zh → 标识美化。
+	# get_material_name 只读 get_entry，不会回调本方法。
+	var BD: GDScript = load("res://globals/tavern/brewing_data.gd") as GDScript
+	if BD != null and BD.has_method("get_material_name"):
+		return String(BD.call("get_material_name", material_id))
+	var zh := String(get_entry(material_id).get("name_zh", ""))
+	if not zh.is_empty():
+		return TranslationServer.translate(zh)
+	return TranslationServer.translate(material_id.replace("_", " ").capitalize())
 
 static func get_placement(material_id: String) -> Dictionary:
 	return get_entry(material_id).get("placement", {})

@@ -11,27 +11,39 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -340.0
-offset_top = -90.0
-offset_right = 340.0
-offset_bottom = -10.0
+offset_left = -200.0
+offset_top = -126.0
+offset_right = 200.0
+offset_bottom = -14.0
 grow_horizontal = 2
 grow_vertical = 0
 theme = ExtResource("3_theme")
 script = ExtResource("1_sb")
 
+[node name="Backdrop" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_type_variation = &"HUDPanel"
+
 [node name="ActiveRow" type="HBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_bottom = 64.0
+offset_top = 8.0
+offset_bottom = 84.0
 grow_horizontal = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 12
 alignment = 1
 
 [node name="SlotF" type="Panel" parent="ActiveRow"]
 layout_mode = 2
-custom_minimum_size = Vector2(64, 64)
+custom_minimum_size = Vector2(76, 76)
+theme_type_variation = &"HUDPanel"
 
 [node name="KeyLabel" type="Label" parent="ActiveRow/SlotF"]
 layout_mode = 1
@@ -42,6 +54,7 @@ offset_top = 2.0
 offset_right = 8.0
 offset_bottom = 18.0
 grow_horizontal = 2
+theme_type_variation = &"CrystalLabel"
 theme_override_font_sizes/font_size = 18
 text = "F"
 
@@ -50,10 +63,10 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 4.0
+offset_left = 6.0
 offset_top = 20.0
-offset_right = -4.0
-offset_bottom = -4.0
+offset_right = -6.0
+offset_bottom = -6.0
 grow_horizontal = 2
 grow_vertical = 2
 expand_mode = 1
@@ -97,12 +110,14 @@ offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 2
 text = "-"
+theme_override_font_sizes/font_size = 16
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="SlotG" type="Panel" parent="ActiveRow"]
 layout_mode = 2
-custom_minimum_size = Vector2(64, 64)
+custom_minimum_size = Vector2(76, 76)
+theme_type_variation = &"HUDPanel"
 
 [node name="KeyLabel" type="Label" parent="ActiveRow/SlotG"]
 layout_mode = 1
@@ -113,6 +128,7 @@ offset_top = 2.0
 offset_right = 8.0
 offset_bottom = 18.0
 grow_horizontal = 2
+theme_type_variation = &"CrystalLabel"
 theme_override_font_sizes/font_size = 18
 text = "G"
 
@@ -121,10 +137,10 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 4.0
+offset_left = 6.0
 offset_top = 20.0
-offset_right = -4.0
-offset_bottom = -4.0
+offset_right = -6.0
+offset_bottom = -6.0
 grow_horizontal = 2
 grow_vertical = 2
 expand_mode = 1
@@ -168,6 +184,7 @@ offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 2
 text = "-"
+theme_override_font_sizes/font_size = 16
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -177,42 +194,48 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -22.0
+offset_top = -24.0
+offset_bottom = -4.0
 grow_horizontal = 2
 theme_override_constants/separation = 4
 alignment = 1
 
 [node name="P1" type="Label" parent="PassiveRow"]
 layout_mode = 2
-custom_minimum_size = Vector2(60, 18)
-theme_override_font_sizes/font_size = 17
+custom_minimum_size = Vector2(60, 20)
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 16
 text = "-"
 horizontal_alignment = 1
 
 [node name="P2" type="Label" parent="PassiveRow"]
 layout_mode = 2
-custom_minimum_size = Vector2(60, 18)
-theme_override_font_sizes/font_size = 17
+custom_minimum_size = Vector2(60, 20)
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 16
 text = "-"
 horizontal_alignment = 1
 
 [node name="P3" type="Label" parent="PassiveRow"]
 layout_mode = 2
-custom_minimum_size = Vector2(60, 18)
-theme_override_font_sizes/font_size = 17
+custom_minimum_size = Vector2(60, 20)
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 16
 text = "-"
 horizontal_alignment = 1
 
 [node name="P4" type="Label" parent="PassiveRow"]
 layout_mode = 2
-custom_minimum_size = Vector2(60, 18)
-theme_override_font_sizes/font_size = 17
+custom_minimum_size = Vector2(60, 20)
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 16
 text = "-"
 horizontal_alignment = 1
 
 [node name="P5" type="Label" parent="PassiveRow"]
 layout_mode = 2
-custom_minimum_size = Vector2(60, 18)
-theme_override_font_sizes/font_size = 17
+custom_minimum_size = Vector2(60, 20)
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 16
 text = "-"
 horizontal_alignment = 1

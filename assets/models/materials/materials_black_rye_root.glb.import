@@ -3,7 +3,7 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://dtj6i40kjd3a3"
+uid="uid://1ce4myt057iu"
 path="res://.godot/imported/materials_black_rye_root.glb-096e69fbf2e1fecf24c0b400d67b21b7.scn"
 
 [deps]
@@ -42,4 +42,4 @@ materials/extract_path=""
 _subresources={}
 gltf/naming_version=2
 gltf/embedded_image_handling=1
-gltf/texture_map_mode=1
+gltf/texture_map_mode=0

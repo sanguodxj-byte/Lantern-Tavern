@@ -42,10 +42,15 @@ func test_main_gdscript_files_have_no_tab_after_space() -> void:
 		"res://data/weapon_registry.gd",
 		"res://scenes/ui/model_viewer.gd",
 		"res://scenes/ui/character_panel.gd",
+		"res://scenes/ui/tavern_equipment_panel.gd",
+		"res://scenes/ui/inventory_drag_list.gd",
+		"res://scenes/ui/inventory_tab_container.gd",
 		"res://scenes/expedition/procedural_dungeon.gd",
 		"res://scenes/expedition/wfc_visual_test.gd",
 		"res://scenes/props/chest/chest.gd",
-		"res://globals/skill_data.gd",
+		"res://scenes/props/scene_object.gd",
+		"res://scenes/tavern/tavern_bar_interaction.gd",
+		"res://globals/combat/skill_data.gd",
 	]
 	for path in files_to_check:
 		if not ResourceLoader.exists(path):
@@ -71,13 +76,18 @@ func test_critical_scripts_parse_successfully() -> void:
 		"res://scenes/expedition/procedural_dungeon.gd",
 		"res://scenes/expedition/wfc_visual_test.gd",
 		"res://scenes/props/chest/chest.gd",
-		"res://globals/skill_data.gd",
+		"res://globals/combat/skill_data.gd",
 		"res://scenes/ui/character_panel.gd",
+		"res://scenes/ui/tavern_equipment_panel.gd",
+		"res://scenes/ui/inventory_drag_list.gd",
+		"res://scenes/ui/inventory_tab_container.gd",
+		"res://scenes/props/scene_object.gd",
+		"res://scenes/tavern/tavern_bar_interaction.gd",
 		"res://data/weapon_registry.gd",
-		"res://globals/tavern_manager.gd",
-		"res://globals/combat_engine.gd",
+		"res://globals/tavern/tavern_manager.gd",
+		"res://globals/combat/combat_engine.gd",
 		"res://scenes/expedition/bsp_generator.gd",
-		"res://globals/localization_manager.gd",
+		"res://globals/core/localization_manager.gd",
 	]
 	var failures: Array[String] = []
 	for path in scripts_to_check:

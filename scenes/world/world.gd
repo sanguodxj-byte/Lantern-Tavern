@@ -10,6 +10,8 @@ const SPACE_INTRO := "intro"
 const SPACE_TAVERN := "tavern"
 const SPACE_DUNGEON := "dungeon"
 
+const FPS_OVERLAY_SCENE := preload("res://scenes/ui/fps_overlay.tscn")
+
 var current_loaded_level: Node3D = null
 var current_space: String = ""
 var overlay_layer: CanvasLayer = null
@@ -21,7 +23,13 @@ func _ready() -> void:
 	GameEvents.level_restarted.connect(on_level_restarted)
 	await _warm_shaders()
 	AudioManager.start_music()
+	_add_fps_overlay()
 	_load_initial_space()
+
+func _add_fps_overlay() -> void:
+	# 常驻 World：跨越酒馆/地牢，可见性由 Settings.show_fps 控制。
+	var fps_overlay := FPS_OVERLAY_SCENE.instantiate()
+	add_child(fps_overlay)
 
 func _warm_shaders() -> void:
 	var overlay := _create_loading_overlay()

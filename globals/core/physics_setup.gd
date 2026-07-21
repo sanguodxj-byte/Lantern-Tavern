@@ -23,6 +23,20 @@ const LAYER_SCENE_OBJECT: int = 64
 const LAYER_PROJECTILE: int = 128
 const LAYER_FURNITURE: int = LAYER_SCENE_OBJECT
 
+# ---- 角色胶囊碰撞标准 ----
+# 1.7m 成年男性的肩宽通常约 0.4-0.45m；游戏碰撞胶囊额外保留衣物、
+# 动作摆动和操作容错，标准人形直径定为 0.5m。
+const HUMANOID_COLLISION_HEIGHT := 1.7
+const HUMANOID_COLLISION_WIDTH := 0.5
+const HUMANOID_COLLISION_RADIUS := HUMANOID_COLLISION_WIDTH * 0.5
+const CHARACTER_COLLISION_MARGIN := 0.04
+const BODY_SIZE_SCALE := {
+	"small": 0.5,
+	"medium": 1.0,
+	"large": 1.3,
+	"huge": 1.75,
+}
+
 # ---- 标准掩码组合 ----
 # 静态环境：仅被其他物体碰撞，不主动碰他物
 const MASK_ENVIRONMENT: int = 0
@@ -30,14 +44,16 @@ const MASK_ENVIRONMENT: int = 0
 const MASK_PLAYER: int = LAYER_ENVIRONMENT | LAYER_ENEMY | LAYER_PICKABLE | LAYER_TRIGGER | LAYER_SCENE_OBJECT
 # 敌人：碰撞环境+玩家+敌人+可投掷物+门/触发层+场景物体
 const MASK_ENEMY: int = LAYER_ENVIRONMENT | LAYER_PLAYER | LAYER_ENEMY | LAYER_THROWABLE | LAYER_TRIGGER | LAYER_SCENE_OBJECT
-# 可拾取物：碰撞环境+场景物体
-const MASK_PICKABLE: int = LAYER_ENVIRONMENT | LAYER_SCENE_OBJECT
-# 可投掷物：碰撞环境+敌人+玩家+门/触发层+场景物体
-const MASK_THROWABLE: int = LAYER_ENVIRONMENT | LAYER_ENEMY | LAYER_PLAYER | LAYER_TRIGGER | LAYER_SCENE_OBJECT
+# 可拾取物：碰撞环境+场景物体+其他动态物体
+const MASK_PICKABLE: int = LAYER_ENVIRONMENT | LAYER_SCENE_OBJECT | LAYER_PICKABLE | LAYER_THROWABLE
+# 可投掷物：碰撞环境+敌人+玩家+门/触发层+场景物体+其他动态物体
+const MASK_THROWABLE: int = LAYER_ENVIRONMENT | LAYER_ENEMY | LAYER_PLAYER | LAYER_TRIGGER | LAYER_SCENE_OBJECT | LAYER_PICKABLE | LAYER_THROWABLE
 # 投射物：碰撞环境+敌人+场景物体（不碰玩家/可拾取物/触发器）
 const MASK_PROJECTILE: int = LAYER_ENVIRONMENT | LAYER_ENEMY | LAYER_SCENE_OBJECT
 # 选择射线：可拾取物+场景物体
 const MASK_SELECTABLE: int = LAYER_PICKABLE | LAYER_SCENE_OBJECT
+# 视野遮挡层：地形/墙壁+场景物体（柱子/家具等），用于敌人视野检测射线
+const MASK_VISION_OBSTRUCTION: int = LAYER_ENVIRONMENT | LAYER_SCENE_OBJECT
 
 ## 为 MeshInstance3D 自动添加 StaticBody3D + BoxShape3D 碰撞（基于 AABB）。
 ## parent: 父节点；mesh_instance: 已添加的 MeshInstance3D；layer: 碰撞层（默认环境）。
@@ -77,16 +93,26 @@ func add_box_collision(parent: Node, pos: Vector3, size: Vector3, layer: int = L
 	return body
 
 ## 为 CharacterBody3D 标准化碰撞层/掩码，并在缺少碰撞形状时补胶囊。
-func setup_character_body(body: CharacterBody3D, layer: int, mask: int) -> void:
+func setup_character_body(body: CharacterBody3D, layer: int, mask: int, body_size: String = "medium") -> void:
 	body.collision_layer = layer
 	body.collision_mask = mask
-	_ensure_collision_shape(body, _make_capsule_shape())
+	var col := _ensure_collision_shape(body, _make_capsule_shape(body_size))
+	_apply_character_capsule(col, body_size)
 
 func setup_player(body: CharacterBody3D) -> void:
-	setup_character_body(body, LAYER_PLAYER, MASK_PLAYER)
+	setup_character_body(body, LAYER_PLAYER, MASK_PLAYER, "medium")
 
 func setup_enemy(body: CharacterBody3D) -> void:
-	setup_character_body(body, LAYER_ENEMY, MASK_ENEMY)
+	setup_character_body(body, LAYER_ENEMY, MASK_ENEMY, _read_body_size(body))
+
+func get_body_size_scale(body_size: String) -> float:
+	return float(BODY_SIZE_SCALE.get(body_size, BODY_SIZE_SCALE["medium"]))
+
+func get_character_capsule_height(body_size: String = "medium") -> float:
+	return HUMANOID_COLLISION_HEIGHT * get_body_size_scale(body_size)
+
+func get_character_capsule_radius(body_size: String = "medium") -> float:
+	return HUMANOID_COLLISION_RADIUS * get_body_size_scale(body_size)
 
 ## 为可拾取物标准化碰撞层/掩码，并补默认盒碰撞。
 func setup_pickable(body: PhysicsBody3D) -> void:
@@ -148,11 +174,30 @@ func _ensure_collision_shape(body: CollisionObject3D, fallback_shape: Shape3D) -
 	body.add_child(col, true)
 	return col
 
-func _make_capsule_shape() -> CapsuleShape3D:
+func _make_capsule_shape(body_size: String = "medium") -> CapsuleShape3D:
 	var shape := CapsuleShape3D.new()
-	shape.radius = 0.55
-	shape.height = 1.7
+	shape.radius = get_character_capsule_radius(body_size)
+	shape.height = get_character_capsule_height(body_size)
+	shape.margin = CHARACTER_COLLISION_MARGIN
 	return shape
+
+func _apply_character_capsule(col: CollisionShape3D, body_size: String) -> void:
+	var capsule := col.shape as CapsuleShape3D
+	if capsule == null:
+		capsule = _make_capsule_shape(body_size)
+		col.shape = capsule
+	capsule.radius = get_character_capsule_radius(body_size)
+	capsule.height = get_character_capsule_height(body_size)
+	capsule.margin = CHARACTER_COLLISION_MARGIN
+	col.position = Vector3(0, capsule.height * 0.5, 0)
+
+func _read_body_size(body: CharacterBody3D) -> String:
+	if body.has_meta("body_size"):
+		return String(body.get_meta("body_size"))
+	var exported_value: Variant = body.get("body_size")
+	if exported_value is String and exported_value != "":
+		return exported_value
+	return "medium"
 
 func _make_box_shape(size: Vector3) -> BoxShape3D:
 	var shape := BoxShape3D.new()

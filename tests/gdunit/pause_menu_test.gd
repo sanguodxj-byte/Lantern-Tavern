@@ -5,12 +5,14 @@ extends GdUnitTestSuite
 
 var _pm: PauseMenu
 
-func before() -> void:
+func before_test() -> void:
 	_pm = load("res://scenes/ui/pause_menu.tscn").instantiate()
 
 
-func after() -> void:
-	_pm.queue_free()
+func after_test() -> void:
+	if is_instance_valid(_pm):
+		_pm.free()
+	_pm = null
 
 
 func test_default_is_paused_false() -> void:

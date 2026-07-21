@@ -6,14 +6,22 @@ extends Control
 ## 小地图跟随视角(yaw)旋转，玩家箭头固定朝上。
 ## 自动从 ProceduralDungeon._grid 或场景碰撞体获取地图数据。
 ##
+## 迷雾探索（Fog of War）：
+##   - 未探索区域：完全隐藏（黑色背景）
+##   - 已探索但当前不可见：半透明（迷雾覆盖）
+##   - 当前可见：完整颜色
+##
 ## 性能策略：
 ##   - 绘制每帧执行（读取玩家位置/朝向，轻量）
+const Service := preload("res://globals/core/service.gd")
 ##   - 引用刷新 & 碰撞体缓存每 update_interval 秒执行一次（重量级）
 
 @export var map_size: int = 180          # 小地图像素边长
 @export var world_radius: float = 25.0   # 可见世界半径(米)
 @export var update_interval: float = 0.3  # 数据刷新间隔(秒)——仅影响引用/缓存
 @export var bg_alpha: float = 0.55
+## 迷雾探索视野半径（米）：玩家周围此范围内的格子被标记为"当前可见"
+@export var fog_vision_radius: float = 12.0
 
 var _scale: float = 1.0
 var _timer: float = 0.0
@@ -32,13 +40,30 @@ var _cached_colliders: Array[AABB] = []
 # 缓存的敌人列表（_refresh_references 节流刷新，_draw 只读）
 var _cached_enemies: Array[Enemy] = []
 
+# ── 迷雾探索状态 ──
+# 已探索的格子（grid 坐标 Vector2i → true），跨帧持久
+var _explored_cells: Dictionary = {}
+# 已探索的碰撞体世界格子（非 grid 场景用，key = "x,y" → true）
+var _explored_collision_cells: Dictionary = {}
+# 非程序化场景的虚拟探索格子尺寸（米）
+const _collision_cell_size: float = 3.0
+# 当前帧可见格子集合（每帧重建，仅含 fog_vision_radius 内的格子）
+var _visible_cells: Dictionary = {}
+# 雾帧计时器：避免每帧都做探索标记（节流到每 ~0.1s）
+var _fog_timer: float = 0.0
+
 # 颜色常量
-const COL_BG := Color(0.04, 0.03, 0.06, 0.55)
-const COL_WALL := Color(0.45, 0.30, 0.18, 0.92)
-const COL_FLOOR := Color(0.85, 0.78, 0.45, 0.45)
+const COL_BG := Color(0.02, 0.021, 0.024, 0.88)
+const COL_WALL := Color(0.42, 0.24, 0.15, 0.96)
+const COL_FLOOR := Color(0.82, 0.72, 0.48, 0.58)
 const COL_ENEMY := Color(0.90, 0.12, 0.10, 0.95)
-const COL_PLAYER := Color(0.20, 0.85, 0.30, 1.0)
-const COL_FRAME := Color(0.25, 0.18, 0.10, 0.85)
+const COL_PLAYER := Color(0.78, 0.82, 0.88, 1.0)
+const COL_FRAME := Color(0.78, 0.48, 0.22, 0.96)
+# 迷雾颜色：已探索但当前不可见的区域
+const COL_FOG_FLOOR := Color(0.18, 0.18, 0.20, 0.38)
+const COL_FOG_WALL := Color(0.14, 0.145, 0.16, 0.52)
+# 未探索区域的迷雾覆盖色（绘制在背景上）
+const COL_UNEXPLORED := Color(0.02, 0.021, 0.024, 0.92)
 
 
 func _ready() -> void:
@@ -54,7 +79,14 @@ func _process(delta: float) -> void:
 		_timer = 0.0
 		_refresh_references()
 
-	# 每帧重绘——只读取玩家位置/朝向，保证旋转丝滑
+	# 节流探索标记（每 ~0.1s 标记一次当前可见格子）
+	_fog_timer += delta
+	if _fog_timer >= 0.1:
+		_fog_timer = 0.0
+		_mark_explored_cells()
+
+	# 每帧重建当前可见格子集合并重绘
+	_update_visible_cells()
 	queue_redraw()
 
 
@@ -62,6 +94,8 @@ func _refresh_references() -> void:
 	if not is_instance_valid(_player):
 		_player = _find_player()
 	if not is_instance_valid(_level):
+		# 关卡切换：重置迷雾探索状态
+		reset_fog()
 		_level = _find_level()
 		_cache_grid_data()
 		_cache_colliders()
@@ -85,14 +119,14 @@ func _refresh_enemy_cache() -> void:
 
 
 func _find_player() -> Node:
-	var gs := get_node_or_null("/root/GameState")
+	var gs := Service.game_state()
 	if gs and gs.get("current_player") and is_instance_valid(gs.get("current_player")):
 		return gs.current_player
 	return null
 
 
 func _find_level() -> Node:
-	var gs := get_node_or_null("/root/GameState")
+	var gs := Service.game_state()
 	if gs and gs.get("current_level") and is_instance_valid(gs.get("current_level")):
 		return gs.current_level
 	# fallback: 查找 ProceduralDungeon 或 tavern
@@ -147,6 +181,101 @@ func _cache_colliders() -> void:
 			_cached_colliders.append(world_aabb)
 
 
+# ── 迷雾探索逻辑 ──────────────────────────────────────────
+
+## 标记玩家周围 fog_vision_radius 内的格子为已探索
+func _mark_explored_cells() -> void:
+	if not is_instance_valid(_player):
+		return
+	var ppos: Vector3 = _player.global_position
+	if _has_grid and not _cached_grid.is_empty():
+		_mark_grid_explored(ppos)
+	else:
+		_mark_collision_explored(ppos)
+
+
+func _mark_grid_explored(ppos: Vector3) -> void:
+	var gw: int = _cached_grid[0].size() if _cached_grid.size() > 0 else 0
+	var gh: int = _cached_grid.size()
+	if gw == 0 or gh == 0:
+		return
+	var pgx: float = (ppos.x - _grid_offset.x) / _grid_tile_size
+	var pgy: float = (ppos.z - _grid_offset.z) / _grid_tile_size
+	var cell_radius: int = int(ceil(fog_vision_radius / _grid_tile_size)) + 1
+	for dy in range(-cell_radius, cell_radius + 1):
+		for dx in range(-cell_radius, cell_radius + 1):
+			var gx: int = int(pgx) + dx
+			var gy: int = int(pgy) + dy
+			if gx < 0 or gx >= gw or gy < 0 or gy >= gh:
+				continue
+			# 只标记非空格子
+			var cell_type: int = int(_cached_grid[gy][gx])
+			if cell_type == 0:
+				continue
+			# 检查实际世界距离是否在视野范围内
+			var wx: float = (gx + 0.5) * _grid_tile_size + _grid_offset.x - ppos.x
+			var wz: float = (gy + 0.5) * _grid_tile_size + _grid_offset.z - ppos.z
+			if wx * wx + wz * wz <= fog_vision_radius * fog_vision_radius:
+				_explored_cells[Vector2i(gx, gy)] = true
+
+
+func _mark_collision_explored(ppos: Vector3) -> void:
+	# 非程序化场景：用虚拟格子标记已探索区域
+	var cx: int = int(round(ppos.x / _collision_cell_size))
+	var cz: int = int(round(ppos.z / _collision_cell_size))
+	var cell_r: int = int(ceil(fog_vision_radius / _collision_cell_size)) + 1
+	for dy in range(-cell_r, cell_r + 1):
+		for dx in range(-cell_r, cell_r + 1):
+			var wx: float = (cx + dx) * _collision_cell_size - ppos.x
+			var wz: float = (cz + dy) * _collision_cell_size - ppos.z
+			if wx * wx + wz * wz <= fog_vision_radius * fog_vision_radius:
+				_explored_collision_cells["%d,%d" % [cx + dx, cz + dy]] = true
+
+
+## 每帧重建当前可见格子集合（fog_vision_radius 内的格子）
+func _update_visible_cells() -> void:
+	_visible_cells.clear()
+	if not is_instance_valid(_player):
+		return
+	var ppos: Vector3 = _player.global_position
+	if _has_grid and not _cached_grid.is_empty():
+		var gw: int = _cached_grid[0].size() if _cached_grid.size() > 0 else 0
+		var gh: int = _cached_grid.size()
+		if gw == 0 or gh == 0:
+			return
+		var pgx: float = (ppos.x - _grid_offset.x) / _grid_tile_size
+		var pgy: float = (ppos.z - _grid_offset.z) / _grid_tile_size
+		var cell_radius: int = int(ceil(fog_vision_radius / _grid_tile_size)) + 1
+		for dy in range(-cell_radius, cell_radius + 1):
+			for dx in range(-cell_radius, cell_radius + 1):
+				var gx: int = int(pgx) + dx
+				var gy: int = int(pgy) + dy
+				if gx < 0 or gx >= gw or gy < 0 or gy >= gh:
+					continue
+				var wx: float = (gx + 0.5) * _grid_tile_size + _grid_offset.x - ppos.x
+				var wz: float = (gy + 0.5) * _grid_tile_size + _grid_offset.z - ppos.z
+				if wx * wx + wz * wz <= fog_vision_radius * fog_vision_radius:
+					_visible_cells[Vector2i(gx, gy)] = true
+
+
+func _is_cell_visible(gx: int, gy: int) -> bool:
+	return _visible_cells.has(Vector2i(gx, gy))
+
+
+func _is_cell_explored(gx: int, gy: int) -> bool:
+	return _explored_cells.has(Vector2i(gx, gy))
+
+
+func _is_collision_cell_explored(cx: int, cz: int) -> bool:
+	return _explored_collision_cells.has("%d,%d" % [cx, cz])
+
+
+func _is_collision_cell_visible(ppos: Vector3, wx: float, wz: float) -> bool:
+	return wx * wx + wz * wz <= fog_vision_radius * fog_vision_radius
+
+
+# ── 绘制 ──────────────────────────────────────────────────
+
 func _draw() -> void:
 	if not is_instance_valid(_player):
 		return
@@ -168,6 +297,9 @@ func _draw() -> void:
 
 	# 玩家箭头（永远朝上）
 	_draw_player_arrow(center)
+
+	# 未探索区域遮罩：在已绘制内容上覆盖深色迷雾
+	_draw_fog_overlay(center, ppos, yaw)
 
 
 ## 像素风圆形背景：逐格方块绘制圆内区域 + 像素边框
@@ -196,6 +328,8 @@ func _draw_pixel_circle_bg(center: Vector2, radius: float) -> void:
 
 
 # ── 网格地图（地牢）──────────────────────────────────────
+## 修复旋转视角时的网格空隙：用旋转多边形替代 draw_rect 绘制每个格子，
+## 确保相邻格子在任意旋转角度下都无缝拼接。
 func _draw_grid_map(center: Vector2, ppos: Vector3, yaw: float) -> void:
 	if _cached_grid.is_empty():
 		return
@@ -207,12 +341,12 @@ func _draw_grid_map(center: Vector2, ppos: Vector3, yaw: float) -> void:
 	# 玩家所在格子
 	var pgx: float = (ppos.x - _grid_offset.x) / _grid_tile_size
 	var pgy: float = (ppos.z - _grid_offset.z) / _grid_tile_size
-	# 可见格子半径
+	# 可见格子半径（使用 world_radius 确保圆内所有格子都覆盖）
 	var cell_radius: int = int(ceil(world_radius / _grid_tile_size)) + 1
 	var cos_y := cos(yaw)
 	var sin_y := sin(yaw)
 	var half_map := map_size / 2.0
-	var psz: float = maxf(_grid_tile_size * _scale, 2.0)
+	var half_tile: float = _grid_tile_size * 0.5
 
 	for dy in range(-cell_radius, cell_radius + 1):
 		for dx in range(-cell_radius, cell_radius + 1):
@@ -223,25 +357,57 @@ func _draw_grid_map(center: Vector2, ppos: Vector3, yaw: float) -> void:
 			var cell_type: int = int(_cached_grid[gy][gx])
 			if cell_type == 0:  # EMPTY — 不绘制
 				continue
-			# 格子中心相对玩家的世界偏移
-			var wx: float = (gx + 0.5) * _grid_tile_size + _grid_offset.x - ppos.x
-			var wz: float = (gy + 0.5) * _grid_tile_size + _grid_offset.z - ppos.z
-			# 旋转（yaw 旋转使玩家朝向"朝上"）
-			var rx: float = wx * cos_y - wz * sin_y
-			var rz: float = wx * sin_y + wz * cos_y
-			# 转屏幕坐标
-			var sx: float = center.x + rx * _scale
-			var sy: float = center.y + rz * _scale
-			# 裁剪圆外（用平方距离避免 sqrt）
-			var ddx: float = sx - center.x
-			var ddy: float = sy - center.y
-			if ddx * ddx + ddy * ddy > half_map * half_map:
+
+			# 迷雾：未探索的格子跳过（不绘制，保持黑色背景）
+			var explored := _is_cell_explored(gx, gy)
+			if not explored:
 				continue
-			var color: Color = COL_FLOOR
-			if cell_type == 2:  # WALL
-				color = COL_WALL
-			var rect := Rect2(sx - psz * 0.5, sy - psz * 0.5, psz, psz)
-			draw_rect(rect, color, true)
+
+			var visible := _is_cell_visible(gx, gy)
+
+			# 格子四角的世界偏移（相对玩家）
+			var corner_wx: Array[float] = [
+				(gx) * _grid_tile_size + _grid_offset.x - ppos.x - half_tile,
+				(gx + 1) * _grid_tile_size + _grid_offset.x - ppos.x - half_tile,
+				(gx + 1) * _grid_tile_size + _grid_offset.x - ppos.x - half_tile,
+				(gx) * _grid_tile_size + _grid_offset.x - ppos.x - half_tile,
+			]
+			var corner_wz: Array[float] = [
+				(gy) * _grid_tile_size + _grid_offset.z - ppos.z - half_tile,
+				(gy) * _grid_tile_size + _grid_offset.z - ppos.z - half_tile,
+				(gy + 1) * _grid_tile_size + _grid_offset.z - ppos.z - half_tile,
+				(gy + 1) * _grid_tile_size + _grid_offset.z - ppos.z - half_tile,
+			]
+
+			# 旋转并转屏幕坐标
+			var screen_pts: PackedVector2Array = []
+			var all_outside := true
+			for i in range(4):
+				var rx: float = corner_wx[i] * cos_y - corner_wz[i] * sin_y
+				var rz: float = corner_wx[i] * sin_y + corner_wz[i] * cos_y
+				var sx: float = center.x + rx * _scale
+				var sy: float = center.y + rz * _scale
+				screen_pts.append(Vector2(sx, sy))
+				# 粗略裁剪检测
+				var ddx: float = sx - center.x
+				var ddy: float = sy - center.y
+				if ddx * ddx + ddy * ddy <= (half_map + _grid_tile_size * _scale) * (half_map + _grid_tile_size * _scale):
+					all_outside = false
+
+			if all_outside:
+				continue
+
+			# 根据可见/迷雾状态选择颜色
+			var color: Color
+			if visible:
+				color = COL_FLOOR if cell_type != 2 else COL_WALL
+			else:
+				# 已探索但当前不可见：迷雾色
+				color = COL_FOG_FLOOR if cell_type != 2 else COL_FOG_WALL
+
+			# 用旋转多边形绘制，消除旋转时的网格空隙
+			if screen_pts.size() >= 3:
+				draw_colored_polygon(screen_pts, color)
 
 
 # ── 碰撞体扫描地图（酒馆/非程序化场景）──────────────────
@@ -256,7 +422,21 @@ func _draw_collision_map(center: Vector2, ppos: Vector3, yaw: float) -> void:
 		var dist_to_player := Vector2(center_pos.x - ppos.x, center_pos.z - ppos.z).length()
 		if dist_to_player > world_radius + world_aabb.size.length():
 			continue
-		_draw_aabb_on_map(center, world_aabb, ppos, cos_y, sin_y, COL_WALL)
+
+		# 迷雾：检查碰撞体中心是否在已探索区域
+		var cx: int = int(round(center_pos.x / _collision_cell_size))
+		var cz: int = int(round(center_pos.z / _collision_cell_size))
+		if not _is_collision_cell_explored(cx, cz):
+			continue
+
+		# 判断当前是否可见
+		var wx: float = center_pos.x - ppos.x
+		var wz: float = center_pos.z - ppos.z
+		var visible := _is_collision_cell_visible(ppos, wx, wz)
+
+		# 根据可见/迷雾选择颜色
+		var color: Color = COL_WALL if visible else COL_FOG_WALL
+		_draw_aabb_on_map(center, world_aabb, ppos, cos_y, sin_y, color)
 
 
 func _shape_aabb(cs: CollisionShape3D) -> AABB:
@@ -302,6 +482,17 @@ func _draw_aabb_on_map(center: Vector2, aabb: AABB, ppos: Vector3, cos_y: float,
 		draw_colored_polygon(screen_pts, color)
 
 
+# ── 迷雾遮罩 ──────────────────────────────────────────────
+## 在所有地图内容绘制完毕后，对未探索区域覆盖深色迷雾。
+## 使用径向遮罩：以玩家为中心的圆形渐变，已探索区域之外的像素被加深。
+func _draw_fog_overlay(center: Vector2, ppos: Vector3, yaw: float) -> void:
+	# 使用一个简单的径向遮罩：玩家视野范围外的已绘制区域被半透明黑色覆盖
+	# 这里不再额外绘制遮罩——_draw_grid_map 和 _draw_collision_map 已经
+	# 通过跳过未探索格子 + 迷雾色实现了迷雾效果。
+	# 此函数保留为扩展点，未来可添加更复杂的迷雾渐变。
+	pass
+
+
 # ── 敌人标记 ──────────────────────────────────────────────
 func _draw_enemies(center: Vector2, ppos: Vector3, yaw: float) -> void:
 	var cos_y := cos(yaw)
@@ -317,8 +508,8 @@ func _draw_enemies(center: Vector2, ppos: Vector3, yaw: float) -> void:
 		var wz: float = epos.z - ppos.z
 		# 超出可见半径跳过（用平方距离）
 		var dist_sq := wx * wx + wz * wz
-		if dist_sq > world_radius * world_radius:
-			continue
+		if dist_sq > fog_vision_radius * fog_vision_radius:
+			continue  # 敌人仅在当前视野范围内显示（迷雾中不显示敌人）
 		var rx: float = wx * cos_y - wz * sin_y
 		var rz: float = wx * sin_y + wz * cos_y
 		var sx: float = center.x + rx * _scale
@@ -365,3 +556,20 @@ func set_grid_data(grid: Array, offset: Vector3, tile_size: float) -> void:
 ## 外部设置玩家引用（供测试用）
 func set_player(p: Node) -> void:
 	_player = p
+
+
+## 重置迷雾探索状态（场景切换时调用）
+func reset_fog() -> void:
+	_explored_cells.clear()
+	_explored_collision_cells.clear()
+	_visible_cells.clear()
+
+
+## 获取已探索格子数（供测试用）
+func get_explored_count() -> int:
+	return _explored_cells.size() + _explored_collision_cells.size()
+
+
+## 手动标记格子为已探索（供测试用）
+func mark_cell_explored(gx: int, gy: int) -> void:
+	_explored_cells[Vector2i(gx, gy)] = true

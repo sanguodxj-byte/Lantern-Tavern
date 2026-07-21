@@ -4,8 +4,8 @@ extends GdUnitTestSuite
 ## 注：gdUnit4 before() 非每测试前调用，每个涉及状态变更的测试须自行调 _reset_state()
 
 const BP := preload("res://scenes/tavern/brewing_panel.gd")
-const BD := preload("res://globals/brewing_data.gd")
-const FS := preload("res://globals/fermentation_system.gd")
+const BD := preload("res://globals/tavern/brewing_data.gd")
+const FS := preload("res://globals/tavern/fermentation_system.gd")
 
 var panel: Control
 var fs: Node

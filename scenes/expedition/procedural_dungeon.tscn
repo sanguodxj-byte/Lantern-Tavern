@@ -1,9 +1,11 @@
-[gd_scene load_steps=2 format=3 uid="uid://b8dfa4539dd53"]
+﻿[gd_scene load_steps=3 format=3 uid="uid://b8dfa4539dd53"]
 
 [ext_resource type="Script" path="res://scenes/expedition/procedural_dungeon.gd" id="1_procd"]
-
+[ext_resource type="PackedScene" path="res://globals/multiplayer/multiplayer_scene_bridge.tscn" id="2_multiplayer"]
 [node name="ProceduralDungeon" type="Node3D"]
 script = ExtResource("1_procd")
 
 [node name="PlayerSpawn" type="Node3D" parent="."]
 unique_name_in_owner = true
+
+[node name="MultiplayerSceneBridge" parent="." instance=ExtResource("2_multiplayer")]

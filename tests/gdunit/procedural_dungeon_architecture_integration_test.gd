@@ -69,12 +69,17 @@ func test_generate_visuals_does_not_double_instantiate_hazards() -> void:
 	assert_int(active_large_room).is_equal(0)
 
 func test_generate_visuals_keeps_downstairs_portal() -> void:
-	# downstairs portal 是手工 MeshInstance3D 拼装（属 terrain 类），builder 第二版未接，暂留 procedural。
-	# 这条断言锚定"暂留"契约——阶段 10 terrain 迁移时再迁，本阶段不该误删。
+	# downstairs portal 已迁入 DungeonSceneBuilder._build_downstairs_portal。
+	# 验收：builder 负责构建；procedural._build_terrain_geometry 不再活跃调用旧 _spawn_downstairs_portal。
+	var builder_src := (load("res://scenes/expedition/dungeon_scene_builder.gd") as GDScript).source_code
+	assert_bool(builder_src.contains("func _build_downstairs_portal(")) \
+		.override_failure_message("DungeonSceneBuilder 应实现 _build_downstairs_portal").is_true()
+	assert_bool(builder_src.contains("_build_downstairs_portal(layout, result)")) \
+		.override_failure_message("DungeonSceneBuilder.build 应调用 _build_downstairs_portal").is_true()
 	var src := _pd_source()
 	var visuals_block := _extract_func_block(src, "_build_terrain_geometry")
 	var active_downstairs := _count_active_calls(visuals_block, "_spawn_downstairs_portal(grid")
-	assert_int(active_downstairs).is_equal(1)
+	assert_int(active_downstairs).is_equal(0)
 
 func test_ready_still_runs_legacy_visuals_for_terrain() -> void:
 	# terrain floor/wall/ceiling/door 重型几何暂留 procedural（条 1 再迁）。
@@ -85,10 +90,18 @@ func test_ready_still_runs_legacy_visuals_for_terrain() -> void:
 		.override_failure_message("_ready() 应调 _generate_visuals(layout.grid) 喂地形（terrain 暂留 procedural）").is_true()
 
 func test_extraction_portal_signal_wired_in_runtime() -> void:
-	# builder 只 instantiate 节点不接信号；信号接线属 runtime 范畴，_ready 后由 _wire_extraction_portal_signal 接。
-	var src := _pd_source()
-	assert_bool(src.contains("_wire_extraction_portal_signal()")).is_true()
-	assert_bool(src.contains("extraction_requested.connect(_on_extraction_requested)")).is_true()
+	# builder 只 instantiate 节点不接信号；信号接线属 runtime 范畴。
+	var pd_src := _pd_source()
+	var ready_block := _extract_ready_block(pd_src)
+	assert_bool(ready_block.contains("_runtime.start()")) \
+		.override_failure_message("_ready 应启动 DungeonRuntime").is_true()
+	var rt_src := (load("res://scenes/expedition/dungeon_runtime.gd") as GDScript).source_code
+	assert_bool(rt_src.contains("func wire_extraction_portal_signal()")) \
+		.override_failure_message("DungeonRuntime 应实现 wire_extraction_portal_signal").is_true()
+	assert_bool(rt_src.contains("extraction_requested.connect(on_extraction_requested)")) \
+		.override_failure_message("DungeonRuntime 应连接 extraction_requested 到 on_extraction_requested").is_true()
+	assert_bool(rt_src.contains("wire_extraction_portal_signal()")) \
+		.override_failure_message("DungeonRuntime.start 应调用 wire_extraction_portal_signal").is_true()
 
 func test_layout_grid_feeds_legacy_visuals() -> void:
 	# 阶段 9 条 2 后：_ready() 不再拷贝 _grid/_rooms/_room_roles 旧字段，直接调 _build_terrain_geometry(layout.grid)。
@@ -126,17 +139,15 @@ func test_streaming_controller_added_as_child() -> void:
 	assert_bool(ready_block.contains("add_child(streaming_controller)")).is_true()
 
 func test_spawn_enemies_uses_layout_not_legacy_arrays() -> void:
-	# 阶段 9 条 3：_spawn_dungeon_enemies 应调 spawn_enemies_from_layout 接 layout.enemy_spawn_specs，
-	# 不再 9 参数重读 _grid/_rooms/_room_roles。
-	var src := _pd_source()
-	var spawn_block := _extract_func_block(src, "_spawn_dungeon_enemies")
+	# 敌人生成已迁入 DungeonRuntime.spawn_enemies，走 layout.enemy_spawn_specs。
+	var rt_src := (load("res://scenes/expedition/dungeon_runtime.gd") as GDScript).source_code
+	var spawn_block := _extract_func_block(rt_src, "spawn_enemies")
 	assert_bool(spawn_block.contains("spawn_enemies_from_layout(layout")) \
-		.override_failure_message("_spawn_dungeon_enemies 应调 spawn_enemies_from_layout").is_true()
-	# 旧 9 参数调用应不在活跃代码里
-	var active_legacy := _count_active_calls(spawn_block, "spawn_enemies(self, _grid")
-	assert_int(active_legacy).is_equal(0)
-	# 敌人应挂到 build_result.spawn_root 集中管理
+		.override_failure_message("DungeonRuntime.spawn_enemies 应调 spawn_enemies_from_layout").is_true()
 	assert_bool(spawn_block.contains("build_result.spawn_root")).is_true()
+	var pd_src := _pd_source()
+	var active_legacy := _count_active_calls(pd_src, "spawn_enemies(self, _grid")
+	assert_int(active_legacy).is_equal(0)
 
 func test_dungeon_spawner_provides_layout_interface() -> void:
 	# DungeonSpawner autoload 应提供 spawn_enemies_from_layout 接口
@@ -145,17 +156,15 @@ func test_dungeon_spawner_provides_layout_interface() -> void:
 		.override_failure_message("DungeonSpawner 应新增 spawn_enemies_from_layout 接口").is_true()
 
 func test_spawn_items_uses_layout_not_legacy_grid() -> void:
-	# 阶段 9 条 4：_spawn_dungeon_items 应调 spawn_items_from_layout 接 layout.item_spawn_specs，
-	# 不再 spawn_items_for_level(_grid, ...) 6 参数重读 grid 盲扫。
-	var src := _pd_source()
-	var items_block := _extract_func_block(src, "_spawn_dungeon_items")
+	# 物品生成已迁入 DungeonRuntime.spawn_items，走 layout.item_spawn_specs。
+	var rt_src := (load("res://scenes/expedition/dungeon_runtime.gd") as GDScript).source_code
+	var items_block := _extract_func_block(rt_src, "spawn_items")
 	assert_bool(items_block.contains("spawn_items_from_layout(layout")) \
-		.override_failure_message("_spawn_dungeon_items 应调 spawn_items_from_layout").is_true()
-	# 旧 6 参数调用应不在活跃代码里
-	var active_legacy := _count_active_calls(items_block, "spawn_items_for_level(_grid")
-	assert_int(active_legacy).is_equal(0)
-	# 物品应挂到 build_result.spawn_root 集中管理
+		.override_failure_message("DungeonRuntime.spawn_items 应调 spawn_items_from_layout").is_true()
 	assert_bool(items_block.contains("build_result.spawn_root")).is_true()
+	var pd_src := _pd_source()
+	var active_legacy := _count_active_calls(pd_src, "spawn_items_for_level(_grid")
+	assert_int(active_legacy).is_equal(0)
 
 func test_item_spawner_provides_layout_interface() -> void:
 	# ItemSpawner autoload 应提供 spawn_items_from_layout 接口

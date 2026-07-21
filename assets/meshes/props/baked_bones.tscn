@@ -1,0 +1,51 @@
+[gd_scene format=4]
+
+[ext_resource type="Shader" path="res://assets/shaders/dungeon_terrain.gdshader" id="1_l5l1h"]
+[ext_resource type="Texture2D" path="res://assets/textures/props/voxel/voxel_prop_material_atlas_32px.png" id="2_aedg1"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_c3i1k"]
+render_priority = 0
+shader = ExtResource("1_l5l1h")
+shader_parameter/atlas = ExtResource("2_aedg1")
+shader_parameter/tile_col_row = Vector2(6, 0)
+shader_parameter/tile_span = Vector2(1, 1)
+shader_parameter/atlas_grid = Vector2(8, 4)
+shader_parameter/tile_repeat = Vector2(1, 1)
+shader_parameter/roughness = 0.9
+shader_parameter/specular = 0.08
+shader_parameter/voxel_light_wrap = 0.58
+shader_parameter/voxel_light_floor = 0.3
+shader_parameter/voxel_light_steps = 4.0
+shader_parameter/voxel_light_quantize = 0.85
+shader_parameter/voxel_light_strength = 1.0
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_b1ajs"]
+_surfaces = [{
+"aabb": AABB(-0.359375, 0.015625, -0.140625, 0.65625, 0.203125, 0.53125),
+"attribute_data": PackedByteArray("AAAAAAAAAACrqio/AAAAAKuqqj4AAAAAAACAPwAAAAAAAAAAAAAAP6uqKj8AAAA/q6qqPgAAAD8AAIA/AAAAP6uqqj4AAAAAAAAAAAAAAD+rqio/AAAAAKuqqj4AAAA/q6qqPgAAAD8AAAAAAACAP6uqKj8AAAA/q6qqPgAAgD+rqqo+AAAAP6uqKj8AAAA/q6oqPwAAAD8AAIA/AAAAP6uqqj4AAIA/q6oqPwAAgD+rqio/AACAPwAAgD8AAIA/AAAAAAAAAACrqio/AAAAAKuqqj4AAAAAAACAPwAAAAAAAAAAAAAAP6uqKj8AAAA/q6qqPgAAAD8AAIA/AAAAP6uqqj4AAAAAAAAAAAAAAD+rqio/AAAAAKuqqj4AAAA/q6qqPgAAAD8AAAAAAACAP6uqKj8AAAA/q6qqPgAAgD+rqqo+AAAAP6uqKj8AAAA/q6oqPwAAAD8AAIA/AAAAP6uqqj4AAIA/q6oqPwAAgD+rqio/AACAPwAAgD8AAIA/AAAAAAAAAACrqio/AAAAAKuqqj4AAAAAAACAPwAAAAAAAAAAAAAAP6uqKj8AAAA/q6qqPgAAAD8AAIA/AAAAP6uqqj4AAAAAAAAAAAAAAD+rqio/AAAAAKuqqj4AAAA/q6qqPgAAAD8AAAAAAACAP6uqKj8AAAA/q6qqPgAAgD+rqqo+AAAAP6uqKj8AAAA/q6oqPwAAAD8AAIA/AAAAP6uqqj4AAIA/q6oqPwAAgD+rqio/AACAPwAAgD8AAIA/"),
+"format": 34359742487,
+"index_count": 108,
+"index_data": PackedByteArray("AAACAAQAAgAGAAQAAQADAAUAAwAHAAUACAAKAAwACgAOAAwACQALAA0ACwAPAA0AEAASABQAEgAWABQAEQATABUAEwAXABUAGAAaABwAGgAeABwAGQAbAB0AGwAfAB0AIAAiACQAIgAmACQAIQAjACUAIwAnACUAKAAqACwAKgAuACwAKQArAC0AKwAvAC0AMAAyADQAMgA2ADQAMQAzADUAMwA3ADUAOAA6ADwAOgA+ADwAOQA7AD0AOwA/AD0AQABCAEQAQgBGAEQAQQBDAEUAQwBHAEUA"),
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 72,
+"vertex_data": PackedByteArray("AACYvgAA4D0AAEA9AACYPgAA4D0AAEC9AACYPgAA4D0AAEA9AACYvgAA4D0AAEC9AACYvgAAgDwAAEA9AACYPgAAgDwAAEC9AACYPgAAgDwAAEA9AACYvgAAgDwAAEC9AACYPgAA4D0AAEA9AACYvgAA4D0AAEC9AACYPgAA4D0AAEC9AACYvgAA4D0AAEA9AACYPgAAgDwAAEA9AACYvgAAgDwAAEC9AACYPgAAgDwAAEC9AACYvgAAgDwAAEA9AACYPgAA4D0AAEA9AACYvgAAgDwAAEA9AACYvgAA4D0AAEA9AACYPgAAgDwAAEA9AACYPgAA4D0AAEC9AACYvgAAgDwAAEC9AACYvgAA4D0AAEC9AACYPgAAgDwAAEC9AADgPQAAUD4AAMg+AABQPgAAUD4AABC+AABQPgAAUD4AAMg+AADgPQAAUD4AABC+AADgPQAA4D0AAMg+AABQPgAA4D0AABC+AABQPgAA4D0AAMg+AADgPQAA4D0AABC+AABQPgAAUD4AAMg+AADgPQAAUD4AABC+AABQPgAAUD4AABC+AADgPQAAUD4AAMg+AABQPgAA4D0AAMg+AADgPQAA4D0AABC+AABQPgAA4D0AABC+AADgPQAA4D0AAMg+AABQPgAAUD4AAMg+AADgPQAA4D0AAMg+AADgPQAAUD4AAMg+AABQPgAA4D0AAMg+AABQPgAAUD4AABC+AADgPQAA4D0AABC+AADgPQAAUD4AABC+AABQPgAA4D0AABC+AAC4vgAAYD4AAHA+AAAQvgAAYD4AAEA9AAAQvgAAYD4AAHA+AAC4vgAAYD4AAEA9AAC4vgAAAD0AAHA+AAAQvgAAAD0AAEA9AAAQvgAAAD0AAHA+AAC4vgAAAD0AAEA9AAAQvgAAYD4AAHA+AAC4vgAAYD4AAEA9AAAQvgAAYD4AAEA9AAC4vgAAYD4AAHA+AAAQvgAAAD0AAHA+AAC4vgAAAD0AAEA9AAAQvgAAAD0AAEA9AAC4vgAAAD0AAHA+AAAQvgAAYD4AAHA+AAC4vgAAAD0AAHA+AAC4vgAAYD4AAHA+AAAQvgAAAD0AAHA+AAAQvgAAYD4AAEA9AAC4vgAAAD0AAEA9AAC4vgAAYD4AAEA9AAAQvgAAAD0AAEA9/3//f////7//////AAD/v/9//3////+//////wAA/7//f/9/////v/////8AAP+//3//f////7//////AAD/v///AID/////AAAAgP9//7///wCA/////wAAAID/f/+///8AgP////8AAACA/3//v///AID/////AAAAgP9//78AgP//AAD/vwCAAAD///+/AID//wAA/78AgAAA////vwCA//8AAP+/AIAAAP///78AgP//AAD/vwCAAAD///+//3//f////7//////AAD/v/9//3////+//////wAA/7//f/9/////v/////8AAP+//3//f////7//////AAD/v///AID/////AAAAgP9//7///wCA/////wAAAID/f/+///8AgP////8AAACA/3//v///AID/////AAAAgP9//78AgP//AAD/vwCAAAD///+/AID//wAA/78AgAAA////vwCA//8AAP+/AIAAAP///78AgP//AAD/vwCAAAD///+//3//f////7//////AAD/v/9//3////+//////wAA/7//f/9/////v/////8AAP+//3//f////7//////AAD/v///AID/////AAAAgP9//7///wCA/////wAAAID/f/+///8AgP////8AAACA/3//v///AID/////AAAAgP9//78AgP//AAD/vwCAAAD///+/AID//wAA/78AgAAA////vwCA//8AAP+/AIAAAP///78AgP//AAD/vwCAAAD///+/")
+}]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_gingi"]
+size = Vector3(0.65625, 0.203125, 0.53125)
+
+[node name="BakedProp_bones" type="StaticBody3D" unique_id=820280908]
+
+[node name="VoxelMesh_0" type="MeshInstance3D" parent="." unique_id=814982191]
+material_override = SubResource("ShaderMaterial_c3i1k")
+visibility_range_end = 25.0
+visibility_range_end_margin = 6.0
+visibility_range_fade_mode = 1
+mesh = SubResource("ArrayMesh_b1ajs")
+metadata/voxel_generated = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1980063444]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.03125, 0.1171875, 0.125)
+shape = SubResource("BoxShape3D_gingi")
+metadata/voxel_generated = true

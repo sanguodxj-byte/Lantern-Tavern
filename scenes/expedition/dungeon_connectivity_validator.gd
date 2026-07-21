@@ -126,7 +126,7 @@ func _collect_floor_cells(layout: DungeonLayout) -> Array:
 	var floors: Array = []
 	for y in range(layout.grid.size()):
 		for x in range(layout.grid[y].size()):
-			if int(layout.grid[y][x]) == 1:
+			if layout.is_floor_at(x, y):
 				floors.append(Vector2i(x, y))
 	return floors
 
@@ -153,7 +153,8 @@ func _bfs_reachable(layout: DungeonLayout, start: Vector2i) -> Array:
 				continue
 			if visited.has(nxt):
 				continue
-			if int(layout.grid[nxt.y][nxt.x]) != 1:  # 非地板不可走
+			# 与 DungeonLayout.is_floor_cell / isaac walkable 语义一致
+			if not layout.is_floor_cell(nxt):
 				continue
 			visited[nxt] = true
 			queue.append(nxt)
@@ -202,7 +203,7 @@ func _main_path_uses_hazard(layout: DungeonLayout, start: Vector2i, target: Vect
 				continue
 			if visited.has(nxt):
 				continue
-			if int(layout.grid[nxt.y][nxt.x]) != 1:
+			if not layout.is_floor_cell(nxt):
 				continue
 			visited[nxt] = true
 			parent[nxt] = cur

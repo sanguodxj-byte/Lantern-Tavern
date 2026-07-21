@@ -2,15 +2,7 @@
 
 [ext_resource type="PackedScene" uid="uid://cg5to3gopwqho" path="res://scenes/equipment/pickable_item.tscn" id="1_2u2n0"]
 [ext_resource type="Resource" uid="uid://b85xdn0cdw6p1" path="res://data/weapons/axe.tres" id="2_8thdq"]
-[ext_resource type="PackedScene" uid="uid://cpnnn5ypdnt0y" path="res://assets/meshes/weapons/axe.glb" id="3_luprd"]
 
-[node name="PickableAxe" unique_id=1588726055 node_paths=PackedStringArray("mesh_node") instance=ExtResource("1_2u2n0")]
-mesh_node = NodePath("axe/Axe")
+[node name="PickableAxe" unique_id=1588726055 instance=ExtResource("1_2u2n0")]
 weapon_data = ExtResource("2_8thdq")
-
-[node name="PresenceLight" parent="." index="1" unique_id=1446751178]
-visible = false
-
-[node name="axe" parent="." index="2" unique_id=1931505079 instance=ExtResource("3_luprd")]
-
-[editable path="axe"]
+owner_weapon_id = "axe"

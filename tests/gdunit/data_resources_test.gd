@@ -19,6 +19,14 @@ func test_weapon_data_defaults() -> void:
 	assert_float(w.reach).is_equal(2.5)
 
 
+func test_weapon_data_carries_armor_move_speed_multiplier() -> void:
+	var w = WeaponData.new()
+	w.equipment_category = "armor_heavy"
+	w.armor_move_speed_mult = 0.88
+
+	assert_float(w.armor_move_speed_mult).is_equal(0.88)
+
+
 func test_weapon_get_damage_dealt_in_range() -> void:
 	var w = WeaponData.new()
 	w.damage_min = 3

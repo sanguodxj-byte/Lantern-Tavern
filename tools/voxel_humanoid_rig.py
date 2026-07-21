@@ -31,11 +31,13 @@ REFERENCE_BONES: tuple[BoneDef, ...] = (
     BoneDef("LowerArm.L", (-9.0, 0.0, 23.0), (-9.8, 0.0, 15.0), "UpperArm.L"),
     BoneDef("Hand.L", (-9.8, 0.0, 15.0), (-9.8, -1.0, 12.0), "LowerArm.L"),
     BoneDef("UpperLeg.R", (2.8, 0.0, 14.0), (2.8, 0.0, 8.0), "Pelvis"),
-    BoneDef("LowerLeg.R", (2.8, 0.0, 8.0), (3.5, -0.5, 2.0), "UpperLeg.R"),
-    BoneDef("Foot.R", (3.5, -0.5, 2.0), (3.5, -4.0, 1.0), "LowerLeg.R"),
+    # LowerLeg 保持纯垂直方向（head/tail 的 X/Y 相同），避免 Blender glTF
+    # 导出器对角度骨骼的局部坐标系翻转 bug（原 tail 有 +0.7X/-0.5Y 偏移）。
+    BoneDef("LowerLeg.R", (2.8, 0.0, 8.0), (2.8, 0.0, 2.0), "UpperLeg.R"),
+    BoneDef("Foot.R", (2.8, 0.0, 2.0), (3.5, -4.0, 1.0), "LowerLeg.R"),
     BoneDef("UpperLeg.L", (-2.8, 0.0, 14.0), (-2.8, 0.0, 8.0), "Pelvis"),
-    BoneDef("LowerLeg.L", (-2.8, 0.0, 8.0), (-3.5, -0.5, 2.0), "UpperLeg.L"),
-    BoneDef("Foot.L", (-3.5, -0.5, 2.0), (-3.5, -4.0, 1.0), "LowerLeg.L"),
+    BoneDef("LowerLeg.L", (-2.8, 0.0, 8.0), (-2.8, 0.0, 2.0), "UpperLeg.L"),
+    BoneDef("Foot.L", (-2.8, 0.0, 2.0), (-3.5, -4.0, 1.0), "LowerLeg.L"),
 )
 
 

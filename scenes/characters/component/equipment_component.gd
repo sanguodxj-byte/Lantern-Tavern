@@ -18,7 +18,7 @@ const THROWN_ITEM_PREFAB := preload("res://scenes/equipment/thrown_item.tscn")
 @export var weapon_spawn_position: Node3D
 
 const WEAPON_SLOT_COUNT := 4
-const DEFAULT_WEAPON_REACH := -2.0
+const DEFAULT_WEAPON_REACH := -1.4
 const ARMOR_SLOT_NAMES := ["head", "body", "hands", "feet"]
 
 @export var armor_slots: Dictionary = {
@@ -32,6 +32,7 @@ func _ready() -> void:
 	_ensure_weapon_slots()
 	_ensure_armor_slots()
 	if weapon_data != null:
+		weapon_data = WeaponRegistry.resolve_weapon_data(weapon_data)
 		configure_weapon_slot(active_weapon_slot, weapon_data, true)
 	if shield_data != null:
 		equip_shield(shield_data)
@@ -153,12 +154,6 @@ func get_armor_defense() -> int:
 		total += armor.armor_phys_def
 	return total
 
-func get_armor_evade_bonus() -> float:
-	var total := 0.0
-	for armor in get_equipped_armor_items():
-		total += armor.armor_evade_percent
-	return total
-
 func get_armor_move_speed_mult() -> float:
 	var mult := 1.0
 	for armor in get_equipped_armor_items():
@@ -176,7 +171,7 @@ func _mount_weapon_to_hand(pickup_transform: Transform3D = Transform3D.IDENTITY)
 	weapon.is_always_in_front = is_always_in_front
 	weapon_placeholder.add_child(weapon)
 	if weapon_reach_raycast != null:
-		weapon_reach_raycast.target_position.z = -sqrt(weapon_data.reach)
+		weapon_reach_raycast.target_position.z = -maxf(weapon_data.reach * CombatHitboxBuilder.REACH_SCALE, 0.8)
 	if is_linked_to_ui:
 		GameEvents.weapon_changed.emit(weapon_data)
 	if pickup_transform != Transform3D.IDENTITY:
@@ -298,19 +293,23 @@ func throw_furniture(is_being_dropped: bool = false) -> void:
 		if level == null or not is_instance_valid(level):
 			push_warning("EquipmentComponent: current_level 不可用，无法丢弃家具")
 			return
+		if not level.is_inside_tree():
+			return
 		var thrown_item := THROWN_ITEM_PREFAB.instantiate()
 		thrown_item.furniture_data = furniture_data
 		thrown_item.is_being_dropped = is_being_dropped
+		thrown_item.source = get_parent() as CollisionObject3D
 		var spawn_transform := furniture_placeholder.global_transform
 		thrown_item.global_transform = spawn_transform
 		level.add_child(thrown_item)
 		furniture_data = null
 		furniture_placeholder.get_child(0).queue_free()
-		show_weapon()
-		show_shield()
+		# 武器可见性恢复由调用方决定（throw 状态机在动画结束后恢复，drop 立即恢复）
 
 func drop_furniture() -> void:
 	throw_furniture(true)
+	show_weapon()
+	show_shield()
 
 func drop_weapon() -> void:
 	throw_weapon(true)
@@ -325,6 +324,8 @@ func drop_shield() -> void:
 			level = GameState.current_level
 		if level == null or not is_instance_valid(level):
 			push_warning("EquipmentComponent: current_level 不可用，无法丢弃盾牌")
+			return
+		if not level.is_inside_tree():
 			return
 		var dropped_item := THROWN_ITEM_PREFAB.instantiate()
 		dropped_item.shield_data = shield_data
@@ -398,11 +399,12 @@ func _spawn_dropped_weapon(data: WeaponData, spawn_transform: Transform3D, is_be
 	var level: Node = null
 	if GameState != null and "current_level" in GameState:
 		level = GameState.current_level
-	if level == null:
+	if level == null or not is_instance_valid(level) or not level.is_inside_tree():
 		return
 	var thrown_item := THROWN_ITEM_PREFAB.instantiate()
 	thrown_item.weapon_data = data
 	thrown_item.is_being_dropped = is_being_dropped
+	thrown_item.source = get_parent() as CollisionObject3D
 	thrown_item.global_transform = spawn_transform
 	level.add_child(thrown_item)
 
@@ -427,8 +429,8 @@ func _is_shield_weapon(data: WeaponData) -> bool:
 
 func _fallback_drop_transform(placeholder: Node3D) -> Transform3D:
 	if placeholder != null and is_instance_valid(placeholder):
-		return placeholder.global_transform
-	return global_transform
+		return placeholder.global_transform if placeholder.is_inside_tree() else placeholder.transform
+	return global_transform if is_inside_tree() else transform
 
 
 # ============================================================================
@@ -450,6 +452,19 @@ func get_active_weapon_attack_type() -> String:
 ## 当前武器是否为远程武器
 func is_active_weapon_ranged() -> bool:
 	return get_active_weapon_attack_type() == "ranged"
+
+## 当前武器是否为弩（弩无需拉弓蓄力动画，点击即射）
+func is_active_weapon_crossbow() -> bool:
+	var weapon := weapon_data
+	if weapon == null:
+		return false
+	var w_class := CB_LIB_EQ.get_weapon_class(weapon)
+	if w_class == "crossbow":
+		return true
+	for tag in weapon.tags:
+		if tag == "crossbow":
+			return true
+	return false
 
 ## 当前武器是否为双手武器
 func is_active_weapon_two_handed() -> bool:

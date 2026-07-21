@@ -1,43 +1,119 @@
-[gd_scene format=3 uid="uid://cc7cda3m1m6rp"]
+[gd_scene load_steps=10 format=3]
 
-[ext_resource type="PackedScene" uid="uid://cty2xvbejnvbg" path="res://scenes/characters/enemies/goblin.tscn" id="1_slim"]
-[ext_resource type="PackedScene" uid="uid://cjkjkpf3t0xa5" path="res://assets/meshes/characters/voxel_slime_18px.glb" id="2_voxel"]
-[ext_resource type="Resource" uid="uid://cdset1o032fxp" path="res://data/weapons/claw.tres" id="3_claw"]
+[ext_resource type="Script" path="res://scenes/characters/enemies/enemy.gd" id="1_enemy"]
+[ext_resource type="PackedScene" path="res://assets/meshes/characters/voxel_slime_24px_rig.glb" id="2_slime_rig"]
+[ext_resource type="PackedScene" path="res://scenes/characters/component/equipment_component.tscn" id="3_equipment"]
+[ext_resource type="PackedScene" path="res://scenes/characters/component/health_component.tscn" id="4_health"]
+[ext_resource type="Resource" path="res://data/weapons/claw.tres" id="5_claw"]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_slim"]
-albedo_color = Color(0.3, 0.7, 0.3, 0.85)
-backlight_enabled = true
-backlight = Color(0.1, 0.4, 0.1, 1)
-texture_filter = 0
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_slime"]
+margin = 0.04
+radius = 0.375
+height = 0.75
 
-[sub_resource type="ViewportTexture" id="ViewportTexture_slim"]
-viewport_path = NodePath("Healthbar/SubViewport")
+[sub_resource type="SphereShape3D" id="SphereShape3D_detection"]
+radius = 5.0
 
-[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_slim"]
-radius = 0.4
-height = 0.8
+[sub_resource type="BoxShape3D" id="BoxShape3D_torso"]
+size = Vector3(0.875, 0.625, 0.375)
 
-[node name="Slime" instance=ExtResource("1_slim")]
+[sub_resource type="BoxShape3D" id="BoxShape3D_head"]
+size = Vector3(0.625, 0.5, 0.25)
+
+[node name="Slime" type="CharacterBody3D"]
+collision_layer = 4
+collision_mask = 119
+script = ExtResource("1_enemy")
 duration_between_attacks = 1500
 duration_stun = 2000
 speed = 1.5
+body_size = "small"
+detection_range = 5.0
 
-[node name="CollisionShape" parent="." index="0"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
-shape = SubResource("CapsuleShape3D_slim")
+[node name="CollisionShape" type="CollisionShape3D" parent="."]
+unique_name_in_owner = true
+position = Vector3(0, 0.375, 0)
+shape = SubResource("CapsuleShape3D_slime")
 
-[node name="EquipmentComponent" parent="." index="2"]
+[node name="character" parent="." instance=ExtResource("2_slime_rig")]
+
+[node name="PhysicalBoneSimulator3D" type="PhysicalBoneSimulator3D" parent="character/Armature/Skeleton3D"]
+unique_name_in_owner = true
+
+[node name="Physical Bone Torso" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D"]
+unique_name_in_owner = true
+collision_layer = 0
+collision_mask = 0
+mass = 5.0
+bone_name = "Torso"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone Torso"]
+shape = SubResource("BoxShape3D_torso")
+
+[node name="Physical Bone Head" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D"]
+unique_name_in_owner = true
+collision_layer = 0
+collision_mask = 0
+mass = 2.0
+bone_name = "Head"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone Head"]
+shape = SubResource("BoxShape3D_head")
+
+[node name="AnimationPlayer" parent="character" index="1"]
+autoplay = &"idle"
+
+[node name="EquipmentComponent" parent="." node_paths=PackedStringArray("weapon_reach_raycast", "weapon_spawn_position") instance=ExtResource("3_equipment")]
+unique_name_in_owner = true
 shield_data = null
-weapon_data = ExtResource("3_claw")
+shield_placeholder = null
+weapon_data = ExtResource("5_claw")
+weapon_placeholder = null
+weapon_reach_raycast = NodePath("../WeaponReachRaycast")
+weapon_spawn_position = NodePath("../WeaponSpawnPosition")
 
-[node name="HealthComponent" parent="." index="6"]
+[node name="WeaponSpawnPosition" type="Node3D" parent="."]
+position = Vector3(0.5, 0.375, -0.5)
+
+[node name="WeaponReachRaycast" type="RayCast3D" parent="."]
+unique_name_in_owner = true
+position = Vector3(0, 0.375, 0)
+target_position = Vector3(0, 0, -1.8)
+collision_mask = 2
+enabled = true
+
+[node name="HealthComponent" parent="." instance=ExtResource("4_health")]
+unique_name_in_owner = true
 max_life = 6
 current_life = 6
 
-[node name="Healthbar" parent="." index="11"]
-texture = SubResource("ViewportTexture_slim")
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+unique_name_in_owner = true
+path_desired_distance = 0.5
+target_desired_distance = 1.2
+radius = 0.48
+height = 0.75
+avoidance_enabled = true
 
-[node name="PresenceLight" parent="." index="9"]
-light_color = Color(0.2, 0.6, 0.2, 1)
-light_energy = 0.8
-omni_range = 1.5
+[node name="PlayerDetectionArea" type="Area3D" parent="."]
+unique_name_in_owner = true
+collision_layer = 0
+collision_mask = 2
+monitorable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PlayerDetectionArea"]
+shape = SubResource("SphereShape3D_detection")
+
+[node name="ActionAudioStreamPlayer" type="AudioStreamPlayer3D" parent="."]
+unique_name_in_owner = true
+bus = &"SFX"
+
+[node name="FootstepAudioStreamPlayer" type="AudioStreamPlayer3D" parent="."]
+unique_name_in_owner = true
+bus = &"SFX"
+
+[node name="VocalAudioStreamPlayer" type="AudioStreamPlayer3D" parent="."]
+unique_name_in_owner = true
+bus = &"SFX"
+
+[editable path="character"]

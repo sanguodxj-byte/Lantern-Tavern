@@ -4,7 +4,7 @@ extends GdUnitTestSuite
 # 以及全局 autoload 基础测试
 
 func test_game_events_script_exists() -> void:
-	assert_bool(ResourceLoader.exists("res://globals/game_events.gd")).is_true()
+	assert_bool(ResourceLoader.exists("res://globals/core/game_events.gd")).is_true()
 
 
 func test_impact_intensity_enum() -> void:
@@ -14,22 +14,28 @@ func test_impact_intensity_enum() -> void:
 
 
 func test_game_events_has_core_signals() -> void:
-	var script = load("res://globals/game_events.gd") as GDScript
+	var script = load("res://globals/core/game_events.gd") as GDScript
 	var source = script.source_code
 	var required_signals = [
 		"signal impact_felt",
-		"signal current_keys_changed",
 		"signal level_restarted",
 		"signal player_dead",
 		"signal player_hurt",
 		"signal player_spawned",
-		"signal possible_action_changed",
+		"signal item_detail_changed(detail: Dictionary, screen_position: Vector2)",
+		"signal subtitle_changed",
+		"signal tutorial_hint_changed",
 		"signal shield_changed",
 		"signal weapon_changed",
+		"signal interaction_hint_changed",
+		"signal player_hit_enemy",
 	]
 	for sig in required_signals:
 		assert_bool(source.contains(sig)) \
 			.override_failure_message("缺少信号: " + sig).is_true()
+	# 废弃的彩色钥匙信号不应再出现
+	assert_bool(source.contains("current_keys_changed")) \
+		.override_failure_message("current_keys_changed 已废弃，不应保留").is_false()
 
 
 func test_autoloads_exist() -> void:

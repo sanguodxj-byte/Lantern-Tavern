@@ -1,4 +1,4 @@
-﻿[gd_scene load_steps=9 format=3 uid="uid://tavern_equipment_panel"]
+﻿[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scenes/ui/tavern_equipment_panel.gd" id="1_panel"]
 [ext_resource type="Theme" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
@@ -8,6 +8,38 @@
 [ext_resource type="Script" path="res://scenes/ui/skill_drag_list.gd" id="6_skill_drag"]
 [ext_resource type="Script" path="res://scenes/ui/skill_slot_drop_button.gd" id="7_skill_slot"]
 [ext_resource type="Script" path="res://scenes/ui/rune_slot_drop_button.gd" id="8_rune_slot"]
+[ext_resource type="Script" path="res://scenes/ui/equipment_stats_visual.gd" id="9_stats_visual"]
+[ext_resource type="Texture2D" path="res://assets/textures/ui/equipment_preview_dungeon.png" id="10_preview_background"]
+[ext_resource type="Texture2D" path="res://assets/textures/ui/equipment_panel_background_parchment_v2.png" id="11_panel_background"]
+[ext_resource type="Script" path="res://scenes/ui/weapon_hand_link_visual.gd" id="12_weapon_hand_link"]
+
+[sub_resource type="StyleBoxFlat" id="EquipmentRootPanel"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.48, 0.31, 0.18, 0.96)
+shadow_color = Color(0.012, 0.008, 0.016, 0.95)
+shadow_size = 5
+
+[sub_resource type="StyleBoxFlat" id="EquipmentSectionPanel"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.42, 0.27, 0.16, 0.95)
+shadow_color = Color(0.012, 0.008, 0.016, 0.82)
+shadow_size = 3
+
+[sub_resource type="StyleBoxFlat" id="EquipmentListPanel"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.30, 0.20, 0.14, 0.82)
 
 [node name="TavernEquipmentPanel" type="Control"]
 visible = false
@@ -20,14 +52,18 @@ grow_vertical = 2
 theme = ExtResource("2_theme")
 script = ExtResource("1_panel")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="TextureRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.0666667, 0.0431373, 0.0352941, 0.921569)
+mouse_filter = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 0
+texture = ExtResource("11_panel_background")
 
 [node name="PanelContainer" type="PanelContainer" parent="."]
 layout_mode = 1
@@ -40,6 +76,7 @@ offset_right = -20.0
 offset_bottom = -20.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_styles/panel = SubResource("EquipmentRootPanel")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer"]
 layout_mode = 2
@@ -51,7 +88,7 @@ layout_mode = 2
 [node name="Title" type="Label" parent="PanelContainer/VBoxContainer/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 34
+theme_type_variation = &"ScreenTitle"
 text = " 酒馆装备与仓库"
 
 [node name="ReturnBtn" type="Button" parent="PanelContainer/VBoxContainer/Header" unique_name_in_owner = true]
@@ -66,99 +103,138 @@ size_flags_vertical = 3
 theme_override_constants/separation = 16
 
 [node name="LeftColumn" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout"]
+custom_minimum_size = Vector2(640, 0)
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_horizontal = 0
+size_flags_stretch_ratio = 0.0
 theme_override_constants/separation = 8
 
 [node name="EquipTop" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn"]
+custom_minimum_size = Vector2(0, 470)
 layout_mode = 2
+size_flags_vertical = 0
 theme_override_constants/separation = 8
 
 [node name="ArmorSlots" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop"]
-custom_minimum_size = Vector2(120, 0)
+custom_minimum_size = Vector2(104, 0)
 layout_mode = 2
 alignment = 0
 theme_override_constants/separation = 6
 
 [node name="ArmorTitle" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ArmorSlots"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 28
+theme_type_variation = &"SectionTitle"
 text = "防具"
 horizontal_alignment = 1
 
 [node name="SlotHead" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ArmorSlots" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(112, 112)
+custom_minimum_size = Vector2(96, 96)
 layout_mode = 2
-text = "头部
-[空]"
+text = ""
 script = ExtResource("5_slot")
 slot_kind = "armor"
 armor_slot = "head"
 
 [node name="SlotBody" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ArmorSlots" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(112, 112)
+custom_minimum_size = Vector2(96, 96)
 layout_mode = 2
-text = "身体
-[皮甲]"
+text = ""
 script = ExtResource("5_slot")
 slot_kind = "armor"
 armor_slot = "body"
 
 [node name="SlotHands" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ArmorSlots" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(112, 112)
+custom_minimum_size = Vector2(96, 96)
 layout_mode = 2
-text = "手部
-[手套]"
+text = ""
 script = ExtResource("5_slot")
 slot_kind = "armor"
 armor_slot = "hands"
 
 [node name="SlotFeet" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ArmorSlots" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(112, 112)
+custom_minimum_size = Vector2(96, 96)
 layout_mode = 2
-text = "脚部
-[靴子]"
+text = ""
 script = ExtResource("5_slot")
 slot_kind = "armor"
 armor_slot = "feet"
 
 [node name="ModelPlaceholder" type="PanelContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop"]
-custom_minimum_size = Vector2(260, 0)
+custom_minimum_size = Vector2(240, 0)
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("EquipmentSectionPanel")
 
 [node name="PreviewInfoBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder"]
 layout_mode = 2
+size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="ModelViewer" type="SubViewportContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox"]
+[node name="PreviewFrame" type="PanelContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox"]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 0
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("EquipmentSectionPanel")
+
+[node name="PreviewCanvas" type="Control" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox/PreviewFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="DungeonBackground" type="TextureRect" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox/PreviewFrame/PreviewCanvas"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture_filter = 1
+texture = ExtResource("10_preview_background")
+expand_mode = 1
+stretch_mode = 0
+
+[node name="ModelViewer" type="SubViewportContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox/PreviewFrame/PreviewCanvas"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+z_index = 1
 stretch = true
 
-[node name="EqSubViewport" type="SubViewport" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox/ModelViewer" unique_name_in_owner = true]
+[node name="EqSubViewport" type="SubViewport" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox/PreviewFrame/PreviewCanvas/ModelViewer" unique_name_in_owner = true]
 unique_name_in_owner = true
 own_world_3d = true
 handle_input_locally = false
 size = Vector2i(320, 150)
 render_target_update_mode = 4
+transparent_bg = true
 
-[node name="EqCameraPivot" type="Node3D" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox/ModelViewer/EqSubViewport" unique_name_in_owner = true]
+[node name="EqCameraPivot" type="Node3D" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox/PreviewFrame/PreviewCanvas/ModelViewer/EqSubViewport" unique_name_in_owner = true]
 unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 0.965926, 0.258819, 0, -0.258819, 0.965926, 0, 0.55, 0)
 
-[node name="EqCamera3D" type="Camera3D" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox/ModelViewer/EqSubViewport/EqCameraPivot" unique_name_in_owner = true]
+[node name="EqCamera3D" type="Camera3D" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox/PreviewFrame/PreviewCanvas/ModelViewer/EqSubViewport/EqCameraPivot" unique_name_in_owner = true]
 unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 2.0)
 current = true
 
-[node name="EqLight" type="DirectionalLight3D" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox/ModelViewer/EqSubViewport" unique_name_in_owner = true]
+[node name="EqLight" type="DirectionalLight3D" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox/PreviewFrame/PreviewCanvas/ModelViewer/EqSubViewport" unique_name_in_owner = true]
 unique_name_in_owner = true
 transform = Transform3D(0.866025, -0.25, 0.433013, 0, 0.866025, 0.5, -0.5, -0.433013, 0.75, 0, 2, 0)
 light_color = Color(1, 0.768627, 0.521569, 1)
@@ -166,19 +242,21 @@ light_energy = 2.0
 
 [node name="ModelLabel" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox"]
 layout_mode = 2
-text = "装备预览"
+theme_type_variation = &"MutedLabel"
+visible = false
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="BottomInfo" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn"]
-custom_minimum_size = Vector2(0, 240)
+custom_minimum_size = Vector2(0, 460)
 layout_mode = 2
-size_flags_vertical = 3
+size_flags_vertical = 0
 theme_override_constants/separation = 12
 
 [node name="StatsPanel" type="TabContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("EquipmentSectionPanel")
 
 [node name="属性" type="MarginContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel"]
 layout_mode = 2
@@ -201,17 +279,27 @@ theme_override_constants/separation = 3
 
 [node name="CharacterStatsTitle" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel/属性/StatsScroll/StatsBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 17
-text = "属性"
+theme_type_variation = &"SectionTitle"
+text = "•  属性  •"
 horizontal_alignment = 1
 
 [node name="CharacterStatsText" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel/属性/StatsScroll/StatsBox" unique_name_in_owner = true]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 20
+theme_override_constants/line_spacing = 5
 text = "未找到实机角色"
 autowrap_mode = 3
+
+[node name="StatsVisual" type="Control" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel/属性/StatsScroll/StatsBox"]
+custom_minimum_size = Vector2(0, 366)
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+script = ExtResource("9_stats_visual")
+source_label_path = NodePath("../CharacterStatsText")
 
 [node name="熟练度" type="MarginContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel"]
 visible = false
@@ -235,76 +323,95 @@ theme_override_constants/separation = 3
 
 [node name="ProficiencyTitle" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel/熟练度/ProfScroll/ProficiencyBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 17
+theme_type_variation = &"SectionTitle"
 text = "熟练度"
 horizontal_alignment = 1
 
 [node name="ProficiencyText" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel/熟练度/ProfScroll/ProficiencyBox" unique_name_in_owner = true]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 20
+theme_override_constants/line_spacing = 5
 text = "暂无熟练度记录"
 autowrap_mode = 3
 
+[node name="ProficiencyVisual" type="Control" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel/熟练度/ProfScroll/ProficiencyBox"]
+custom_minimum_size = Vector2(0, 244)
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+script = ExtResource("9_stats_visual")
+source_label_path = NodePath("../ProficiencyText")
+
 [node name="WeaponSlots" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop"]
-custom_minimum_size = Vector2(120, 0)
+custom_minimum_size = Vector2(104, 0)
 layout_mode = 2
 alignment = 0
 theme_override_constants/separation = 6
 
 [node name="WeaponTitle" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/WeaponSlots"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 28
+theme_type_variation = &"SectionTitle"
 text = "武器"
 horizontal_alignment = 1
 
 [node name="SlotWeapon1" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/WeaponSlots" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(112, 112)
+custom_minimum_size = Vector2(96, 96)
 layout_mode = 2
-text = "手持 1 *
-[空]"
+text = ""
 script = ExtResource("5_slot")
 slot_kind = "weapon"
 slot_index = 0
 
+[node name="WeaponHandLink" type="Control" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/WeaponSlots/SlotWeapon1" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 32.0
+offset_top = 84.0
+offset_right = 64.0
+offset_bottom = 116.0
+mouse_filter = 2
+z_index = 20
+script = ExtResource("12_weapon_hand_link")
+
 [node name="SlotWeapon2" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/WeaponSlots" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(112, 112)
+custom_minimum_size = Vector2(96, 96)
 layout_mode = 2
-text = "手持 2
-[空]"
+text = ""
 script = ExtResource("5_slot")
 slot_kind = "weapon"
 slot_index = 1
 
 [node name="SlotWeapon3" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/WeaponSlots" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(112, 112)
+custom_minimum_size = Vector2(96, 96)
 layout_mode = 2
-text = "手持 3
-[空]"
+text = ""
 script = ExtResource("5_slot")
 slot_kind = "weapon"
 slot_index = 2
 
 [node name="SlotWeapon4" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/WeaponSlots" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(112, 112)
+custom_minimum_size = Vector2(96, 96)
 layout_mode = 2
-text = "手持 4
-[空]"
+text = ""
 script = ExtResource("5_slot")
 slot_kind = "weapon"
 slot_index = 3
 
 [node name="RightTabs" type="TabContainer" parent="PanelContainer/VBoxContainer/MainLayout" unique_name_in_owner = true]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(920, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.15
+size_flags_stretch_ratio = 1.32
 current_tab = 0
+theme_override_styles/panel = SubResource("EquipmentSectionPanel")
 script = ExtResource("4_tabs")
 
 [node name="物品" type="MarginContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs"]
@@ -318,18 +425,116 @@ theme_override_constants/margin_bottom = 8
 layout_mode = 2
 theme_override_constants/separation = 8
 
+[node name="FilterBar" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox"]
+visible = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="FilterAll" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/FilterBar" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(68, 38)
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+text = "全部"
+
+[node name="FilterEquipment" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/FilterBar" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(68, 38)
+layout_mode = 2
+toggle_mode = true
+text = "装备"
+
+[node name="FilterWeapons" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/FilterBar" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(68, 38)
+layout_mode = 2
+toggle_mode = true
+text = "武器"
+
+[node name="FilterArmor" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/FilterBar" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(68, 38)
+layout_mode = 2
+toggle_mode = true
+text = "防具"
+
+[node name="FilterMaterials" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/FilterBar" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(68, 38)
+layout_mode = 2
+toggle_mode = true
+text = "材料"
+
+[node name="FilterRunes" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/FilterBar" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(68, 38)
+layout_mode = 2
+toggle_mode = true
+text = "符文"
+
+[node name="FilterCount" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/FilterBar" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"MutedLabel"
+text = "全部 · 0件"
+horizontal_alignment = 2
+vertical_alignment = 1
+
 [node name="GearList" type="ItemList" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox" unique_name_in_owner = true]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+max_columns = 6
+theme_override_styles/panel = SubResource("EquipmentListPanel")
 script = ExtResource("3_drag")
 inventory_source = "items"
+
+[node name="ItemDetailPanel" type="PanelContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox"]
+visible = true
+custom_minimum_size = Vector2(0, 184)
+layout_mode = 2
+theme_override_styles/panel = SubResource("EquipmentSectionPanel")
+
+[node name="ItemDetailBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/ItemDetailPanel"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="ItemDetailTitle" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/ItemDetailPanel/ItemDetailBox" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "选择物品"
+
+[node name="ItemDetailMeta" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/ItemDetailPanel/ItemDetailBox" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "物品详情"
+
+[node name="ItemDetailBody" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/ItemDetailPanel/ItemDetailBox" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 17
+text = "点击物品查看属性、词缀和装备效果。"
+autowrap_mode = 2
+
+[node name="ItemDetailCompare" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/ItemDetailPanel/ItemDetailBox" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 16
+text = ""
+autowrap_mode = 2
 
 [node name="EquipSelectedBtn" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox" unique_name_in_owner = true]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 46)
 layout_mode = 2
+theme_type_variation = &"PrimaryButton"
 text = "装备到当前槽"
 
 [node name="技能" type="MarginContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs"]
@@ -348,15 +553,26 @@ theme_override_constants/separation = 12
 custom_minimum_size = Vector2(520, 0)
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.25
+theme_override_styles/panel = SubResource("EquipmentSectionPanel")
 
 [node name="SkillPyramidBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel"]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="SkillPyramid" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox"]
+[node name="SkillSlotsTitle" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox"]
+unique_name_in_owner = true
 layout_mode = 2
-size_flags_vertical = 3
-alignment = 1
+theme_type_variation = &"SectionTitle"
+theme_override_font_sizes/font_size = 22
+text = "技能槽位"
+horizontal_alignment = 1
+
+[node name="SkillPyramid" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox"]
+custom_minimum_size = Vector2(0, 330)
+layout_mode = 2
+size_flags_vertical = 0
+alignment = 0
 theme_override_constants/separation = 12
 
 [node name="ActiveRow" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid"]
@@ -371,7 +587,7 @@ theme_override_constants/separation = 8
 
 [node name="SkillSlot0" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/ActiveRow/ActiveFBranch" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(150, 62)
+custom_minimum_size = Vector2(150, 150)
 layout_mode = 2
 text = "F 动作槽
 空"
@@ -417,7 +633,7 @@ theme_override_constants/separation = 8
 
 [node name="SkillSlot1" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/ActiveRow/ActiveGBranch" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(150, 62)
+custom_minimum_size = Vector2(150, 150)
 layout_mode = 2
 text = "G 武器槽
 空"
@@ -468,7 +684,7 @@ theme_override_constants/separation = 6
 
 [node name="SkillSlot2" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch1" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(92, 62)
+custom_minimum_size = Vector2(92, 92)
 layout_mode = 2
 text = "被动槽 1
 空"
@@ -482,7 +698,7 @@ theme_override_constants/separation = 4
 
 [node name="RuneSlot2_0" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch1/PassiveRunes1" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(40, 40)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
 text = "-"
 script = ExtResource("8_rune_slot")
@@ -491,7 +707,7 @@ rune_socket_index = 0
 
 [node name="RuneSlot2_1" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch1/PassiveRunes1" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(40, 40)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
 text = "-"
 script = ExtResource("8_rune_slot")
@@ -505,7 +721,7 @@ theme_override_constants/separation = 6
 
 [node name="SkillSlot3" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch2" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(92, 62)
+custom_minimum_size = Vector2(92, 92)
 layout_mode = 2
 text = "被动槽 2
 空"
@@ -519,7 +735,7 @@ theme_override_constants/separation = 4
 
 [node name="RuneSlot3_0" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch2/PassiveRunes2" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(40, 40)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
 text = "-"
 script = ExtResource("8_rune_slot")
@@ -528,7 +744,7 @@ rune_socket_index = 0
 
 [node name="RuneSlot3_1" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch2/PassiveRunes2" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(40, 40)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
 text = "-"
 script = ExtResource("8_rune_slot")
@@ -542,7 +758,7 @@ theme_override_constants/separation = 6
 
 [node name="SkillSlot4" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch3" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(92, 62)
+custom_minimum_size = Vector2(92, 92)
 layout_mode = 2
 text = "被动槽 3
 空"
@@ -556,7 +772,7 @@ theme_override_constants/separation = 4
 
 [node name="RuneSlot4_0" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch3/PassiveRunes3" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(40, 40)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
 text = "-"
 script = ExtResource("8_rune_slot")
@@ -565,7 +781,7 @@ rune_socket_index = 0
 
 [node name="RuneSlot4_1" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch3/PassiveRunes3" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(40, 40)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
 text = "-"
 script = ExtResource("8_rune_slot")
@@ -579,7 +795,7 @@ theme_override_constants/separation = 6
 
 [node name="SkillSlot5" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch4" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(92, 62)
+custom_minimum_size = Vector2(92, 92)
 layout_mode = 2
 text = "被动槽 4
 空"
@@ -593,7 +809,7 @@ theme_override_constants/separation = 4
 
 [node name="RuneSlot5_0" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch4/PassiveRunes4" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(40, 40)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
 text = "-"
 script = ExtResource("8_rune_slot")
@@ -602,7 +818,7 @@ rune_socket_index = 0
 
 [node name="RuneSlot5_1" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch4/PassiveRunes4" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(40, 40)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
 text = "-"
 script = ExtResource("8_rune_slot")
@@ -616,7 +832,7 @@ theme_override_constants/separation = 6
 
 [node name="SkillSlot6" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch5" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(92, 62)
+custom_minimum_size = Vector2(92, 92)
 layout_mode = 2
 text = "被动槽 5
 空"
@@ -630,7 +846,7 @@ theme_override_constants/separation = 4
 
 [node name="RuneSlot6_0" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch5/PassiveRunes5" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(40, 40)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
 text = "-"
 script = ExtResource("8_rune_slot")
@@ -639,7 +855,7 @@ rune_socket_index = 0
 
 [node name="RuneSlot6_1" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/SkillPyramid/PassiveRow/PassiveBranch5/PassiveRunes5" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(40, 40)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
 text = "-"
 script = ExtResource("8_rune_slot")
@@ -647,44 +863,85 @@ skill_slot_index = 6
 rune_socket_index = 1
 
 [node name="RuneWarehousePanel" type="PanelContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox"]
+custom_minimum_size = Vector2(0, 330)
 layout_mode = 2
-size_flags_vertical = 3
+size_flags_vertical = 0
+theme_override_styles/panel = SubResource("EquipmentSectionPanel")
 
 [node name="RuneWarehouseBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/RuneWarehousePanel"]
 layout_mode = 2
 
 [node name="RuneWarehouseTitle" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/RuneWarehousePanel/RuneWarehouseBox"]
+unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"SectionTitle"
+theme_override_font_sizes/font_size = 22
 text = "符文仓库"
 horizontal_alignment = 1
 
 [node name="RuneWarehouseList" type="ItemList" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPyramidPanel/SkillPyramidBox/RuneWarehousePanel/RuneWarehouseBox" unique_name_in_owner = true]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 250)
 layout_mode = 2
 size_flags_vertical = 3
+theme_override_styles/panel = SubResource("EquipmentListPanel")
 script = ExtResource("3_drag")
 inventory_source = "rune_warehouse"
+fixed_grid_cells = true
 
-[node name="AvailableSkillsList" type="ItemList" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout" unique_name_in_owner = true]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(260, 0)
+[node name="AvailableSkillsPanel" type="PanelContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout"]
+custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.75
+theme_override_styles/panel = SubResource("EquipmentSectionPanel")
+
+[node name="AvailableSkillsBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/AvailableSkillsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AvailableSkillsTitle" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/AvailableSkillsPanel/AvailableSkillsBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+theme_override_font_sizes/font_size = 22
+text = "可用技能"
+horizontal_alignment = 1
+
+[node name="AvailableSkillsList" type="ItemList" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/AvailableSkillsPanel/AvailableSkillsBox" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("EquipmentListPanel")
 script = ExtResource("6_skill_drag")
 drag_source = "available_skills"
 
 [node name="SkillPanel" type="PanelContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout"]
+custom_minimum_size = Vector2(340, 0)
 layout_mode = 2
-size_flags_horizontal = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.9
+theme_override_styles/panel = SubResource("EquipmentSectionPanel")
 
 [node name="SkillBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPanel"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
+[node name="SkillDetailsTitle" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPanel/SkillBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+theme_override_font_sizes/font_size = 22
+text = "技能详情"
+horizontal_alignment = 1
+
 [node name="SkillDetails" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPanel/SkillBox" unique_name_in_owner = true]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(220, 0)
+custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_vertical = 3
+theme_override_font_sizes/font_size = 20
 text = "选择技能"
 autowrap_mode = 2
 
@@ -694,6 +951,7 @@ layout_mode = 2
 [node name="BindSkillBtn" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPanel/SkillBox/SkillButtons" unique_name_in_owner = true]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"PrimaryButton"
 text = "绑定"
 
 [node name="UnbindSkillBtn" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/技能/SkillLayout/SkillPanel/SkillBox/SkillButtons" unique_name_in_owner = true]
@@ -715,12 +973,14 @@ theme_override_constants/separation = 12
 [node name="CarriedPanel" type="PanelContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/仓库/WarehouseLayout"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("EquipmentSectionPanel")
 
 [node name="CarriedBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/仓库/WarehouseLayout/CarriedPanel"]
 layout_mode = 2
 
 [node name="CarriedTitle" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/仓库/WarehouseLayout/CarriedPanel/CarriedBox"]
 layout_mode = 2
+theme_type_variation = &"SectionTitle"
 text = "随身物品"
 horizontal_alignment = 1
 
@@ -728,18 +988,21 @@ horizontal_alignment = 1
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
+theme_override_styles/panel = SubResource("EquipmentListPanel")
 script = ExtResource("3_drag")
 inventory_source = "items"
 
 [node name="WarehousePanel" type="PanelContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/仓库/WarehouseLayout"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("EquipmentSectionPanel")
 
 [node name="WarehouseBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/仓库/WarehouseLayout/WarehousePanel"]
 layout_mode = 2
 
 [node name="WarehouseTitle" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/仓库/WarehouseLayout/WarehousePanel/WarehouseBox"]
 layout_mode = 2
+theme_type_variation = &"SectionTitle"
 text = "仓库"
 horizontal_alignment = 1
 
@@ -747,5 +1010,6 @@ horizontal_alignment = 1
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
+theme_override_styles/panel = SubResource("EquipmentListPanel")
 script = ExtResource("3_drag")
 inventory_source = "warehouse"

@@ -2,7 +2,7 @@ extends GdUnitTestSuite
 ## SkillData 数据层测试（策划案 15 ARPG 化）
 ## 验证：33 技能完整、18 里程碑完整、ARPG 字段非负、无回合制残留、领悟门槛、媒介匹配
 
-const SD := preload("res://globals/skill_data.gd")
+const SD := preload("res://globals/combat/skill_data.gd")
 
 # ---------- 数量与结构完整性 ----------
 
@@ -118,8 +118,6 @@ func test_all_skills_non_negative_arpg_fields() -> void:
 	for skill in SD.SKILLS:
 		assert_bool(skill["damage_mult"] >= 0.0) \
 			.override_failure_message("%s damage_mult < 0" % skill["id"]).is_true()
-		assert_bool(skill["hit_bonus"] >= 0.0) \
-			.override_failure_message("%s hit_bonus < 0" % skill["id"]).is_true()
 		assert_bool(skill["cast_time"] >= 0.0).is_true()
 		assert_bool(skill["range_m"] >= 0.0).is_true()
 		assert_bool(skill["aoe_radius"] >= 0.0).is_true()
@@ -145,7 +143,7 @@ func test_milestone_values_non_negative() -> void:
 # ---------- 反向断言：无回合制残留 ----------
 
 func test_no_turn_based_terms_in_skill_data() -> void:
-	var script: GDScript = load("res://globals/skill_data.gd") as GDScript
+	var script: GDScript = load("res://globals/combat/skill_data.gd") as GDScript
 	var source: String = script.source_code
 	# ARPG 化字段应存在
 	assert_bool(source.find("cooldown") != -1).is_true()
@@ -207,7 +205,7 @@ func test_get_skill_by_id_found() -> void:
 	assert_bool(not skill.is_empty()).is_true()
 	assert_int(skill["school"]).is_equal(SD.School.TWO_HAND_SWORD)
 	assert_float(skill["damage_mult"]).is_equal(0.85)
-	assert_float(skill["knockback_m"]).is_equal(1.5)
+	assert_float(skill["knockback_m"]).is_equal(0.0)
 
 func test_get_skill_by_id_not_found() -> void:
 	var skill: Dictionary = SD.get_skill_by_id("不存在技能")
@@ -267,10 +265,10 @@ func test_cleave_3_cells_becomes_4_5_meters() -> void:
 	assert_float(skill["range_m"]).is_equal(4.5)
 	assert_float(skill["aoe_radius"]).is_equal(4.5)
 
-func test_cleave_knockback_1_cell_becomes_1_5_meters() -> void:
-	# 策划案"击退 1 格" → knockback_m = 1.5
+func test_cleave_knockback_removed_only_kick_charge_have_knockback() -> void:
+	# 策划案调整：武器技能不再有击退，仅踢击/冲撞有击退
 	var skill: Dictionary = SD.get_skill_by_id("顺劈斩")
-	assert_float(skill["knockback_m"]).is_equal(1.5)
+	assert_float(skill["knockback_m"]).is_equal(0.0)
 
 func test_concussive_blow_stun_2_turns_becomes_2_seconds() -> void:
 	# 策划案"眩晕 2 回合" → stun_sec = 2.0

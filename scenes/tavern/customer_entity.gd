@@ -110,7 +110,7 @@ func _show_reaction_line(result) -> void:
 func _show_line(text: String) -> void:
 	if _chat_label == null:
 		return
-	_chat_label.text = text
+	_chat_label.text = tr(text)
 	_chat_label.visible = true
 	_chat_timer = 4.0
 

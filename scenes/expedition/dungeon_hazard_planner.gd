@@ -13,20 +13,31 @@ class_name DungeonHazardPlanner
 extends RefCounted
 
 const LARGE_ROOM_AREA := 48  # 与 procedural_dungeon.gd / DungeonGenerationConfig.large_room_area 对齐
+const BREATHER_ROOM_COUNT := 2  # 最靠近出生点的普通房设为无陷阱喘息房（制造节奏对比）
+const MIN_ROOMS_FOR_BREATHER := 6  # 房间太少不设喘息房，避免掏空陷阱
 
 ## 规划全部房间的危险锚点与踢击路线，就地填入 layout.hazard_anchors / layout.kick_lanes。
 ## 不返回值；调用方持 layout 引用读取结果。
 func plan(layout: DungeonLayout) -> void:
 	layout.hazard_anchors.clear()
 	layout.kick_lanes.clear()
-	if layout.is_empty() or not layout.is_floor_at(0, 0):
+	# 注意：不能用 is_floor_at(0,0) 作为有效性代理——网格 (0,0) 几乎总是墙体/空洞角点，
+	# 会导致 planner 对所有真实地牢提前 return、永远不规划任何 hazard（见仿真回归测试）。
+	# is_empty() 已正确覆盖“未生成/生成失败”的判空。
+	if layout.is_empty():
 		return
 	var used_cells: Array[Vector2i] = []
 	# 关键点禁放区：出生格、撤离格、宝箱格、boss 格（安全先就）
 	var forbidden := _collect_forbidden_cells(layout)
+	# 喘息房：最靠近出生点的若干普通房设为无陷阱（按房间 index 存），制造节奏对比
+	var breather_rooms := _select_breather_rooms(layout)
 	for room in layout.rooms:
 		if layout.is_start_room_cell(room.position) or _room_is_start_room(layout, room):
 			continue
+		if _room_is_boss_room(layout, room):
+			continue  # boss 房仍允许陷阱（boss 战场地）
+		if breather_rooms.has(_find_room_index(layout, room)):
+			continue  # 喘息房：跳过陷阱放置
 		var candidates := _collect_hazard_candidates_for_room(layout, room)
 		if candidates.is_empty():
 			continue
@@ -237,11 +248,38 @@ func _collect_safe_approach_cells(layout: DungeonLayout, cell: Vector2i, dir: Ve
 func _room_is_start_room(layout: DungeonLayout, room: Rect2i) -> bool:
 	return layout.room_roles.has("start") and room == (layout.room_roles["start"] as Rect2i)
 
+func _room_is_boss_room(layout: DungeonLayout, room: Rect2i) -> bool:
+	return layout.room_roles.has("boss") and room == (layout.room_roles["boss"] as Rect2i)
+
 func _find_room_index(layout: DungeonLayout, room: Rect2i) -> int:
 	for i in range(layout.rooms.size()):
 		if layout.rooms[i] == room:
 			return i
 	return -1
+
+## 选最靠近出生点的 BREATHER_ROOM_COUNT 个普通房（非起始、非 boss）作为无陷阱喘息房。
+## 仅当房间总数 >= MIN_ROOMS_FOR_BREATHER 才生效，避免小地牢被掏空陷阱。
+## 返回 {room_index: true}，plan() 据此跳过这些房的陷阱放置。
+func _select_breather_rooms(layout: DungeonLayout) -> Dictionary:
+	var result := {}
+	if layout.is_empty():
+		return result
+	if layout.rooms.size() < MIN_ROOMS_FOR_BREATHER:
+		return result
+	if layout.is_key_cell_missing(layout.player_spawn_cell):
+		return result
+	var field := layout.compute_floor_distance_field()
+	var candidates := []
+	for room in layout.rooms:
+		if layout.is_start_room_cell(room.position) or _room_is_start_room(layout, room):
+			continue
+		if _room_is_boss_room(layout, room):
+			continue
+		candidates.append({"index": _find_room_index(layout, room), "depth": layout.depth_of_room_with_field(room, field)})
+	candidates.sort_custom(func(a, b): return a["depth"] < b["depth"])
+	for i in range(min(BREATHER_ROOM_COUNT, candidates.size())):
+		result[candidates[i]["index"]] = true
+	return result
 
 ## 收集关键点禁放格：出生格 + 撤离格 + 宝箱格 + boss 格 + 楼梯格
 func _collect_forbidden_cells(layout: DungeonLayout) -> Dictionary:

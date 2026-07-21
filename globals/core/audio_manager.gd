@@ -8,10 +8,16 @@ var cached_sfx : Dictionary[String, AudioStream] = {}
 
 func _ready() -> void:
 	for stream in sound_files:
+		if stream == null:
+			push_warning("[AudioManager] Skipping null AudioStream entry in sound_files.")
+			continue
 		var filename := stream.resource_path.get_file().get_basename()
 		cached_sfx[filename] = stream
 
 func start_music() -> void:
+	if audio_stream_player_3d == null:
+		push_warning("[AudioManager] audio_stream_player_3d is null; cannot start music.")
+		return
 	audio_stream_player_3d.play()
 
 func play(filename: String, audio_player: AudioStreamPlayer3D = null) -> void:

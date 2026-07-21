@@ -100,20 +100,24 @@ func test_build_chest_instantiates_prefab() -> void:
 
 func test_build_nodes_not_directly_on_parent_root() -> void:
 	# 阶段 7 核心约束：节点不直接 add 到 parent 根，全走分 root
-	# 用独立 parent 避免被共享 _parent 的累积子节点干扰
+	# NavigationRegion3D 允许作为 parent 直接子节点
 	var parent := Node3D.new()
 	add_child(parent)
 	var builder := DungeonSceneBuilder.new()
 	var layout := _make_3x3_floor_layout()
 	layout.hazard_anchors.append({"hazard_type": "spikes", "anchor_cell": Vector2i(1,1), "direction": Vector2i(1,0), "room_index": 0, "safe_approach_cells": [], "kick_lane_index": 0})
 	var result := builder.build(layout, parent)
-	# parent 的直接子节点应是 9 个 root，不应有陷阱节点
-	var direct_children := []
+	var root_count := 0
+	var allowed_extra := 0
 	for c in parent.get_children():
-		direct_children.append(c.name)
-	assert_int(direct_children.size()).is_equal(9)
-	for name in direct_children:
-		assert_bool(name.ends_with("Root")).is_true()
+		if str(c.name).ends_with("Root"):
+			root_count += 1
+		elif str(c.name) == "DungeonNavigationRegion" or c is NavigationRegion3D:
+			allowed_extra += 1
+		else:
+			assert_bool(false).override_failure_message("parent 下出现非 root 节点: %s" % c.name).is_true()
+	assert_int(root_count).is_equal(9)
+	assert_int(parent.get_child_count()).is_equal(root_count + allowed_extra)
 	result.dispose()
 	parent.queue_free()
 
@@ -123,10 +127,12 @@ func test_build_result_dispose_frees_roots() -> void:
 	var result := builder.build(layout, _parent)
 	var terrain := result.terrain_root
 	result.dispose()
-	# queue_free 异步；判 invalid 由 is_instance_valid 给 false 需等帧
-	# 这里至少 terrain_root 引用置空
+	# 所有权：parent 拥有 root；dispose 只清空引用，不 queue_free
 	assert_object(result.terrain_root).is_null()
 	assert_bool(result.is_built()).is_false()
+	assert_object(terrain).is_not_null()
+	assert_bool(is_instance_valid(terrain)).is_true()
+	assert_object(terrain.get_parent()).is_equal(_parent)
 
 func test_integration_isaac_layout_builds_hazards_and_chests() -> void:
 	# isaac 真产出：hazard + chest planner 跑完后，scene builder 应能 instantiate
@@ -142,9 +148,57 @@ func test_integration_isaac_layout_builds_hazards_and_chests() -> void:
 	assert_bool(result.is_built()).is_true()
 	# hazards_root 下子节点数 == layout.hazard_anchors.size()
 	assert_int(result.hazards_root.get_child_count()).is_equal(layout.hazard_anchors.size())
-	# interaction_root 下子节点数 == layout.chest_spawn_specs.size()
-	assert_int(result.interaction_root.get_child_count()).is_equal(layout.chest_spawn_specs.size())
+	# interaction_root 除 chest 外还可能有 downstairs / extraction portal，按 meta 分类统计
+	var chest_count := 0
+	var stairs_count := 0
+	var extraction_count := 0
+	for child in result.interaction_root.get_children():
+		var kind := str(child.get_meta("topdown_kind", ""))
+		if kind == "chest":
+			chest_count += 1
+		elif kind == "stairs":
+			stairs_count += 1
+		elif kind == "extraction" or child.name == "ExtractionPortal":
+			extraction_count += 1
+	assert_int(chest_count).is_equal(layout.chest_spawn_specs.size())
+	if layout.room_roles.has("stairs"):
+		assert_int(stairs_count).is_greater_equal(1)
+	assert_int(result.interaction_root.get_child_count()) \
+		.is_greater_equal(layout.chest_spawn_specs.size())
 	result.dispose()
+
+
+func test_build_registers_every_door_visual_and_collision_for_streaming() -> void:
+	var cfg := DungeonGenerationConfig.new()
+	cfg.algorithm = "isaac"
+	cfg.seed = 94021
+	var layout := DungeonGenerator.new().generate(cfg)
+	var result := DungeonSceneBuilder.new().build(layout, _parent)
+	assert_int(result.doors_root.get_child_count()).is_greater(0)
+	for child in result.doors_root.get_children():
+		var registered := result.streamed_visual_nodes.has(child) \
+			or result.streamed_physics_nodes.has(child)
+		assert_bool(registered) \
+			.override_failure_message("门节点未注册流送: %s" % child.name).is_true()
+	for child in result.collision_root.get_children():
+		assert_bool(result.streamed_physics_nodes.has(child)) \
+			.override_failure_message("碰撞节点未注册流送: %s" % child.name).is_true()
+
+
+func test_batched_decor_template_cache_reuses_bounds_and_mesh_parts() -> void:
+	# 批处理装饰在每个实例上只需要一次模板实例化；后续实例应复用 bounds 与 mesh parts。
+	var builder := DungeonSceneBuilder.new()
+	var source := (load("res://scenes/expedition/dungeon_scene_builder.gd") as GDScript).source_code
+	assert_bool(source.contains("_batched_decor_cache")) \
+		.override_failure_message("builder 必须缓存批处理装饰的模板数据").is_true()
+	assert_bool(source.contains("_get_batched_decor_cache")) \
+		.override_failure_message("builder 必须通过统一 helper 获取批处理装饰模板缓存").is_true()
+	assert_bool(source.contains("cached_data[\"bounds\"]")) \
+		.override_failure_message("批处理装饰应复用缓存的 AABB").is_true()
+	assert_bool(source.contains("cached_data[\"parts\"]")) \
+		.override_failure_message("批处理装饰 MultiMesh 应复用缓存的 mesh parts").is_true()
+	# builder 实例隔离缓存，避免跨地牢持有旧资源。
+	assert_int(builder._batched_decor_cache.size()).is_equal(0)
 
 
 # ── helpers ──────────────────────────────────────────────────

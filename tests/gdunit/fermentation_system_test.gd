@@ -3,7 +3,7 @@ extends GdUnitTestSuite
 ## 验证策划案《11-酿造时间时序与发酵博弈设计》：
 ## Keg 状态机、隔夜发酵、环境共振、陈酿桶位博弈。
 
-const FS := preload("res://globals/fermentation_system.gd")
+const FS := preload("res://globals/tavern/fermentation_system.gd")
 var fs: Node  # autoload 实例
 
 func before_test() -> void:

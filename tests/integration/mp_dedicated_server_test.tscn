@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3 uid="uid://b8t4m6r2k9x5w"]
+
+[ext_resource type="Script" path="res://tests/integration/mp_dedicated_server_test.gd" id="1_dedsrv"]
+[ext_resource type="Script" path="res://globals/multiplayer/multiplayer_scene_bridge.gd" id="2_bridge"]
+
+[node name="DedicatedServerTest" type="Node3D"]
+script = ExtResource("1_dedsrv")
+
+[node name="MultiplayerSceneBridge" parent="."]
+script = ExtResource("2_bridge")

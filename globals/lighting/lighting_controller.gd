@@ -18,14 +18,18 @@ extends Node
 
 enum Quality { HIGH, MEDIUM, LOW }
 
-## 酒馆里火把被收束后的照射半径（米）。比原始 11m 小得多，形成明暗层次。
+## 酒馆里火把被收束后的照射半径（米）。比原始 11m 小，形成明暗层次但不至于过暗。
+## 注意：此前值过低（HIGH=3.6），导致实机远暗于编辑器（编辑器 @tool 脚本显示原始 11m/3.4）。
+## 现提升至 4/5/6m，在保持光池层次的同时让实机亮度接近编辑器观感。
 const TAVERN_TORCH_RANGE := {
-	Quality.HIGH: 5.0,
-	Quality.MEDIUM: 4.0,
-	Quality.LOW: 3.0,
+	Quality.HIGH: 6.0,
+	Quality.MEDIUM: 5.0,
+	Quality.LOW: 4.0,
 }
-## 酒馆里火把的亮度。原始为 3.4（地牢需要），酒馆收束避免过曝。
-const TAVERN_TORCH_ENERGY := 2.2
+## 酒馆里火把的亮度。原始为 3.4（地牢需要），酒馆适度收束。
+## 此前为 1.35（过暗），现提升至 2.4 以消除编辑器/运行时亮度差距。
+const TAVERN_TORCH_ENERGY := 2.4
+const TAVERN_TORCH_COLOR := Color(0.92, 0.72, 0.5, 1.0)
 ## 不同画质下火光闪烁幅度（0 = 不闪烁）。
 const FLICKER_AMPLITUDE := {
 	Quality.HIGH: 0.12,
@@ -35,6 +39,11 @@ const FLICKER_AMPLITUDE := {
 
 var _quality_tier := Quality.HIGH
 var _time := 0.0
+
+## 缓存的闪烁光源列表——避免每帧 get_nodes_in_group 全组扫描
+var _cached_flicker_lights: Array[OmniLight3D] = []
+## 缓存失效标志——apply_tavern_profile 或光源增删时置位
+var _flicker_cache_dirty := true
 
 
 func _ready() -> void:
@@ -67,6 +76,8 @@ func apply_tavern_profile(root: Node) -> void:
 		return
 	for light in _collect_omni_lights(root):
 		if light.name == Player.PLAYER_VISION_LIGHT_NAME:
+			light.visible = false
+			light.light_energy = 0.0
 			continue
 		if not light.has_meta("flicker_base_energy"):
 			light.set_meta("flicker_base_energy", light.light_energy)
@@ -75,8 +86,11 @@ func apply_tavern_profile(root: Node) -> void:
 		if light.get_meta("light_role", "") == "torch":
 			light.omni_range = TAVERN_TORCH_RANGE[_quality_tier]
 			light.light_energy = TAVERN_TORCH_ENERGY
+			light.light_color = TAVERN_TORCH_COLOR
 			light.set_meta("flicker_base_energy", light.light_energy)
 		light.add_to_group("flicker_light")
+	# 新光源已入组，标记缓存为脏以便下次 _process 刷新
+	_flicker_cache_dirty = true
 
 
 ## 确定性火光闪烁系数：输入相同 (phase, time, amplitude) 必得相同结果，便于单测。
@@ -93,12 +107,27 @@ func _process(delta: float) -> void:
 	var amp: float = FLICKER_AMPLITUDE.get(_quality_tier, 0.0)
 	if amp <= 0.0:
 		return
-	for light in get_tree().get_nodes_in_group("flicker_light"):
-		if not (light is OmniLight3D) or not is_instance_valid(light):
+	# 仅在缓存脏时刷新光源列表，避免每帧 get_nodes_in_group 全组扫描
+	if _flicker_cache_dirty:
+		_refresh_flicker_cache()
+	for light in _cached_flicker_lights:
+		if not is_instance_valid(light):
 			continue
 		var base: float = light.get_meta("flicker_base_energy", light.light_energy)
 		var phase: float = light.get_meta("flicker_phase", 0.0)
 		light.light_energy = base * compute_flicker(phase, _time, amp)
+
+## 刷新闪烁光源缓存：从 flicker_light 组中收集所有有效 OmniLight3D
+func _refresh_flicker_cache() -> void:
+	_cached_flicker_lights.clear()
+	for node in get_tree().get_nodes_in_group("flicker_light"):
+		if node is OmniLight3D and is_instance_valid(node):
+			_cached_flicker_lights.append(node as OmniLight3D)
+	_flicker_cache_dirty = false
+
+## 标记缓存为脏——外部调用（如光源增删）时使用
+func invalidate_flicker_cache() -> void:
+	_flicker_cache_dirty = true
 
 
 func _collect_omni_lights(root: Node) -> Array[OmniLight3D]:

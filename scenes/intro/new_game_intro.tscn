@@ -8,6 +8,9 @@
 [ext_resource type="PackedScene" uid="uid://08vpj4svvvfk" path="res://assets/models/environment/environment_tutorial_entrance_ruins.glb" id="6_ruins"]
 [ext_resource type="PackedScene" uid="uid://dynp46f6e5ar3" path="res://assets/models/environment/environment_tutorial_road_blocker.glb" id="7_blocker"]
 [ext_resource type="PackedScene" uid="uid://ww8hovdjir8v" path="res://scenes/props/torch/torch.tscn" id="8_torch"]
+[ext_resource type="PackedScene" path="res://scenes/environment/tutorial/voxel_road_tile.tscn" id="9_road"]
+[ext_resource type="PackedScene" path="res://scenes/environment/tutorial/voxel_road_shoulder.tscn" id="10_shoulder"]
+[ext_resource type="PackedScene" path="res://scenes/environment/tutorial/voxel_boulder.tscn" id="11_boulder"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat_sky"]
 sky_top_color = Color(0.04, 0.07, 0.12, 1)
@@ -82,100 +85,62 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 2)
 
 [node name="SetDressing" type="Node3D" parent="."]
 
-[node name="FloorTile0" type="MeshInstance3D" parent="SetDressing"]
+[node name="FloorTile0" parent="SetDressing" instance=ExtResource("9_road")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.09, 7)
-mesh = SubResource("Mesh_floor")
-material_override = SubResource("Mat_floor")
 
-[node name="FloorTile1" type="MeshInstance3D" parent="SetDressing"]
+[node name="FloorTile1" parent="SetDressing" instance=ExtResource("9_road")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.09, 3)
-mesh = SubResource("Mesh_floor")
-material_override = SubResource("Mat_floor")
 
-[node name="FloorTile2" type="MeshInstance3D" parent="SetDressing"]
+[node name="FloorTile2" parent="SetDressing" instance=ExtResource("9_road")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.09, -1)
-mesh = SubResource("Mesh_floor")
-material_override = SubResource("Mat_floor")
 
-[node name="FloorTile3" type="MeshInstance3D" parent="SetDressing"]
+[node name="FloorTile3" parent="SetDressing" instance=ExtResource("9_road")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.09, -5)
-mesh = SubResource("Mesh_floor")
-material_override = SubResource("Mat_floor")
 
-[node name="FloorTile4" type="MeshInstance3D" parent="SetDressing"]
+[node name="FloorTile4" parent="SetDressing" instance=ExtResource("9_road")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.09, -9)
-mesh = SubResource("Mesh_floor")
-material_override = SubResource("Mat_floor")
 
-[node name="FloorTile5" type="MeshInstance3D" parent="SetDressing"]
+[node name="FloorTile5" parent="SetDressing" instance=ExtResource("9_road")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.09, -13)
-mesh = SubResource("Mesh_floor")
-material_override = SubResource("Mat_floor")
 
-[node name="FloorTile6" type="MeshInstance3D" parent="SetDressing"]
+[node name="FloorTile6" parent="SetDressing" instance=ExtResource("9_road")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.09, -17)
-mesh = SubResource("Mesh_floor")
-material_override = SubResource("Mat_floor")
 
-[node name="ShoulderL0" type="MeshInstance3D" parent="SetDressing"]
+[node name="ShoulderL0" parent="SetDressing" instance=ExtResource("10_shoulder")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.4, -0.06, 7)
-mesh = SubResource("Mesh_shoulder")
-material_override = SubResource("Mat_shoulder")
 
-[node name="ShoulderL1" type="MeshInstance3D" parent="SetDressing"]
+[node name="ShoulderL1" parent="SetDressing" instance=ExtResource("10_shoulder")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.4, -0.06, 3)
-mesh = SubResource("Mesh_shoulder")
-material_override = SubResource("Mat_shoulder")
 
-[node name="ShoulderL2" type="MeshInstance3D" parent="SetDressing"]
+[node name="ShoulderL2" parent="SetDressing" instance=ExtResource("10_shoulder")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.4, -0.06, -1)
-mesh = SubResource("Mesh_shoulder")
-material_override = SubResource("Mat_shoulder")
 
-[node name="ShoulderL3" type="MeshInstance3D" parent="SetDressing"]
+[node name="ShoulderL3" parent="SetDressing" instance=ExtResource("10_shoulder")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.4, -0.06, -5)
-mesh = SubResource("Mesh_shoulder")
-material_override = SubResource("Mat_shoulder")
 
-[node name="ShoulderL6" type="MeshInstance3D" parent="SetDressing"]
+[node name="ShoulderL6" parent="SetDressing" instance=ExtResource("10_shoulder")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.4, -0.06, -17)
-mesh = SubResource("Mesh_shoulder")
-material_override = SubResource("Mat_shoulder")
 
-[node name="ShoulderR0" type="MeshInstance3D" parent="SetDressing"]
+[node name="ShoulderR0" parent="SetDressing" instance=ExtResource("10_shoulder")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.4, -0.06, 7)
-mesh = SubResource("Mesh_shoulder")
-material_override = SubResource("Mat_shoulder")
 
-[node name="ShoulderR1" type="MeshInstance3D" parent="SetDressing"]
+[node name="ShoulderR1" parent="SetDressing" instance=ExtResource("10_shoulder")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.4, -0.06, 3)
-mesh = SubResource("Mesh_shoulder")
-material_override = SubResource("Mat_shoulder")
 
-[node name="ShoulderR2" type="MeshInstance3D" parent="SetDressing"]
+[node name="ShoulderR2" parent="SetDressing" instance=ExtResource("10_shoulder")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.4, -0.06, -1)
-mesh = SubResource("Mesh_shoulder")
-material_override = SubResource("Mat_shoulder")
 
-[node name="ShoulderR3" type="MeshInstance3D" parent="SetDressing"]
+[node name="ShoulderR3" parent="SetDressing" instance=ExtResource("10_shoulder")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.4, -0.06, -5)
-mesh = SubResource("Mesh_shoulder")
-material_override = SubResource("Mat_shoulder")
 
-[node name="ShoulderR4" type="MeshInstance3D" parent="SetDressing"]
+[node name="ShoulderR4" parent="SetDressing" instance=ExtResource("10_shoulder")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.4, -0.06, -9)
-mesh = SubResource("Mesh_shoulder")
-material_override = SubResource("Mat_shoulder")
 
-[node name="ShoulderR5" type="MeshInstance3D" parent="SetDressing"]
+[node name="ShoulderR5" parent="SetDressing" instance=ExtResource("10_shoulder")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.4, -0.06, -13)
-mesh = SubResource("Mesh_shoulder")
-material_override = SubResource("Mat_shoulder")
 
-[node name="ShoulderR6" type="MeshInstance3D" parent="SetDressing"]
+[node name="ShoulderR6" parent="SetDressing" instance=ExtResource("10_shoulder")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.4, -0.06, -17)
-mesh = SubResource("Mesh_shoulder")
-material_override = SubResource("Mat_shoulder")
 
 [node name="CartWreck" parent="SetDressing" instance=ExtResource("4_cart")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 2.2)
@@ -208,25 +173,17 @@ transform = Transform3D(1.007159, 0, 0.247148, 0, 1, 0, -0.247148, 0, 1.007159, 
 [node name="ForestR4" parent="SetDressing" instance=ExtResource("5_forest")]
 transform = Transform3D(0.978148, 0, -0.207912, 0, 1, 0, 0.207912, 0, 0.978148, 6.3, 0, -7.7)
 
-[node name="Boulder0" type="MeshInstance3D" parent="SetDressing"]
-transform = Transform3D(1.3, 0, 0, 0, 0.75, 0, 0, 0, 1, -3.6, 0.45, -0.7)
-mesh = SubResource("Mesh_rock")
-material_override = SubResource("Mat_rock")
+[node name="Boulder0" parent="SetDressing" instance=ExtResource("11_boulder")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.6, 0, -0.7)
 
-[node name="Boulder1" type="MeshInstance3D" parent="SetDressing"]
-transform = Transform3D(1.3, 0, 0, 0, 0.75, 0, 0, 0, 1, -3, 0.38, -2.1)
-mesh = SubResource("Mesh_rock")
-material_override = SubResource("Mat_rock")
+[node name="Boulder1" parent="SetDressing" instance=ExtResource("11_boulder")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, -2.1)
 
-[node name="Boulder2" type="MeshInstance3D" parent="SetDressing"]
-transform = Transform3D(1.3, 0, 0, 0, 0.75, 0, 0, 0, 1, 3.8, 0.42, 0.4)
-mesh = SubResource("Mesh_rock")
-material_override = SubResource("Mat_rock")
+[node name="Boulder2" parent="SetDressing" instance=ExtResource("11_boulder")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.8, 0, 0.4)
 
-[node name="Boulder3" type="MeshInstance3D" parent="SetDressing"]
-transform = Transform3D(1.3, 0, 0, 0, 0.75, 0, 0, 0, 1, 4.1, 0.35, -1.5)
-mesh = SubResource("Mesh_rock")
-material_override = SubResource("Mat_rock")
+[node name="Boulder3" parent="SetDressing" instance=ExtResource("11_boulder")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.1, 0, -1.5)
 
 [node name="EntranceRuins" parent="SetDressing" instance=ExtResource("6_ruins")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -8, 0, -0.8)

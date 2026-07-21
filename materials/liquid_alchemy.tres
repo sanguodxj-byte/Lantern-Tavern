@@ -1,0 +1,15 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://shaders/liquid_alchemy.gdshader" id="1_liquid"]
+
+[resource]
+shader = ExtResource("1_liquid")
+shader_parameter_color_base = Color(0.12, 0.55, 0.32, 1)
+shader_parameter_color_secondary = Color(0.7, 0.95, 0.6, 1)
+shader_parameter_wave_speed = 0.4
+shader_parameter_wave_scale = 3.0
+shader_parameter_bubble_strength = 0.6
+shader_parameter_bubble_speed = 1.2
+shader_parameter_fresnel_power = 2.5
+shader_parameter_roughness = 0.18
+shader_parameter_metallic = 0.0

@@ -6,6 +6,7 @@ extends Node
 ## 主动/被动槽均可镶嵌符文，符文会生成有效技能定义。
 
 const SD := preload("res://globals/combat/skill_data.gd")
+const WPC := preload("res://globals/combat/weapon_proficiency_catalog.gd")
 const AS := preload("res://globals/combat/action_skills.gd")
 const CE := preload("res://globals/combat/combat_engine.gd")
 const MC := preload("res://globals/combat/momentum_context.gd")
@@ -26,35 +27,46 @@ const MAX_RUNES_PER_PASSIVE_SLOT: int = 2
 # 槽位类型
 enum SlotType { F_ACTION, G_WEAPON, PASSIVE }
 
+# 默认绑定的动作技能（F 键），确保游戏开始即可使用
+const DEFAULT_F_SLOT_SKILL := "踢击"
+
 # ============================================================================
 # 1. 运行时状态
 # ============================================================================
 
-# 槽位 → 技能 id（空字符串表示未绑定）
-var slots: Array = ["", "", "", "", "", "", ""]
+## 显式初始化（替代隐式 _ready 入树依赖）。
+## 单机 autoload 在 _ready 中调用；联机 per-peer 实例在 .new() 后手动调用，
+## 使实例不依赖场景树即可获得与 autoload 一致的基础状态（默认 F 槽绑定踢击）。
+func init_defaults() -> void:
+	if slots[SLOT_F_ACTION] == "":
+		bind_skill(SLOT_F_ACTION, DEFAULT_F_SLOT_SKILL)
 
-# 槽位 → 符文 id 列表
-var slot_runes: Array = [[], [], [], [], [], [], []]
+func _ready() -> void:
+	init_defaults()
 
-# 主动技能 CD 剩余秒数：技能 id → 剩余秒（0 = 可释放）
-var cooldowns: Dictionary = {}
-
-# 施法前摇剩余秒数：技能 id → 剩余秒
-var cast_timers: Dictionary = {}
-
-# 施法/动作已经过秒数：技能 id → 已经过秒
-var cast_elapsed: Dictionary = {}
-
-# release_on_start 技能已经触发效果，但仍处于可取消动作窗口
-var released_while_casting: Dictionary = {}
-
-# 正在施法的技能 id
+# 每个实例独立的运行时状态（引用类型必须在 _init 内初始化，
+# 否则 GDScript 类级字面量被所有实例共享 —— 联机 per-peer 隔离会被破坏）
+var slots: Array
+var slot_runes: Array
+var cooldowns: Dictionary
+var cast_timers: Dictionary
+var cast_elapsed: Dictionary
+var released_while_casting: Dictionary
 var casting_skill: String = ""
 var casting_slot: int = -1
-var release_slot_context: Dictionary = {}
-
-# 最近一次技能取消继承到的动量，下一次命中消费
+var release_slot_context: Dictionary
 var pending_momentum_context = null
+var mechanism_passives: Dictionary
+
+func _init() -> void:
+	slots = ["", "", "", "", "", "", ""]
+	slot_runes = [[], [], [], [], [], [], []]
+	cooldowns = {}
+	cast_timers = {}
+	cast_elapsed = {}
+	released_while_casting = {}
+	release_slot_context = {}
+	mechanism_passives = {}
 
 signal skill_released(skill_id: String)
 
@@ -182,6 +194,111 @@ func get_effective_skill_definition(skill_id: String) -> Dictionary:
 		if slots[i] == skill_id:
 			return get_effective_slot_skill(i)
 	return get_skill_definition(skill_id)
+
+# ============================================================================
+# 机制类被动（操作强化）查询
+# ============================================================================
+
+## 是否拥有某机制类被动（enhance id，如 "charge" / "cd_reduce"）
+func has_mechanism_passive(id: String) -> bool:
+	return mechanism_passives.has(id)
+
+## 获取机制类被动等级（未拥有返回 0）
+func get_mechanism_passive_level(id: String) -> int:
+	return int(mechanism_passives.get(id, 0))
+
+## 授予机制类被动（取最高等级）
+func grant_mechanism_passive(id: String, level: int = 1) -> void:
+	mechanism_passives[id] = maxi(level, get_mechanism_passive_level(id))
+
+## 依据双轨领悟阶梯（属性里程碑 + 武器熟练度 tier）重算并授予机制类被动（doc21 §5/§7）。
+## 设计为幂等：每次全量重算（先清空再按当前阶梯条件授予），不依赖增量状态，
+## 因此属性/熟练度变化或读档后调用均正确。
+## 已落地的机制被动及其代码 hook（has_mechanism_passive 调用点）：
+##   charge / cd_reduce / air_dash / quick_reload / afterimage / perfect_block_window / perfect_block_empower
+func recompute_mechanism_passives() -> void:
+	var ap = Engine.get_main_loop().root.get_node_or_null("AttrPanel")
+	if ap == null:
+		return
+	var attrs: Dictionary = ap.get_player_attrs()
+	var str_v: int = int(attrs.get("str", 0))
+	var dex_v: int = int(attrs.get("dex", 0))
+	var agi_v: int = int(attrs.get("agi", 0))
+	var per_v: int = int(attrs.get("per", 0))
+	var proficiency: Dictionary = ap.weapon_proficiency if "weapon_proficiency" in ap else {}
+	var prof_sword: int = WPC.value_for(proficiency, "sword")
+	var prof_dagger: int = WPC.value_for(proficiency, "dagger")
+	var prof_axe: int = WPC.value_for(proficiency, "axe")
+	var prof_hammer: int = WPC.value_for(proficiency, "hammer")
+	var prof_spear: int = WPC.value_for(proficiency, "spear")
+	var prof_melee: int = maxi(maxi(prof_sword, prof_dagger), maxi(prof_axe, maxi(prof_hammer, prof_spear)))
+	var prof_xb: int = WPC.value_for(proficiency, "crossbow")
+	var prof_shield: int = WPC.value_for(proficiency, "shield")
+
+	# 全量重算（幂等）：先清空再按当前阶梯授予
+	mechanism_passives.clear()
+
+	# 授予通用扩展被动
+	grant_mechanism_passive("passive_toughness")
+	grant_mechanism_passive("passive_lifedrain")
+
+	# 依据当前握持 Style 激活专属流派被动 (策划案 31)
+	_apply_current_style_passives()
+
+	# —— 属性里程碑 T2（= 15 点，对应 AttrMilestone.T2 == 1）→ 机制被动（doc21 §7）——
+	var t2_milestone := int(SD.MILESTONE_THRESHOLD.get(1, 15))  # AttrMilestone.T2 == 1
+	if dex_v >= t2_milestone:
+		grant_mechanism_passive("air_dash")
+	if per_v >= t2_milestone:
+		grant_mechanism_passive("cd_reduce")
+	if agi_v >= t2_milestone:
+		grant_mechanism_passive("afterimage")
+
+	# —— 武器熟练度 tier → 机制被动 ——
+	var melee_t2 := SD.can_unlock(1, prof_melee, maxi(str_v, dex_v))
+	if melee_t2:
+		grant_mechanism_passive("charge")
+
+	var melee_school_t2 := SD.can_unlock(1, prof_melee, maxi(str_v, dex_v))
+	var melee_school_t3 := SD.can_unlock(2, prof_melee, maxi(str_v, dex_v))
+	var shield_school_t2 := SD.can_unlock(1, prof_shield, maxi(str_v, dex_v))
+
+	if melee_school_t2 or shield_school_t2:
+		grant_mechanism_passive("perfect_block_window")
+	if melee_school_t3 or shield_school_t2:
+		grant_mechanism_passive("perfect_block_empower")
+
+	if SD.can_unlock(1, prof_xb, dex_v):
+		grant_mechanism_passive("quick_reload")
+
+## 依据玩家当前的握持流派激活 7 大流派的核心纯被动
+func _apply_current_style_passives() -> void:
+	var player = Engine.get_main_loop().root.get_node_or_null("Player")
+	if player == null:
+		return
+	var style: int = player.get_current_style() if player.has_method("get_current_style") else -1
+	match style:
+		CE.Style.ONE_HAND:
+			grant_mechanism_passive("passive_style_onehand_duelist")
+			grant_mechanism_passive("passive_style_onehand_spellblade")
+		CE.Style.ONE_HAND_SHIELD:
+			grant_mechanism_passive("passive_style_shield_bash")
+			grant_mechanism_passive("passive_style_shield_refraction")
+		CE.Style.TWO_HAND:
+			grant_mechanism_passive("passive_style_twohand_accumulation")
+			grant_mechanism_passive("passive_style_twohand_heavy_swing")
+		CE.Style.DUAL_WIELD:
+			grant_mechanism_passive("passive_style_dual_cross_strike")
+			grant_mechanism_passive("passive_style_dual_cross_counter")
+		CE.Style.UNARMED:
+			grant_mechanism_passive("passive_style_unarmed_flurry_storm")
+			grant_mechanism_passive("passive_style_unarmed_over_shoulder_slam")
+		CE.Style.RANGED:
+			grant_mechanism_passive("passive_style_ranged_weakpoint_sight")
+			grant_mechanism_passive("passive_style_ranged_piercing")
+		CE.Style.SPELL:
+			grant_mechanism_passive("passive_style_spell_arcane_barrier")
+			grant_mechanism_passive("passive_style_spell_elemental_ring")
 
 ## 获取所有已绑定的主动技能 id（F+G 槽）
 func get_bound_active_skills() -> Array:
@@ -476,6 +593,7 @@ func reset() -> void:
 	casting_slot = -1
 	pending_momentum_context = null
 	release_slot_context.clear()
+	mechanism_passives.clear()
 
 func _find_slot_for_skill(skill_id: String) -> int:
 	for i in range(TOTAL_SLOTS):

@@ -3,7 +3,7 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://cb8hfpuchsnix"
+uid="uid://d28snnsmjm3tc"
 path="res://.godot/imported/materials_stalactite_sap.glb-0a8c68ab7da03e7c8623392120871d4b.scn"
 
 [deps]
@@ -42,4 +42,4 @@ materials/extract_path=""
 _subresources={}
 gltf/naming_version=2
 gltf/embedded_image_handling=1
-gltf/texture_map_mode=1
+gltf/texture_map_mode=0

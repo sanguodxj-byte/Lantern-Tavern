@@ -73,18 +73,6 @@
 		]
 	},
 	{
-		"tag": "key",
-		"base_probability": 0.0,
-		"zone_probabilities": {},
-		"location_preference": 4,
-		"physics_mode": 1,
-		"spawn_min_dist_from_player": 0.0,
-		"max_per_room": 1,
-		"item_scene_paths": [
-			{ "path": "res://scenes/collectibles/dropped_key/dropped_key.tscn", "weight": 100 }
-		]
-	},
-	{
 		"tag": "furniture",
 		"base_probability": 0.0,
 		"zone_probabilities": {},
