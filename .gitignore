@@ -49,10 +49,8 @@ __pycache__/
 tmp/
 tests/tmp/
 
-# 生成式报告日志（保留 reports/report_*/ 下的 HTML 测试报告）
-reports/*.log
-reports/*.txt
-reports/*.xml
+# 测试报告整个文件夹（HTML 报告/日志/中间产物，仅本地保留，不入库）
+reports/
 
 # 运行时 / 沙箱用户数据（Godot 重定向 APPDATA/LOCALAPPDATA 产生的垃圾，可重新生成）
 .godata/
