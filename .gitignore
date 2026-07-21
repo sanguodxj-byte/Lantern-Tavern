@@ -53,3 +53,10 @@ tests/tmp/
 reports/*.log
 reports/*.txt
 reports/*.xml
+
+# 运行时 / 沙箱用户数据（Godot 重定向 APPDATA/LOCALAPPDATA 产生的垃圾，可重新生成）
+.godata/
+.godot_headless/
+.sandbox_appdata/
+.sandbox_home/
+Godot/
