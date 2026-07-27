@@ -1,7 +1,9 @@
 class_name PlayerStateAttackPreparing
 extends PlayerState
 
-const MIN_HOLD_MSEC := 80
+const PLAYER_ANIMATION_PROFILE := preload("res://globals/visual/player_animation_profile.gd")
+
+const MIN_HOLD_MSEC := 0
 const CROSSBOW_MIN_HOLD_MSEC := 0
 
 func _enter_tree() -> void:
@@ -9,8 +11,13 @@ func _enter_tree() -> void:
 		player.view_model.begin_weapon_hold()
 	if player.is_active_weapon_ranged():
 		player.set_weapon_aiming(true)
-	else:
-		player.animation_player.play("idle")
+	var hold_animation := PLAYER_ANIMATION_PROFILE.hold_animation(player.get_active_hand_weapon_data())
+	# First-person and third-person are independent visual channels. Both must
+	# start here; the third-person clip remains the authoritative state timeline.
+	if player.animation_player != null and player.animation_player.has_animation(hold_animation):
+		player.animation_player.play(hold_animation)
+	elif player.animation_player != null:
+		player.animation_player.play("hold_weapon" if player.animation_player.has_animation("hold_weapon") else "idle")
 
 func _process(_delta: float) -> void:
 	if player.is_character_panel_visible():
@@ -23,7 +30,15 @@ func _process(_delta: float) -> void:
 		player.set_weapon_aiming(false)
 		transition_state(Player.State.MOVING)
 		return
-	if Input.is_action_pressed(input_action):
+	# A stale/re-entrant transition must not turn a cooldown press into a
+	# charge or a release attack. MOVING normally blocks this before entry, but
+	# this guard also covers state changes caused by other combat systems.
+	if not player.is_active_weapon_ranged() and player.is_melee_on_cooldown(state_data.weapon_attack_hand):
+		player.set_weapon_aiming(false)
+		_restore_view_model()
+		transition_state(Player.State.MOVING)
+		return
+	if player.is_weapon_action_held(input_action):
 		if player.is_active_weapon_ranged() and not player.is_active_weapon_crossbow():
 			# 弓：持续按住蓄力期间驱动拉弓进度动画；弩：无需蓄力动画和颤抖
 			var elapsed := Time.get_ticks_msec() - state_data.weapon_charge_started_msec
@@ -46,7 +61,7 @@ func _process(_delta: float) -> void:
 					player.view_model.sample_action(&"vm_melee_charge", charge_ratio)
 		return
 	var elapsed := Time.get_ticks_msec() - state_data.weapon_charge_started_msec
-	# 弩无需蓄力时间，立即射击；弓/近战需要最低蓄力时间
+	# 点按和蓄力都在松开时释放；弩/近战均无最低按住时间。
 	var min_hold := CROSSBOW_MIN_HOLD_MSEC if player.is_active_weapon_crossbow() else MIN_HOLD_MSEC
 	if elapsed < min_hold:
 		player.set_weapon_aiming(false)

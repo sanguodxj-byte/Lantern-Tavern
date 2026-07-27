@@ -116,7 +116,7 @@ func test_spider_static_parts_have_zero_overlap_and_one_face_contact_component()
 	var visited := {0: true}
 	var queue: Array[int] = [0]
 	while not queue.is_empty():
-		var current := queue.pop_front()
+		var current: int = queue.pop_front()
 		for neighbour in adjacency[current]:
 			if not visited.has(neighbour):
 				visited[neighbour] = true

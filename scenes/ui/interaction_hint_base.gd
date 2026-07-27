@@ -18,12 +18,14 @@ func _ready() -> void:
 	_build_ui()
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	theme = preload("res://scenes/ui/lantern_theme.tres")
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	z_index = 200
 
 func _build_ui() -> void:
 	if _hint_label != null:
 		return
-	# 统一样式：深色半透明背景 + 金色边框 + 圆角
+	# 统一像素样式：深色半透明背景 + 金色方形边框。
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.094, 0.098, 0.11, 0.92)
 	style.border_width_left = 2
@@ -31,10 +33,8 @@ func _build_ui() -> void:
 	style.border_width_right = 2
 	style.border_width_bottom = 2
 	style.border_color = Color(0.95, 0.72, 0.35, 0.8)
-	style.corner_radius_top_left = 6
-	style.corner_radius_top_right = 6
-	style.corner_radius_bottom_left = 6
-	style.corner_radius_bottom_right = 6
+	style.anti_aliasing = false
+	style.corner_detail = 1
 	style.content_margin_left = 12
 	style.content_margin_top = 8
 	style.content_margin_right = 12
@@ -47,6 +47,7 @@ func _build_ui() -> void:
 	add_child(_content_container)
 
 	_hint_label = Label.new()
+	_hint_label.add_theme_font_override("font", load(FONT_PATH))
 	_hint_label.add_theme_font_size_override("font_size", 18)
 	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

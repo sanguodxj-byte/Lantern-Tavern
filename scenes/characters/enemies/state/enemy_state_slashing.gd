@@ -13,15 +13,16 @@ var weapon_placeholder: Node3D = null
 var weapon_placeholder_base := Transform3D.IDENTITY
 
 func _enter_tree() -> void:
-	var weapon = enemy.equipment.weapon_data if enemy.equipment != null and enemy.equipment.has_weapon() else null
+	var weapon: WeaponData = enemy.get_attack_weapon()
 	var animation_name := SLASH_ANIM.enemy_animation_name(weapon)
-	slash_animation_name = animation_name if enemy.animation_player.has_animation(animation_name) else SLASH_ANIM.ANIMATION_NAME
+	slash_animation_name = animation_name if enemy.animation_player != null and enemy.animation_player.has_animation(animation_name) else SLASH_ANIM.ANIMATION_NAME
 	slash_duration_msec = SLASH_ANIM.play(enemy.animation_player, slash_animation_name, SLASH_ANIM.ENEMY_SPEED_SCALE)
 	weapon_placeholder = enemy.equipment.weapon_placeholder if enemy.equipment != null else null
 	if weapon_placeholder != null:
 		weapon_placeholder_base = weapon_placeholder.transform
 	hitbox = enemy.prepare_attack_hitbox(PhysicsSetup.LAYER_PLAYER)
-	enemy.animation_player.animation_finished.connect(on_animation_finished)
+	if enemy.animation_player != null and not enemy.animation_player.animation_finished.is_connected(on_animation_finished):
+		enemy.animation_player.animation_finished.connect(on_animation_finished)
 
 func _physics_process(_delta: float) -> void:
 	var slash_progress := SLASH_ANIM.progress(time_start_slash, slash_duration_msec)
@@ -57,7 +58,7 @@ func _resolve_hitbox_overlaps() -> void:
 		var player := collider as Player
 		if player == null:
 			continue
-		var weapon = enemy.equipment.weapon_data if enemy.equipment.has_weapon() else null
+		var weapon: WeaponData = enemy.get_attack_weapon()
 		var defender_attrs := {"str": 10, "dex": 10, "mag": 10, "con": 10, "agi": 10, "per": 10}
 		var has_shield := player.equipment.has_shield()
 		var result = CB.resolve_enemy_attack(enemy, player, weapon, defender_attrs, has_shield)

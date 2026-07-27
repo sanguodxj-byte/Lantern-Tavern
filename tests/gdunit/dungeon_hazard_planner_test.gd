@@ -182,6 +182,46 @@ func test_plan_reserves_nearest_rooms_as_breather() -> void:
 	# 其他房仍应有陷阱（breather 未掏空整张图）
 	assert_bool(layout.hazard_anchors.size() > 0).is_true()
 
+func test_breather_selection_never_empties_large_rooms() -> void:
+	var cfg := DungeonGenerationConfig.new()
+	cfg.algorithm = "isaac"
+	cfg.seed = 94021
+	var layout := DungeonGenerator.new().generate(cfg)
+	var planner := DungeonHazardPlanner.new()
+	var breather: Dictionary = planner._select_breather_rooms(layout)
+	for i in range(layout.rooms.size()):
+		var room: Rect2i = layout.rooms[i]
+		if room.size.x * room.size.y >= planner.LARGE_ROOM_AREA:
+			assert_bool(not breather.has(i)) \
+				.override_failure_message("大房间不应被喘息房规则掏空: %s" % room).is_true()
+
+func test_boss_room_can_receive_hazard_anchors() -> void:
+	var layout := DungeonLayout.new()
+	layout.width = 12
+	layout.height = 12
+	layout.tile_size = 3.0
+	layout.grid = []
+	layout.heights = []
+	for y in range(12):
+		var row: Array = []
+		var height_row: Array = []
+		for x in range(12):
+			row.append(1)
+			height_row.append(3.0)
+		layout.grid.append(row)
+		layout.heights.append(height_row)
+	layout.rooms = [Rect2i(0, 0, 3, 3), Rect2i(4, 4, 8, 8)]
+	layout.room_roles["start"] = layout.rooms[0]
+	layout.room_roles["boss"] = layout.rooms[1]
+	layout.player_spawn_cell = Vector2i(1, 1)
+	layout.boss_cell = Vector2i(8, 8)
+	DungeonHazardPlanner.new().plan(layout)
+	var boss_anchor_count := 0
+	for anchor in layout.hazard_anchors:
+		if int(anchor["room_index"]) == 1:
+			boss_anchor_count += 1
+	assert_int(boss_anchor_count).is_greater_equal(2)
+
 func test_plan_breather_disabled_when_few_rooms() -> void:
 	# 房间数 < MIN_ROOMS_FOR_BREATHER ⇒ 不设喘息房，否则会把仅有的 2 个普通房全跳过 → 0 陷阱
 	var planner := DungeonHazardPlanner.new()

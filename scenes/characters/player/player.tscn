@@ -72,10 +72,46 @@ bone_name = "Hand.L"
 [node name="ShieldPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/ShieldBoneAttachment" unique_id=1952244974]
 unique_name_in_owner = true
 
+[node name="ArmorHeadBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D"]
+bone_name = "Head"
+
+[node name="ArmorHeadPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/ArmorHeadBoneAttachment"]
+unique_name_in_owner = true
+
+[node name="ArmorBodyBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D"]
+bone_name = "Torso"
+
+[node name="ArmorBodyPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/ArmorBodyBoneAttachment"]
+unique_name_in_owner = true
+
+[node name="ArmorHandLBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D"]
+bone_name = "LowerArm.L"
+
+[node name="ArmorHandLPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/ArmorHandLBoneAttachment"]
+unique_name_in_owner = true
+
+[node name="ArmorHandRBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D"]
+bone_name = "LowerArm.R"
+
+[node name="ArmorHandRPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/ArmorHandRBoneAttachment"]
+unique_name_in_owner = true
+
+[node name="ArmorFootLBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D"]
+bone_name = "Foot.L"
+
+[node name="ArmorFootLPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/ArmorFootLBoneAttachment"]
+unique_name_in_owner = true
+
+[node name="ArmorFootRBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D"]
+bone_name = "Foot.R"
+
+[node name="ArmorFootRPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/ArmorFootRBoneAttachment"]
+unique_name_in_owner = true
+
 [node name="AnimationPlayer" parent="character" index="1" unique_id=1131348519]
 autoplay = &"idle"
 
-[node name="EquipmentComponent" parent="." unique_id=2139399618 node_paths=PackedStringArray("furniture_placeholder", "shield_placeholder", "weapon_placeholder", "weapon_reach_raycast", "weapon_spawn_position") instance=ExtResource("3_hss88")]
+[node name="EquipmentComponent" parent="." unique_id=2139399618 node_paths=PackedStringArray("furniture_placeholder", "shield_placeholder", "weapon_placeholder", "weapon_reach_raycast", "weapon_spawn_position", "armor_head_placeholder", "armor_body_placeholder", "armor_hand_l_placeholder", "armor_hand_r_placeholder", "armor_foot_l_placeholder", "armor_foot_r_placeholder") instance=ExtResource("3_hss88")]
 unique_name_in_owner = true
 furniture_placeholder = NodePath("../FurniturePlaceholder")
 is_always_in_front = true
@@ -84,6 +120,12 @@ shield_placeholder = NodePath("../character/Armature/Skeleton3D/ShieldBoneAttach
 weapon_placeholder = NodePath("../character/Armature/Skeleton3D/WeaponBoneAttachment/WeaponPlaceholder")
 weapon_reach_raycast = NodePath("../WeaponReachRaycast")
 weapon_spawn_position = NodePath("../WeaponSpawnPosition")
+armor_head_placeholder = NodePath("../character/Armature/Skeleton3D/ArmorHeadBoneAttachment/ArmorHeadPlaceholder")
+armor_body_placeholder = NodePath("../character/Armature/Skeleton3D/ArmorBodyBoneAttachment/ArmorBodyPlaceholder")
+armor_hand_l_placeholder = NodePath("../character/Armature/Skeleton3D/ArmorHandLBoneAttachment/ArmorHandLPlaceholder")
+armor_hand_r_placeholder = NodePath("../character/Armature/Skeleton3D/ArmorHandRBoneAttachment/ArmorHandRPlaceholder")
+armor_foot_l_placeholder = NodePath("../character/Armature/Skeleton3D/ArmorFootLBoneAttachment/ArmorFootLPlaceholder")
+armor_foot_r_placeholder = NodePath("../character/Armature/Skeleton3D/ArmorFootRBoneAttachment/ArmorFootRPlaceholder")
 
 [node name="WeaponSpawnPosition" type="Node3D" parent="." unique_id=1508377189]
 transform = Transform3D(-4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 0, 0, 1, 0.35, 1.3, -0.588)
@@ -96,8 +138,8 @@ collision_mask = 68
 
 [node name="HealthComponent" parent="." unique_id=1052761881 instance=ExtResource("4_hss88")]
 unique_name_in_owner = true
-max_life = 30
-current_life = 30
+max_life = 155
+current_life = 155
 
 [node name="FurniturePlaceholder" type="Node3D" parent="." unique_id=1227463794]
 transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.3711392e-08, 0, 0, 0, 1, 0.5, 2, -0.6)

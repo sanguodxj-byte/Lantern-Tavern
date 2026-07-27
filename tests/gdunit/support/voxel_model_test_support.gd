@@ -99,7 +99,10 @@ static func inspect_image_file(path: String, background: Variant = null) -> Dict
 	}
 	if not result["exists"]:
 		return result
-	var image := Image.load_from_file(path)
+	# Reports are generated files, so read them through the filesystem path.
+	# Passing res:// directly makes Godot warn that Image.load_from_file is not
+	# export-safe even though this helper is intentionally editor/test-only.
+	var image := Image.load_from_file(ProjectSettings.globalize_path(path))
 	if image == null or image.is_empty():
 		return result
 	return _inspect_image(image, background).merged({"exists": true, "readable": true}, true)

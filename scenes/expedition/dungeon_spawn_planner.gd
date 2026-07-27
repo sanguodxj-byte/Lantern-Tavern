@@ -17,6 +17,7 @@ extends RefCounted
 # 规划期不读 DungeonSpawner autoload，避免对全局单例的隐式依赖。
 const ROSTER_PATH := "res://data/enemy_roster.json"
 const MODEL_TIERS := preload("res://data/character_model_tiers.gd")
+const HAZARD_CLEARANCE_CELLS := 1
 static var ZONE_ENEMY_CONFIG: Dictionary = {}
 static var BOSS_TYPES: Array = []
 static var NORMAL_TYPES: Array = []
@@ -104,7 +105,7 @@ func plan_enemy_spawns(layout: DungeonLayout) -> Array:
 			var boss_type := _pick_boss_type(zone_cfg)
 			if boss_type.is_empty():
 				continue
-			var boss_cell := _pick_room_floor_cell(layout, room, layout.boss_cell)
+			var boss_cell := _pick_room_floor_cell(layout, room, layout.boss_cell, true)
 			if boss_cell.x >= 0:
 				layout.enemy_spawn_specs.append({
 					"enemy_type": boss_type, "cell": boss_cell,
@@ -126,7 +127,7 @@ func plan_enemy_spawns(layout: DungeonLayout) -> Array:
 		var target_count := _calc_room_enemy_count(zone_cfg, floor_cells.size(), depth, rng)
 		var used: Dictionary = {}
 		for _i in range(target_count):
-			var cell: Vector2i = _pick_unused_cell(floor_cells, used)
+			var cell: Vector2i = _pick_unused_cell(floor_cells, used, rng)
 			if cell.x < 0:
 				break
 			used[cell] = true
@@ -198,16 +199,12 @@ func validate_plan(layout: DungeonLayout) -> Dictionary:
 	var errors: Array = []
 	if layout.is_empty():
 		return {"valid": true, "errors": errors}
-	# 收集 hazard 锚点格（敌人不能直接位于陷阱伤害中心）
-	var hazard_cells := {}
-	for anchor in layout.hazard_anchors:
-		hazard_cells[anchor["anchor_cell"]] = true
 	for spec in layout.enemy_spawn_specs:
 		var cell: Vector2i = spec["cell"]
-		if not layout.is_floor_cell(cell):
-			errors.append("enemy spec at %s not on floor" % str(cell))
-		if hazard_cells.has(cell):
-			errors.append("enemy spec at %s overlaps hazard anchor" % str(cell))
+		if not layout.is_floor_cell(cell) or _is_pillar_cell(layout, cell):
+			errors.append("enemy spec at %s not on traversable floor" % str(cell))
+		if _is_hazard_clearance_cell(layout, cell):
+			errors.append("enemy spec at %s overlaps hazard clearance" % str(cell))
 		if layout.is_start_room_cell(cell):
 			errors.append("enemy spec at %s in start room" % str(cell))
 		var et: String = spec["enemy_type"]
@@ -260,32 +257,46 @@ func _collect_room_floor_cells(layout: DungeonLayout, room: Rect2i, exclude_near
 			if not layout.is_floor_at(x, y):
 				continue
 			var cell := Vector2i(x, y)
+			if _is_pillar_cell(layout, cell):
+				continue
 			# 与出生格距离 ≥ 2（procedural 的 spawn_pos 距离近似的格距）
 			if exclude_near.x >= 0 and absi(cell.x - exclude_near.x) + absi(cell.y - exclude_near.y) < 2:
 				continue
 			cells.append(cell)
 	return cells
 
-func _pick_room_floor_cell(layout: DungeonLayout, room: Rect2i, preferred: Vector2i) -> Vector2i:
-	if not layout.is_key_cell_missing(preferred) and layout.is_floor_cell(preferred) and room.has_point(preferred):
-		return preferred
+func _is_pillar_cell(layout: DungeonLayout, cell: Vector2i) -> bool:
+	return cell.y >= 0 and cell.y < layout.grid.size() \
+		and cell.x >= 0 and cell.x < layout.grid[cell.y].size() \
+		and int(layout.grid[cell.y][cell.x]) == 5
+
+func _pick_room_floor_cell(layout: DungeonLayout, room: Rect2i, preferred: Vector2i, avoid_hazard_clearance: bool = false) -> Vector2i:
+	if not layout.is_key_cell_missing(preferred) and layout.is_floor_cell(preferred) and not _is_pillar_cell(layout, preferred) and room.has_point(preferred):
+		if not avoid_hazard_clearance or not _is_hazard_clearance_cell(layout, preferred):
+			return preferred
 	var cells := _collect_room_floor_cells(layout, room, Vector2i(-1, -1))
+	if avoid_hazard_clearance:
+		cells = _exclude_hazard_anchor_cells(layout, cells)
 	if cells.is_empty():
 		return Vector2i(-1, -1)
 	return cells[0]
 
-# 从候选格中剔除 hazard 锚点格（敌人不应落在陷阱伤害中心）。hazard_anchors 为空时原样返回。
+# 从候选格中剔除 hazard 安全区（中心及相邻 HAZARD_CLEARANCE_CELLS 格）。
 func _exclude_hazard_anchor_cells(layout: DungeonLayout, cells: Array) -> Array:
 	if layout.hazard_anchors.is_empty():
 		return cells
-	var blocked := {}
-	for anchor in layout.hazard_anchors:
-		blocked[anchor["anchor_cell"]] = true
 	var out: Array = []
 	for c in cells:
-		if not blocked.has(c):
+		if not _is_hazard_clearance_cell(layout, c):
 			out.append(c)
 	return out
+
+func _is_hazard_clearance_cell(layout: DungeonLayout, cell: Vector2i) -> bool:
+	for anchor in layout.hazard_anchors:
+		var hazard_cell: Vector2i = anchor.get("anchor_cell", Vector2i(-1, -1))
+		if maxi(absi(cell.x - hazard_cell.x), absi(cell.y - hazard_cell.y)) <= HAZARD_CLEARANCE_CELLS:
+			return true
+	return false
 
 func _calc_room_enemy_count(zone_cfg: Dictionary, floor_cell_count: int, depth: int, rng: RandomNumberGenerator) -> int:
 	var base: int = int(ceil(float(zone_cfg.get("count_per_room", 1.5))))
@@ -297,12 +308,31 @@ func _calc_room_enemy_count(zone_cfg: Dictionary, floor_cell_count: int, depth: 
 	count += int(depth / 12)
 	return min(count, floor_cell_count)
 
-func _pick_unused_cell(floor_cells: Array, used: Dictionary) -> Vector2i:
-	for c in floor_cells:
-		var cell: Vector2i = c
+func _pick_unused_cell(floor_cells: Array, used: Dictionary, rng: RandomNumberGenerator) -> Vector2i:
+	var available: Array[Vector2i] = []
+	for candidate in floor_cells:
+		var cell: Vector2i = candidate
 		if not used.has(cell):
-			return cell
-	return Vector2i(-1, -1)
+			available.append(cell)
+	if available.is_empty():
+		return Vector2i(-1, -1)
+
+	if used.is_empty():
+		return available[rng.randi_range(0, available.size() - 1)]
+	var best_distance := -1
+	var best_cells: Array[Vector2i] = []
+	for cell in available:
+		var nearest_distance := 1_000_000
+		for used_cell in used.keys():
+			var distance := absi(cell.x - used_cell.x) + absi(cell.y - used_cell.y)
+			nearest_distance = mini(nearest_distance, distance)
+		if nearest_distance > best_distance:
+			best_distance = nearest_distance
+			best_cells.clear()
+			best_cells.append(cell)
+		elif nearest_distance == best_distance:
+			best_cells.append(cell)
+	return best_cells[rng.randi_range(0, best_cells.size() - 1)]
 
 func _pick_weighted(types: Dictionary) -> String:
 	_ensure_roster()

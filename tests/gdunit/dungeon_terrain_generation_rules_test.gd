@@ -67,6 +67,85 @@ func test_builder_builds_wall_transforms_for_simple_room() -> void:
 	result.dispose()
 	parent.queue_free()
 
+func test_builder_creates_one_integer_ceiling_transition_at_height_boundary() -> void:
+	var layout := DungeonLayout.new()
+	layout.width = 2
+	layout.height = 1
+	layout.tile_size = 3.0
+	layout.grid = [[1, 1]]
+	layout.heights = [[3.0, 5.0]]
+	var result := DungeonBuildResult.new()
+	DungeonSceneBuilder.new()._build_terrain(layout, result)
+
+	assert_int(result.ceiling_transition_transforms_by_size.size()).is_equal(1)
+	var group: Dictionary = result.ceiling_transition_transforms_by_size.values()[0]
+	var transition_size: Vector3 = group["size"]
+	var transforms: Array = group["transforms"]
+	assert_int(transforms.size()).is_equal(1)
+	assert_float(transition_size.x).is_equal_approx(0.2, 0.0001)
+	assert_float(transition_size.y).is_equal_approx(2.0, 0.0001)
+	assert_float(transition_size.z).is_equal_approx(3.0, 0.0001)
+	var transition := transforms[0] as Transform3D
+	assert_float(transition.origin.x).is_equal_approx(-1.5, 0.0001)
+	assert_float(transition.origin.y).is_equal_approx(4.0, 0.0001)
+	assert_float(transition.origin.z).is_equal_approx(-1.5, 0.0001)
+	assert_bool(DungeonGenerationConfig.is_integer_height(transition_size.y)).is_true()
+	assert_float((result.ceiling_transforms[0] as Transform3D).origin.y).is_equal_approx(3.05, 0.0001)
+	assert_float((result.ceiling_transforms[1] as Transform3D).origin.y).is_equal_approx(5.05, 0.0001)
+
+func test_ceiling_transition_is_registered_for_visual_and_collision_chunks() -> void:
+	var layout := DungeonLayout.new()
+	layout.width = 2
+	layout.height = 1
+	layout.tile_size = 3.0
+	layout.grid = [[1, 1]]
+	layout.heights = [[3.0, 5.0]]
+	var result := DungeonBuildResult.new()
+	result.terrain_root = Node3D.new()
+	result.collision_root = Node3D.new()
+	var builder := DungeonSceneBuilder.new()
+	builder._build_terrain(layout, result)
+	builder._build_multi_meshes(layout, result)
+	builder._build_collisions(layout, result)
+
+	var transition_visual_found := false
+	for child in result.terrain_root.get_children():
+		if String(child.name).begins_with("CeilingTransitionMultiMesh_"):
+			transition_visual_found = true
+			break
+	assert_bool(transition_visual_found).is_true()
+	var transition_collision_found := false
+	for child in result.collision_root.get_children():
+		if String(child.name).begins_with("CeilingTransitionCollisions_"):
+			transition_collision_found = true
+			break
+	assert_bool(transition_collision_found).is_true()
+	assert_bool(result.terrain_chunks.is_empty()).is_false()
+
+	result.terrain_root.free()
+	result.collision_root.free()
+
+func test_door_boundary_uses_door_surround_without_duplicate_ceiling_transition() -> void:
+	var layout := DungeonLayout.new()
+	layout.width = 5
+	layout.height = 3
+	layout.tile_size = 3.0
+	layout.grid = [
+		[2, 2, 2, 2, 2],
+		[2, 1, 1, 1, 0],
+		[2, 2, 2, 2, 2],
+	]
+	layout.heights = [
+		[3.0, 3.0, 3.0, 3.0, 3.0],
+		[3.0, 3.0, 3.0, 5.0, 3.0],
+		[3.0, 3.0, 3.0, 3.0, 3.0],
+	]
+	layout.rooms = [Rect2i(0, 0, 3, 3)]
+	var result := DungeonBuildResult.new()
+	DungeonSceneBuilder.new()._build_terrain(layout, result)
+
+	assert_bool(result.ceiling_transition_transforms_by_size.is_empty()).is_true()
+
 func test_builder_constants_align_with_rendering_config() -> void:
 	var cfg := DungeonRenderingConfig.default()
 	var builder_src := (load("res://scenes/expedition/dungeon_scene_builder.gd") as GDScript).source_code

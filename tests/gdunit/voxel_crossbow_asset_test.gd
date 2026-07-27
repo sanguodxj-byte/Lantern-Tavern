@@ -145,7 +145,7 @@ func test_crossbow_imported_palette_keeps_wood_steel_brass_and_flax() -> void:
 	instance.free()
 
 
-func test_crossbow_embeds_distinct_nonblack_pixel_textures() -> void:
+func test_crossbow_embeds_simple_sparse_two_color_wood_textures() -> void:
 	var instance := _instantiate()
 	var stock := _mesh_material(instance, "body_stock_core")
 	var butt := _mesh_material(instance, "stock_butt")
@@ -156,6 +156,8 @@ func test_crossbow_embeds_distinct_nonblack_pixel_textures() -> void:
 		assert_int(material.albedo_texture.get_height()).is_equal(8)
 		assert_float(_texture_max_channel(material)).is_greater(0.20)
 		assert_float(_texture_color_range(material)).is_greater(0.05)
+		assert_int(_texture_color_counts(material).size()).is_equal(2)
+		assert_bool(_least_common_texture_color_count(material) <= 8).is_true()
 	assert_bool(stock.albedo_texture != butt.albedo_texture).is_true()
 	assert_bool(stock.albedo_texture == grip.albedo_texture).is_true()
 	var glb_text := _glb_ascii()
@@ -279,3 +281,21 @@ func _texture_color_range(material: StandardMaterial3D) -> float:
 			minimum = minf(minimum, luma)
 			maximum = maxf(maximum, luma)
 	return maximum - minimum
+
+
+func _texture_color_counts(material: StandardMaterial3D) -> Dictionary:
+	var image := material.albedo_texture.get_image()
+	assert_object(image).is_not_null()
+	var counts := {}
+	for y in range(image.get_height()):
+		for x in range(image.get_width()):
+			var key := image.get_pixel(x, y).to_html(false)
+			counts[key] = int(counts.get(key, 0)) + 1
+	return counts
+
+
+func _least_common_texture_color_count(material: StandardMaterial3D) -> int:
+	var least_common := 64
+	for count in _texture_color_counts(material).values():
+		least_common = mini(least_common, int(count))
+	return least_common

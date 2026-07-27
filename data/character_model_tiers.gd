@@ -72,6 +72,7 @@ const BY_ID: Dictionary = {
 	"duergar_miner": B,
 	# 本轮视觉审核：C/D
 	"kobold": C,
+	"anime_girl": D,
 	"zombie": D,
 	# 尚未进行本轮视觉审核的历史队列档位
 	"necrolord": A,

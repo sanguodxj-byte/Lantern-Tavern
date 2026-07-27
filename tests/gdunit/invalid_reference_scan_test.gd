@@ -16,6 +16,9 @@ const SKIP_PATH_PREFIXES := [
 	"res://path1",           # 测试 mock 路径
 	"res://path2",]
 const FORMAT_SPECIFIER := ["%s", "%d", "%08x", "%x", "%02x", "%03d"]
+const SKIP_FILE_PREFIXES := [
+	"res://tests/scratch_",
+]
 
 ## 获取项目根目录下的所有需要扫描的文件
 func _collect_files(extensions: PackedStringArray) -> PackedStringArray:
@@ -52,6 +55,10 @@ func _should_skip(res_path: String) -> bool:
 			return true
 	return false
 
+## 动态目录加载会先保留目录前缀，再拼接实际文件名；前缀本身不是资源。
+func _is_dynamic_directory_reference(line: String, res_path: String) -> bool:
+	return res_path.ends_with("/") and line.contains("+")
+
 ## 从文本行中提取 res:// 路径
 func _extract_res_paths(line: String) -> PackedStringArray:
 	var paths: PackedStringArray = []
@@ -83,6 +90,11 @@ func _is_comment_line(line: String) -> bool:
 ## 判断路径是否在测试中的负向断言（检查不存在）
 func _is_negative_assertion(line: String) -> bool:
 	return line.contains("not ResourceLoader.exists") or line.contains("ResourceLoader.exists(") and line.contains("is_false")
+
+## 测试源码中用于验证“不得 preload 某目录”的负向源码断言不是运行时 preload。
+## 这类行的路径只存在于字符串文本，不能当作资源引用解析。
+func _is_source_inspection_assertion(line: String) -> bool:
+	return line.contains("src.contains(") and line.contains("preload(")
 
 func test_no_invalid_ext_resource_in_tscn_files() -> void:
 	var files := _collect_files(PackedStringArray(["tscn", "tres"]))
@@ -117,7 +129,7 @@ func test_no_invalid_preload_in_gd_files() -> void:
 	var invalid: PackedStringArray = []
 	for file_path in files:
 		# 跳过测试文件中的 mock 路径和 addons
-		if file_path.contains("/addons/"):
+		if file_path.contains("/addons/") or SKIP_FILE_PREFIXES.any(func(prefix: String) -> bool: return file_path.begins_with(prefix)):
 			continue
 		var f := FileAccess.open(file_path, FileAccess.READ)
 		if f == null:
@@ -128,6 +140,9 @@ func test_no_invalid_preload_in_gd_files() -> void:
 			line_num += 1
 			# 跳过注释行
 			if _is_comment_line(line):
+				continue
+			# 跳过测试对源码文本的负向断言，而不是跳过实际 preload 调用。
+			if _is_source_inspection_assertion(line):
 				continue
 			# 检查 preload("res://...") 调用
 			if line.contains("preload(") or line.contains('preload("'):
@@ -148,7 +163,7 @@ func test_no_invalid_load_in_gd_files() -> void:
 	assert_int(files.size()).is_greater(0)
 	var invalid: PackedStringArray = []
 	for file_path in files:
-		if file_path.contains("/addons/"):
+		if file_path.contains("/addons/") or SKIP_FILE_PREFIXES.any(func(prefix: String) -> bool: return file_path.begins_with(prefix)):
 			continue
 		var f := FileAccess.open(file_path, FileAccess.READ)
 		if f == null:
@@ -166,6 +181,8 @@ func test_no_invalid_load_in_gd_files() -> void:
 			if line.contains("load(") and not line.contains("preload("):
 				for res_path in _extract_res_paths(line):
 					if _should_skip(res_path):
+						continue
+					if _is_dynamic_directory_reference(line, res_path):
 						continue
 					if not ResourceLoader.exists(res_path) and not FileAccess.file_exists(res_path):
 						invalid.append("%s:%d -> %s" % [file_path, line_num, res_path])
@@ -218,7 +235,8 @@ func test_audio_manager_sounds_exist() -> void:
 		if stream is AudioStream:
 			assert_object(stream).is_not_null()
 			assert_str(stream.resource_path).is_not_empty()
-	instance.queue_free()
+	# 实例未加入 SceneTree，使用立即释放避免 deferred queue_free 在套件结束时留下 orphan。
+	instance.free()
 
 func test_no_orphaned_import_files() -> void:
 	# 检查是否有孤立的 .import 文件（源文件不存在的 .import）

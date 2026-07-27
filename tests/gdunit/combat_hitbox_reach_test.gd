@@ -93,6 +93,28 @@ func test_hitbox_far_edge_reaches_fallback_reach() -> void:
 	# Cleanup
 	owner.queue_free()
 
+func test_heavy_swing_radius_multiplier_expands_hitbox_depth_and_width() -> void:
+	# Arrange
+	var owner := Node3D.new()
+	add_child(owner)
+	var weapon_model := _create_small_weapon_model()
+	owner.add_child(weapon_model)
+	var fallback_reach := 2.0
+	var radius_mult := 1.3
+
+	# Act
+	var hitbox := HITBOX_BUILDER.ensure_hitbox(owner, weapon_model, fallback_reach, 0, radius_mult)
+	var col := hitbox.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	var shape := col.shape as BoxShape3D
+
+	# Assert: heavy swing enlarges the attack footprint in both axes.
+	assert_float(shape.size.z).is_equal_approx(fallback_reach * radius_mult, 0.01)
+	assert_float(col.position.z).is_equal_approx(-fallback_reach * radius_mult * 0.5, 0.01)
+	assert_float(shape.size.x).is_equal_approx(HITBOX_BUILDER.MIN_MODEL_HITBOX_SIZE.x * radius_mult, 0.01)
+
+	# Cleanup
+	owner.queue_free()
+
 func test_hitbox_fallback_when_no_weapon_model() -> void:
 	# Arrange: 无武器网格
 	var owner := Node3D.new()

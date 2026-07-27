@@ -64,12 +64,12 @@ func _watch_timeout() -> void:
 ## 撞墙/天花板结算：沿撞击法线方向（与 _apply_physical_impact_damage 同号约定）四散。
 func _resolve(normal: Vector3) -> void:
 	_resolved = true
-	transition_state(Enemy.State.DYING, compute_death_data(normal))
+	enemy.request_death(compute_death_data(normal), true)
 
 ## 无墙结算（落地停稳 / 飞行超时）：原地轻抛四散。
 func _resolve_settled() -> void:
 	_resolved = true
-	transition_state(Enemy.State.DYING, compute_death_data(Vector3.UP))
+	enemy.request_death(compute_death_data(Vector3.UP), true)
 
 ## 计算从撞击点结算死亡所用的状态数据：撞墙沿法线四散（与 _apply_physical_impact_damage 同号约定），
 ## 无墙（传入 Vector3.ZERO / Vector3.UP 哨兵）则原地轻抛。供 transition 与单测复用。

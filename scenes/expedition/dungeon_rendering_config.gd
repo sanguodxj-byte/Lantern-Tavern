@@ -14,7 +14,7 @@ var door_surround_thickness: float = 0.2
 # 天花板厚度（米）
 var ceiling_thickness: float = 0.1
 
-# 天花板过渡缝隙（米）
+# 天花板过渡兼容容差（米）；正式几何收边必须填满高度差，不得留下实际缝隙
 var ceiling_transition_gap: float = 0.015
 
 # 玩家视野基础能量/范围（runtime 范畴，暂收拢供统一引用）

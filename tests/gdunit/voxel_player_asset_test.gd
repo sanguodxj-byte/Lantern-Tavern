@@ -80,6 +80,24 @@ const EXPECTED_ANIMATIONS := [
 	"lift", "pickup", "throw_weapon", "throw_furniture",
 	"default", "hold_weapon", "slash_one_hand", "slash_heavy", "slash_dagger",
 	"thrust_spear", "bash_shield", "claw_swipe",
+	"crossbow_aim", "crossbow_fire", "crossbow_reload",
+	"unarmed_hold", "unarmed_guard",
+	"shortsword_hold", "shortsword_guard", "shortsword_attack",
+	"sword_hold", "sword_guard", "sword_attack",
+	"dagger_hold", "dagger_guard", "dagger_attack",
+	"greatsword_hold", "greatsword_guard", "greatsword_attack",
+	"greatsword_heavy_swing",
+	"axe_hold", "axe_guard", "axe_attack",
+	"axe_heavy_swing",
+	"warhammer_hold", "warhammer_guard", "warhammer_attack",
+	"warhammer_heavy_swing",
+	"spear_hold", "spear_guard", "spear_attack",
+	"spear_heavy_swing",
+	"bow_hold", "bow_aim", "bow_release",
+	"crossbow_hold",
+	"staff_hold", "staff_guard", "staff_attack",
+	"grimoire_hold", "grimoire_guard", "grimoire_attack",
+	"shield_hold", "shield_block",
 ]
 
 
@@ -97,6 +115,7 @@ func test_player_generator_is_bespoke_fixed_identity_and_rejects_legacy_output()
 	assert_str(source).contains("parent_parts_by_bone(parts_by_bone, armature)")
 	assert_str(source).contains("build_all_actions(armature)")
 	assert_str(source).contains("build_weapon_actions(armature)")
+	assert_str(source).contains("build_player_crossbow_actions(armature)")
 	assert_str(source).contains('create_voxel_humanoid_armature(height_px=54.0, name="Armature")')
 	assert_str(source).contains("bpy.data.objects.remove(root, do_unlink=True)")
 	assert_str(source).contains("bounds_center_scale(armature)")

@@ -55,6 +55,40 @@ static func filter_entries(entries: Array, filter_id: String) -> Array:
 			filtered.append(entry)
 	return filtered
 
+## Returns a new display order for inventory entries without mutating the
+## dictionaries supplied by the inventory owner. The page renderer can pass
+## only the small presentation facts it already has (type, display_name, id),
+## while the category ordering remains one policy at this seam.
+static func sort_inventory_entries(entries: Array) -> Array:
+	var sorted: Array = []
+	for raw_entry in entries:
+		if typeof(raw_entry) == TYPE_DICTIONARY:
+			sorted.append(raw_entry)
+	sorted.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+			var left_rank := _inventory_category_rank(String(left.get("type", "")))
+			var right_rank := _inventory_category_rank(String(right.get("type", "")))
+			if left_rank != right_rank:
+				return left_rank < right_rank
+			var left_name := String(left.get("display_name", ""))
+			var right_name := String(right.get("display_name", ""))
+			if left_name != right_name:
+				return left_name.naturalnocasecmp_to(right_name) < 0
+			return String(left.get("id", "")) < String(right.get("id", ""))
+	)
+	return sorted
+
+static func _inventory_category_rank(item_type: String) -> int:
+	match item_type:
+		"weapon":
+			return 0
+		"armor":
+			return 1
+		"material":
+			return 2
+		"rune":
+			return 3
+	return 99
+
 static func make_stat_rows(lines: Array) -> Array:
 	var rows: Array = []
 	for raw_line in lines:

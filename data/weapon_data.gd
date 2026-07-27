@@ -43,6 +43,20 @@ extends Resource
 @export var armor_slot: String = ""
 @export var armor_phys_def: int = 0
 @export var armor_move_speed_mult: float = 1.0
+## 护甲分类："light" / "heavy" / ""（非护甲）。决定熟练度被动适用性。
+@export var armor_type: String = ""
+## 火焰抗性（绝对减伤，post-mit 后叠加）
+@export var armor_fire_res: int = 0
+## 冰霜抗性（绝对减伤）
+@export var armor_ice_res: int = 0
+## 雷电抗性（绝对减伤）
+@export var armor_lightning_res: int = 0
+## 毒素抗性（绝对减伤）
+@export var armor_poison_res: int = 0
+## 魔法减伤百分比（0~75，仅作用于 attack_type=="spell"）
+@export var armor_magic_res_percent: float = 0.0
+## 击退抗性（0~1，1=完全免疫击退）
+@export var armor_knockback_res: float = 0.0
 
 # ── 类 ToME4 / Elona 品质与材质字段 ──
 @export var material_tier: String = "iron"         # wood, iron, steel, meteoric, mithril, adamantite

@@ -15,6 +15,7 @@ from __future__ import annotations
   "D:/123/blender/blender.exe" --background --python tools/generate_voxel_drow_blade.py
 """
 
+import math
 import sys
 from pathlib import Path
 
@@ -25,6 +26,7 @@ from mathutils import Vector
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from voxel_humanoid_rig import PX, REFERENCE_HEIGHT_PX, create_voxel_humanoid_armature, parent_parts_by_bone
+from voxel_character_rig import build_all_actions, build_weapon_actions, export_glb as export_rig_glb
 from voxel_overlap_guard import assert_parts_voxel_assembly_valid
 from voxel_single_model_cli import reject_target_override
 
@@ -278,6 +280,8 @@ def build_drow_blade() -> bpy.types.Object:
 
     # 绑定骨骼
     parent_parts_by_bone(parts_by_bone, armature)
+    build_all_actions(armature)
+    build_weapon_actions(armature)
 
     return root
 
@@ -292,6 +296,10 @@ def select_tree(root: bpy.types.Object) -> None:
 
 def export_glb(root: bpy.types.Object) -> None:
     STATIC_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    # Blender's authored front is -Y. Rotate exported assets 180 degrees around
+    # Z so Godot's forward convention remains -Z; reset before real 3D previews.
+    root.rotation_euler.z = math.pi
+    bpy.context.view_layer.update()
     select_tree(root)
 
     # 1. 导出 static GLB
@@ -303,14 +311,10 @@ def export_glb(root: bpy.types.Object) -> None:
         export_apply=True,
     )
 
-    # 2. 导出 rig GLB
-    bpy.ops.export_scene.gltf(
-        filepath=str(RIG_OUTPUT),
-        export_format="GLB",
-        use_selection=True,
-        export_yup=True,
-        export_apply=False,
-    )
+    # 2. 导出带完整人形动作合约的 rig GLB
+    export_rig_glb(RIG_OUTPUT)
+    root.rotation_euler.z = 0.0
+    bpy.context.view_layer.update()
 
 
 def add_lights_and_camera(target_px: tuple[float, float, float], scale: float) -> bpy.types.Object:

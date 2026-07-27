@@ -2,7 +2,6 @@
 
 [ext_resource type="PackedScene" path="res://scenes/characters/enemies/goblin.tscn" id="1_base"]
 [ext_resource type="PackedScene" path="res://assets/meshes/characters/voxel_rock_golem_80px_rig.glb" id="2_voxel"]
-[ext_resource type="Resource" path="res://data/weapons/axe.tres" id="3_wpn"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_mat"]
 albedo_color = Color(0.420, 0.400, 0.380, 1)
@@ -21,6 +20,8 @@ duration_stun = 3000
 speed = 0.9
 body_size = "large"
 is_elite = true
+attack_mode = "body"
+body_attack_reach = 1.8
 
 [node name="character" parent="." index="1" instance=ExtResource("2_voxel")]
 
@@ -30,7 +31,7 @@ shape = SubResource("CapsuleShape3D_body")
 
 [node name="EquipmentComponent" parent="." index="2"]
 shield_data = null
-weapon_data = ExtResource("3_wpn")
+weapon_data = null
 
 [node name="HealthComponent" parent="." index="6"]
 max_life = 32

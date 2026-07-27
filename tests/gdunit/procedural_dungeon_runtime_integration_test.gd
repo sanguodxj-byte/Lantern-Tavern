@@ -46,6 +46,15 @@ func test_ready_wires_build_result_to_streaming() -> void:
 	assert_bool(ready_block.contains("streaming_controller.configure(layout, build_result")) \
 		.override_failure_message("_ready 应调 streaming_controller.configure(layout, build_result)").is_true()
 
+func test_procedural_teardown_stops_runtime_and_clears_owned_globals() -> void:
+	var src := (load(PROCEDURAL_PATH) as GDScript).source_code
+	var teardown := _extract_func_block(src, "_exit_tree")
+	assert_bool(teardown.contains("_runtime.stop()")).is_true()
+	assert_bool(teardown.contains("streaming_controller.clear()")).is_true()
+	assert_bool(teardown.contains("build_result.dispose()")).is_true()
+	assert_bool(teardown.contains("GameState.unregister_player")).is_true()
+	assert_bool(teardown.contains("GameState.unregister_level")).is_true()
+
 func test_ready_does_not_directly_create_terrain_nodes() -> void:
 	# 验 _ready 不再直接 create terrain 节点（builder 已接管）——不应含 add_child(MeshInstance3D) 等旧路径
 	var src := (load(PROCEDURAL_PATH) as GDScript).source_code

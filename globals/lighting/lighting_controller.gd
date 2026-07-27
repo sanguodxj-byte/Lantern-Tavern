@@ -68,25 +68,31 @@ func get_quality_tier() -> Quality:
 	return _quality_tier
 
 
-## 对酒馆场景应用光照档案：找到所有 OmniLight3D，标记火光闪烁组，
-## 并把火把（meta light_role=="torch"）的范围/亮度收束为酒馆值。
+## 对酒馆场景应用光照档案：统一关闭所有场景光源的镜面贡献，
+## 标记 OmniLight3D 火光闪烁组，并把火把（meta light_role=="torch"）的范围/亮度收束为酒馆值。
 ## root: 酒馆根节点（TavernInterior）。玩家自带视觉光会被跳过。
 func apply_tavern_profile(root: Node) -> void:
 	if root == null:
 		return
-	for light in _collect_omni_lights(root):
+	for light in _collect_scene_lights(root):
+		# 酒馆环境材质采用非金属体素规范；光源也设为无镜面，
+		# 防止遗漏 StandardMaterial3D 或第三方材质时重新出现白色倒影。
+		light.light_specular = 0.0
 		if light.name == Player.PLAYER_VISION_LIGHT_NAME:
 			light.visible = false
 			light.light_energy = 0.0
 			continue
+		if not light is OmniLight3D:
+			continue
+		var omni := light as OmniLight3D
 		if not light.has_meta("flicker_base_energy"):
 			light.set_meta("flicker_base_energy", light.light_energy)
 		if not light.has_meta("flicker_phase"):
 			light.set_meta("flicker_phase", randf() * TAU)
 		if light.get_meta("light_role", "") == "torch":
-			light.omni_range = TAVERN_TORCH_RANGE[_quality_tier]
-			light.light_energy = TAVERN_TORCH_ENERGY
-			light.light_color = TAVERN_TORCH_COLOR
+			omni.omni_range = TAVERN_TORCH_RANGE[_quality_tier]
+			omni.light_energy = TAVERN_TORCH_ENERGY
+			omni.light_color = TAVERN_TORCH_COLOR
 			light.set_meta("flicker_base_energy", light.light_energy)
 		light.add_to_group("flicker_light")
 	# 新光源已入组，标记缓存为脏以便下次 _process 刷新
@@ -107,7 +113,7 @@ func _process(delta: float) -> void:
 	var amp: float = FLICKER_AMPLITUDE.get(_quality_tier, 0.0)
 	if amp <= 0.0:
 		return
-	# 仅在缓存脏时刷新光源列表，避免每帧 get_nodes_in_group 全组扫描
+	# 仅在缓存脏时刷新光源列表，避免每帧扫描全组
 	if _flicker_cache_dirty:
 		_refresh_flicker_cache()
 	for light in _cached_flicker_lights:
@@ -130,14 +136,14 @@ func invalidate_flicker_cache() -> void:
 	_flicker_cache_dirty = true
 
 
-func _collect_omni_lights(root: Node) -> Array[OmniLight3D]:
-	var result: Array[OmniLight3D] = []
-	_collect_omni_lights_recursive(root, result)
+func _collect_scene_lights(root: Node) -> Array[Light3D]:
+	var result: Array[Light3D] = []
+	_collect_scene_lights_recursive(root, result)
 	return result
 
 
-func _collect_omni_lights_recursive(node: Node, result: Array[OmniLight3D]) -> void:
-	if node is OmniLight3D:
-		result.append(node as OmniLight3D)
+func _collect_scene_lights_recursive(node: Node, result: Array[Light3D]) -> void:
+	if node is Light3D:
+		result.append(node as Light3D)
 	for child in node.get_children():
-		_collect_omni_lights_recursive(child, result)
+		_collect_scene_lights_recursive(child, result)

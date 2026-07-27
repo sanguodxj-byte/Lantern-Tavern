@@ -5,6 +5,7 @@ extends GdUnitTestSuite
 ## 对 procedural_dungeon.gd / voxel_prop.gd 的结构断言用 FileAccess 读文本，避免编译其依赖。
 
 const TORCH_PREFAB := preload("res://scenes/props/torch/torch.tscn")
+const BAKED_TORCH_SCENE := preload("res://assets/meshes/props/baked_torch.tscn")
 const DUNGEON_PATH := "res://scenes/expedition/procedural_dungeon.gd"
 const VOXEL_PROP_PATH := "res://scenes/props/voxel_prop.gd"
 
@@ -53,6 +54,36 @@ func test_torch_light_casts_real_time_shadow() -> void:
 	assert_bool(light.shadow_enabled).is_true()
 	assert_int(light.omni_shadow_mode).is_equal(1)  # 1 = cubemap 阴影(干净无接缝，双抛物面=0 有黑色三角伪影)
 	torch.free()
+
+func test_generated_torch_meshes_do_not_cast_shadow() -> void:
+	# 火把几何不能成为自身点光源的投影遮挡物，否则火把下方会被压成纯黑。
+	var torch := TORCH_PREFAB.instantiate()
+	add_child(torch)
+	var visual := torch.get_node("TorchVisual")
+	var mesh_count := 0
+	for node in visual.find_children("*", "MeshInstance3D", true, false):
+		var mesh := node as MeshInstance3D
+		mesh_count += 1
+		assert_int(mesh.cast_shadow).is_equal(GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+	assert_int(mesh_count).is_greater(0)
+	var flame := torch.get_node("FlameParticles") as GPUParticles3D
+	assert_int(flame.cast_shadow).is_equal(GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+	torch.free()
+
+func test_baked_torch_meshes_do_not_cast_shadow() -> void:
+	# 运行时优先加载 baked_torch.tscn，因此烘焙资源也必须显式关闭几何投影。
+	var baked := BAKED_TORCH_SCENE.instantiate()
+	add_child(baked)
+	var mesh_count := 0
+	for node in baked.find_children("*", "MeshInstance3D", true, false):
+		var mesh := node as MeshInstance3D
+		mesh_count += 1
+		assert_int(mesh.cast_shadow).is_equal(GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+	assert_int(mesh_count).is_equal(2)
+	var light := baked.get_node("OmniLight3D") as OmniLight3D
+	assert_object(light).is_not_null()
+	assert_bool(light.shadow_enabled).is_true()
+	baked.free()
 
 func test_dungeon_applies_torch_distance_culling() -> void:
 	# P3: 火把距离剔除已迁入 DungeonSceneBuilder

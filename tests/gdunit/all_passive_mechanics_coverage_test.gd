@@ -76,7 +76,7 @@ func test_passive_weapon_axe_wood_chop_mechanic() -> void:
 	var res := CE.resolve_attack(attack, defender)
 	assert_int(res.final_damage).is_equal(150) # 100 * 1.5 = 150
 
-# 5. 7 大流派机制 key 在 SkillRuntime 中可授予性与激活校验
+# 5. 7 大流派机制 key 在 SkillRuntime 中可授予性与激活校验（doc21 §一：17 项）
 func test_all_14_style_passives_registration() -> void:
 	var runtime: Node = auto_free(SR.new())
 	var style_passives := [
@@ -90,6 +90,9 @@ func test_all_14_style_passives_registration() -> void:
 		"passive_style_dual_cross_counter",
 		"passive_style_unarmed_flurry_storm",
 		"passive_style_unarmed_over_shoulder_slam",
+		"passive_style_unarmed_grapple",
+		"passive_style_unarmed_swift_kick",
+		"passive_style_unarmed_arrow_break",
 		"passive_style_ranged_weakpoint_sight",
 		"passive_style_ranged_piercing",
 		"passive_style_spell_arcane_barrier",

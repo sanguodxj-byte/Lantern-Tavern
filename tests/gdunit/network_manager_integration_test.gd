@@ -20,6 +20,9 @@ func _mark_room_ended() -> void:
 func test_server_spawn_creates_context_and_token_and_inherits_save() -> void:
 	var nm := NETWORK_MANAGER.new()
 	nm._ensure_session()
+	assert_object(nm.session.get_parent()).is_equal(nm)
+	assert_object(nm.session.registry.get_parent()).is_equal(nm.session)
+	assert_object(nm.session.world.get_parent()).is_equal(nm.session)
 	nm.session.init_server()
 	var save_state := {"materials": {"iron": 3}}
 	var res: Dictionary = nm._server_handle_spawn(2, save_state, "guid_2")

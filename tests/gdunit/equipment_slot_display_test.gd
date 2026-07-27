@@ -57,7 +57,7 @@ func test_tavern_feet_hint_is_centered_pair_instead_of_skewed_source() -> void:
 	var source := FileAccess.get_file_as_string("res://scenes/ui/tavern_equipment_panel.gd")
 	assert_bool(source.contains('const SLOT_HINT_ASSET_VERSION := "v4"')).is_true()
 	assert_bool(source.contains('slot_background_feet_generated_v4.png')).is_true()
-	assert_bool(source.contains("image = _build_solid_slot_hint_image(image)")).is_true()
+	assert_bool(source.contains("image = SlotHintIcons.build_solid_slot_hint_image(image, SLOT_HINT_COLOR, SLOT_FILL_NEIGHBORS)")).is_true()
 
 
 func test_tavern_weapon_hand_classification_matches_equipment_rules() -> void:
@@ -75,6 +75,58 @@ func test_tavern_weapon_hand_classification_matches_equipment_rules() -> void:
 	assert_bool(panel._weapon_slot_occupies_both_hands(ranged)).is_true()
 	assert_bool(panel._weapon_slot_occupies_both_hands(spell)).is_true()
 	panel.free()
+
+
+func test_tavern_two_hand_and_bow_use_one_visual_main_off_hand_group() -> void:
+	var source := FileAccess.get_file_as_string("res://scenes/ui/tavern_equipment_panel.gd")
+	assert_bool(source.contains("_weapon_slot_data_for_display(eq, data_index)")).is_true()
+	assert_bool(source.contains("func set_capture_weapon_loadout(weapon: WeaponData")).is_true()
+	assert_bool(source.contains("_capture_weapon_slots = [weapon, null, null, null]")).is_true()
+	assert_bool(source.contains("EQUIPMENT_SLOT_SIZE.y * 2.0 + 6.0")).is_true()
+	var capture_source := FileAccess.get_file_as_string("res://tools/equipment_screen_capture.gd")
+	assert_bool(capture_source.contains("capture_two_hand")).is_true()
+	assert_bool(capture_source.contains("capture_bow")).is_true()
+
+
+func test_equipment_details_use_shared_hover_popup_instead_of_fixed_panel() -> void:
+	var scene_source := FileAccess.get_file_as_string("res://scenes/ui/tavern_equipment_panel.tscn")
+	assert_bool(scene_source.contains("ItemDetailPanel")).is_false()
+	assert_bool(scene_source.contains("EquipSelectedBtn")).is_false()
+	var slot_source := FileAccess.get_file_as_string("res://scenes/ui/equipment_slot_drop_button.gd")
+	assert_bool(slot_source.contains("show_equipment_slot_detail")).is_true()
+	assert_bool(slot_source.contains("hide_detail_popup")).is_true()
+	var inventory_source := FileAccess.get_file_as_string("res://scenes/ui/inventory_drag_list.gd")
+	assert_bool(inventory_source.contains("show_inventory_item_detail")).is_true()
+
+
+func test_inventory_sort_button_rebuilds_grid_from_top_left_by_category() -> void:
+	var source := FileAccess.get_file_as_string("res://scenes/ui/tavern_equipment_panel.gd")
+	assert_bool(source.contains("func _on_sort_inventory_pressed() -> void")).is_true()
+	assert_bool(source.contains("inventory_sort_enabled = true")).is_true()
+	assert_bool(source.contains("_append_equipment_to_list(gear_list, inventory_filter)")).is_true()
+	assert_bool(source.contains("_append_materials_to_list(gear_list, _get_carried_inventory(), \"items\", inventory_filter)")).is_true()
+	assert_bool(source.contains("gear_list.get_v_scroll_bar()")).is_true()
+	assert_bool(source.contains("gear_list.scroll_vertical = 0")).is_false()
+	var view_model_source := FileAccess.get_file_as_string("res://scenes/ui/equipment_screen_view_model.gd")
+	assert_bool(view_model_source.contains("func _inventory_category_rank")).is_true()
+	assert_bool(view_model_source.contains('"weapon":')).is_true()
+	var scene_source := FileAccess.get_file_as_string("res://scenes/ui/tavern_equipment_panel.tscn")
+	assert_bool(scene_source.contains('[node name="SortInventoryBtn" type="Button"')).is_true()
+	assert_bool(scene_source.contains('text = "整理"')).is_true()
+	assert_bool(scene_source.contains('fixed_grid_cells = true')).is_true()
+	assert_bool(scene_source.contains('show_grid_cell_masks = true')).is_true()
+	assert_bool(scene_source.contains('square_grid_cells = true')).is_true()
+
+
+func test_inventory_grid_uses_uniform_dark_gold_square_masks_without_silhouettes() -> void:
+	var source := FileAccess.get_file_as_string("res://scenes/ui/inventory_drag_list.gd")
+	assert_bool(source.contains("GRID_CELL_MASK_COLOR")).is_true()
+	assert_bool(source.contains("_draw_grid_cell_masks(target)")).is_true()
+	assert_bool(source.contains("target.draw_rect(cell.grow(-GRID_CELL_MASK_INSET), GRID_CELL_MASK_COLOR, true)")).is_true()
+	assert_bool(source.contains("GRID_SILHOUETTE")).is_false()
+	assert_bool(source.contains("GRID_CELL_MASK_INSET")).is_true()
+	assert_bool(source.contains("SQUARE_GRID_CELL_SIZE")).is_true()
+	assert_bool(source.contains("SQUARE_GRID_CELL_PITCH")).is_true()
 
 
 # ── tavern_equipment_panel.gd: 防具槽有装备时仅显示图标 ──────────────────
@@ -106,8 +158,11 @@ func test_tavern_empty_equipment_slots_use_pale_role_hints() -> void:
 	# 空槽使用 Button 原生 icon 绘制同一套浅色像素剪影，避免提示被按钮背景遮挡。
 	assert_bool(source.contains("const SLOT_HINT_COLOR := Color(0.94, 0.82, 0.64, 0.55)")).is_true()
 	assert_bool(source.contains("ImageTexture.create_from_image(image)")).is_true()
-	assert_bool(source.contains("func _build_solid_slot_hint_image(source_image: Image) -> Image")).is_true()
-	assert_bool(source.contains("_queue_slot_hint_exterior")).is_true()
+	# 剪影生成逻辑已拆分至 equipment_slot_hint_icons.gd（面板经 SlotHintIcons 委托调用）。
+	assert_bool(source.contains("SlotHintIcons.build_solid_slot_hint_image")).is_true()
+	var hint_source := FileAccess.get_file_as_string("res://scenes/ui/equipment_slot_hint_icons.gd")
+	assert_bool(hint_source.contains("static func build_solid_slot_hint_image(source_image: Image, hint_color: Color, fill_neighbors: Array) -> Image")).is_true()
+	assert_bool(hint_source.contains("_queue_exterior")).is_true()
 	assert_bool(source.contains("button.icon = _empty_slot_icon(slot_name)")).is_true()
 	assert_bool(source.contains("button.icon = icon")).is_true()
 
@@ -244,8 +299,13 @@ func test_tavern_proficiency_uses_weapon_catalog_and_no_armor_tracks() -> void:
 	var capture_source := FileAccess.get_file_as_string("res://tools/equipment_screen_capture.gd")
 	assert_bool(panel_source.contains("WEAPON_PROFICIENCY_CATALOG.entries()")).is_true()
 	assert_bool(panel_source.contains("value_for(prof, key)")).is_true()
-	assert_bool(visual_source.contains("PROFICIENCY_ICON_PATHS")).is_true()
-	assert_bool(visual_source.contains('"剑": "res://assets/textures/icons/equipment/weapons_sword.png"')).is_true()
-	assert_bool(capture_source.contains("剑 42\n匕首 35\n斧 28")).is_true()
+	assert_bool(visual_source.contains("WEAPON_PROFICIENCY_CATALOG.entries()")).is_true()
+	assert_bool(visual_source.contains("_proficiency_labels")).is_true()
+	assert_bool(visual_source.contains('load(String(entry["icon_path"]))')).is_true()
+	assert_bool(FileAccess.file_exists("res://assets/textures/icons/proficiency/generated/proficiency_sword_generated_v1.png")).is_true()
+	assert_bool(capture_source.contains("剑 42\\n匕首 35\\n斧 28")).is_true()
 	assert_bool(capture_source.contains("轻甲")).is_false()
 	assert_bool(capture_source.contains("炼金")).is_false()
+	var scene_source := FileAccess.get_file_as_string("res://scenes/ui/tavern_equipment_panel.tscn")
+	assert_bool(scene_source.contains('[node name="ProficiencyVisual"')).is_true()
+	assert_bool(scene_source.contains("custom_minimum_size = Vector2(0, 366)")).is_true()

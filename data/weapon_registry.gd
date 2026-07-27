@@ -28,6 +28,7 @@ var _attack_types: Dictionary = {}       # id → melee/ranged/spell/shield
 var _skill_schools: Dictionary = {}      # id → SkillData school key
 var _combat_styles: Dictionary = {}      # id → compatible CombatEngine style keys
 var _view_model_profiles: Dictionary = {} # id → first-person visual profile
+var _first_person: Dictionary = {}       # id → first-person visual params (view_scale/mount pose)
 var _proficiency_keys: Dictionary = {}   # id → AttrPanel proficiency key
 var _category_display: Dictionary = {}
 
@@ -103,6 +104,7 @@ func _register_equipment(entry: Dictionary) -> void:
 	_skill_schools[id] = entry.get("skill_school", "")
 	_combat_styles[id] = entry.get("combat_styles", [])
 	_view_model_profiles[id] = entry.get("view_model_profile", "")
+	_first_person[id] = entry.get("first_person", {})
 	_proficiency_keys[id] = entry.get("proficiency_key", _weapon_classes[id])
 
 	if not _categories.has(category):
@@ -154,6 +156,22 @@ func _register_equipment(entry: Dictionary) -> void:
 	weapon_data.armor_slot = String(entry.get("armor_slot", "body" if category.begins_with("armor") else ""))
 	weapon_data.armor_phys_def = int(tier.get("phys_def", 0)) if category.begins_with("armor") else 0
 	weapon_data.armor_move_speed_mult = float(tier.get("move_speed_mult", 1.0)) if category.begins_with("armor") else 1.0
+	if category.begins_with("armor"):
+		weapon_data.armor_type = String(entry.get("armor_type", tier.get("armor_type", "")))
+		weapon_data.armor_fire_res = int(tier.get("armor_fire_res", entry.get("armor_fire_res", 0)))
+		weapon_data.armor_ice_res = int(tier.get("armor_ice_res", entry.get("armor_ice_res", 0)))
+		weapon_data.armor_lightning_res = int(tier.get("armor_lightning_res", entry.get("armor_lightning_res", 0)))
+		weapon_data.armor_poison_res = int(tier.get("armor_poison_res", entry.get("armor_poison_res", 0)))
+		weapon_data.armor_magic_res_percent = float(tier.get("armor_magic_res_percent", entry.get("armor_magic_res_percent", 0.0)))
+		weapon_data.armor_knockback_res = float(tier.get("armor_knockback_res", entry.get("armor_knockback_res", 0.0)))
+	else:
+		weapon_data.armor_type = ""
+		weapon_data.armor_fire_res = 0
+		weapon_data.armor_ice_res = 0
+		weapon_data.armor_lightning_res = 0
+		weapon_data.armor_poison_res = 0
+		weapon_data.armor_magic_res_percent = 0.0
+		weapon_data.armor_knockback_res = 0.0
 	weapon_data.throw_rotation_speed = stats.get("throw_rotation_speed", 40.0)
 	weapon_data.throw_movement_speed = stats.get("throw_movement_speed", 10.0)
 
@@ -261,6 +279,13 @@ func build_weapon_data_with_tier(weapon_id: String, tier_index: int) -> WeaponDa
 	if category.begins_with("armor"):
 		data.armor_phys_def = int(tier.get("phys_def", 0))
 		data.armor_move_speed_mult = float(tier.get("move_speed_mult", 1.0))
+		data.armor_type = String(tier.get("armor_type", data.armor_type))
+		data.armor_fire_res = int(tier.get("armor_fire_res", data.armor_fire_res))
+		data.armor_ice_res = int(tier.get("armor_ice_res", data.armor_ice_res))
+		data.armor_lightning_res = int(tier.get("armor_lightning_res", data.armor_lightning_res))
+		data.armor_poison_res = int(tier.get("armor_poison_res", data.armor_poison_res))
+		data.armor_magic_res_percent = float(tier.get("armor_magic_res_percent", data.armor_magic_res_percent))
+		data.armor_knockback_res = float(tier.get("armor_knockback_res", data.armor_knockback_res))
 	# 饰品负重加成
 	if category == "accessories":
 		data.carry_weight_bonus = int(tier.get("carry_bonus", 0))
@@ -389,7 +414,14 @@ func get_combat_styles(weapon_id: String) -> Array[String]:
 
 ## Get the explicit first-person visual profile, when one is authored.
 func get_view_model_profile(weapon_id: String) -> String:
-	return _view_model_profiles.get(weapon_id, "")
+	return String(_view_model_profiles.get(weapon_id, ""))
+
+## Get authored first-person visual params from weapons.json.
+## Keys: view_scale (float), mount_position ([x,y,z]), mount_rotation ([x,y,z] degrees).
+## Empty dictionary means no authored data — consumers fall back to profile defaults.
+func get_first_person_params(weapon_id: String) -> Dictionary:
+	var params = _first_person.get(weapon_id, {})
+	return params if params is Dictionary else {}
 
 ## Get the proficiency key used by AttrPanel.
 func get_proficiency_key(weapon_id: String) -> String:

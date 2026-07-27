@@ -5,14 +5,19 @@ func test_capture_tool_uses_isolated_subviewport_and_current_equipment_scene() -
 	assert_bool(source.contains("SubViewport.new()")).is_true()
 	assert_bool(source.contains("tavern_equipment_panel.tscn")).is_true()
 	assert_bool(source.contains("after_equipment.png")).is_true()
+	assert_bool(source.contains("after_equipment_two_hand.png")).is_true()
+	assert_bool(source.contains("after_equipment_bow.png")).is_true()
 	assert_bool(source.contains("after_skills_v2.png")).is_true()
 	assert_bool(source.contains("--skills")).is_true()
+	assert_bool(source.contains("--two-hand")).is_true()
+	assert_bool(source.contains("--bow")).is_true()
 
-func test_capture_tool_seeds_persistent_detail_fixture() -> void:
+func test_capture_tool_uses_shared_hover_detail_popup() -> void:
 	var source := FileAccess.get_file_as_string("res://tools/equipment_screen_capture.gd")
-	assert_bool(source.contains("ItemDetailTitle")).is_true()
-	assert_bool(source.contains("ItemDetailBody")).is_true()
-	assert_bool(source.contains("ItemDetailCompare")).is_true()
+	assert_bool(source.contains("show_equipment_slot_detail")).is_true()
+	assert_bool(source.contains("set_capture_weapon_loadout")).is_true()
+	assert_bool(source.contains("weapons_greatsword.png")).is_true()
+	assert_bool(source.contains("weapons_longbow.png")).is_true()
 	assert_bool(source.contains("FilterBar")).is_false()
 	assert_bool(source.contains("player_visual_model.tscn")).is_true()
 	assert_bool(source.contains("voxel_player_48px_rig.glb")).is_false()

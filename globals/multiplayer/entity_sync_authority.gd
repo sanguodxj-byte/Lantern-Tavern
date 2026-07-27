@@ -27,13 +27,25 @@ func despawn_entity(entity_id: int, entities: Dictionary) -> Dictionary:
 		"event": NP.EVT_ENTITY_DESPAWNED, "entity_id": entity_id}}
 
 ## 更新实体部分字段：合并进 entities，返回 entity_snapshot 事件（含完整当前状态）。
+## 性能优化：检测实际变化——若 partial 中所有字段值与当前值相同，跳过事件生成和 duplicate，
+## 避免战斗中频繁但无实质变化的更新（如同 HP 被格挡不扣血）产生冗余网络广播。
 func update_entity(entity_id: int, partial: Dictionary, entities: Dictionary) -> Dictionary:
 	if not entities.has(entity_id):
 		return {"success": false, "error_code": NP.ERR_INVALID_TARGET, "event": {}}
+	var cur: Dictionary = entities[entity_id]
+	var changed: bool = false
 	for k in partial.keys():
-		entities[entity_id][k] = partial[k]
+		var new_val: Variant = partial[k]
+		var cur_val: Variant = cur.get(k, null)
+		# 类型安全比较：不同 typeof 视为变化（短路避免跨类型 != 崩溃）；
+		# 同类型用 != 做值比较。typeof 是廉价类型标签读取，远比 duplicate()+RPC 开销低。
+		if typeof(cur_val) != typeof(new_val) or cur_val != new_val:
+			cur[k] = new_val
+			changed = true
+	if not changed:
+		return {"success": true, "error_code": "", "event": {}}
 	return {"success": true, "error_code": "", "event": {
-		"event": NP.EVT_ENTITY_SNAPSHOT, "entity_id": entity_id, "data": entities[entity_id].duplicate()}}
+		"event": NP.EVT_ENTITY_SNAPSHOT, "entity_id": entity_id, "data": cur.duplicate()}}
 
 ## 复制增量：对比客户端已知状态 prev 与服务器当前状态 curr，
 ## 产出一组复制事件，使客户端从 prev 平滑过渡到 curr。
@@ -58,8 +70,9 @@ func _equal(a: Dictionary, b: Dictionary) -> bool:
 	for k in a.keys():
 		if not b.has(k):
 			return false
-		if typeof(a[k]) != typeof(b[k]):
-			return false
-		if a[k] != b[k]:
+		# 类型安全比较：不同 typeof 视为不等（短路避免跨类型 != 崩溃）
+		var av: Variant = a[k]
+		var bv: Variant = b[k]
+		if typeof(av) != typeof(bv) or av != bv:
 			return false
 	return true

@@ -17,6 +17,7 @@ const PLAYER_STATE_SHOOTING := preload("res://scenes/characters/player/state/pla
 const PLAYER_VISION_LIGHT_NAME := "PlayerVisionLight"
 const HITBOX_BUILDER := preload("res://globals/combat/combat_hitbox_builder.gd")
 const SKILL_DISPATCHER := preload("res://scenes/characters/player/player_skill_dispatcher.gd")
+const SPE := preload("res://globals/combat/style_passive_effects.gd")
 const Service := preload("res://globals/core/service.gd")
 const CHEST_LOOT_PANEL_SCENE := preload("res://scenes/ui/chest_loot_panel.tscn")
 const COMBAT_BUFF_COMPONENT := preload("res://scenes/characters/component/combat_buff_component.gd")
@@ -42,6 +43,13 @@ const AIM_HELPER := preload("res://scenes/characters/player/player_aim_helper.gd
 
 ## 角色身体渲染层（第 10 层），主摄像机 cull_mask=1 不渲染此层
 const CHARACTER_BODY_RENDER_LAYER := 1 << 9
+## 第一人称武器层（第 11 层）。只将双臂骨骼挂点复制到此层，
+## 让武器相机能看到握持动作，同时不把头部/躯干带入第一人称画面。
+const FIRST_PERSON_ARM_RENDER_LAYER := 1 << 10
+const FIRST_PERSON_ARM_BONE_NODES: Array[StringName] = [
+	&"UpperArm_R", &"LowerArm_R", &"Hand_R",
+	&"UpperArm_L", &"LowerArm_L", &"Hand_L",
+]
 
 enum State {MOVING, PICKING_UP, THROWING, ATTACK_PREPARING, SLASHING, SHOOTING, AIMING, KICKING, BLOCKING, HURT, DYING, GRABBING, CHARGING}
 
@@ -61,6 +69,15 @@ const CHEST_OPEN_DURATION := 5.0
 var movement_input_enabled := true
 var interaction_input_enabled := true
 var combat_input_enabled := true
+
+## Mouse action state captured at the Player input boundary. Polling
+## Input.is_action_pressed() from a short-lived child state can miss the
+## release edge when the viewport changes focus or consumes the mouse event.
+## Keep the last observed state here so attack preparation and network intent
+## handling use the same press/hold/release signal.
+var _weapon_action_held: Dictionary = {}
+var _weapon_action_pressed: Dictionary = {}
+var _weapon_action_pressed_frame: Dictionary = {}
 
 ## 联机输入模式与驱动（Phase 1）。单机恒为 LOCAL；房主=NETWORK_SERVER；远端客户端=NETWORK_CLIENT。
 var input_mode: InputMode = InputMode.LOCAL
@@ -99,39 +116,29 @@ var combat_buffs: Dictionary:
 	get:
 		return buffs.get_buffs_dict()
 
-## 近战攻击冷却系统（仅近战武器；远程走各自装弹/蓄力逻辑，doc21 #3 急速 cd_reduce 作用对象）
-## 主手(左键)与副手(双持右键)独立计时。计时归零即就绪。
-var _melee_cd_primary: float = 0.0
-var _melee_cd_primary_max: float = 0.0
-var _melee_cd_secondary: float = 0.0
-var _melee_cd_secondary_max: float = 0.0
-const MELEE_CD_BASE := 0.45            # 单手近战基础冷却（秒）
-const MELEE_CD_TWO_HAND_MULT := 1.5    # 双手武器冷却倍率
-const MELEE_CD_DUAL_WIELD := 0.38      # 双持副手冷却（秒）
-const CD_REDUCE_MULT := 0.85           # 急速被动：冷却 ×0.85
-const MELEE_CHARGE_FULL_SEC := 0.8      # 蓄满所需按住时长（秒）
-const MELEE_CHARGE_MAX_MULT := 2.0      # 蓄满伤害倍率（×2.0，doc21 #1）
+## 战斗运行时计时/状态组件（从 player.gd 提取，模式同 CombatBuffComponent）：
+## 近战冷却 / 轻弩装弹 / 二段跳 / 完美格挡·残影 buff / 流派专精被动运行时状态
+const PLAYER_COMBAT_RUNTIME := preload("res://scenes/characters/player/player_combat_runtime.gd")
+var combat_rt := PLAYER_COMBAT_RUNTIME.new()
 
-## 完美格挡·增伤（doc21 #6 perfect_block_empower）：完美格挡成功后下次攻击 ×1.5
-const PERFECT_BLOCK_BUFF_MULT := 1.5
-## 残影（doc21 #7 afterimage）：侧垫步成功后首次攻击 ×1.3，窗口 1.5s
-const SIDESTEP_BUFF_MULT := 1.3
-const SIDESTEP_BUFF_SEC := 1.5
+## 外部状态机/测试引用的战斗常量（实际值由 PlayerCombatRuntime 统一定义）
+const MELEE_CHARGE_FULL_SEC := PLAYER_COMBAT_RUNTIME.MELEE_CHARGE_FULL_SEC      # 蓄满所需按住时长（秒）
+const MELEE_CHARGE_MAX_MULT := PLAYER_COMBAT_RUNTIME.MELEE_CHARGE_MAX_MULT      # 蓄满伤害倍率（doc21 #1）
+const PERFECT_BLOCK_BUFF_MULT := PLAYER_COMBAT_RUNTIME.PERFECT_BLOCK_BUFF_MULT  # 完美格挡后下次攻击 ×1.5（doc21 #6）
+const SIDESTEP_BUFF_MULT := PLAYER_COMBAT_RUNTIME.SIDESTEP_BUFF_MULT            # 残影首次攻击 ×1.3（doc21 #7）
+const CROSSBOW_RELOAD_FALLBACK_SEC := PLAYER_COMBAT_RUNTIME.CROSSBOW_RELOAD_FALLBACK_SEC
 
-## 轻弩装弹系统（doc21 reload_shot：每次射击后须装弹，装弹完成前不允许连续发射）
-var _crossbow_reload_remaining: float = 0.0
-var _crossbow_reload_total: float = 0.0
-const CROSSBOW_RELOAD_FALLBACK_SEC := 1.2   # 武器未声明 reload_time 时的兜底装弹时长
-
-## 二段跳 / 空中冲刺（doc21 #4 air_dash 机制类被动，需解锁后才可用）
-var _air_jumps_used: int = 0
-const AIR_JUMPS_MAX := 1                     # 离地后可追加的跳跃次数（=1 即二段跳）
-const AIR_JUMP_FORCE_MULT := 0.92           # 空中跳力度相对地面跳
-
-## 完美格挡·增伤 buff（doc21 #6）：完美格挡成功后置位，下次攻击命中时消费（切武器不清除、连续完美格挡仅刷新）
-var _perfect_block_buff_active: bool = false
-## 残影 buff（doc21 #7 afterimage）：侧垫步成功后激活，限时窗口内首次攻击命中消费
-var _sidestep_buff_remaining: float = 0.0
+## 兼容性属性：测试直接读写主/副手近战冷却（委托给 combat_rt）
+var _melee_cd_primary: float:
+	get:
+		return combat_rt.melee_cd_primary
+	set(value):
+		combat_rt.melee_cd_primary = value
+var _melee_cd_secondary: float:
+	get:
+		return combat_rt.melee_cd_secondary
+	set(value):
+		combat_rt.melee_cd_secondary = value
 
 var is_weapon_aiming := false
 var default_camera_fov := 75.0
@@ -151,20 +158,7 @@ var _chest_loot_panel: Node = null
 ## GLB 内嵌纹理由 VoxelLightingAdapter 统一适配，与 enemy.gd 保持一致。
 @export var base_material: Material = null
 
-## 收集角色可视网格（不再覆写 material_override，保留 GLB 内嵌纹理）。
-func _collect_visual_meshes_player() -> void:
-	var character_node := get_node_or_null("character")
-	if character_node == null:
-		return
-	var queue: Array[Node] = [character_node]
-	while not queue.is_empty():
-		var n: Node = queue.pop_back()
-		if n is MeshInstance3D:
-			pass  # 仅遍历，不覆写材质
-		queue.append_array(n.get_children())
-
 func _ready() -> void:
-	_collect_visual_meshes_player()
 	if has_meta("equipment_preview"):
 
 		movement_input_enabled = false
@@ -183,7 +177,9 @@ func _ready() -> void:
 		default_camera_fov = camera.fov
 		target_camera_fov = camera.fov
 	# 注：身体已在 _ready 开头隐藏；武器变更回调 _on_weapon_changed_for_view 会再次隐藏。
-	# 监听武器变更：拾取/切换武器后重新隐藏角色手上武器网格 + 同步 ViewModel
+	# ViewModel 自己持有第一人称武器/盾牌视觉副本和动作库，第三人称
+	# AnimationPlayer 仍单独负责角色骨骼、命中动作时序与状态退出。
+	# 监听武器变更：重新隐藏第三人称装备网格并同步第一人称视觉副本。
 	GameEvents.weapon_changed.connect(_on_weapon_changed_for_view)
 	var gs = Service.game_state()
 	if gs:
@@ -200,8 +196,37 @@ func _ready() -> void:
 	switch_state(State.MOVING)
 	# 角色自身发光——地牢极暗时照亮周围
 	_setup_player_light()
-	# 初始同步：如果已有武器，直接推送到 ViewModel
+	# 初始同步：如果已有武器，直接同步第一人称视觉副本。
 	_sync_view_model_weapon()
+
+## 统一生命周期清理：场景切换或 queue_free 时解绑全局信号、注销 GameState、
+## 清除焦点/弹窗、安全释放 state_node。避免全局引用残留和已释放对象回调。
+func _exit_tree() -> void:
+	# 1. 解绑 _ready 中连接的全局信号（防止 Player 释放后信号回调解引用失效对象）
+	if GameEvents.weapon_changed.is_connected(_on_weapon_changed_for_view):
+		GameEvents.weapon_changed.disconnect(_on_weapon_changed_for_view)
+	if GameEvents.chest_opened.is_connected(_on_chest_opened):
+		GameEvents.chest_opened.disconnect(_on_chest_opened)
+	var sr: Node = Service.skill_runtime()
+	if sr != null and is_instance_valid(sr) and sr.skill_released.is_connected(_on_skill_released):
+		sr.skill_released.disconnect(_on_skill_released)
+	# 2. 注销 GameState 全局引用（current_player → null）
+	var gs = Service.game_state()
+	if gs != null:
+		gs.unregister_player(self)
+	# 3. 清除拾取焦点和悬浮窗（防止 UI 残留在已销毁的玩家上）
+	if current_pickable_focused_item != null and is_instance_valid(current_pickable_focused_item):
+		current_pickable_focused_item.unhighlight()
+	current_pickable_focused_item = null
+	if current_possible_action != "":
+		GameEvents.interaction_hint_changed.emit("", "", Vector2.ZERO)
+	current_possible_action = ""
+	_last_possible_action_collider = null
+	# 4. 安全释放 state_node：_begin_exit 同步断开信号、禁用处理、调用 _on_exit
+	if state_node != null and is_instance_valid(state_node):
+		state_node._begin_exit()
+		state_node.queue_free()
+		state_node = null
 
 var _passive_toughness_timer: float = 0.0
 
@@ -216,6 +241,8 @@ func _process_passive_effects(delta: float) -> void:
 			_passive_toughness_timer -= 5.0
 			var heal_amt: int = maxi(1, int(round(float(health.max_life) * 0.02)))
 			health.heal(heal_amt)
+	# 流派专精被动运行时衰减（暴风骤雨层数过期 / 元素环倒计时，doc21 §一）
+	combat_rt.tick_style_passives(delta)
 
 func _hide_character_body() -> void:
 	var character_node := get_node_or_null("character")
@@ -223,12 +250,27 @@ func _hide_character_body() -> void:
 		return
 	_set_render_layer_recursive(character_node, CHARACTER_BODY_RENDER_LAYER)
 
-## 武器变更回调：重新隐藏角色手上新创建的武器网格 + 同步 ViewModel
+## Legacy helper retained for equipment-preview callers. Production first-person
+## arms are rendered by ViewModel's duplicated arm skeleton instead.
+func set_first_person_arm_render_layer(character_node: Node = null) -> void:
+	if character_node == null:
+		character_node = get_node_or_null("character")
+	if character_node == null:
+		return
+	var skeleton := character_node.get_node_or_null("Armature/Skeleton3D")
+	if skeleton == null:
+		return
+	for bone_node_name in FIRST_PERSON_ARM_BONE_NODES:
+		var arm_attachment := skeleton.get_node_or_null(String(bone_node_name))
+		if arm_attachment != null:
+			_set_render_layer_recursive(arm_attachment, FIRST_PERSON_ARM_RENDER_LAYER)
+
+## 武器变更回调：重新隐藏角色身体，并同步第一人称视觉副本
 func _on_weapon_changed_for_view(_weapon_data: Variant) -> void:
 	# 拾取/切换武器后，EquipedItem 会新建 GLB 网格（默认在 layer 1）
 	# 需要重新将这些网格移到第 10 层，使摄像机（cull_mask=1）不渲染它们
 	_hide_character_body()
-	# 同步 ViewModel 武器模型
+	# 同步第一人称视觉副本；它不参与装备、碰撞或伤害逻辑。
 	_sync_view_model_weapon()
 
 ## 直接将当前装备的武器推送到 ViewModel（不依赖信号）
@@ -269,19 +311,9 @@ func _setup_player_light() -> void:
 	light.position = Vector3(0, 1.5, 0)
 	add_child(light)
 
-func _is_inside_tavern() -> bool:
-	var current: Node = self
-	while current != null:
-		if current.get_class() == "TavernInterior" or current is TavernInterior:
-			return true
-		current = current.get_parent()
-	var gs = Service.game_state()
-	if gs and gs.get("current_level") != null and gs.current_level is TavernInterior:
-		return true
-	return false
-
 func _process(delta: float) -> void:
 	input_dir = Input.get_vector("strafe_left", "strafe_right", "backward", "forward") if movement_input_enabled else Vector2.ZERO
+	_handle_jump_input()
 	if combat_input_enabled:
 		_handle_skill_input()
 	_process_passive_effects(delta)
@@ -308,10 +340,21 @@ func _handle_skill_input() -> void:
 	if Input.is_action_just_pressed("skill_g"):
 		var g_skill: String = sr.get_slot_skill(sr.SLOT_G_WEAPON)
 		if g_skill != "":
-			var weapon = equipment.weapon_data if equipment.has_weapon() else null
+			var weapon = equipment.weapon_data if equipment != null and equipment.has_weapon() else null
 			var main_type := CB_LIB.get_weapon_class(weapon)
-			var off_type := "shield" if equipment.has_shield() else ""
+			var off_type := "shield" if (equipment != null and equipment.has_shield()) else ""
 			sr.start_release(g_skill, main_type, off_type, self, sr.SLOT_G_WEAPON)
+
+## Jump is handled at the Player boundary so a just-pressed Space event is not
+## lost when a short-lived attack, aim, block, or hurt state owns the child
+## state loop for that frame. The state-specific movement code only integrates
+## velocity; it no longer competes for the edge-triggered input event.
+func _handle_jump_input() -> void:
+	if not movement_input_enabled or not Input.is_action_just_pressed("jump"):
+		return
+	if is_character_panel_visible() or state == State.DYING:
+		return
+	do_jump()
 
 func _physics_process(delta: float) -> void:
 	process_gravity()
@@ -325,44 +368,39 @@ func _physics_process(delta: float) -> void:
 	if sr != null:
 		sr.tick(delta)
 	buffs.tick(delta)
-	# 近战攻击冷却倒计时（仅近战武器使用）
-	_melee_cd_primary = maxf(0.0, _melee_cd_primary - delta)
-	_melee_cd_secondary = maxf(0.0, _melee_cd_secondary - delta)
-	# 轻弩装弹倒计时（仅弩使用，与近战 CD 正交）
-	_crossbow_reload_remaining = maxf(0.0, _crossbow_reload_remaining - delta)
-	# 残影 buff 窗口倒计时（侧垫步触发后 1.5s 内首次攻击增伤）
-	_sidestep_buff_remaining = maxf(0.0, _sidestep_buff_remaining - delta)
-	# 落地后重置空中跳跃次数（二段跳）
-	if is_on_floor():
-		_air_jumps_used = 0
+	# 战斗运行时计时推进：近战冷却 / 轻弩装弹 / 残影窗口 / 落地重置二段跳
+	combat_rt.tick_physics(delta, is_on_floor())
 	# Hold E (use action) for 5 seconds to open Chest interactively
 	# 宝箱战利品面板打开时不处理宝箱交互
 	if _chest_loot_panel != null and is_instance_valid(_chest_loot_panel) and _chest_loot_panel.visible:
 		chest_interact_time = 0.0
 		pass
-	elif _raycast_is_colliding(select_raycast) and select_raycast.get_collider() is Chest:
-		var chest = select_raycast.get_collider() as Chest
-		if Input.is_action_pressed("use"):
-			chest_interact_time += delta
-			if chest_interact_time >= CHEST_OPEN_DURATION:
+	else:
+		# 统一取有效碰撞体：过滤已释放对象（queue_free 一帧延迟导致的失效引用）。
+		# 旧实现分别调用 select_raycast.get_collider() 且无 is_instance_valid 守卫，
+		# 宝箱/门在被 queue_free 后下一帧仍可能被射线命中并解引用为已释放对象。
+		var select_collider := _get_valid_select_collider()
+		if select_collider is Chest:
+			var chest := select_collider as Chest
+			if Input.is_action_pressed("use"):
+				chest_interact_time += delta
+				if chest_interact_time >= CHEST_OPEN_DURATION:
+					chest_interact_time = 0.0
+					# 联机客户端：上送交互意图，由服务器权威开启（地牢联机禁止本地执行）
+					if is_network_controlled() and multiplayer_driver != null:
+						multiplayer_driver.send_interact(_entity_id_of(chest))
+					else:
+						chest.open_chest(true) # true = interactively opened, shows loot panel
+			else:
 				chest_interact_time = 0.0
-				# 联机客户端：上送交互意图，由服务器权威开启（地牢联机禁止本地执行）
-				if is_network_controlled() and multiplayer_driver != null:
-					multiplayer_driver.send_interact(_entity_id_of(chest))
-				else:
-					chest.open_chest(true) # true = interactively opened, shows loot panel
 		else:
 			chest_interact_time = 0.0
-	else:
-		chest_interact_time = 0.0
-		if interaction_input_enabled and _raycast_is_colliding(select_raycast):
-			var collider := select_raycast.get_collider()
-			if collider != null and not (collider is PickableItem) and collider.has_method("interact") and Input.is_action_just_pressed("use"):
+			if interaction_input_enabled and select_collider != null and not (select_collider is PickableItem) and select_collider.has_method("interact") and Input.is_action_just_pressed("use"):
 				# 联机客户端：上送交互意图，由服务器权威执行（禁止本地直接调用 collider.interact）
 				if is_network_controlled() and multiplayer_driver != null:
-					multiplayer_driver.send_interact(_entity_id_of(collider))
+					multiplayer_driver.send_interact(_entity_id_of(select_collider))
 				else:
-					collider.interact(self)
+					select_collider.interact(self)
 	check_for_possible_action()
 
 func process_movement(delta: float, speed_multiplier: float = 1.0) -> void:
@@ -402,6 +440,7 @@ func process_pushback(delta: float) -> void:
 	velocity += pushback_force
 
 func _input(event: InputEvent) -> void:
+	_track_weapon_action_input(event)
 	var is_panel_visible := is_character_panel_visible()
 
 	if event is InputEventMouseButton and event.pressed:
@@ -426,12 +465,59 @@ func _input(event: InputEvent) -> void:
 		camera.rotate_x(-event.relative.y * sens)
 		camera.rotation.x = clampf(camera.rotation.x, MAX_ANGLE_LOOK_DOWN, MAX_ANGLE_LOOK_UP)
 
+func _track_weapon_action_input(event: InputEvent) -> void:
+	if event == null:
+		return
+	var action_name := ""
+	var mouse_event: InputEventMouseButton = null
+	if event is InputEventMouseButton:
+		mouse_event = event as InputEventMouseButton
+		match mouse_event.button_index:
+			MOUSE_BUTTON_LEFT:
+				action_name = "action"
+			MOUSE_BUTTON_RIGHT:
+				action_name = "block"
+	if action_name == "":
+		return
+	var panel_visible := is_inside_tree() and is_character_panel_visible()
+	var action_is_held := mouse_event != null and mouse_event.pressed and not panel_visible
+	_weapon_action_held[action_name] = action_is_held
+	if action_is_held:
+		_weapon_action_pressed[action_name] = true
+		_weapon_action_pressed_frame[action_name] = Engine.get_process_frames()
+
+## Consume a mouse attack press captured at the Player boundary.
+## The one-frame grace period covers an input event that arrives just before a
+## state transition; stale presses are discarded so cooldowns cannot replay it.
+func consume_weapon_action_pressed(action_name: String) -> bool:
+	if not bool(_weapon_action_pressed.get(action_name, false)):
+		return false
+	var pressed_frame := int(_weapon_action_pressed_frame.get(action_name, -1))
+	_weapon_action_pressed[action_name] = false
+	_weapon_action_pressed_frame.erase(action_name)
+	if pressed_frame < 0 or Engine.get_process_frames() - pressed_frame > 1:
+		return false
+	return true
+
+## Returns the input state captured from the latest mouse event. For actions
+## driven programmatically or by a future non-mouse binding, keep the Input
+## fallback until that action has emitted its first mouse event.
+func is_weapon_action_held(action_name: String) -> bool:
+	if _weapon_action_held.has(action_name):
+		return bool(_weapon_action_held[action_name])
+	return Input.is_action_pressed(action_name)
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+		_weapon_action_held.clear()
+		_weapon_action_pressed.clear()
+		_weapon_action_pressed_frame.clear()
+
 func switch_state(new_state: State, data: PlayerStateData = PlayerStateData.new()) -> void:
 	if state_node != null and is_instance_valid(state_node):
-		# The previous state is freed at the end of the frame. Disable it now so
-		# its physics loop cannot run after a re-entrant combat transition.
-		state_node.set_process(false)
-		state_node.set_physics_process(false)
+		# 受保护退出：同步断开 transition_requested 信号、禁用处理循环、调用 _on_exit，
+		# 确保旧状态在新状态 _enter_tree 前完全退出，防止 queue_free 延迟窗口内重入切换。
+		state_node._begin_exit()
 		state_node.queue_free()
 	var state_map := {
 		State.BLOCKING: PlayerStateBlocking,
@@ -472,14 +558,21 @@ func check_for_possible_action() -> void:
 		_last_possible_action_collider = null
 		return
 
+	# 角色面板可见时统一抑制交互提示：面板打开后摄像机冻结，射线仍命中物体，
+	# 不抑制会导致拾取/交互悬浮窗残留在面板之上。
+	if is_character_panel_visible():
+		if current_possible_action != "":
+			GameEvents.interaction_hint_changed.emit("", "", Vector2.ZERO)
+		current_possible_action = ""
+		_last_possible_action_collider = null
+		return
+
 	# 先确定当前碰撞体，仅据此判断是否需要重建提示字符串（避免每帧无谓的 tr()/拼接）
-	var current_collider: Object = null
-	if _raycast_is_colliding(select_raycast):
-		var sel_collider = select_raycast.get_collider()
-		# 过滤已释放的碰撞体（拾取后 queue_free 可能仍有一帧物理延迟）
-		if sel_collider != null and is_instance_valid(sel_collider):
-			current_collider = sel_collider
-	elif combat_input_enabled and _raycast_is_colliding(kick_raycast):
+	# 统一经 _get_valid_select_collider() 取有效碰撞体，收口 is_instance_valid 过滤
+	# 仅调用一次：select_collider 用于 hint 分支构建，current_collider 额外含 kick 门 fallback 用于变化检测
+	var select_collider: Object = _get_valid_select_collider()
+	var current_collider: Object = select_collider
+	if current_collider == null and combat_input_enabled and _raycast_is_colliding(kick_raycast):
 		var kick_collider = kick_raycast.get_collider()
 		if kick_collider != null and is_instance_valid(kick_collider) and kick_collider is Door:
 			current_collider = kick_collider
@@ -494,50 +587,44 @@ func check_for_possible_action() -> void:
 	var new_action := ""
 	var hint_type := ""
 	var hint_screen_pos := Vector2.ZERO
-	if _raycast_is_colliding(select_raycast):
-		current_collider = select_raycast.get_collider()
-		# 过滤已释放的碰撞体（与首次扫描一致）
-		if current_collider != null and not is_instance_valid(current_collider):
-			current_collider = null
-		var collider = current_collider
-		if collider is PickableItem:
-			var item_name := ""
-			if collider.has_method("get_item_name"):
-				item_name = collider.get_item_name()
-			new_action = "[E] %s %s" % [tr("Pick Up"), tr(item_name)]
-			hint_type = "pickup"
-		elif collider is Chest:
-			if Input.is_action_pressed("use"):
-				var progress = int((chest_interact_time / CHEST_OPEN_DURATION) * 100.0)
-				progress = clampi(progress, 0, 100)
-				new_action = "%s\n%s %d%%" % [tr("Chest"), tr("Opening..."), progress]
-			else:
-				new_action = "%s\n%s" % [tr("Chest"), tr("Hold [E] to Open (5s)")]
-			hint_type = "chest"
-		elif collider != null and collider.has_method("interact"):
-			var action_name := tr("Object")
-			if "interaction_name" in collider and String(collider.interaction_name) != "":
-				action_name = tr(String(collider.interaction_name))
-			var verb := tr("[E] Interact")
-			if "interaction_verb" in collider and String(collider.interaction_verb) != "":
-				verb = "[E] %s" % tr(String(collider.interaction_verb))
-			new_action = "%s\n%s" % [action_name, verb]
-			hint_type = "interact"
-		elif collider != null and collider.has_method("get_item_name"):
-			var item_name: String = collider.get_item_name()
-			new_action = "[E] %s %s" % [tr("Pick Up"), tr(item_name)]
-			hint_type = "pickup"
-		# 计算碰撞点的屏幕坐标用于悬浮窗定位（显示在物体右侧）
+	# 复用 select_collider 构建 hint（kick 门走下方 current_collider 分支）
+	var collider: Object = select_collider
+	if collider is PickableItem:
+		var item_name := ""
+		if collider.has_method("get_item_name"):
+			item_name = collider.get_item_name()
+		new_action = "[E] %s %s" % [tr("Pick Up"), tr(item_name)]
+		hint_type = "pickup"
+	elif collider is Chest:
+		if Input.is_action_pressed("use"):
+			var progress = int((chest_interact_time / CHEST_OPEN_DURATION) * 100.0)
+			progress = clampi(progress, 0, 100)
+			new_action = "%s\n%s %d%%" % [tr("Chest"), tr("Opening..."), progress]
+		else:
+			new_action = "%s\n%s" % [tr("Chest"), tr("Hold [E] to Open (5s)")]
+		hint_type = "chest"
+	elif collider != null and collider.has_method("interact"):
+		var action_name := tr("Object")
+		if "interaction_name" in collider and String(collider.interaction_name) != "":
+			action_name = tr(String(collider.interaction_name))
+		var verb := tr("[E] Interact")
+		if "interaction_verb" in collider and String(collider.interaction_verb) != "":
+			verb = "[E] %s" % tr(String(collider.interaction_verb))
+		new_action = "%s\n%s" % [action_name, verb]
+		hint_type = "interact"
+	elif collider != null and collider.has_method("get_item_name"):
+		var item_name: String = collider.get_item_name()
+		new_action = "[E] %s %s" % [tr("Pick Up"), tr(item_name)]
+		hint_type = "pickup"
+	# select_raycast 命中时计算屏幕坐标用于悬浮窗定位（显示在物体右侧）
+	if collider != null:
 		hint_screen_pos = _get_raycast_screen_position(select_raycast)
-	elif combat_input_enabled and _raycast_is_colliding(kick_raycast):
-		var kick_door = kick_raycast.get_collider()
-		if kick_door != null and is_instance_valid(kick_door) and kick_door is Door:
-			current_collider = kick_door
-			var door := kick_door as Door
-			# 拾取/开门等提示统一显示在物体右侧的悬浮窗（已移除底部提示）
-			new_action = tr(door.get_kick_prompt())
-			hint_type = "door"
-			hint_screen_pos = _get_raycast_screen_position(kick_raycast)
+	elif current_collider != null:
+		# select 未命中但 kick_raycast 命中 Door：current_collider 已校验为有效 Door
+		# 拾取/开门等提示统一显示在物体右侧的悬浮窗（已移除底部提示）
+		new_action = tr(current_collider.get_kick_prompt())
+		hint_type = "door"
+		hint_screen_pos = _get_raycast_screen_position(kick_raycast)
 
 	# collider 变化或宝箱进度变化时才到达此处，重建并 emit 提示
 	GameEvents.interaction_hint_changed.emit(hint_type, new_action, hint_screen_pos)
@@ -555,12 +642,19 @@ func _get_raycast_screen_position(raycast: RayCast3D) -> Vector2:
 	return camera.unproject_position(collision_point)
 
 func check_for_selection() -> void:
+	# 角色面板可见时抑制物品检视：避免世界悬浮窗（z_index=200）叠在面板上。
+	# 面板打开后摄像机冻结，射线仍命中物品，不抑制会导致悬浮窗卡在面板之上。
+	if is_character_panel_visible():
+		if current_pickable_focused_item != null and is_instance_valid(current_pickable_focused_item):
+			current_pickable_focused_item.unhighlight()
+		current_pickable_focused_item = null
+		GameEvents.item_detail_changed.emit({}, Vector2.ZERO)
+		return
 	var target_node: Node = null
-	if _raycast_is_colliding(select_raycast):
-		var collider := select_raycast.get_collider()
-		# 过滤已释放的碰撞体（拾取后 queue_free 可能仍有一帧物理延迟）
-		if collider != null and is_instance_valid(collider) and collider is PickableItem:
-			target_node = collider
+	# 统一经 _get_valid_select_collider() 取有效碰撞体，收口 is_instance_valid 过滤
+	var select_collider := _get_valid_select_collider()
+	if select_collider is PickableItem:
+		target_node = select_collider
 	# 清理已失效的焦点引用
 	if current_pickable_focused_item != null and not is_instance_valid(current_pickable_focused_item):
 		current_pickable_focused_item = null
@@ -614,8 +708,12 @@ func try_receive_hit_result(source_enemy: Enemy, result) -> void:
 	var can_hurt: bool = state_node.can_get_hurt() or result.ignores_block
 	if can_hurt:
 		var final_damage: int = result.final_damage
+		# 蓄势（TWO_HAND）：蓄力期间减伤 30%，累积伤害到释放时叠加
+		final_damage = combat_rt.apply_charging_accumulation(final_damage)
 		final_damage = ME.apply_elemental_aegis(final_damage, result.attack_type == "spell")
 		final_damage = ME.apply_thick_skin(final_damage)
+		# 奥术护盾（SPELL）：法术蓝量转化的护盾吸收伤害
+		final_damage = combat_rt.absorb_with_arcane_shield(final_damage)
 		final_damage = buffs.consume_damage_absorb(final_damage, health.max_life if health != null else 0)
 		var impact_direction := source_enemy.global_position.direction_to(global_position)
 		if result.knockback_impulse != Vector3.ZERO:
@@ -631,6 +729,7 @@ func try_receive_hit_result(source_enemy: Enemy, result) -> void:
 		switch_state(State.HURT, data)
 		# 受击累积体质经验（防御韧性）
 		_accumulate_defense_exp()
+		_accumulate_armor_proficiency(false)
 	elif state == State.BLOCKING:
 		AudioManager.play("block", action_audio_stream_player)
 		FxHelper.call_deferred("create_block_number", global_position, result.final_damage)
@@ -642,13 +741,33 @@ func try_receive_hit_result(source_enemy: Enemy, result) -> void:
 		# 同时作用于持盾完美格挡与双手武器精确格挡；连续完美格挡仅刷新不叠加
 		if in_grace and has_mechanism_passive("perfect_block_empower"):
 			set_perfect_block_buff()
+		# 折射（ONE_HAND_SHIELD）：格挡远程/法系攻击时 100% 反射
+		var is_ranged_or_spell: bool = result.attack_type == "ranged" or result.attack_type == "spell"
+		var reflect_pct: float = SPE.try_reflect_attack(is_ranged_or_spell, true)
+		if reflect_pct > 0.0 and source_enemy != null and is_instance_valid(source_enemy):
+			var reflected_dmg: int = maxi(1, int(round(float(result.final_damage) * reflect_pct)))
+			source_enemy.try_receive_hit(self, reflected_dmg)
+			# 折射：盾牌耐久消耗加倍
+			if _is_shield_block() and not in_grace:
+				equipment.apply_shield_damage(result.final_damage)
 		source_enemy.try_stun()
+		_accumulate_armor_proficiency(true)
 
 ## 受击后累积体质经验（防御韧性训练）
 func _accumulate_defense_exp() -> void:
 	var ap: Node = Service.attr_panel()
 	if ap != null:
 		ap.accumulate_attr("con", 2)  # 每次受击 +2 体质经验
+
+## 受击后累积护甲熟练度经验（策划案 35 §6.1）
+## 穿甲受击 +1 经验，格挡命中 +2 经验
+func _accumulate_armor_proficiency(is_blocked: bool) -> void:
+	var tree := Engine.get_main_loop()
+	if tree == null or tree.root == null:
+		return
+	var ap: Node = tree.root.get_node_or_null("ArmorProficiency")
+	if ap != null:
+		ap.on_hit_received(is_blocked)
 
 # ============================================================================
 # 动作格挡辅助（动作控制版：格挡由状态机判定，非概率投骰）
@@ -709,6 +828,13 @@ func is_active_weapon_crossbow() -> bool:
 func is_active_weapon_two_handed() -> bool:
 	return equipment != null and equipment.is_active_weapon_two_handed()
 
+## 双手近战专精「重型挥舞」是否替换本次基础攻击动作。
+## 远程/法系虽然数据层 hands=two_hand，但不属于 TWO_HAND 近战流派。
+func should_use_heavy_swing_animation() -> bool:
+	if not is_active_weapon_two_handed() or get_active_weapon_attack_type() != "melee":
+		return false
+	return has_mechanism_passive("passive_style_twohand_heavy_swing")
+
 func can_block_with_active_equipment() -> bool:
 	return equipment != null and equipment.can_block()
 
@@ -716,9 +842,22 @@ func can_dual_wield_attack_with_active_equipment() -> bool:
 	return equipment != null and equipment.can_dual_wield()
 
 func get_primary_weapon_release_state() -> int:
-	if not combat_input_enabled or not has_active_hand_equipment():
+	if not can_start_weapon_attack("primary"):
 		return -1
 	return State.SHOOTING if is_active_weapon_ranged() else State.SLASHING
+
+## 当前手是否允许开始一次武器攻击。
+## 远程武器使用自身装填/射击限制；近战武器必须先通过对应手的冷却。
+func can_start_weapon_attack(hand: String = "primary") -> bool:
+	if not combat_input_enabled:
+		return false
+	if is_active_weapon_ranged():
+		return true
+	# Primary melee attacks remain available as unarmed attacks before the
+	# first weapon pickup. Secondary attacks still require hand equipment.
+	if hand == "secondary" and not has_active_hand_equipment():
+		return false
+	return not is_melee_on_cooldown(hand)
 
 func get_primary_weapon_action_state() -> int:
 	if get_primary_weapon_release_state() == -1:
@@ -731,6 +870,8 @@ func make_primary_weapon_attack_data() -> PlayerStateData:
 func get_secondary_weapon_release_state() -> int:
 	if not combat_input_enabled or not has_active_hand_equipment():
 		return -1
+	if not is_active_weapon_ranged() and is_melee_on_cooldown("secondary"):
+		return -1
 	if can_dual_wield_attack_with_active_equipment():
 		return State.SLASHING
 	return -1
@@ -742,7 +883,7 @@ func get_secondary_weapon_action_state() -> int:
 		return State.AIMING
 	if can_block_with_active_equipment():
 		return State.BLOCKING
-	if can_dual_wield_attack_with_active_equipment():
+	if can_dual_wield_attack_with_active_equipment() and get_secondary_weapon_release_state() != -1:
 		return State.ATTACK_PREPARING
 	return -1
 
@@ -771,19 +912,20 @@ func get_aim_point(max_distance: float = 100.0) -> Vector3:
 func get_aim_transform(muzzle_pos: Vector3) -> Transform3D:
 	return AIM_HELPER.get_aim_transform(camera, muzzle_pos, get_rid())
 
-func prepare_attack_hitbox(target_mask: int) -> Area3D:
+func prepare_attack_hitbox(target_mask: int, radius_mult: float = 1.0) -> Area3D:
 	var attach_to := _get_active_attack_hitbox_parent()
-	return HITBOX_BUILDER.ensure_hitbox(self, attach_to, _get_active_attack_reach(), target_mask)
+	return HITBOX_BUILDER.ensure_hitbox(self, attach_to, _get_active_attack_reach(), target_mask, radius_mult)
 
 func set_attack_hitbox_active(hitbox: Area3D, active: bool) -> void:
 	HITBOX_BUILDER.set_active(hitbox, active)
 
 func _get_active_attack_hitbox_parent() -> Node3D:
-	if equipment == null or equipment.weapon_placeholder == null:
+	if equipment == null:
 		return null
-	if equipment.weapon_placeholder.get_child_count() == 0:
+	var mount: Node3D = equipment.get_active_weapon_placeholder() if equipment.has_method("get_active_weapon_placeholder") else equipment.weapon_placeholder
+	if mount == null or mount.get_child_count() == 0:
 		return null
-	return equipment.weapon_placeholder.get_child(0) as Node3D
+	return mount.get_child(0) as Node3D
 
 func _get_active_attack_reach() -> float:
 	if weapon_reach_raycast != null:
@@ -791,11 +933,27 @@ func _get_active_attack_reach() -> float:
 	var weapon := get_active_hand_weapon_data()
 	return maxf(weapon.reach * CombatHitboxBuilder.REACH_SCALE, 0.8) if weapon != null else 1.2
 	
+## 酸液伤害入口：与 try_receive_hit 保持一致的生命周期守卫。
+## state_node 在状态切换帧间或 _ready 完成 switch_state(State.MOVING) 前可能为 null，
+## 缺守卫会触发 "Cannot call method 'can_die' on a null instance" 崩溃。
 func take_acid_damage() -> void:
+	if state_node == null or not is_instance_valid(state_node) or state_node.is_queued_for_deletion():
+		return
+	if state == State.HURT or state == State.DYING:
+		return
 	if state_node.can_die():
 		switch_state(State.DYING)
 
+## 尖刺陷阱伤害入口：统一生命周期守卫 + 重入受击保护 + 参数校验。
+## 缺 HURT/DYING 守卫时，已在受击硬直中踩刺会重入 HURT 并打断当前受击动画，
+## 与 try_receive_hit 拒绝重入受击的行为不一致；spikes_trap 可能已被 queue_free。
 func take_spike_damage(spikes_trap: SpikesTrap) -> void:
+	if spikes_trap == null or not is_instance_valid(spikes_trap):
+		return
+	if state_node == null or not is_instance_valid(state_node) or state_node.is_queued_for_deletion():
+		return
+	if state == State.HURT or state == State.DYING:
+		return
 	var impact_direction := spikes_trap.global_position.direction_to(global_position)
 	var data := PlayerStateData.new().set_damage(SPIKE_DAMAGE).set_impact_direction(impact_direction)
 	switch_state(State.HURT, data)
@@ -843,48 +1001,25 @@ func get_combat_speed_multiplier() -> float:
 	return buffs.get_speed_multiplier()
 
 # ============================================================================
-# 近战攻击冷却（仅近战武器）
+# 近战攻击冷却（仅近战武器；实际逻辑已提取到 PlayerCombatRuntime）
 # ============================================================================
 
 ## 触发一次近战攻击冷却（hand: "primary" 左键主手 / "secondary" 双持副手）
 func start_melee_cooldown(hand: String) -> void:
-	var dur := _compute_melee_cd_duration(hand)
-	if hand == "secondary":
-		_melee_cd_secondary = dur
-		_melee_cd_secondary_max = dur
-	else:
-		_melee_cd_primary = dur
-		_melee_cd_primary_max = dur
-
-func _compute_melee_cd_duration(hand: String) -> float:
-	var dur := MELEE_CD_BASE
-	if is_active_weapon_two_handed():
-		dur = MELEE_CD_BASE * MELEE_CD_TWO_HAND_MULT
-	elif hand == "secondary":
-		dur = MELEE_CD_DUAL_WIELD
-	return dur * get_melee_cd_multiplier()
+	combat_rt.start_melee_cooldown(hand, is_active_weapon_two_handed(), has_mechanism_passive("cd_reduce"))
 
 ## 急速被动（cd_reduce）：冷却 ×0.85
+## 暴风骤雨（unarmed_flurry_storm）：徒手连击每层 -5% CD（最高 -60%）
 func get_melee_cd_multiplier() -> float:
-	if has_mechanism_passive("cd_reduce"):
-		return CD_REDUCE_MULT
-	return 1.0
+	return combat_rt.get_melee_cd_multiplier(has_mechanism_passive("cd_reduce"))
 
 ## 某手是否处于近战冷却中
 func is_melee_on_cooldown(hand: String) -> bool:
-	if hand == "secondary":
-		return _melee_cd_secondary > 0.0001
-	return _melee_cd_primary > 0.0001
+	return combat_rt.is_melee_on_cooldown(hand)
 
 ## 某手冷却恢复比例 0..1（1=就绪）。无近战武器/远程时恒为 1（就绪、不显示环）
 func get_melee_cd_fill(hand: String) -> float:
-	if hand == "secondary":
-		if _melee_cd_secondary_max <= 0.0:
-			return 1.0
-		return clampf(1.0 - _melee_cd_secondary / _melee_cd_secondary_max, 0.0, 1.0)
-	if _melee_cd_primary_max <= 0.0:
-		return 1.0
-	return clampf(1.0 - _melee_cd_primary / _melee_cd_primary_max, 0.0, 1.0)
+	return combat_rt.get_melee_cd_fill(hand)
 
 ## 查询机制类被动（操作强化，doc21 §3）是否已拥有
 func has_mechanism_passive(id: String) -> bool:
@@ -892,6 +1027,36 @@ func has_mechanism_passive(id: String) -> bool:
 	if sr != null and sr.has_method("has_mechanism_passive"):
 		return sr.has_mechanism_passive(id)
 	return false
+
+# ============================================================================
+# 流派专精被动公共 API（doc21 §一；实际逻辑已提取到 PlayerCombatRuntime）
+# ============================================================================
+
+## 记录近战攻击命中（由攻击状态机调用）
+## 用于追踪：交错挥砍连携、暴风骤雨层数
+func record_melee_hit(hand: String) -> void:
+	combat_rt.record_melee_hit(hand, has_mechanism_passive("passive_style_unarmed_flurry_storm"))
+
+## 消耗蓄势累积的额外伤害（由双手攻击释放时调用）
+## 返回累积的伤害值并清空池
+func consume_accumulation_bonus() -> float:
+	return combat_rt.consume_accumulation_bonus()
+
+## 设置双手蓄力状态（由攻击蓄力状态机调用）
+func set_charging_twohand(is_charging: bool) -> void:
+	combat_rt.set_charging_twohand(is_charging)
+
+## 触发元素环（由施法路径调用）
+func trigger_elemental_ring() -> void:
+	combat_rt.trigger_elemental_ring()
+
+## 触发奥术护盾（由施法路径调用，将消耗蓝量转化为护盾）
+func trigger_arcane_barrier(mana_spent: int) -> void:
+	combat_rt.trigger_arcane_barrier(mana_spent)
+
+## 获取流派被动运行时状态字典（供 CombatBridge.build_player_attack 使用）
+func get_style_context() -> Dictionary:
+	return combat_rt.get_style_context()
 
 ## 计算近战蓄力伤害倍率：未装备蓄力被动或蓄力为 0 → 1.0（无增伤）
 func get_melee_charge_multiplier(charge_ratio: float) -> float:
@@ -903,25 +1068,19 @@ func get_melee_charge_multiplier(charge_ratio: float) -> float:
 
 ## 完美格挡·增伤 buff：完美格挡成功时置位（doc21 #6）
 func set_perfect_block_buff() -> void:
-	_perfect_block_buff_active = true
+	combat_rt.set_perfect_block_buff()
 
 ## 消费完美格挡·增伤 buff：返回 true 并已消费（下次攻击命中时调用，仅一次）
 func consume_perfect_block_buff() -> bool:
-	if _perfect_block_buff_active:
-		_perfect_block_buff_active = false
-		return true
-	return false
+	return combat_rt.consume_perfect_block_buff()
 
 ## 残影 buff：侧垫步成功触发后激活（doc21 #7 afterimage，需装备该机制被动）
 func set_sidestep_buff() -> void:
-	_sidestep_buff_remaining = SIDESTEP_BUFF_SEC
+	combat_rt.set_sidestep_buff()
 
 ## 消费残影 buff：窗口内且首次攻击命中时返回 true 并清零（仅一次）
 func consume_sidestep_buff() -> bool:
-	if _sidestep_buff_remaining > 0.0001:
-		_sidestep_buff_remaining = 0.0
-		return true
-	return false
+	return combat_rt.consume_sidestep_buff()
 
 # ============================================================================
 # 轻弩装弹（仅弩；弓无装弹，走各自蓄力/速射逻辑）
@@ -936,22 +1095,22 @@ func start_crossbow_reload() -> void:
 	# 机制类被动「快速装弹 quick_reload」：装弹时长 -20%（doc21 #10）
 	if has_mechanism_passive("quick_reload"):
 		sec *= 0.8
-	_crossbow_reload_remaining = sec
-	_crossbow_reload_total = sec
-	# Presentation only. Delay reload until the fire kick has remained visible.
-	# Completion is still governed exclusively by the timer above.
+	combat_rt.start_crossbow_reload(sec)
+	# Queue the first-person reload after the release clip. The third-person
+	# AnimationPlayer remains untouched and owns the shooting state's exit signal.
+	var fire_animation_delay := 0.24
+	if animation_player != null and animation_player.has_animation("crossbow_fire"):
+		fire_animation_delay = animation_player.get_animation("crossbow_fire").length + 0.01
 	if view_model != null and is_instance_valid(view_model) and view_model.has_method("play_action_after"):
-		view_model.play_action_after(&"vm_crossbow_reload", 0.24, 1.2 / maxf(sec, 0.01))
+		view_model.play_action_after(&"vm_crossbow_reload", fire_animation_delay, 1.2 / maxf(sec, 0.01))
 
 ## 弩是否正在装弹（装弹完成前不允许连续发射）
 func is_crossbow_reloading() -> bool:
-	return _crossbow_reload_remaining > 0.0001
+	return combat_rt.is_crossbow_reloading()
 
 ## 弩装弹恢复比例 0..1（1=就绪可射）
 func get_crossbow_reload_fill() -> float:
-	if _crossbow_reload_total <= 0.0:
-		return 1.0
-	return clampf(1.0 - _crossbow_reload_remaining / _crossbow_reload_total, 0.0, 1.0)
+	return combat_rt.get_crossbow_reload_fill()
 
 # ============================================================================
 # 跳跃 / 二段跳
@@ -961,19 +1120,33 @@ func get_crossbow_reload_fill() -> float:
 func do_jump() -> void:
 	if is_on_floor():
 		velocity.y = jump_force
-		_air_jumps_used = 0
+		combat_rt.reset_air_jumps()
 		AudioManager.play("jump", vocal_audio_stream_player)
 		return
-	if has_mechanism_passive("air_dash") and _air_jumps_used < AIR_JUMPS_MAX:
-		velocity.y = jump_force * AIR_JUMP_FORCE_MULT
-		_air_jumps_used += 1
+	if has_mechanism_passive("air_dash") and combat_rt.try_use_air_jump():
+		velocity.y = jump_force * PLAYER_COMBAT_RUNTIME.AIR_JUMP_FORCE_MULT
 		AudioManager.play("jump", vocal_audio_stream_player)
+
+## 获取 select_raycast 当前命中的有效碰撞体。
+## 统一收口 is_instance_valid 过滤，避免 _physics_process / check_for_selection /
+## check_for_possible_action 各自重复处理 queue_free 一帧延迟导致的失效引用。
+## 返回 null 表示射线未命中或碰撞体已释放。
+func _get_valid_select_collider() -> Object:
+	if not _raycast_is_colliding(select_raycast):
+		return null
+	var collider := select_raycast.get_collider()
+	if collider == null or not is_instance_valid(collider):
+		return null
+	return collider
 
 func _raycast_is_colliding(raycast: RayCast3D) -> bool:
 	return raycast != null and is_instance_valid(raycast) and not raycast.is_queued_for_deletion() and raycast.is_colliding()
 
 func is_character_panel_visible() -> bool:
-	for node in get_tree().get_nodes_in_group("character_panel"):
+	var scene_tree := get_tree()
+	if scene_tree == null:
+		return false
+	for node in scene_tree.get_nodes_in_group("character_panel"):
 		if node.is_inside_tree() and node.visible:
 			return true
 	return false

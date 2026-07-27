@@ -68,7 +68,7 @@ tracks/0/enabled = true
 tracks/0/path = NodePath("ActionPivot:position")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
-tracks/0/keys = {"times": PackedFloat32Array(0, 0.28, 1), "transitions": PackedFloat32Array(1, 1, 1), "update": 0, "values": [Vector3(0, 0, 0), Vector3(0.01, 0.06, 0.01), Vector3(0.06, 0.16, 0.06)]}
+tracks/0/keys = {"times": PackedFloat32Array(0, 0.28, 1), "transitions": PackedFloat32Array(1, 1, 1), "update": 0, "values": [Vector3(0, 0, 0), Vector3(0.03, 0.10, 0.02), Vector3(0.20, 0.28, 0.06)]}
 tracks/1/type = "value"
 tracks/1/imported = false
 tracks/1/enabled = true
@@ -86,14 +86,21 @@ tracks/0/enabled = true
 tracks/0/path = NodePath("ActionPivot:position")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
-tracks/0/keys = {"times": PackedFloat32Array(0, 0.12, 0.27, 0.52), "transitions": PackedFloat32Array(1, 1, 1, 1), "update": 0, "values": [Vector3(0.06, 0.16, 0.06), Vector3(0.04, 0.24, 0.02), Vector3(-0.02, 0.02, -0.04), Vector3(0, 0, 0)]}
+tracks/0/keys = {"times": PackedFloat32Array(0, 0.12, 0.27, 0.52), "transitions": PackedFloat32Array(1, 1, 1, 1), "update": 0, "values": [Vector3(0.06, 0.16, 0.06), Vector3(-0.12, 0.24, 0.02), Vector3(-0.42, 0.03, -0.12), Vector3(0, 0, 0)]}
 tracks/1/type = "value"
 tracks/1/imported = false
 tracks/1/enabled = true
 tracks/1/path = NodePath("ActionPivot:rotation")
 tracks/1/interp = 1
 tracks/1/loop_wrap = true
-tracks/1/keys = {"times": PackedFloat32Array(0, 0.12, 0.27, 0.52), "transitions": PackedFloat32Array(1, 1, 1, 1), "update": 0, "values": [Vector3(-0.12, -0.30, -0.76), Vector3(-0.12, -0.30, -0.76), Vector3(-0.12, -0.30, -0.76), Vector3(0, 0, 0)]}
+tracks/1/keys = {"times": PackedFloat32Array(0, 0.12, 0.27, 0.52), "transitions": PackedFloat32Array(1, 1, 1, 1), "update": 0, "values": [Vector3(-0.12, -0.30, -0.76), Vector3(-0.12, -0.30, -1.10), Vector3(-0.12, -0.30, -0.92), Vector3(0, 0, 0)]}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {"times": PackedFloat32Array(0, 0.12, 0.27, 0.52), "transitions": PackedFloat32Array(1, 1, 1, 1), "update": 0, "values": [Vector3(-0.174533, -0.139626, -2.443461), Vector3(-0.174533, -0.139626, -2.443461), Vector3(-0.174533, -0.139626, -2.443461), Vector3(-0.174533, -0.139626, -2.443461)]}
 
 [sub_resource type="Animation" id="Animation_slash_one_hand"]
 resource_name = "vm_slash_one_hand"
@@ -259,6 +266,7 @@ _data = {
 "vm_shortsword_thrust": SubResource("Animation_shortsword_thrust"),
 "vm_sword_hold": SubResource("Animation_sword_hold"),
 "vm_sword_slash": SubResource("Animation_sword_slash"),
+"vm_sword_attack": SubResource("Animation_sword_slash"),
 "vm_slash_one_hand": SubResource("Animation_slash_one_hand"),
 "vm_slash_heavy": SubResource("Animation_slash_heavy"),
 "vm_stab_dagger": SubResource("Animation_stab_dagger"),

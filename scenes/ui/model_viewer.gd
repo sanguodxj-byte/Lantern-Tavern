@@ -96,10 +96,9 @@ const _MODEL_NAME_ZH := {
 	"elemental_frost": "寒霜元素", "elemental_storm": "风暴元素",
 	"gargoyle_sentinel": "石像鬼哨兵", "animated_armor": "活化盔甲",
 	"oni_revenant": "鬼族怨灵", "shadow_assassin": "暗影刺客",
-	"axe": "战斧", "crossbow": "弩", "dagger": "匕首", "greatsword": "巨剑",
-	"longbow": "长弓", "longsword": "长剑", "shortsword": "短剑", "spear": "长矛",
-	"staff": "法杖", "grimoire": "魔导书", "sword": "单手剑", "warhammer": "战锤", "buckler": "圆盾",
-	"chain_armor": "锁子甲", "cloth_armor": "布甲", "leather_armor": "皮甲", "plate_armor": "板甲",
+	# 装备（武器/护甲）名统一由 WeaponRegistry (weapons.json name_zh) 提供；
+	# 此处仅保留注册表外的遗留模型
+	"longsword": "长剑", "buckler": "圆盾",
 	"fireplace": "壁炉", "barrel": "木桶", "barrel_fragmented": "破碎木桶",
 	"banner": "旗帜", "bench": "长凳", "bones": "骨堆", "boss_chest": "首领宝箱",
 	"bottle_set": "瓶罐组", "bucket": "木桶", "candles": "蜡烛", "chair": "椅子",
@@ -385,6 +384,11 @@ func _filename_to_display_name(file_name: String) -> String:
 	if not material_name.is_empty():
 		return material_name
 
+	# 装备：weapons.json (WeaponRegistry) 是装备名的唯一数据源
+	var equipment_name := _resolve_equipment_display_name(display_key)
+	if not equipment_name.is_empty():
+		return equipment_name
+
 	# 图鉴展示名：中文键走 TranslationServer（en/zh 一致）
 	if _MODEL_NAME_ZH.has(display_key):
 		return TranslationServer.translate(String(_MODEL_NAME_ZH[display_key]))
@@ -420,6 +424,19 @@ func _resolve_material_display_name(model_id: String) -> String:
 	if not entry.is_empty():
 		return MATERIAL_MODELS.get_display_name(model_id)
 	return ""
+
+
+## 装备展示名：按注册表 id 查 WeaponRegistry（weapons.json 单一数据源）。
+## 未命中（非装备/遗留模型）返回空字符串。
+func _resolve_equipment_display_name(model_id: String) -> String:
+	if model_id.is_empty():
+		return ""
+	var registry: Node = Service.weapon_registry()
+	if registry == null:
+		return ""
+	if not registry.get_all_ids().has(model_id):
+		return ""
+	return String(registry.get_display_name(model_id))
 
 
 ## Produces the stable lookup ID for a scanned model without changing its path.
@@ -823,7 +840,14 @@ func _on_light_color_selected(index: int) -> void:
 func _on_return_pressed() -> void:
 	request_navigation(UI_ROUTES.MAIN_MENU)
 
+
+func _on_cancel_input() -> void:
+	_on_return_pressed()
+
 func _input(event: InputEvent) -> void:
+	super._input(event)
+	if not visible:
+		return
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
 			if not event.pressed:

@@ -7,6 +7,7 @@ const LABEL_FONT_SIZE := 22
 const VALUE_FONT_SIZE := 23
 const COLUMN_GAP := 12.0
 const VIEW_MODEL := preload("res://scenes/ui/equipment_screen_view_model.gd")
+const WEAPON_PROFICIENCY_CATALOG := preload("res://globals/combat/weapon_proficiency_catalog.gd")
 const ATTRIBUTE_ICON_PATHS := {
 	"等级": "res://assets/textures/icons/attributes/attribute_level_aligned.png",
 	"生命": "res://assets/textures/icons/attributes/attribute_health_aligned.png",
@@ -22,25 +23,13 @@ const ATTRIBUTE_ICON_PATHS := {
 	"感知": "res://assets/textures/icons/attributes/attribute_perception_aligned.png",
 	"法力": "res://assets/textures/icons/attributes/attribute_mana_aligned.png",
 }
-const PROFICIENCY_ICON_PATHS := {
-	"剑": "res://assets/textures/icons/equipment/weapons_sword.png",
-	"匕首": "res://assets/textures/icons/equipment/weapons_dagger.png",
-	"斧": "res://assets/textures/icons/equipment/weapons_axe.png",
-	"锤": "res://assets/textures/icons/equipment/weapons_warhammer.png",
-	"枪": "res://assets/textures/icons/equipment/weapons_spear.png",
-	"弓": "res://assets/textures/icons/equipment/weapons_longbow.png",
-	"弩": "res://assets/textures/icons/equipment/weapons_crossbow.png",
-	"法杖": "res://assets/textures/icons/equipment/weapons_staff.png",
-	"魔导书": "res://assets/textures/icons/equipment/weapons_grimoire.png",
-	"盾牌": "res://assets/textures/icons/equipment/weapons_shield.png",
-}
-
 @export var source_label_path: NodePath
 
 var _source_label: Label
 var _last_text := ""
 var _stat_rows: Array = []
 var _attribute_icons: Dictionary = {}
+var _proficiency_labels: Dictionary = {}
 
 
 func _ready() -> void:
@@ -51,8 +40,10 @@ func _ready() -> void:
 		var texture := load(String(ATTRIBUTE_ICON_PATHS[label])) as Texture2D
 		if texture != null:
 			_attribute_icons[label] = texture
-	for label in PROFICIENCY_ICON_PATHS:
-		var texture := load(String(PROFICIENCY_ICON_PATHS[label])) as Texture2D
+	for entry in WEAPON_PROFICIENCY_CATALOG.entries():
+		var label := String(entry["label"])
+		_proficiency_labels[label] = true
+		var texture := load(String(entry["icon_path"])) as Texture2D
 		if texture != null:
 			_attribute_icons[label] = texture
 	set_process(true)
@@ -123,8 +114,14 @@ func _draw_stat_icon(center: Vector2, label: String) -> void:
 	if generated_icon != null:
 		draw_texture_rect(generated_icon, Rect2(center - Vector2(20.0, 20.0), Vector2(40.0, 40.0)), false)
 		return
+	if _proficiency_labels.has(label):
+		return
 	var pattern: Array = pixel_icon_pattern(label)
 	var palette: Dictionary = pixel_icon_palette(label)
+	_draw_pixel_pattern(center, pattern, palette)
+
+
+func _draw_pixel_pattern(center: Vector2, pattern: Array, palette: Dictionary) -> void:
 	const PIXEL := 4.0
 	var origin := center - Vector2(PIXEL * 5.0, PIXEL * 5.0)
 	# Each glyph is authored on a 10x10 logical grid and enlarged with hard
@@ -144,41 +141,41 @@ func _draw_stat_icon(center: Vector2, label: String) -> void:
 static func pixel_icon_pattern(label: String) -> Array:
 	# Shared 10x10 grid: o=outline, p=primary, h=highlight, s=shadow.
 	var patterns: Dictionary = {
-		"等级": ["....oo....", "...oppo...", "..oppppo..", ".oppppppo.", "oppphhhppo", "oppppppppo", ".oppppppo.", "..oppppo..", "...oppo...", "....oo...."],
-		"生命": ["..oo..oo..", ".oppooppo.", "oppppppppo", "oppphhhppo", ".oppppppo.", "..oppppo..", "...oppo...", "....oo....", "..........", ".........."],
+		"等级": ["....oo....", "...oppo...", "..oppppo..", ".oppppppo.", "opphhhhppo", "oppppppppo", ".oppppppo.", "..oppppo..", "...oppo...", ".........."],
+		"生命": ["..oo..oo..", ".oppooppo.", "oppppppppo", "opphhhhppo", ".oppppppo.", "..oppppo..", "...oppo...", "....oo....", "..........", ".........."],
 		# Sword: pointed blade, guard, grip and pommel.
 		"攻击": ["....oo....", "....pp....", "...oppo...", "...oppo...", "...oppo...", "..opsspo..", ".oppppppo.", "....oo....", "...oooo...", ".........."],
 		# Shield: broad shoulders tapering into a protected point.
-		"护甲": ["...oooo...", "..oppppo..", ".opphhppo.", "oppphhhppo", "opppsspppo", "oppppppppo", ".oppppppo.", "..oppppo..", "...oppo...", "....oo...."],
+		"护甲": ["...oooo...", "..oppppo..", ".opphhppo.", "opphhhhppo", "opppsspppo", "oppppppppo", ".oppppppo.", "..oppppo..", "...oppo...", ".........."],
 		# Wings: negative space makes evasion readable instead of a blob.
 		"闪避": ["..oo..oo..", ".oppooppo.", "oppp..pppo", ".oppppppo.", "..oppppo..", "...oppo...", "..oppppo..", ".oppppppo.", "oppp..pppo", ".........."],
 		# Four-point critical-hit star/crosshair.
-		"暴击": ["....oo....", "...oppo...", "....pp....", "..oppppo..", "oppphhhppo", "..oppppo..", "....pp....", "...oppo...", "....oo....", ".........."],
+		"暴击": ["....oo....", "...oppo...", "....pp....", "..oppppo..", "opphhhhppo", "..oppppo..", "....pp....", "...oppo...", "....oo....", ".........."],
 		# Gauntlet/fist: a heavy cuff gives strength a unique base.
-		"力量": ["..oppppo..", ".oppppppo.", "oppphhhppo", "oppppppppo", "opppsspppo", ".oppppppo.", "..oppppo..", "..oppppo..", "...oppo...", "...oooo..."],
+		"力量": ["..oppppo..", ".oppppppo.", "opphhhhppo", "oppppppppo", "opppsspppo", ".oppppppo.", "..oppppo..", "..oppppo..", "...oppo...", ".........."],
 		# Speed/feather mark for agility.
 		"敏捷": ["....oo....", "...oppo...", "..oppppo..", ".oppppppo.", "opppsspppo", ".oppppppo.", "..oppppo..", "...oppo...", "....oo....", ".........."],
 		# Torso: neck, shoulders, chest and waist.
-		"体质": ["...oooo...", "..oppppo..", ".oppppppo.", "oppphhhppo", "opppsspppo", "oppppppppo", ".oppppppo.", ".oppppppo.", "..oppppo..", "...oooo..."],
+		"体质": ["...oooo...", "..oppppo..", ".oppppppo.", "opphhhhppo", "opppsspppo", "oppppppppo", ".oppppppo.", ".oppppppo.", "..oppppo..", ".........."],
 		# Open book: paired pages with a visible center seam.
-		"智力": ["..oo..oo..", ".oppooppo.", "opppsspppo", ".opphhppo.", "oppppppppo", "opppsspppo", "oppppppppo", ".oppppppo.", "..oppppo..", "...oooo..."],
+		"智力": ["..oo..oo..", ".oppooppo.", "opppsspppo", ".opphhppo.", "oppppppppo", "opppsspppo", "oppppppppo", ".oppppppo.", "..oppppo..", ".........."],
 		# Dexterity glove: fingers at the top and a narrow wrist.
-		"灵巧": ["..oo..oo..", ".oppooppo.", "oppppppppo", "oppphhhppo", "opppsspppo", ".oppppppo.", "..oppppo..", "..oppppo..", "...oppo...", "....oo...."],
-		"感知": ["...oooo...", "..oppppo..", ".oppppppo.", "oppppppppo", "oppphhpppo", "oppppppppo", ".oppppppo.", "..oppppo..", "...oppo...", "....oo...."],
-		"法力": ["....oo....", "...oppo...", "..oppppo..", ".oppppppo.", "oppphhhppo", "oppppppppo", ".oppppppo.", "..oppppo..", "...oppo...", "....oo...."],
+		"灵巧": ["..oo..oo..", ".oppooppo.", "oppppppppo", "opphhhhppo", "opppsspppo", ".oppppppo.", "..oppppo..", "..oppppo..", "...oppo...", ".........."],
+		"感知": ["...oooo...", "..oppppo..", ".oppppppo.", "oppppppppo", "oppphhpppo", "oppppppppo", ".oppppppo.", "..oppppo..", "...oppo...", ".........."],
+		"法力": ["....oo....", "...oppo...", "..oppppo..", ".oppppppo.", "opphhhhppo", "oppppppppo", ".oppppppo.", "..oppppo..", "...oppo...", ".........."],
 		"default": ["..oooooo..", ".oppppppo.", "oppppppppo", "oppphhpppo", "oppppppppo", ".oppppppo.", "..oooooo..", "..........", "..........", ".........."],
 	}
 	# Semantic overrides kept together so each icon can be reviewed as a
 	# vocabulary entry without changing the shared 10x10 renderer.
 	patterns["敏捷"] = ["....oo....", "...oppo...", "..oppppo..", ".oppppppo.", "opppsspppo", ".oppppppo.", "..oppppo..", "...oppo...", "....oo....", ".........."]
-	patterns["体质"] = ["...oooo...", "..oppppo..", ".oppppppo.", "oppphhhppo", "opppsspppo", "oppppppppo", ".oppppppo.", ".oppppppo.", "..oppppo..", "...oooo..."]
-	patterns["智力"] = ["..oo..oo..", ".oppooppo.", "opppsspppo", ".opphhppo.", "oppppppppo", "opppsspppo", "oppppppppo", ".oppppppo.", "..oppppo..", "...oooo..."]
-	patterns["灵巧"] = ["..oo..oo..", ".oppooppo.", "oppppppppo", "oppphhhppo", "opppsspppo", ".oppppppo.", "..oppppo..", "..oppppo..", "...oppo...", "....oo...."]
-	patterns["感知"] = ["..........", "...oooo...", "..oppppo..", ".opphhppo.", "oppphhhppo", ".opphhppo.", "..oppppo..", "...oooo...", "..........", ".........."]
-	patterns["法力"] = ["....oo....", "...oppo...", "..oppppo..", ".oppppppo.", "oppppppppo", "oppphhhppo", ".oppppppo.", ".oppssppo.", "..oppppo..", "...oppo..."]
+	patterns["体质"] = ["...oooo...", "..oppppo..", ".oppppppo.", "opphhhhppo", "opppsspppo", "oppppppppo", ".oppppppo.", ".oppppppo.", "..oppppo..", ".........."]
+	patterns["智力"] = ["..oo..oo..", ".oppooppo.", "opppsspppo", ".opphhppo.", "oppppppppo", "opppsspppo", "oppppppppo", ".oppppppo.", "..oppppo..", ".........."]
+	patterns["灵巧"] = ["..oo..oo..", ".oppooppo.", "oppppppppo", "opphhhhppo", "opppsspppo", ".oppppppo.", "..oppppo..", "..oppppo..", "...oppo...", ".........."]
+	patterns["感知"] = ["..........", "...oooo...", "..oppppo..", ".opphhppo.", "opphhhhppo", ".opphhppo.", "..oppppo..", "...oooo...", "..........", ".........."]
+	patterns["法力"] = ["....oo....", "...oppo...", "..oppppo..", ".oppppppo.", "oppppppppo", "opphhhhppo", ".oppppppo.", ".oppssppo.", "..oppppo..", ".........."]
 	patterns["攻击"] = ["op......po", ".op....po.", "..op..po..", "...oppo...", "....oo....", "...oppo...", "..op..po..", ".op....po.", "op......po", ".........."]
 	patterns["闪避"] = ["..oo..oo..", ".oppooppo.", "oppp..pppo", "oppp..pppo", ".oppppppo.", "..oppppo..", "...oppo...", "....oo....", "..........", ".........."]
-	patterns["暴击"] = ["....oo....", "...oppo...", "....pp....", "..oppppo..", "oppphhhppo", "..oppppo..", "....pp....", "...oppo...", "....oo....", ".........."]
+	patterns["暴击"] = ["....oo....", "...oppo...", "....pp....", "..oppppo..", "opphhhhppo", "..oppppo..", "....pp....", "...oppo...", "....oo....", ".........."]
 	patterns["智力"] = ["..........", "..op..po..", ".oppppppo.", "opppsspppo", "oppphhpppo", "opppsspppo", ".oppppppo.", "..oppppo..", "...oppo...", ".........."]
 	patterns["感知"] = ["..........", "...oooo...", "..oppppo..", ".opphhppo.", "opppsspppo", ".opphhppo.", "..oppppo..", "...oooo...", "..........", ".........."]
 	return patterns.get(label, patterns["default"])

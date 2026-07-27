@@ -88,7 +88,7 @@ func _ready() -> void:
 	# 编辑器内由 _build_torch() 直接应用，此调用仅覆盖 baked 路径。
 	_apply_context_lighting_to_children()
 	
-	if not Engine.is_editor_hint() and prop_kind == "weapon_rack" and not _is_test_running():
+	if not Engine.is_editor_hint() and prop_kind == "weapon_rack":
 		call_deferred("_spawn_weapons_on_rack")
 
 
@@ -96,7 +96,7 @@ func rebuild() -> void:
 	_clear_generated()
 	
 	# 1. 游戏运行时 (非编辑器) 优先加载预先烘焙存盘的静态网格资产
-	if not Engine.is_editor_hint() and not _is_test_running():
+	if not Engine.is_editor_hint():
 		var baked_path := "res://assets/meshes/props/baked_" + prop_kind + ".tscn"
 		if ResourceLoader.exists(baked_path):
 			var scene := load(baked_path) as PackedScene
@@ -249,18 +249,6 @@ func _finalize_meshes() -> void:
 	if _pending_boxes.is_empty():
 		return
 		
-	if _is_test_running():
-		for entry in _pending_boxes:
-			var mi := MeshInstance3D.new()
-			mi.name = entry["name"]
-			mi.mesh = entry["mesh"]
-			mi.material_override = entry["material"]
-			mi.transform = entry["transform"]
-			mi.set_meta("voxel_generated", true)
-			add_child(mi)
-		_pending_boxes.clear()
-		return
-		
 	# 按材质分组：同材质的方块合并进同一个 ArrayMesh（godot-voxel VoxelMesherBlocky 同源思路——
 	# 方块地形/装饰合批的本质，就是把同材质体素合并为单个网格 + 硬件实例化）。
 	var by_material: Dictionary = {}
@@ -294,6 +282,9 @@ func _finalize_meshes() -> void:
 		mi.name = "VoxelMesh_%d" % index
 		mi.mesh = array_mesh
 		mi.material_override = mat
+		if prop_kind == "torch":
+			# 火把几何不能参与自身点光源的阴影投射，避免下方出现纯黑块。
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mi.set_meta("voxel_generated", true)
 		# 近处用细节网格；超过 VOXEL_LOD_FAR 渐隐。
 		mi.visibility_range_end = VOXEL_LOD_FAR
@@ -308,6 +299,8 @@ func _finalize_meshes() -> void:
 			lod_mi.name = "VoxelMeshLOD_%d" % index
 			lod_mi.mesh = lod_box
 			lod_mi.material_override = mat
+			if prop_kind == "torch":
+				lod_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			lod_mi.position = union_aabb.position + union_aabb.size * 0.5
 			# 远处(>= VOXEL_LOD_FAR)才显示低模，并与细节网格交叉淡入淡出。
 			lod_mi.visibility_range_begin = VOXEL_LOD_FAR
@@ -407,6 +400,7 @@ func _light(name: String, center_px: Vector3, energy: float, radius_m: float) ->
 	light.position = center_px * VOXEL_UNIT
 	light.light_color = Color(1.0, 0.58, 0.25)
 	light.light_energy = energy
+	VOXEL_LIGHTING.disable_light_specular(light)
 	light.light_size = 0.08
 	light.omni_range = radius_m
 	light.omni_attenuation = 1.7
@@ -781,6 +775,7 @@ func _is_in_tavern() -> bool:
 func _apply_context_lighting(light: OmniLight3D) -> void:
 	if light == null or not is_instance_valid(light):
 		return
+	VOXEL_LIGHTING.disable_light_specular(light)
 	if light.get_meta("light_role", "") != "torch":
 		return
 	if not _is_in_tavern():
@@ -807,8 +802,13 @@ func _apply_context_lighting(light: OmniLight3D) -> void:
 ## 用于 baked 资产加载后（运行时）和 _ready 末尾（防御性双保险）。
 func _apply_context_lighting_to_children() -> void:
 	for child in get_children():
-		if child is OmniLight3D:
-			_apply_context_lighting(child as OmniLight3D)
+		if child is Light3D:
+			VOXEL_LIGHTING.disable_light_specular(child as Light3D)
+			if prop_kind == "torch":
+				child.add_to_group("flicker_light")
+				child.set_meta("light_role", "torch")
+			if child is OmniLight3D:
+				_apply_context_lighting(child as OmniLight3D)
 
 
 func _build_pillar() -> void:
@@ -960,18 +960,6 @@ func _build_weapon_rack() -> void:
 	_box("PostPinLeft", Vector3i(1, 1, 3), Vector3(-15, 40, 2.5), _iron_mat)
 	_box("PostPinMiddle", Vector3i(1, 1, 3), Vector3(0, 40, 2.5), _iron_mat)
 	_box("PostPinRight", Vector3i(1, 1, 3), Vector3(15, 40, 2.5), _iron_mat)
-
-
-func _is_test_running() -> bool:
-	for arg in OS.get_cmdline_args():
-		if "gdunit" in arg.to_lower():
-			return true
-	for arg in OS.get_cmdline_user_args():
-		if "gdunit" in arg.to_lower():
-			return true
-	return false
-
-
 func _spawn_weapons_on_rack() -> void:
 	var tree := Engine.get_main_loop() as SceneTree
 	var registry = tree.root.get_node_or_null("WeaponRegistry") if tree else null

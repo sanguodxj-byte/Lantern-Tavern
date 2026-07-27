@@ -10,6 +10,48 @@ const PIXEL_UI_SCENES := [
 	"res://scenes/ui/combat_hud.tscn",
 	"res://scenes/ui/expedition_hud.tscn",
 ]
+const ALL_PIXEL_SCENES := [
+	"res://scenes/ui/character_name_prompt.tscn",
+	"res://scenes/ui/character_panel.tscn",
+	"res://scenes/ui/chest_loot_panel.tscn",
+	"res://scenes/ui/combat_hud.tscn",
+	"res://scenes/ui/expedition_hud.tscn",
+	"res://scenes/ui/expedition_prompt.tscn",
+	"res://scenes/ui/fps_overlay.tscn",
+	"res://scenes/ui/lobby_menu.tscn",
+	"res://scenes/ui/main_menu.tscn",
+	"res://scenes/ui/model_viewer.tscn",
+	"res://scenes/ui/pause_menu.tscn",
+	"res://scenes/ui/save_load_panel.tscn",
+	"res://scenes/ui/save_slot_row.tscn",
+	"res://scenes/ui/scripted_dialogue_box.tscn",
+	"res://scenes/ui/settings_menu.tscn",
+	"res://scenes/ui/skill_bar.tscn",
+	"res://scenes/ui/stat_indicator.tscn",
+	"res://scenes/ui/tavern_equipment_panel.tscn",
+	"res://scenes/ui/tavern_ui.tscn",
+	"res://scenes/ui/tutorial_hint_overlay.tscn",
+	"res://scenes/ui/zone_select.tscn",
+]
+const CONTROL_ROOT_PIXEL_SCENES := [
+	"res://scenes/ui/character_name_prompt.tscn",
+	"res://scenes/ui/character_panel.tscn",
+	"res://scenes/ui/expedition_hud.tscn",
+	"res://scenes/ui/expedition_prompt.tscn",
+	"res://scenes/ui/lobby_menu.tscn",
+	"res://scenes/ui/main_menu.tscn",
+	"res://scenes/ui/model_viewer.tscn",
+	"res://scenes/ui/save_load_panel.tscn",
+	"res://scenes/ui/save_slot_row.tscn",
+	"res://scenes/ui/scripted_dialogue_box.tscn",
+	"res://scenes/ui/settings_menu.tscn",
+	"res://scenes/ui/skill_bar.tscn",
+	"res://scenes/ui/stat_indicator.tscn",
+	"res://scenes/ui/tavern_equipment_panel.tscn",
+	"res://scenes/ui/tavern_ui.tscn",
+	"res://scenes/ui/tutorial_hint_overlay.tscn",
+	"res://scenes/ui/zone_select.tscn",
+]
 
 
 func test_shared_theme_has_pixel_roguelike_variations() -> void:
@@ -77,6 +119,26 @@ func test_all_primary_ui_scenes_reference_shared_theme() -> void:
 	for scene_path in PIXEL_UI_SCENES:
 		var source := FileAccess.get_file_as_string(scene_path)
 		assert_str(source).contains("res://scenes/ui/lantern_theme.tres")
+
+
+func test_all_ui_scenes_inherit_nearest_pixel_sampling() -> void:
+	for scene_path in ALL_PIXEL_SCENES:
+		var source := FileAccess.get_file_as_string(scene_path)
+		assert_str(source).contains("res://scenes/ui/lantern_theme.tres") \
+			.override_failure_message("UI 场景未引用统一像素主题: %s" % scene_path)
+		assert_str(source).contains("texture_filter = 1") \
+			.override_failure_message("UI 场景根控件未固定最近邻采样: %s" % scene_path)
+	for scene_path in CONTROL_ROOT_PIXEL_SCENES:
+		var source := FileAccess.get_file_as_string(scene_path)
+		var root_start := source.find("[node ")
+		var next_node_start := source.find("\n[node ", root_start + 1)
+		var root_block := source.substr(root_start, next_node_start - root_start if next_node_start >= 0 else source.length() - root_start)
+		assert_str(root_block).contains("texture_filter = 1") \
+			.override_failure_message("UI 根控件未固定最近邻采样: %s" % scene_path)
+	var shared_source := (load("res://scenes/ui/ui.gd") as GDScript).source_code
+	assert_bool(shared_source.contains("func _apply_pixel_ui_contract() -> void")).is_true()
+	assert_bool(shared_source.contains("control.theme = PIXEL_THEME")).is_true()
+	assert_bool(shared_source.contains("control.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST")).is_true()
 
 
 func test_tavern_management_uses_readable_three_zone_layout() -> void:
@@ -149,15 +211,16 @@ func test_equipment_screen_uses_pixel_slots_and_icon_grid() -> void:
 	var bottom_info := equipment.get_node("PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo") as Control
 	var gear_list := equipment.get_node("PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/GearList") as ItemList
 	var filter_bar := equipment.get_node("PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/FilterBar") as HBoxContainer
-	var detail_panel := equipment.get_node("PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/ItemDetailPanel") as PanelContainer
-	assert_int(filter_bar.get_child_count()).is_equal(7)
+	assert_int(filter_bar.get_child_count()).is_equal(8)
 	assert_bool(filter_bar.visible).is_true()
 	assert_bool((equipment.get_node("%FilterAll") as Button).button_pressed).is_true()
-	assert_bool(detail_panel.visible).is_true()
-	assert_float(detail_panel.custom_minimum_size.y).is_greater_equal(180.0)
-	assert_str((equipment.get_node("%ItemDetailTitle") as Label).text).is_equal("选择物品")
-	assert_object(equipment.get_node_or_null("%ItemDetailCompare")).is_not_null()
-	assert_bool((equipment.get_node("%EquipSelectedBtn") as Button).disabled).is_true()
+	assert_str((equipment.get_node("%SortInventoryBtn") as Button).text).is_equal("整理")
+	assert_object(equipment.get_node_or_null("PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/ItemDetailPanel")).is_null()
+	assert_object(equipment.get_node_or_null("%ItemDetailCompare")).is_null()
+	assert_object(equipment.get_node_or_null("%EquipSelectedBtn")).is_null()
+	var detail_popup := equipment.get_node_or_null("EquipmentDetailPopup") as Control
+	assert_object(detail_popup).is_not_null()
+	assert_bool(detail_popup.visible).is_false()
 	var preview_canvas := equipment.get_node("%PreviewFrame/PreviewCanvas") as Control
 	var model_viewer := preview_canvas.get_node("ModelViewer") as Control
 	assert_float(model_viewer.size.x).is_greater(200.0)
@@ -182,24 +245,14 @@ func test_equipment_screen_uses_pixel_slots_and_icon_grid() -> void:
 		var slot := equipment.get_node("%%%s" % slot_name) as Button
 		assert_float(slot.custom_minimum_size.x).is_equal(96.0)
 		assert_str(slot.text).is_empty()
-		assert_object(slot.icon).is_null()
+		# 装备槽使用 Button 原生图标绘制空槽语义或已装备物品。
+		assert_object(slot.icon).is_not_null()
 		assert_bool(slot.toggle_mode).is_true()
 		assert_int(slot.texture_filter).is_equal(CanvasItem.TEXTURE_FILTER_NEAREST)
-		assert_object(slot.get_theme_stylebox("normal")).is_instanceof(StyleBoxTexture)
-		var background_style := slot.get_theme_stylebox("normal") as StyleBoxTexture
-		assert_bool(background_style.draw_center).is_true()
-		assert_str(background_style.texture.resource_path).contains("slot_background_")
-		var background_image: Image = background_style.texture.get_image()
-		assert_int(background_image.get_width()).is_equal(96)
-		var tone_values := {}
-		for y in background_image.get_height():
-			for x in background_image.get_width():
-				var pixel: Color = background_image.get_pixel(x, y)
-				if pixel.a <= 0.01:
-					continue
-				tone_values[int(round(pixel.r * 255.0))] = true
-		# 纯色槽位底 + 单色轮廓通常只有两个主要色阶，关键是不能整块同色。
-		assert_int(tone_values.size()).is_greater(1)
+		var slot_style := slot.get_theme_stylebox("normal") as StyleBoxFlat
+		assert_object(slot_style).is_not_null()
+		assert_bool(slot_style.anti_aliasing).is_false()
+		assert_int(slot_style.border_width_left).is_greater_equal(2)
 	var colored_image := Image.create(1, 1, false, Image.FORMAT_RGBA8)
 	colored_image.fill(Color(0.86, 0.14, 0.08, 1.0))
 	var colored_texture := ImageTexture.create_from_image(colored_image)
@@ -242,9 +295,9 @@ func test_equipment_skill_tab_uses_compact_three_zone_layout() -> void:
 	assert_float(warehouse.custom_minimum_size.y).is_equal(330.0)
 	assert_object(equipment.find_child("AvailableSkillsTitle", true, false)).is_not_null()
 	assert_object(equipment.find_child("SkillDetailsTitle", true, false)).is_not_null()
-	assert_int(available.get_theme_font_size("font_size")).is_greater_equal(20)
-	assert_int(available.fixed_icon_size.x).is_equal(44)
-	assert_int(available.icon_mode).is_equal(ItemList.ICON_MODE_LEFT)
+	assert_int(available.get_theme_font_size("font_size")).is_greater_equal(16)
+	assert_int(available.fixed_icon_size.x).is_equal(64)
+	assert_int(available.icon_mode).is_equal(ItemList.ICON_MODE_TOP)
 	var rune_warehouse := equipment.find_child("RuneWarehouseList", true, false) as ItemList
 	assert_int(rune_warehouse.icon_mode).is_equal(ItemList.ICON_MODE_TOP)
 	assert_int(rune_warehouse.fixed_icon_size.x).is_equal(72)
@@ -254,6 +307,7 @@ func test_equipment_skill_tab_uses_compact_three_zone_layout() -> void:
 	assert_bool(bool(rune_warehouse.get("fixed_grid_cells"))).is_true()
 	var inventory_source := FileAccess.get_file_as_string("res://scenes/ui/inventory_drag_list.gd")
 	assert_str(inventory_source).contains("const FIXED_GRID_ROW_HEIGHT := 136.0")
+	assert_str(inventory_source).contains("const SQUARE_GRID_CELL_SIZE := 132.0")
 	for index in range(7):
 		var skill_slot := equipment.find_child("SkillSlot%d" % index, true, false) as Button
 		var expected_size := 150.0 if index < 2 else 92.0

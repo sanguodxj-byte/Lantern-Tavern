@@ -80,3 +80,25 @@ func test_knockback_deferred_death_full_flow() -> void:
 	hurt.free()
 
 	await _cleanup(enemy)
+
+
+func test_lethal_hurt_enters_ragdoll_without_physics_step_reentry() -> void:
+	var level := Node3D.new()
+	add_child(level)
+	var enemy := ACCEPTED_ENEMY.instantiate() as Enemy
+	level.add_child(enemy)
+	await get_tree().physics_frame
+
+	var data := EnemyStateData.new()
+	data.set_damage(9999)
+	data.set_impact_direction(Vector3(0, 0, -1))
+	enemy.switch_state(Enemy.State.HURT, data)
+	# The lethal hit is accepted immediately, but DYING and its physical side
+	# effects must begin only after the current callback returns.
+	assert_int(enemy.state).is_equal(Enemy.State.HURT)
+	await get_tree().physics_frame
+	assert_int(enemy.state).is_equal(Enemy.State.DYING)
+	await get_tree().physics_frame
+	if DisplayServer.get_name() != "headless":
+		assert_int(enemy.voxel_ragdoll.get_fragment_count()).is_greater(1)
+	await _cleanup(enemy)

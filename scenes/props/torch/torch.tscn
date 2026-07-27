@@ -46,6 +46,7 @@ script = ExtResource("1_voxel")
 prop_kind = "torch"
 
 [node name="FlameParticles" type="GPUParticles3D" parent="."]
+cast_shadow = 0
 position = Vector3(0, 1.28125, -0.25)
 amount = 10
 visibility_range_end = 35.0

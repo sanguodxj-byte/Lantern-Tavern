@@ -308,6 +308,10 @@ func _on_back_pressed() -> void:
 	request_navigation(UI_ROUTES.MAIN_MENU)
 
 
+func _on_cancel_input() -> void:
+	_on_back_pressed()
+
+
 func _leave_session() -> void:
 	var ms := _session()
 	if ms != null and ms.has_method("leave_room"):

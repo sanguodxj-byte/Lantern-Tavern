@@ -56,6 +56,10 @@ func register_level(level: Node3D) -> void:
 	if ps != null and ps.has_method("clear_pool"):
 		ps.clear_pool()
 
+func unregister_level(level: Node3D) -> void:
+	if current_level == level:
+		current_level = null
+
 func register_player(player: Player) -> void:
 	if player != null and player.has_meta("equipment_preview"):
 		return
@@ -69,6 +73,13 @@ func register_player(player: Player) -> void:
 	# (player_state_picking_up) 显式调用。
 	# 否则场景重加载时新 Player 的空装备会覆盖已保存的数据，
 	# 导致“开始下一天”后装备丢失。
+
+func unregister_player(player: Player) -> void:
+	if current_player != player:
+		return
+	current_player = null
+	if _player_context != null and _player_context.player_node == player:
+		_player_context.player_node = null
 
 ## 每玩家上下文（联机保险层）。
 ## 惰性创建并绑定到当前单机全局单例；后续联机改为 per-peer 实例。
@@ -93,6 +104,9 @@ func add_carried_equipment_instance(data: WeaponData) -> bool:
 
 func get_carried_equipment_instance(equipment_id: String) -> WeaponData:
 	return expedition_inventory.get_equipment_instance(equipment_id)
+
+func remove_carried_equipment_instance(equipment_id: String) -> WeaponData:
+	return expedition_inventory.remove_equipment_instance(equipment_id)
 
 func remove_carried_equipment(equipment_id: String, amount: int = 1) -> bool:
 	return expedition_inventory.remove_equipment(equipment_id, amount)

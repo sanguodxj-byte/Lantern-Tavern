@@ -69,6 +69,74 @@ func test_grid_fragments_are_rigid_bodies_with_mesh_and_collision() -> void:
 	ragdoll.queue_free()
 
 
+func test_fragments_collide_only_with_ground() -> void:
+	# 死亡体素碎片应仅与地面碰撞（落地停留），不碰玩家/敌人/其他碎片。
+	# 修复前碎片 layer=0/mask=0 → 完全不碰撞 → 受重力直接穿地。
+	var source := Node3D.new()
+	source.add_child(_make_large_mesh("Body"))
+	add_child(source)
+	var ragdoll := VOXEL_RAGDOLL.new()
+	add_child(ragdoll)
+	ragdoll.activate(source, Vector3(0, 1, 0), 3.0)
+	var fragments := source.get_parent().find_children("*", "RigidBody3D", true, false)
+	assert_int(fragments.size()).is_greater(0)
+	for fragment in fragments:
+		var body := fragment as RigidBody3D
+		# 碎片碰撞层为独立 LAYER_DEBRIS（不在任何游戏物体的 mask 中）
+		assert_int(body.collision_layer).is_equal(PhysicsSetup.LAYER_DEBRIS)
+		# 碎片掩码含地面层 → 落地停留，不再穿地
+		assert_int(body.collision_mask & PhysicsSetup.LAYER_ENVIRONMENT).is_equal(PhysicsSetup.LAYER_ENVIRONMENT)
+		# 碎片不碰玩家/敌人
+		assert_int(body.collision_mask & PhysicsSetup.LAYER_PLAYER).is_equal(0)
+		assert_int(body.collision_mask & PhysicsSetup.LAYER_ENEMY).is_equal(0)
+		# 碎片之间不互相碰撞（mask 不含 LAYER_DEBRIS），避免堆叠 broadphase 开销
+		assert_int(body.collision_mask & PhysicsSetup.LAYER_DEBRIS).is_equal(0)
+		# 碎片层不在玩家/敌人 mask 中 → 玩家/敌人不会碰到碎片
+		assert_int(PhysicsSetup.MASK_PLAYER & PhysicsSetup.LAYER_DEBRIS).is_equal(0)
+		assert_int(PhysicsSetup.MASK_ENEMY & PhysicsSetup.LAYER_DEBRIS).is_equal(0)
+		# 落地后允许休眠，退出物理模拟以降低持续开销
+		assert_bool(body.can_sleep).is_true()
+	ragdoll.clear_fragments()
+	source.queue_free()
+	ragdoll.queue_free()
+
+
+func test_reactivating_clears_previous_fragments() -> void:
+	var source := Node3D.new()
+	source.add_child(_make_large_mesh("Body"))
+	add_child(source)
+	var ragdoll := VOXEL_RAGDOLL.new()
+	add_child(ragdoll)
+	ragdoll.activate(source, Vector3(0, 1, 0), 3.0)
+	var first_count := ragdoll.get_fragment_count()
+	ragdoll.activate(source, Vector3(0, 1, 0), 3.0)
+	assert_int(ragdoll.get_fragment_count()).is_equal(first_count)
+	ragdoll.clear_fragments()
+	source.queue_free()
+	ragdoll.queue_free()
+
+
+func test_many_death_fragments_step_without_collision_load() -> void:
+	var arena := Node3D.new()
+	add_child(arena)
+	var ragdolls: Array = []
+	for index in range(12):
+		var source := Node3D.new()
+		source.position = Vector3(float(index) * 2.0, 0.0, 0.0)
+		source.add_child(_make_large_mesh("Body"))
+		arena.add_child(source)
+		var ragdoll := VOXEL_RAGDOLL.new()
+		arena.add_child(ragdoll)
+		ragdoll.activate(source, Vector3(0, 1, 0), 3.0)
+		ragdolls.append(ragdoll)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	assert_int(arena.find_children("*", "RigidBody3D", true, false).size()).is_greater(100)
+	for ragdoll in ragdolls:
+		ragdoll.call("clear_fragments")
+	arena.free()
+
+
 func test_grid_fragment_count_within_max() -> void:
 	# 极大网格也不应超过 MAX_FRAGMENTS
 	var source := Node3D.new()
@@ -82,10 +150,43 @@ func test_grid_fragment_count_within_max() -> void:
 	var ragdoll := VOXEL_RAGDOLL.new()
 	add_child(ragdoll)
 	ragdoll.activate(source, Vector3(0, 1, 0), 5.0)
-	assert_int(ragdoll.get_fragment_count()).is_less_equal(40)
+	assert_int(ragdoll.get_fragment_count()).is_less_equal(24)
 	ragdoll.clear_fragments()
 	source.queue_free()
 	ragdoll.queue_free()
+
+
+func test_fragments_rest_on_environment_floor() -> void:
+	var arena := Node3D.new()
+	add_child(arena)
+	var floor_body := StaticBody3D.new()
+	floor_body.collision_layer = PhysicsSetup.LAYER_ENVIRONMENT
+	floor_body.collision_mask = PhysicsSetup.MASK_ENVIRONMENT
+	var floor_shape := CollisionShape3D.new()
+	var floor_box := BoxShape3D.new()
+	floor_box.size = Vector3(8.0, 0.2, 8.0)
+	floor_shape.shape = floor_box
+	floor_body.add_child(floor_shape)
+	floor_body.position = Vector3(0.0, -0.1, 0.0)
+	arena.add_child(floor_body)
+
+	var source := Node3D.new()
+	source.position = Vector3(0.0, 2.0, 0.0)
+	source.add_child(_make_large_mesh("Body"))
+	arena.add_child(source)
+	var ragdoll := VOXEL_RAGDOLL.new()
+	arena.add_child(ragdoll)
+	ragdoll.activate(source, Vector3.ZERO, 2.0)
+	for _frame in range(150):
+		await get_tree().physics_frame
+
+	var fragments := arena.find_children("*", "RigidBody3D", true, false)
+	assert_int(fragments.size()).is_greater(0)
+	for fragment in fragments:
+		assert_float((fragment as RigidBody3D).global_position.y).is_greater(-0.5)
+
+	ragdoll.clear_fragments()
+	arena.queue_free()
 
 
 # ── 逐网格碎裂（多体素盒模型）──────────────────────────────────────
@@ -134,6 +235,7 @@ func test_freeze_stops_grid_fragments() -> void:
 	var ragdoll := VOXEL_RAGDOLL.new()
 	add_child(ragdoll)
 	ragdoll.activate(source, Vector3(0, 1, 0), 3.0)
+	await get_tree().physics_frame
 	ragdoll.freeze()
 	var fragments := source.get_parent().find_children("*", "RigidBody3D", true, false)
 	assert_int(fragments.size()).is_greater(0)

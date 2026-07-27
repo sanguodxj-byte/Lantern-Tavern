@@ -20,9 +20,10 @@ uniform vec2 atlas_grid = vec2(8.0, 4.0);
 // 3m 面 → 3.0；高 3m 墙 → 纵向 3.0
 uniform vec2 tile_repeat = vec2(3.0, 3.0);
 
-// 材质参数（影响火把光照效果的可见强度）
+// 材质参数（影响火把漫反射效果的可见强度）。
+// specular 保留为旧场景资源的兼容 uniform，但项目体素/道具规范禁止镜面高光。
 uniform float roughness : hint_range(0.0, 1.0) = 0.9;
-uniform float specular : hint_range(0.0, 1.0) = 0.2;
+uniform float specular : hint_range(0.0, 1.0) = 0.0;
 uniform float voxel_light_wrap : hint_range(0.0, 1.0) = 0.45;
 uniform float voxel_light_floor : hint_range(0.0, 1.0) = 0.22;
 uniform float voxel_light_steps : hint_range(2.0, 6.0, 1.0) = 6.0;
@@ -42,7 +43,8 @@ void fragment() {
 	// 以下参数直接影响 OmniLight（火把）和场景光源的光照计算
 	ROUGHNESS = roughness;   // 越高越哑光，越低越光滑反光
 	METALLIC = 0.0;          // 石材非金属
-	SPECULAR = specular;
+	// render_mode 已禁用镜面项；显式置零防止未来移除 render_mode 时回归。
+	SPECULAR = 0.0;
 }
 
 void light() {
@@ -52,5 +54,9 @@ void light() {
 	float band_mix = smoothstep(0.0, 1.0, voxel_light_quantize);
 	float shaped = mix(wrapped, banded, band_mix);
 	float light_amount = max(shaped, voxel_light_floor) * voxel_light_strength;
-	DIFFUSE_LIGHT += LIGHT_COLOR * ATTENUATION * light_amount;
+	// 多盏火光会同时进入同一像素；限制累计漫反射，避免体素道具台面被推成纯白。
+	DIFFUSE_LIGHT = min(
+		DIFFUSE_LIGHT + LIGHT_COLOR * ATTENUATION * light_amount,
+		vec3(1.0)
+	);
 }

@@ -18,6 +18,13 @@ const SKIN_THICKNESS := 0.012
 const CORE_THICKNESS := THICKNESS - SKIN_THICKNESS * 2.0
 const OPEN_DURATION := 0.22
 
+static func size_for_kind(kind: String) -> Vector2:
+	return BOSS_SIZE if kind == KIND_BOSS else STANDARD_SIZE
+
+
+static func side_wall_width(tile_size: float, kind: String) -> float:
+	return (tile_size - size_for_kind(kind).x) * 0.5
+
 @export var interaction_name := "Door"
 @export var door_kind := KIND_STANDARD
 @export var max_integrity := 1
@@ -29,6 +36,7 @@ var is_broken := false
 var _collision_shape: CollisionShape3D = null
 var _leaf_pivots: Array[Node3D] = []
 var _open_tween: Tween = null
+var _navigation_link: NavigationLink3D = null
 
 
 func configure(kind: String, normal_dir: Vector2i, front_material: Material, side_material: Material = null, top_material: Material = null) -> void:
@@ -44,6 +52,7 @@ func configure(kind: String, normal_dir: Vector2i, front_material: Material, sid
 	set_meta("voxel_px_per_meter", 32)
 	set_meta("door_thickness_px", THICKNESS_VOXELS)
 	_build_collision(normal_dir)
+	_build_navigation_link(normal_dir)
 	_build_visual(
 		normal_dir,
 		front_material,
@@ -59,11 +68,22 @@ func interact(source_player: Node = null) -> void:
 
 
 func open(_source_player: Node = null) -> void:
+	_open_internal(true)
+
+
+## 满暗蚀全图追击时的强制通行开门。
+## 追击压力已经处于上限，不应把全图门逐一计入探索时间或触发提前撤离。
+func open_for_monster_hunt() -> void:
+	_open_internal(false)
+
+
+func _open_internal(record_pressure: bool) -> void:
 	if is_open or is_broken:
 		return
 	is_open = true
 	if _collision_shape != null:
 		_collision_shape.disabled = true
+	_set_navigation_link_enabled(true)
 	if _open_tween != null and _open_tween.is_valid():
 		_open_tween.kill()
 	_open_tween = create_tween()
@@ -74,7 +94,8 @@ func open(_source_player: Node = null) -> void:
 		_open_tween.tween_property(pivot, "rotation:y", sign * PI * 0.5, open_duration) \
 			.set_trans(Tween.TRANS_SINE) \
 			.set_ease(Tween.EASE_OUT)
-	pressure_action.emit(PRESSURE_ACTION_OPEN)
+	if record_pressure:
+		pressure_action.emit(PRESSURE_ACTION_OPEN)
 	opened.emit()
 
 
@@ -109,6 +130,7 @@ func break_apart() -> void:
 		_open_tween.kill()
 	if _collision_shape != null:
 		_collision_shape.disabled = true
+	_set_navigation_link_enabled(true)
 	for pivot in _leaf_pivots:
 		pivot.visible = false
 	pressure_action.emit(PRESSURE_ACTION_BREAK)
@@ -119,7 +141,7 @@ func _build_collision(normal_dir: Vector2i) -> void:
 	_collision_shape = CollisionShape3D.new()
 	_collision_shape.name = "CollisionShape3D"
 	var shape := BoxShape3D.new()
-	var size := BOSS_SIZE if door_kind == KIND_BOSS else STANDARD_SIZE
+	var size := size_for_kind(door_kind)
 	if normal_dir.x != 0:
 		shape.size = Vector3(THICKNESS, size.y, size.x)
 	else:
@@ -129,9 +151,31 @@ func _build_collision(normal_dir: Vector2i) -> void:
 	add_child(_collision_shape)
 
 
+## 关闭门由导航网格障碍源阻挡；开门后通过显式 link 连接门两侧的地面多边形。
+## 这样路径规划不会把物理门当成可穿越地板，也不会在门前持续直推。
+func _build_navigation_link(normal_dir: Vector2i) -> void:
+	if _navigation_link != null:
+		_navigation_link.queue_free()
+	_navigation_link = NavigationLink3D.new()
+	_navigation_link.name = "NavigationLink3D"
+	_navigation_link.enabled = false
+	_navigation_link.bidirectional = true
+	_navigation_link.navigation_layers = 1
+	var normal := Vector3(float(normal_dir.x), 0.0, float(normal_dir.y)).normalized()
+	var crossing_distance := 1.0
+	_navigation_link.start_position = -normal * crossing_distance + Vector3.UP * 0.05
+	_navigation_link.end_position = normal * crossing_distance + Vector3.UP * 0.05
+	add_child(_navigation_link)
+
+
+func _set_navigation_link_enabled(enabled: bool) -> void:
+	if _navigation_link != null:
+		_navigation_link.enabled = enabled
+
+
 func _build_visual(normal_dir: Vector2i, front_material: Material, side_material: Material, top_material: Material) -> void:
 	_leaf_pivots.clear()
-	var size := BOSS_SIZE if door_kind == KIND_BOSS else STANDARD_SIZE
+	var size := size_for_kind(door_kind)
 	var width_axis := Vector3(0, 0, 1) if normal_dir.x != 0 else Vector3(1, 0, 0)
 	if door_kind == KIND_BOSS:
 		_add_leaf("LeftLeaf", width_axis, -size.x * 0.5, size.x * 0.25, size.x * 0.5, size.y, normal_dir, front_material, side_material, top_material)

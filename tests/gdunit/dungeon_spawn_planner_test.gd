@@ -68,16 +68,43 @@ func test_plan_enemy_not_on_hazard_anchor() -> void:
 	layout.rooms.append(Rect2i(5, 5, 3, 3))
 	layout.player_spawn_cell = Vector2i(1, 1)
 	layout.boss_cell = Vector2i(6, 6)
-	# 先规划 hazard，再规划 enemy，验证 enemy 避开 hazard 锚点格
+	# 先规划 hazard，再规划 enemy，验证 enemy 避开 hazard 安全区
 	var hazard_planner := DungeonHazardPlanner.new()
 	hazard_planner.plan(layout)
 	planner.plan_enemy_spawns(layout)
-	var hazard_cells := {}
-	for anchor in layout.hazard_anchors:
-		hazard_cells[anchor["anchor_cell"]] = true
 	for spec in layout.enemy_spawn_specs:
-		assert_bool(not hazard_cells.has(spec["cell"])) \
-			.override_failure_message("enemy %s 落在 hazard 锚点" % str(spec["cell"])).is_true()
+		assert_bool(not planner._is_hazard_clearance_cell(layout, spec["cell"])) \
+			.override_failure_message("enemy %s 落在 hazard 安全区" % str(spec["cell"])).is_true()
+
+func test_hazard_clearance_covers_center_and_adjacent_cells() -> void:
+	var planner := DungeonSpawnPlanner.new()
+	var layout := _make_8x8_two_room_layout()
+	layout.hazard_anchors.append({"hazard_type": "spikes", "anchor_cell": Vector2i(4, 4)})
+	var candidates: Array = [
+		Vector2i(4, 4), Vector2i(3, 3), Vector2i(4, 3), Vector2i(5, 5), Vector2i(2, 4), Vector2i(6, 4),
+	]
+	var safe := planner._exclude_hazard_anchor_cells(layout, candidates)
+	assert_array(safe).contains_exactly([Vector2i(2, 4), Vector2i(6, 4)])
+
+func test_enemy_spawn_candidates_exclude_pillar_cells() -> void:
+	var planner := DungeonSpawnPlanner.new()
+	var layout := _make_8x8_two_room_layout()
+	layout.grid[1][1] = 5
+	var cells := planner._collect_room_floor_cells(layout, Rect2i(0, 0, 3, 3), Vector2i(-1, -1))
+	assert_bool(not cells.has(Vector2i(1, 1))) \
+		.override_failure_message("敌人不能刷在柱体格，即使柱体格属于连通性 walkable 集合").is_true()
+
+func test_validate_plan_rejects_enemy_inside_hazard_clearance() -> void:
+	var planner := DungeonSpawnPlanner.new()
+	var layout := _make_8x8_two_room_layout()
+	layout.hazard_anchors.append({"hazard_type": "spikes", "anchor_cell": Vector2i(4, 4)})
+	layout.enemy_spawn_specs.append({
+		"enemy_type": "slime", "cell": Vector2i(3, 3), "room_index": 0,
+		"is_elite": false, "zone": 0,
+	})
+	var validation := planner.validate_plan(layout)
+	assert_bool(bool(validation["valid"])).is_false()
+	assert_array(validation["errors"]).contains("enemy spec at (3, 3) overlaps hazard clearance")
 
 func test_plan_chest_boss_chest_only_in_boss_room() -> void:
 	var planner := DungeonSpawnPlanner.new()
@@ -339,9 +366,69 @@ func test_plan_enemy_count_has_variance() -> void:
 		distinct[c] = true
 	assert_int(distinct.size()).override_failure_message("普通房敌人数全相等，缺少方差/深度梯度: %s" % str(counts)).is_greater_equal(2)
 
+func test_enemy_spawn_cells_are_spread_within_room() -> void:
+	var planner := DungeonSpawnPlanner.new()
+	var floor_cells: Array = []
+	for y in range(8):
+		for x in range(8):
+			floor_cells.append(Vector2i(x, y))
+	var used: Dictionary = {}
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 321
+	var picked: Array[Vector2i] = []
+	for _i in range(3):
+		var cell: Vector2i = planner._pick_unused_cell(floor_cells, used, rng)
+		assert_bool(cell.x >= 0).is_true()
+		used[cell] = true
+		picked.append(cell)
+
+	var max_manhattan_distance := 0
+	for first in picked:
+		for second in picked:
+			max_manhattan_distance = maxi(
+				max_manhattan_distance,
+				absi(first.x - second.x) + absi(first.y - second.y)
+			)
+	assert_int(max_manhattan_distance) \
+		.override_failure_message("同一房间的敌人仍集中在相邻格: %s" % str(picked)) \
+		.is_greater_equal(6)
+
+func test_planned_enemies_are_spread_in_generated_rooms() -> void:
+	var config := DungeonGenerationConfig.new()
+	config.algorithm = "isaac"
+	config.zone = 0
+	config.seed = 4242
+	var layout := DungeonGenerator.new().generate(config)
+	DungeonSpawnPlanner.new().plan_enemy_spawns(layout)
+	var cells_by_room: Dictionary = {}
+	for spec in layout.enemy_spawn_specs:
+		var room_index := int(spec["room_index"])
+		if not cells_by_room.has(room_index):
+			cells_by_room[room_index] = []
+		(cells_by_room[room_index] as Array).append(spec["cell"])
+
+	var inspected_room := false
+	for cells_variant in cells_by_room.values():
+		var cells: Array = cells_variant
+		if cells.size() < 2:
+			continue
+		inspected_room = true
+		var max_manhattan_distance := 0
+		for first in cells:
+			for second in cells:
+				max_manhattan_distance = maxi(
+					max_manhattan_distance,
+					absi(first.x - second.x) + absi(first.y - second.y)
+				)
+		assert_int(max_manhattan_distance) \
+			.override_failure_message("生成房间内敌人仍集中在相邻格: %s" % str(cells)) \
+			.is_greater_equal(2)
+	assert_bool(inspected_room) \
+		.override_failure_message("测试布局没有生成可检查的多敌人房间").is_true()
+
 func test_calc_room_enemy_count_depth_ramp() -> void:
 	var planner := DungeonSpawnPlanner.new()
-	var zone_cfg := DungeonSpawnPlanner.ZONE_ENEMY_CONFIG.get(0, {})
+	var zone_cfg: Dictionary = DungeonSpawnPlanner.ZONE_ENEMY_CONFIG.get(0, {})
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 999
 	# 深度 0：base=2 → 1..3；深度 36（/12=+3）→ 至少 4..6，恒大于浅层

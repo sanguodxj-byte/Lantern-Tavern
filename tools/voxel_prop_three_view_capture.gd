@@ -63,8 +63,19 @@ const MONSTER_SCENES := {
 	"cultist_pyromancer": "res://assets/meshes/characters/voxel_cultist_pyromancer_64px.glb",
 	"bandit_crossbowman": "res://assets/meshes/characters/voxel_bandit_crossbowman_56px.glb",
 	"duergar_miner": "res://assets/meshes/characters/voxel_duergar_miner_48px.glb",
-	"kobold": "res://assets/meshes/characters/voxel_kobold_42px.glb",
-	"zombie": "res://assets/meshes/characters/voxel_zombie_56px.glb",
+}
+
+const ARMOR_SCENES := {
+	"plate_armor": "res://assets/meshes/armor/armor_voxel_plate_armor.glb",
+	"chain_armor": "res://assets/meshes/armor/armor_voxel_chain_armor.glb",
+	"leather_armor": "res://assets/meshes/armor/armor_voxel_leather_armor.glb",
+	"cloth_armor": "res://assets/meshes/armor/armor_voxel_cloth_armor.glb",
+	"leather_helmet": "res://assets/meshes/armor/armor_voxel_leather_helmet.glb",
+	"leather_bracers": "res://assets/meshes/armor/armor_voxel_leather_bracers.glb",
+	"leather_boots": "res://assets/meshes/armor/armor_voxel_leather_boots.glb",
+	"iron_helmet": "res://assets/meshes/armor/armor_voxel_iron_helmet.glb",
+	"iron_bracers": "res://assets/meshes/armor/armor_voxel_iron_bracers.glb",
+	"iron_boots": "res://assets/meshes/armor/armor_voxel_iron_boots.glb",
 }
 
 var _had_error := false
@@ -86,6 +97,8 @@ func _run() -> void:
 			await _capture_monster(requested_asset)
 		elif WEAPON_SCENES.has(requested_asset):
 			await _capture_scene(requested_asset, String(WEAPON_SCENES[requested_asset]))
+		elif ARMOR_SCENES.has(requested_asset):
+			await _capture_scene(requested_asset, String(ARMOR_SCENES[requested_asset]))
 		else:
 			await _capture_scene(requested_asset, String(SCENES[requested_asset]))
 		_finish()
@@ -128,9 +141,10 @@ func _requested_asset(user_args: PackedStringArray) -> String:
 		_fail("[VoxelPropThreeView] --tutorial-only cannot be combined with --asset")
 		return ""
 	if not selected.is_empty() \
-			and not MONSTER_SCENES.has(selected) \
-			and not WEAPON_SCENES.has(selected) \
-			and not SCENES.has(selected):
+		and not MONSTER_SCENES.has(selected) \
+		and not WEAPON_SCENES.has(selected) \
+		and not ARMOR_SCENES.has(selected) \
+		and not SCENES.has(selected):
 		_fail("[VoxelPropThreeView] unknown asset: %s" % selected)
 		return ""
 	return selected
@@ -263,10 +277,15 @@ func _project_box(box: Dictionary, view_name: String, origin: Vector2, scale: fl
 	var p1 := _project_point(box["max"], view_name)
 	var a := Vector2(minf(p0.x, p1.x), minf(p0.y, p1.y))
 	var b := Vector2(maxf(p0.x, p1.x), maxf(p0.y, p1.y))
-	var x := MARGIN + int(roundf((a.x - origin.x) * scale))
+	# Quantize the projected center and width together. Quantizing the left
+	# edge and width independently can move a centered 3px voxel one raster
+	# pixel away from a centered 5px voxel, making a symmetric stepped blade
+	# look crooked in the structural screenshot.
 	var y := IMAGE_SIZE.y - MARGIN - int(roundf((b.y - origin.y) * scale))
 	var w := maxi(1, int(roundf((b.x - a.x) * scale)))
 	var h := maxi(1, int(roundf((b.y - a.y) * scale)))
+	var center_x := MARGIN + int(roundf((((a.x + b.x) * 0.5) - origin.x) * scale))
+	var x := center_x - int(floor(float(w) * 0.5))
 	return Rect2i(x, y, w, h)
 
 

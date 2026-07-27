@@ -6,6 +6,7 @@ const PLAYER_MODEL_ID := "player"
 const PLAYER_MODEL_ROUTE := "res://scenes/characters/player/player_visual_model.tscn"
 const PLAYER_SCENE := "res://scenes/characters/player/player.tscn"
 const PLAYER_RIG := "res://assets/meshes/characters/voxel_player_54px_rig.glb"
+const FIRST_PERSON_ARM_LAYER := 1 << 10
 const ORC_FALLBACK_RIG := "res://assets/meshes/characters/voxel_orc_raider_48px_rig.glb"
 const FORMAL_ROUTE_CALLERS: Array[String] = [
 	"res://scenes/ui/tavern_equipment_panel.gd",
@@ -56,7 +57,7 @@ func test_player_runtime_preserves_skeleton_animation_and_both_hand_mounts() -> 
 	assert_object(route_packed).is_not_null()
 	if route_packed == null:
 		return
-	var route_model := auto_free(route_packed.instantiate())
+	var route_model: Node = auto_free(route_packed.instantiate())
 	assert_object(route_model.get_node_or_null("Armature/Skeleton3D")).is_instanceof(Skeleton3D)
 	assert_object(route_model.get_node_or_null("AnimationPlayer")).is_instanceof(AnimationPlayer)
 
@@ -64,7 +65,7 @@ func test_player_runtime_preserves_skeleton_animation_and_both_hand_mounts() -> 
 	assert_object(player_packed).is_not_null()
 	if player_packed == null:
 		return
-	var player := auto_free(player_packed.instantiate())
+	var player: Node = auto_free(player_packed.instantiate())
 	assert_object(player.get_node_or_null("character/Armature/Skeleton3D")).is_instanceof(Skeleton3D)
 	assert_object(player.get_node_or_null("character/AnimationPlayer")).is_instanceof(AnimationPlayer)
 
@@ -90,3 +91,22 @@ func test_player_runtime_preserves_skeleton_animation_and_both_hand_mounts() -> 
 	assert_str(player_source).contains(
 		'shield_placeholder = NodePath("../character/Armature/Skeleton3D/ShieldBoneAttachment/ShieldPlaceholder")'
 	)
+
+
+func test_first_person_arm_layer_keeps_only_six_arm_attachments_visible() -> void:
+	var rig_scene := load(PLAYER_RIG) as PackedScene
+	assert_object(rig_scene).is_not_null()
+	if rig_scene == null:
+		return
+	var character: Node = auto_free(rig_scene.instantiate())
+	var player: Player = auto_free(Player.new()) as Player
+	player.set_first_person_arm_render_layer(character)
+
+	for bone_node_name in ["UpperArm_R", "LowerArm_R", "Hand_R", "UpperArm_L", "LowerArm_L", "Hand_L"]:
+		var arm_attachment: Node = character.get_node("Armature/Skeleton3D/%s" % bone_node_name)
+		var mesh := arm_attachment.get_child(0) as GeometryInstance3D
+		assert_int(mesh.layers).is_equal(FIRST_PERSON_ARM_LAYER)
+
+	var torso: Node = character.get_node("Armature/Skeleton3D/Torso")
+	var torso_mesh := torso.get_child(0) as GeometryInstance3D
+	assert_int(torso_mesh.layers).is_equal(1)

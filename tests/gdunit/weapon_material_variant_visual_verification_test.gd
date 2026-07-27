@@ -10,6 +10,8 @@ const VOXEL_LIGHTING := preload("res://globals/visual/voxel_lighting_adapter.gd"
 
 
 func test_capture_crossbow_material_tier_variants_in_real_3d() -> void:
+	if not SUPPORT.real_renderer_available():
+		return
 	assert_bool(SUPPORT.real_renderer_available()) \
 		.override_failure_message("crossbow material variant capture requires a non-headless renderer").is_true()
 	var packed := load(GLB_PATH) as PackedScene

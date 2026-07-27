@@ -62,6 +62,10 @@ func _on_back_pressed() -> void:
 	else:
 		request_navigation(UI_ROUTES.MAIN_MENU)
 
+
+func _on_cancel_input() -> void:
+	_on_back_pressed()
+
 func _find_world() -> Node:
 	var node: Node = self
 	while node != null:

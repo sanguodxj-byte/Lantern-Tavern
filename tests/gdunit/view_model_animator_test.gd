@@ -1,12 +1,12 @@
 extends GdUnitTestSuite
 
-const LIBRARY_PATH := "res://scenes/characters/player/view_model_animation_library.tres"
+const FIRST_PERSON_LIBRARY := preload("res://scenes/characters/player/first_person_animation_library.gd")
 
 
 func test_library_contains_all_required_actions() -> void:
-	var library := load(LIBRARY_PATH) as AnimationLibrary
+	var library := FIRST_PERSON_LIBRARY.build()
 	assert_object(library).is_not_null()
-	for action_name in ViewModelAnimator.REQUIRED_ACTIONS:
+	for action_name: StringName in ViewModelAnimator.REQUIRED_ACTIONS:
 		assert_bool(library.has_animation(action_name)).is_true()
 
 
@@ -45,10 +45,10 @@ func test_crossbow_reload_is_queued_after_fire_feedback() -> void:
 
 
 func test_library_tracks_only_action_pivot() -> void:
-	var library := load(LIBRARY_PATH) as AnimationLibrary
+	var library := FIRST_PERSON_LIBRARY.build()
 	var tracked_actions := 0
-	for action_name in ViewModelAnimator.REQUIRED_ACTIONS:
-		var animation := library.get_animation(action_name)
+	for action_name: StringName in ViewModelAnimator.REQUIRED_ACTIONS:
+		var animation: Animation = library.get_animation(action_name)
 		if animation.get_track_count() > 0:
 			tracked_actions += 1
 		for track_index in animation.get_track_count():
@@ -57,13 +57,16 @@ func test_library_tracks_only_action_pivot() -> void:
 
 
 func _make_animator() -> Dictionary:
-	var root := auto_free(Node3D.new())
+	var root: Node3D = auto_free(Node3D.new()) as Node3D
 	var pivot := Node3D.new()
 	pivot.name = "ActionPivot"
 	root.add_child(pivot)
+	var weapon_socket := Node3D.new()
+	weapon_socket.name = "WeaponSocket"
+	pivot.add_child(weapon_socket)
 	var player := AnimationPlayer.new()
 	root.add_child(player)
-	var library := load(LIBRARY_PATH) as AnimationLibrary
+	var library := FIRST_PERSON_LIBRARY.build()
 	return {
 		"animator": ViewModelAnimator.new(pivot, player, library),
 		"pivot": pivot,

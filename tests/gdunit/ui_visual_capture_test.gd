@@ -22,6 +22,10 @@ func after() -> void:
 
 
 func test_capture_current_project_ui() -> void:
+	# Headless viewports have no render texture. Actual PNG capture runs under
+	# the renderer; headless CI only verifies that the suite exits cleanly.
+	if DisplayServer.get_name() == "headless":
+		return
 	DisplayServer.window_set_size(Vector2i(1920, 1080))
 	await _wait_frames(8)
 
@@ -213,14 +217,18 @@ func _seed_tavern_management(tavern_ui: Control) -> void:
 
 
 func _seed_skill_panel(panel: Control) -> void:
-	var available := panel.get_node("%AvailableSkillsList") as ItemList
+	var available := panel.find_child("AvailableSkillsList", true, false) as ItemList
+	assert_object(available).is_not_null()
 	available.clear()
 	for skill_name in ["旋风斩", "盾牌猛击", "余烬附魔", "战斗专注", "猎人直觉"]:
 		available.add_item(skill_name)
 	available.select(0)
-	panel.get_node("%SkillDetails").text = "旋风斩\n主动 · 武器技能\n\n横扫近身敌人，造成 135% 武器伤害。\n冷却：6.0 秒\n消耗：18 法力"
+	var details := panel.find_child("SkillDetails", true, false) as Label
+	assert_object(details).is_not_null()
+	details.text = "旋风斩\n主动 · 武器技能\n\n横扫近身敌人，造成 135% 武器伤害。\n冷却：6.0 秒\n消耗：18 法力"
 	for i in range(7):
-		var slot := panel.get_node("%%SkillSlot%d" % i) as Button
+		var slot := panel.find_child("SkillSlot%d" % i, true, false) as Button
+		assert_object(slot).is_not_null()
 		slot.text = ["F 旋风斩", "G 盾牌猛击", "坚韧", "反击", "洞察", "空", "空"][i]
 
 

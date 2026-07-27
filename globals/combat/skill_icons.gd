@@ -134,15 +134,18 @@ static func _stable_id_hex(value: String) -> String:
 func _load_pixel_icon(path: String) -> Texture2D:
 	if path.is_empty():
 		return null
-	var absolute_path := ProjectSettings.globalize_path(path)
-	if not FileAccess.file_exists(absolute_path):
+	# ResourceLoader logs an error for absent optional custom icons. Check the
+	# source path first so procedural fallback remains silent at runtime.
+	if not FileAccess.file_exists(ProjectSettings.globalize_path(path)):
 		return null
-	var image := Image.new()
-	if image.load(path) != OK:
+	# 通过 ResourceLoader 读取导入后的 Texture2D，确保导出包中使用 .import
+	# 资源而不是访问原始 PNG 文件路径。
+	var texture := ResourceLoader.load(path, "Texture2D") as Texture2D
+	if texture == null:
 		return null
-	if image.get_width() > ICON_MAX_SIZE or image.get_height() > ICON_MAX_SIZE:
+	if texture.get_width() > ICON_MAX_SIZE or texture.get_height() > ICON_MAX_SIZE:
 		return null
-	return ImageTexture.create_from_image(image)
+	return texture
 
 # ===== 生成器 =====
 

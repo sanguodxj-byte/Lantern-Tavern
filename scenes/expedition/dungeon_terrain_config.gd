@@ -54,4 +54,6 @@ static func make_terrain_mat(tile_name: String, tile_repeat: Vector2) -> ShaderM
 	mat.set_shader_parameter("tile_span", span)
 	mat.set_shader_parameter("atlas_grid", TILE_ATLAS_GRID)
 	mat.set_shader_parameter("tile_repeat", tile_repeat)
+	mat.set_shader_parameter("roughness", 0.9)
+	mat.set_shader_parameter("specular", 0.0)
 	return mat

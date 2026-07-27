@@ -73,7 +73,8 @@ static func dispatch_weapon_skill(player: Player, skill: Dictionary) -> void:
 			var atk_forward := -player.global_transform.basis.z.normalized()
 			var def_forward := -enemy.global_transform.basis.z.normalized()
 			var is_back: bool = CB_LIB.is_backstab(atk_forward, def_forward)
-			var result = CB_LIB.resolve_player_attack(player, enemy, weapon, main_type, off_type, attrs, level, is_back, skill)
+			var style_ctx: Dictionary = player.get_style_context() if player.has_method("get_style_context") else {}
+			var result = CB_LIB.resolve_player_attack(player, enemy, weapon, main_type, off_type, attrs, level, is_back, skill, style_ctx)
 			if result.hit:
 				enemy.try_receive_hit_result(player, result)
 				_apply_lifesteal(player, result)

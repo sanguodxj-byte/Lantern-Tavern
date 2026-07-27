@@ -1,12 +1,15 @@
-[gd_scene format=3 uid="uid://bpjcxjslusvnk"]
+[gd_scene load_steps=3 format=3 uid="uid://bpjcxjslusvnk"]
 
 [ext_resource type="Script" path="res://scenes/ui/zone_select.gd" id="1_zs"]
+[ext_resource type="Theme" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
 
 [node name="ZoneSelect" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+theme = ExtResource("2_theme")
+texture_filter = 1
 script = ExtResource("1_zs")
 
 [node name="ColorRect" type="ColorRect" parent="."]

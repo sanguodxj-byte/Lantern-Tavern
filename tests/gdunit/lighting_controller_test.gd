@@ -49,8 +49,29 @@ func test_tavern_profile_tightens_torch_light() -> void:
 	# Assert: range收束为酒馆 HIGH 档(6.0)，能量收束为 2.4，并加入闪烁组
 	assert_float(torch.omni_range).is_equal_approx(6.0, 0.01)
 	assert_float(torch.light_energy).is_equal_approx(2.4, 0.01)
+	assert_float(torch.light_specular).is_equal_approx(0.0, 0.001)
 	assert_float(torch.light_color.r - torch.light_color.g).is_less_equal(0.21)
 	assert_bool(torch.is_in_group("flicker_light")).is_true()
+	root.free()
+
+
+func test_tavern_profile_disables_specular_for_every_scene_light() -> void:
+	var root := Node3D.new()
+	var torch := OmniLight3D.new()
+	torch.name = "TorchLight"
+	torch.set_meta("light_role", "torch")
+	torch.light_specular = 0.8
+	var fill := DirectionalLight3D.new()
+	fill.name = "TavernFillLight"
+	fill.light_specular = 0.8
+	root.add_child(torch)
+	root.add_child(fill)
+	add_child(root)
+
+	LightingController.apply_tavern_profile(root)
+
+	assert_float(torch.light_specular).is_equal_approx(0.0, 0.001)
+	assert_float(fill.light_specular).is_equal_approx(0.0, 0.001)
 	root.free()
 
 

@@ -8,12 +8,21 @@ extends RefCounted
 ## 本组件刻意做成「自包含」：不反向 preload combat_engine（避免 autoload 循环依赖），
 ## 所有结算所需的风格/属性换算都内置于此。combat_engine.gd 仅作为外观层做委托与类型别名。
 ##
+## 护甲结算（策划案《35-护甲体系》）：
+##   废弃旧版平减法 `final = max(1, base − (armor_def+con))`，
+##   改为百分比减伤 `mit% = def / (def + k × base)`（PoE2 / Brotato 家族），
+##   并增加元素抗性、魔法减伤、里程碑绝对减免、击退抗性管线。
+##   管线详见 ArmorResolver（res://globals/combat/armor_resolver.gd）。
+##
 ## 物理击退设计（策划案：仅特定技能触发）：
 ##   正常攻击（普攻）仅造成血量伤害，不施加物理击退。
 ##   物理击退仅由特定技能触发——当前仅有「踢击」（2 格 = 3.0m）和「冲撞」（4 格 = 6.0m）。
 ##   技能通过 skill 字典中的 knockback_m 字段传入击退距离，由 PlayerSkillDispatcher 转换为
 ##   DamageResult.knockback_force（米/秒速度冲量）。AttackInput.knockback_force 默认 0.0，
 ##   仅当技能/武器显式设置时才产生击退。
+
+# ArmorResolver：护甲结算管线（百分比减伤 + 元素抗性 + 魔法减伤）
+const AR := preload("res://globals/combat/armor_resolver.gd")
 
 # ============================================================================
 # 1. 战斗风格（ARPG 实时版：移除回合制 Tick，新增攻速/移速修正）
@@ -125,11 +134,20 @@ class AttackInput:
 	var has_wood_chop_passive: bool = false
 	var is_skeleton_target: bool = false
 	var has_skeleton_smash_passive: bool = false
+	# ---- 流派专精被动字段（doc21 §一）----
+	## 看破弱点（RANGED）：弱点命中暴击倍率覆盖（>0 时覆盖默认暴击倍率）
+	var style_crit_mult_override: float = 0.0
+	## 蓄势（TWO_HAND）：蓄力期间累积的额外伤害（释放时叠加到基础伤害）
+	var style_accumulation_bonus: float = 0.0
 	var knockback_force: float = 0.0  # 基础击退力（米/秒），默认 0 = 无击退；仅技能触发
 	# 物理冲量倍率：最终击退冲量 = 基础击退力 × 该倍率。
 	# 正常攻击无击退（knockback_force=0），仅特定技能（踢击/冲撞）设置击退力。
 	# 技能/武器/符文可通过 impulse_mult 调整该值（见 CombatBridge）。
 	var physical_impulse_multiplier: float = 1.0
+	# 攻击的元素类型（"fire"/"ice"/"lightning"/"poison"/""=无元素）
+	var element_type: String = ""
+	# 里程碑绝对减免（厚实皮肤 −2、元素护壳 −4 等的叠加值）
+	var flat_reduce: int = 0
 
 class Defender:
 	var con: int = 10
@@ -138,6 +156,14 @@ class Defender:
 	var armor_def: int = 0
 	# has_shield 保留为信息字段（UI/桥接层使用），resolve_attack 不再据此做概率格挡
 	var has_shield: bool = false
+	# 护甲面板快照（ArmorResolver.ArmorSnapshot），含全身元素抗性/魔法减伤/击退抗性。
+	# 为 null 时退化为旧 armor_def + con 平减（向后兼容无护甲快照的调用方）。
+	var armor_snapshot: Variant = null
+	# 护甲熟练度加成（由 CombatBridge 从 ArmorProficiency autoload 填充）
+	var prof_phys_def_bonus: float = 0.0        # 重甲 T1/T2/T3 物防加成
+	var prof_knockback_immune: bool = false      # 重甲 T3 完全免疫击退
+	var prof_crit_rate_reduction: float = 0.0    # 轻甲 T3 被暴击率 −5%
+	var prof_flanking_reduction: float = 0.0    # 轻甲 T2 侧击/背击伤害加成降低 50%
 
 # ARPG 实时结算结果
 class DamageResult:
@@ -190,13 +216,16 @@ static func compute_physical_impact_damage(max_life: int, impact_speed: float, m
 ## attacker_forward: 攻方朝向单位向量（用于计算击退方向），默认 -Z
 static func resolve_attack(attack: AttackInput, defender: Defender, attacker_forward: Vector3 = Vector3(0, 0, -1)) -> DamageResult:
 	var result := DamageResult.new()
-	result.attack_type = attack.attack_type
+	# 性能优化：缓存频繁访问的字段到局部变量（减少属性查找开销）
+	var atk_type: String = attack.attack_type
+	result.attack_type = atk_type
 	result.ignores_block = attack.ignore_block
 	# 动作控制：hitbox 接触即命中，不再投骰命中率/闪避率
 	result.hit = true
 	# 阶段一：暴击判定
 	var crit_rate: float = 5.0 + attack.attacker_per * 0.5 - defender.per * 0.5 + attack.crit_bonus
-	crit_rate = maxf(crit_rate, 0.0)
+	# 轻甲熟练度 T3 疾风闪跃：被暴击率 −5%
+	crit_rate = maxf(crit_rate - defender.prof_crit_rate_reduction, 0.0)
 	result.crit_roll = randi_range(1, 100)
 	if attack.force_crit or result.crit_roll <= int(crit_rate):
 		result.crit = true
@@ -205,39 +234,68 @@ static func resolve_attack(attack: AttackInput, defender: Defender, attacker_for
 	if result.crit:
 		var crit_mult: float = 1.5 + attack.attacker_per * 0.01 - defender.per * 0.01 + attack.crit_damage_bonus
 		crit_mult = maxf(crit_mult, 1.1)
+		# 看破弱点（RANGED）：弱点命中暴击倍率覆盖（×2.0）
+		if attack.style_crit_mult_override > 0.0:
+			crit_mult = attack.style_crit_mult_override
 		base_damage *= crit_mult
 	result.raw_damage = base_damage
+	# 阶段三a：流派专精被动 — 蓄势累积额外伤害（释放时叠加）
+	if attack.style_accumulation_bonus > 0.0:
+		base_damage += attack.style_accumulation_bonus
+
 	# 阶段三：朝向判定与武器纯被动特性最终修正
 	if attack.is_backstab:
 		var backstab_mult: float = 1.5
 		if attack.has_sword_backstab_passive:
 			backstab_mult += 0.3 # 剑被动：突袭背刺 +30%
+		# 轻甲熟练度 T2 侧身闪避：侧击/背击伤害加成降低 50%
+		var flanking_bonus: float = backstab_mult - 1.0
+		flanking_bonus *= (1.0 - defender.prof_flanking_reduction)
+		backstab_mult = 1.0 + flanking_bonus
 		base_damage *= backstab_mult
 
 	if attack.is_wooden_structure and attack.has_wood_chop_passive:
 		base_damage *= 1.5 # 斧被动：木质摧碎 +50%
 
-	var is_skeleton: bool = attack.is_skeleton_target
-	var has_skeleton_smash: bool = attack.has_skeleton_smash_passive
-	if is_skeleton and has_skeleton_smash:
+	# 性能优化：提前计算骷髅粉碎组合判定（阶段三和阶段四各用一次）
+	var is_skeleton_smash_combo: bool = attack.is_skeleton_target and attack.has_skeleton_smash_passive
+	if is_skeleton_smash_combo:
 		base_damage *= 1.4 # 锤被动：骷髅粉碎 +40%
 
-	# 阶段四：防御力减免结算
-	var final_def: float = float(defender.armor_def + defender.con)
-	if is_skeleton and has_skeleton_smash:
-		final_def = 0.0 # 锤被动：无视基础物理防御
-	elif attack.ignore_def_percent > 0.0:
-		final_def *= maxf(0.0, 1.0 - attack.ignore_def_percent / 100.0)
-
-	var after_def: float = base_damage - final_def
-	after_def = maxf(after_def, 1.0)
+	# 阶段四：护甲结算（百分比减伤 + 元素抗性 + 魔法减伤）
+	# 策划案《35-护甲体系》§三~§八：废弃平减法，改用 ArmorResolver 管线
+	var ar_input := AR.ResolveInput.new()
+	ar_input.base_damage = base_damage
+	ar_input.attack_type = atk_type
+	ar_input.con = defender.con
+	ar_input.ignore_def_percent = attack.ignore_def_percent
+	ar_input.ignore_def = is_skeleton_smash_combo
+	ar_input.element_type = attack.element_type
+	ar_input.flat_reduce = attack.flat_reduce
+	if defender.armor_snapshot != null:
+		var snap: AR.ArmorSnapshot = defender.armor_snapshot
+		ar_input.total_phys_def = snap.total_phys_def
+		ar_input.total_magic_res_percent = snap.total_magic_res_percent
+		ar_input.fire_res = snap.total_fire_res
+		ar_input.ice_res = snap.total_ice_res
+		ar_input.lightning_res = snap.total_lightning_res
+		ar_input.poison_res = snap.total_poison_res
+		ar_input.knockback_res = snap.total_knockback_res
+	else:
+		# 无快照时退化：用 armor_def 作为 total_phys_def（向后兼容旧调用）
+		ar_input.total_phys_def = float(defender.armor_def)
+	# 护甲熟练度加成（重甲 T1/T2/T3 物防加成 + T3 击退免疫）
+	ar_input.total_phys_def += defender.prof_phys_def_bonus
+	if defender.prof_knockback_immune:
+		ar_input.knockback_res = 1.0
+	var ar_result := AR.resolve(ar_input)
+	result.final_damage = ar_result.final_damage
 	# 阶段五：最终扣血 + 眩晕 + 实时击退
-	result.final_damage = maxi(int(round(after_def)), 1)
 	if attack.lifesteal_percent > 0.0:
-		result.lifesteal_amount = int(round(result.final_damage * attack.lifesteal_percent / 100.0))
+		result.lifesteal_amount = int(round(result.final_damage * attack.lifesteal_percent * 0.01))
 	result.physical_impulse_multiplier = attack.physical_impulse_multiplier
 	# 眩晕：暴击附加短时眩晕 + 技能附加眩晕（独立于击退）
-	if attack.attack_type == "melee" or attack.attack_type == "ranged":
+	if atk_type == "melee" or atk_type == "ranged":
 		if result.crit:
 			result.stun_duration = 0.5
 		if attack.bonus_stun_duration > 0.0:
@@ -246,29 +304,33 @@ static func resolve_attack(attack: AttackInput, defender: Defender, attacker_for
 	var kb_force: float = attack.knockback_force
 	if kb_force > 0.0 and attack.style == Style.TWO_HAND:
 		kb_force += STYLE_META[Style.TWO_HAND].get("knockback_force", 4.0)
-	if kb_force > 0.0 and (attack.attack_type == "melee" or attack.attack_type == "ranged"):
-		var impulse_mag: float = kb_force * attack.physical_impulse_multiplier
+	if kb_force > 0.0 and (atk_type == "melee" or atk_type == "ranged"):
+		# 击退抗性（护甲快照）：有效击退 = 基础击退 × (1 − knockback_res)
+		var impulse_mag: float = kb_force * attack.physical_impulse_multiplier * (1.0 - ar_result.knockback_res)
 		result.knockback_force = impulse_mag
 		result.knockback_impulse = attacker_forward * impulse_mag
 	return result
 
 ## 阶段二：基础伤害 = (武器确定性均值 + 伤害修正) × 最终伤害倍率
 ## 移除回合制 NdN 投骰：以骰子均值（点数×(面数+1)/2）替代随机
+## 性能优化：内联属性修正计算（避免 match 分发 + 函数调用开销），用乘法替代除法
 static func _compute_base_damage(attack: AttackInput) -> float:
 	var dice_count: int = int(attack.weapon_damage_dice.get("count", 1))
 	var dice_sides: int = int(attack.weapon_damage_dice.get("sides", 6))
-	var dice_avg: float = float(dice_count) * float(dice_sides + 1) / 2.0
+	var dice_avg: float = float(dice_count) * float(dice_sides + 1) * 0.5
+	# 内联 compute_melee/ranged/spell_flat（style_bonus=0 时的等价计算）
 	var stat_flat: float = 0.0
-	match attack.attack_type:
-		"melee":
-			stat_flat = compute_melee_flat(attack.attacker_str)
-			if attack.style == Style.UNARMED:
-				stat_flat = attack.attacker_str + attack.attacker_agi
-		"ranged":
-			stat_flat = compute_ranged_flat(attack.attacker_dex)
-		"spell":
-			stat_flat = compute_spell_flat(attack.attacker_mag)
+	var atk_type: String = attack.attack_type
+	if atk_type == "melee":
+		stat_flat = attack.attacker_str * 1.5
+		if attack.style == Style.UNARMED:
+			stat_flat = float(attack.attacker_str + attack.attacker_agi)
+	elif atk_type == "ranged":
+		stat_flat = attack.attacker_dex * 1.5
+	elif atk_type == "spell":
+		stat_flat = attack.attacker_mag * 1.5
 	var raw: float = (dice_avg + attack.weapon_damage_flat + stat_flat) * attack.weapon_damage_mult
-	if attack.base_damage_bonus_percent != 0.0:
-		raw *= 1.0 + attack.base_damage_bonus_percent / 100.0
+	var bonus_pct: float = attack.base_damage_bonus_percent
+	if bonus_pct != 0.0:
+		raw *= 1.0 + bonus_pct * 0.01
 	return maxf(raw, 1.0)

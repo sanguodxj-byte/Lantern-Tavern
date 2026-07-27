@@ -10,6 +10,9 @@ var _gs: Node  # GameState autoload 实例
 var _ap: Node  # AttrPanel autoload 实例
 var _sr: Node  # SkillRuntime autoload 实例
 var _fs: Node  # FermentationSystem autoload 实例
+var _ts: Node  # TavernSettlement autoload 实例
+var _arp: Node  # ArmorProficiency autoload 实例
+var _zm: Node  # ZoneManager autoload 实例
 
 func before() -> void:
 	_sm = Engine.get_main_loop().root.get_node("SaveManager")
@@ -18,6 +21,9 @@ func before() -> void:
 	_ap = Engine.get_main_loop().root.get_node("AttrPanel")
 	_sr = Engine.get_main_loop().root.get_node("SkillRuntime")
 	_fs = Engine.get_main_loop().root.get_node("FermentationSystem")
+	_ts = Engine.get_main_loop().root.get_node("TavernSettlement")
+	_arp = Engine.get_main_loop().root.get_node("ArmorProficiency")
+	_zm = Engine.get_main_loop().root.get_node("ZoneManager")
 
 func after() -> void:
 	# 清理测试中产生的存档文件
@@ -160,6 +166,52 @@ func test_save_load_roundtrip_skill_runtime() -> void:
 	_sm.load_from_slot(0)
 	assert_str(String(_sr.slots[_sr.SLOT_G_WEAPON])).is_equal("踢击")
 
+func test_save_load_roundtrip_tavern_settlement() -> void:
+	_ts.reset_state()
+	_ts.rumor_reputation = 88
+	_ts.faction_reputation["goblin"] = 350
+	var cust = _ts.generate_customer("goblin")
+	cust.individual_affinity = 45
+	cust.is_regular = true
+	cust.display_name = cust.real_name
+	_ts.regular_customers["goblin"].append(cust)
+	_sm.save_to_slot(0)
+
+	_ts.reset_state()
+	assert_int(_ts.rumor_reputation).is_equal(0)
+
+	_sm.load_from_slot(0)
+	assert_int(_ts.rumor_reputation).is_equal(88)
+	assert_int(int(_ts.faction_reputation["goblin"])).is_equal(350)
+	assert_int(_ts.regular_customers["goblin"].size()).is_equal(1)
+	var restored = _ts.regular_customers["goblin"][0]
+	assert_int(restored.individual_affinity).is_equal(45)
+	assert_bool(restored.is_regular).is_true()
+	assert_str(restored.real_name).is_equal(cust.real_name)
+
+func test_save_load_roundtrip_armor_proficiency() -> void:
+	_arp.reset()
+	_arp.add_exp("light", 35)
+	_arp.add_exp("heavy", 120)
+	_sm.save_to_slot(0)
+
+	_arp.reset()
+	assert_int(_arp.get_exp("light")).is_equal(0)
+
+	_sm.load_from_slot(0)
+	assert_int(_arp.get_exp("light")).is_equal(35)
+	assert_int(_arp.get_exp("heavy")).is_equal(120)
+	assert_int(_arp.get_level("heavy")).is_equal(13)
+
+func test_save_load_roundtrip_zone_manager() -> void:
+	_zm.set_zone(4)
+	_sm.save_to_slot(0)
+
+	_zm.set_zone(0)
+
+	_sm.load_from_slot(0)
+	assert_int(_zm.get_zone()).is_equal(4)
+
 # ---------- 存档删除 ----------
 
 func test_delete_save_removes_file() -> void:
@@ -269,6 +321,9 @@ func test_serialize_all_contains_all_subsystems() -> void:
 	assert_bool(data.has("attr_panel")).is_true()
 	assert_bool(data.has("skill_runtime")).is_true()
 	assert_bool(data.has("fermentation_system")).is_true()
+	assert_bool(data.has("tavern_settlement")).is_true()
+	assert_bool(data.has("armor_proficiency")).is_true()
+	assert_bool(data.has("selected_zone")).is_true()
 
 func test_serialize_all_version_correct() -> void:
 	var data: Dictionary = _sm.serialize_all()

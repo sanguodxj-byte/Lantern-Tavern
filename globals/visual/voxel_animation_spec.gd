@@ -24,7 +24,7 @@ const METERS_PER_PIXEL := 1.0 / 32.0
 # 人形模型必需骨骼
 # ============================================================================
 # 顺序与 tools/voxel_humanoid_rig.py 的 REFERENCE_BONES 一致。
-# BoneAttachment3D 武器 / 盾挂点依赖 Hand.R / Hand.L，二者不可缺失。
+# BoneAttachment3D 主手 / 副手挂点依赖 Hand.R / Hand.L，二者不可缺失。
 #
 # 注意：使用普通 Array 而非 PackedStringArray —— Godot 4.7 的 GDScript 解析器
 # 不认为 PackedStringArray([...]) 构造调用是常量表达式，
@@ -37,7 +37,8 @@ const HUMANOID_REQUIRED_BONES := [
 	"UpperLeg.L", "LowerLeg.L", "Foot.L",
 ]
 
-# 武器挂载骨骼（BoneAttachment3D.bone_name 使用）
+# 装备挂载骨骼（BoneAttachment3D.bone_name 使用）。主手武器走 Hand.R，
+# 盾牌与 hands=off_hand 的副手装备走 Hand.L。
 const WEAPON_HAND_BONE := "Hand.R"
 const SHIELD_HAND_BONE := "Hand.L"
 
@@ -81,6 +82,37 @@ const POSE_ANIMATIONS := [
 	"hold_weapon",
 ]
 
+## 玩家专用远程武器动画。它们属于 player rig，不强制所有敌方人形
+## 重新导出；第一人称与玩家第三人称仍共享同一套角色骨骼动画。
+const PLAYER_WEAPON_ANIMATIONS := [
+	"crossbow_aim",     # 右键举弩/瞄准持握
+	"crossbow_fire",    # 发射瞬间后坐
+	"crossbow_reload",  # 发射后重新装填并回到瞄准姿态
+]
+
+## Player-only equipment style clips.  They are intentionally excluded from
+## humanoid_required_animations(): enemy rigs keep the shared combat contract,
+## while the player rig owns one authored hold/defense/attack family per style.
+const PLAYER_STYLE_ANIMATIONS := [
+	"unarmed_hold", "unarmed_guard",
+	"shortsword_hold", "shortsword_guard", "shortsword_attack",
+	"sword_hold", "sword_guard", "sword_attack",
+	"dagger_hold", "dagger_guard", "dagger_attack",
+	"greatsword_hold", "greatsword_guard", "greatsword_attack",
+	"greatsword_heavy_swing",
+	"axe_hold", "axe_guard", "axe_attack",
+	"axe_heavy_swing",
+	"warhammer_hold", "warhammer_guard", "warhammer_attack",
+	"warhammer_heavy_swing",
+	"spear_hold", "spear_guard", "spear_attack",
+	"spear_heavy_swing",
+	"bow_hold", "bow_aim", "bow_release",
+	"crossbow_hold",
+	"staff_hold", "staff_guard", "staff_attack",
+	"grimoire_hold", "grimoire_guard", "grimoire_attack",
+	"shield_hold", "shield_block",
+]
+
 # ============================================================================
 # 查询方法
 # ============================================================================
@@ -95,6 +127,15 @@ static func humanoid_required_animations() -> PackedStringArray:
 		all.append(a)
 	for a in POSE_ANIMATIONS:
 		all.append(a)
+	return all
+
+## 玩家完整动画集：通用人形动作 + 玩家专用弩动作 + 玩家流派动作。
+static func player_required_animations() -> PackedStringArray:
+	var all := humanoid_required_animations()
+	for action_set in [PLAYER_WEAPON_ANIMATIONS, PLAYER_STYLE_ANIMATIONS]:
+		for a in action_set:
+			if not all.has(a):
+				all.append(a)
 	return all
 
 ## 非人形生物最小动画集。

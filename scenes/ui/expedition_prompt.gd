@@ -18,6 +18,8 @@ var hold_time: float = 0.0
 var is_complete: bool = false
 
 func _ready() -> void:
+	theme = preload("res://scenes/ui/lantern_theme.tres")
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	visible = false
 	# 程序化生成环形纹理，替代外部图标资源
 	var ring_tex := _create_ring_texture()

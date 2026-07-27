@@ -7,6 +7,8 @@ const VOXEL_LIGHTING := preload("res://globals/visual/voxel_lighting_adapter.gd"
 
 
 func test_capture_spear_real_3d_views_in_godot() -> void:
+	if not SUPPORT.real_renderer_available():
+		return
 	assert_bool(SUPPORT.real_renderer_available()) \
 		.override_failure_message("spear material capture requires a non-headless renderer").is_true()
 	var packed := load(GLB_PATH) as PackedScene

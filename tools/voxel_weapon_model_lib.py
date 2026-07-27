@@ -14,6 +14,16 @@ from mathutils import Vector
 
 PX = 1.0 / 32.0
 
+# Weapon axis contract. Generators author these axes in Blender and export
+# with export_yup=True; Godot then imports the length axis as local +Y.
+# Keep this generic mechanical convention here, not in a model registry.
+WEAPON_AUTHORED_LENGTH_AXIS = "Z"
+WEAPON_AUTHORED_BLADE_WIDTH_AXIS = "X"
+WEAPON_AUTHORED_BLADE_THICKNESS_AXIS = "Y"
+WEAPON_GODOT_LENGTH_AXIS = "Y"
+WEAPON_GODOT_BLADE_WIDTH_AXIS = "X"
+WEAPON_GODOT_BLADE_THICKNESS_AXIS = "Z"
+
 
 def px(value: float) -> float:
     return value * PX

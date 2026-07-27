@@ -33,13 +33,13 @@ func test_affix_quality_unknown() -> void:
 
 func test_affix_effect_description_sharp() -> void:
 	var desc := WeaponData.affix_effect_description("sharp")
-	assert_bool(desc.contains("10%")).is_true()
+	assert_bool(desc.contains("3%")).is_true()
 	assert_bool(desc.contains("暴击")).is_true()
 
 
 func test_affix_effect_description_rusty() -> void:
 	var desc := WeaponData.affix_effect_description("rusty")
-	assert_bool(desc.contains("-15%")).is_true()
+	assert_bool(desc.contains("-4%")).is_true()
 
 
 func test_affix_effect_description_unknown() -> void:
@@ -243,7 +243,7 @@ func test_detail_for_weapon_data_includes_crit_from_affix() -> void:
 	var lines: Array = detail["lines"]
 	var has_crit_line := false
 	for line in lines:
-		if String(line).contains("Crit"):
+		if String(line).contains("Crit") or String(line).contains("暴击"):
 			has_crit_line = true
 			break
 	assert_bool(has_crit_line).is_true()

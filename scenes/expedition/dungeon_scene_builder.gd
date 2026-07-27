@@ -19,15 +19,20 @@ const CHEST_PREFAB := preload("res://scenes/props/chest/chest.tscn")
 const BOSS_CHEST_PREFAB := preload("res://scenes/props/chest/boss_chest.tscn")
 const EXTRACTION_PORTAL_PREFAB := preload("res://scenes/expedition/extraction_portal.tscn")
 const DUNGEON_DOOR_SCRIPT := preload("res://scenes/expedition/dungeon_door.gd")
-const STANDARD_DOOR_SIZE_METERS := Vector2(1.0, 2.0)
-const BOSS_DOOR_SIZE_METERS := Vector2(2.0, 2.0)
+const HEIGHT_CONFIG := preload("res://scenes/expedition/dungeon_generation_config.gd")
 const PILLAR_PREFAB := preload("res://scenes/props/structures/pillar.tscn")
 const TORCH_PREFAB := preload("res://scenes/props/torch/torch.tscn")
 const SCENE_OBJECT_SCRIPT := preload("res://scenes/props/scene_object.gd")
 const SCENE_OBJECT_LAYER := 64
 const DungeonRuntimeConfig := preload("res://scenes/expedition/dungeon_runtime_config.gd")
+const VOXEL_LIGHTING := preload("res://globals/visual/voxel_lighting_adapter.gd")
 const DECOR_VISIBILITY_RANGE_END := 60.0
 const TORCH_VISIBILITY_RANGE_END := 35.0
+const HAZARD_NAV_FOOTPRINT_M := {
+	"spikes": 2.25,
+	"acid": 2.25,
+	"flame_vent": 1.5,
+}
 
 # 同一路径的批处理装饰只需实例化一次模板：bounds 用于碰撞占位，parts 用于最终 MultiMesh 合批。
 # 该缓存属于单次 builder 生命周期，避免跨地牢持有旧场景资源。
@@ -59,8 +64,9 @@ func build(layout: DungeonLayout, parent: Node3D) -> DungeonBuildResult:
 	result.streamed_physics_root = _new_root("StreamedPhysicsRoot", parent)
 	# 第一版只实例化 hazard + chest + extraction portal（敌人由 DungeonSpawner autoload 旧路径生成，阶段 10 再迁；
 	# downstairs portal 是手工 MeshInstance3D 拼装，属 terrain 类，暂留 procedural）
-	# 阶段 9 条 1 步2：地形 Transform 收集迁入 builder（wall_h_map 两遍预计算 + floor/wall/ceiling），
-	# 产出填 build_result.floor_transforms/ceiling_transforms/wall_transforms_by_height/wall_h_map。
+	# 阶段 9 条 1 步2：地形 Transform 收集迁入 builder（整数层墙体连通组件 + floor/wall/ceiling/transition），
+	# 产出填 build_result.floor_transforms/ceiling_transforms/ceiling_transition_transforms_by_size/
+	# wall_transforms_by_height/wall_h_map。
 	# MultiMesh 批渲染 + merged collisions 暂留 procedural（步3-4 再迁），改读 build_result.* 而非旧类字段。
 	_build_terrain(layout, result)
 	_build_multi_meshes(layout, result)
@@ -77,7 +83,7 @@ func build(layout: DungeonLayout, parent: Node3D) -> DungeonBuildResult:
 	return result
 
 # ── terrain Transform 收集（阶段 9 条 1 步2） ─────────────────────
-## 收集 floor/wall/ceiling Transform 到 build_result，并预计算 wall_h_map（两遍消除相邻墙格高度差接缝）。
+## 收集 floor/wall/ceiling/height-transition Transform 到 build_result，并按墙体连通组件预计算整数层 wall_h_map。
 ## 不创建 MultiMesh/碰撞体（步3-4 再迁）；procedural 的 _build_multi_meshes/_build_merged_collisions 改读 build_result.*。
 func _build_terrain(layout: DungeonLayout, result: DungeonBuildResult) -> void:
 	if layout.is_empty():
@@ -89,44 +95,27 @@ func _build_terrain(layout: DungeonLayout, result: DungeonBuildResult) -> void:
 	var offset_x: float = -(float(grid_width) * tile_size) / 2.0
 	var offset_z: float = -(float(grid_height) * tile_size) / 2.0
 	var OFFSET := Vector3(offset_x, 0, offset_z)
-	# ── wall_h_map 两遍预计算（消除相邻墙格高度差接缝）──
-	# 第一遍：每个墙格取所有 4 邻格（含其他墙格）的最大 layout.heights 值
-	var wall_h_map: Dictionary = {}
-	for wy in range(grid_height):
-		for wx in range(grid_width):
-			if int(grid[wy][wx]) == 2:
-				var best: float = float(layout.heights[wy][wx])
-				for d in [Vector2i(0,-1), Vector2i(0,1), Vector2i(1,0), Vector2i(-1,0)]:
-					var nx2 = wx + d.x
-					var ny2 = wy + d.y
-					if nx2 >= 0 and nx2 < grid_width and ny2 >= 0 and ny2 < grid_height:
-						best = maxf(best, float(layout.heights[ny2][nx2]))
-				wall_h_map[Vector2i(wx, wy)] = best if best > 0.0 else 3.0
-	# 第二遍：相邻墙格互相传播最大值（消除"隔一格"仍存在的高度差）
-	for wy in range(grid_height):
-		for wx in range(grid_width):
-			if int(grid[wy][wx]) == 2:
-				var key := Vector2i(wx, wy)
-				var cur: float = wall_h_map[key]
-				for d in [Vector2i(0,-1), Vector2i(0,1), Vector2i(1,0), Vector2i(-1,0)]:
-					var nk := Vector2i(wx + d.x, wy + d.y)
-					if wall_h_map.has(nk) and float(wall_h_map[nk]) > cur:
-						cur = float(wall_h_map[nk])
-				wall_h_map[key] = cur
-	result.wall_h_map = wall_h_map
+	# 一个连通墙体只允许一个整数高度。局部传播会在厚墙或闭合外墙中留下
+	# 高度台阶，因此先收集 4 邻接组件，再把相邻可行走格的最高层写回整组。
+	result.wall_h_map = _build_wall_height_map(layout, grid, grid_width, grid_height)
+	result.ceiling_transition_transforms_by_size = _build_ceiling_transition_map(
+		layout, grid, grid_width, grid_height, OFFSET, _collect_door_edge_keys(layout)
+	)
 	# ── floor/wall/ceiling Transform 收集 ──
-	var CEILING_THICKNESS: float = 0.2  # 与 procedural 类顶 const 一致
+	# 必须与 MultiMesh/碰撞使用同一 0.1m 厚度，否则高度交界会留下半厚度错位。
 	for y in range(grid_height):
 		for x in range(grid_width):
 			var cell_type: int = int(grid[y][x])
 			var cell_pos := OFFSET + Vector3(x * tile_size, 0, y * tile_size)
-			# floor（所有非 void 格都铺地板）
-			var ft := Transform3D()
-			ft.origin = cell_pos - Vector3(0, 0.05, 0)
-			result.floor_transforms.append(ft)
+			# floor 只覆盖可行走格。墙格虽然有视觉地板 transform 的历史产物，
+			# 但不能进入导航源，否则导航多边形会落在墙体/角落内部。
+			if _is_walkable_navigation_cell(cell_type):
+				var ft := Transform3D()
+				ft.origin = cell_pos - Vector3(0, 0.05, 0)
+				result.floor_transforms.append(ft)
 			# wall
 			if cell_type == 2:
-				var wall_height: float = float(wall_h_map.get(Vector2i(x, y), 3.0))
+				var wall_height: float = float(result.wall_h_map.get(Vector2i(x, y), HEIGHT_CONFIG.MIN_CEILING_HEIGHT_METERS))
 				var wt := Transform3D()
 				wt.origin = cell_pos
 				wt.origin.y += wall_height / 2.0
@@ -137,13 +126,96 @@ func _build_terrain(layout: DungeonLayout, result: DungeonBuildResult) -> void:
 				(result.wall_transforms_by_height[key]["transforms"] as Array).append(wt)
 			elif cell_type != 0:
 				# ceiling
-				var ceiling_height: float = float(layout.heights[y][x])
+				var ceiling_height: float = _height_at_cell_in_layout(Vector2i(x, y), layout)
 				var ct := Transform3D()
 				ct.origin = cell_pos + Vector3(0, ceiling_height + CEILING_THICKNESS * 0.5, 0)
 				result.ceiling_transforms.append(ct)
 
+func _build_ceiling_transition_map(layout: DungeonLayout, grid: Array, grid_width: int,
+		grid_height: int, offset: Vector3, door_edges: Dictionary) -> Dictionary:
+	# 每对相邻可走格只检查一次，避免高度差收边重复生成两次。
+	# 收边底部贴住低天花板，顶部贴住高天花板，填满整个高度差，不使用间隙参数制造裂缝。
+	var transitions_by_size: Dictionary = {}
+	for y in range(grid_height):
+		for x in range(grid_width):
+			var current_cell := Vector2i(x, y)
+			if not _is_walkable_navigation_cell(int(grid[y][x])):
+				continue
+			var current_height := _height_at_cell_in_layout(current_cell, layout)
+			var cell_pos := offset + Vector3(x * layout.tile_size, 0, y * layout.tile_size)
+			for direction in [Vector2i(1, 0), Vector2i(0, 1)]:
+				var neighbor: Vector2i = current_cell + direction
+				if neighbor.x < 0 or neighbor.x >= grid_width or neighbor.y < 0 or neighbor.y >= grid_height:
+					continue
+				if not _is_walkable_navigation_cell(int(grid[neighbor.y][neighbor.x])):
+					continue
+				# 门洞自己的门垛/门楣负责填满此边界，避免和通用高度收边重叠。
+				if door_edges.has(_door_edge_key(current_cell, neighbor)):
+					continue
+				var neighbor_height := _height_at_cell_in_layout(neighbor, layout)
+				if is_equal_approx(current_height, neighbor_height):
+					continue
+				var lower_height := minf(current_height, neighbor_height)
+				var transition_height := absf(current_height - neighbor_height)
+				if transition_height <= 0.0:
+					continue
+				var transition_size := Vector3(
+					DOOR_SURROUND_THICKNESS if direction.x != 0 else layout.tile_size,
+					transition_height,
+					layout.tile_size if direction.x != 0 else DOOR_SURROUND_THICKNESS
+				)
+				var transition := Transform3D()
+				transition.origin = cell_pos + Vector3(float(direction.x), 0, float(direction.y)) * (layout.tile_size * 0.5)
+				transition.origin.y = lower_height + transition_height * 0.5
+				var key := _transition_segment_key(transition_size)
+				if not transitions_by_size.has(key):
+					transitions_by_size[key] = {"size": transition_size, "transforms": []}
+				(transitions_by_size[key]["transforms"] as Array).append(transition)
+	return transitions_by_size
+
+func _collect_door_edge_keys(layout: DungeonLayout) -> Dictionary:
+	var door_edges := {}
+	for spec in _collect_layout_door_specs(layout):
+		var inside: Vector2i = spec["inside"]
+		var outside: Vector2i = spec["outside"]
+		door_edges[_door_edge_key(inside, outside)] = true
+	return door_edges
+
 func _wall_segment_key(size: Vector3) -> String:
 	return "%d,%d,%d" % [int(size.x), int(size.y), int(size.z)]
+
+func _transition_segment_key(size: Vector3) -> String:
+	return "%.3f,%.3f,%.3f" % [size.x, size.y, size.z]
+
+func _build_wall_height_map(layout: DungeonLayout, grid: Array, grid_width: int, grid_height: int) -> Dictionary:
+	var wall_h_map: Dictionary = {}
+	var visited: Dictionary = {}
+	var directions := [Vector2i(0, -1), Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0)]
+	for start_y in range(grid_height):
+		for start_x in range(grid_width):
+			var start := Vector2i(start_x, start_y)
+			if int(grid[start_y][start_x]) != 2 or visited.has(start):
+				continue
+			var component: Array[Vector2i] = []
+			var queue: Array[Vector2i] = [start]
+			visited[start] = true
+			var component_height := HEIGHT_CONFIG.MIN_CEILING_HEIGHT_METERS
+			while not queue.is_empty():
+				var cell: Vector2i = queue.pop_front()
+				component.append(cell)
+				for direction in directions:
+					var neighbor: Vector2i = cell + direction
+					if neighbor.x < 0 or neighbor.x >= grid_width or neighbor.y < 0 or neighbor.y >= grid_height:
+						continue
+					if int(grid[neighbor.y][neighbor.x]) == 2:
+						if not visited.has(neighbor):
+							visited[neighbor] = true
+							queue.append(neighbor)
+					elif _is_walkable_navigation_cell(int(grid[neighbor.y][neighbor.x])):
+						component_height = maxf(component_height, _height_at_cell_in_layout(neighbor, layout))
+			for cell in component:
+				wall_h_map[cell] = HEIGHT_CONFIG.quantize_height(component_height)
+	return wall_h_map
 
 # ── MultiMesh 创建（阶段 B1：迁自 procedural._build_multi_meshes/_build_chunked_multi_meshes） ──
 const STREAM_CHUNK_SIZE_CELLS := 8
@@ -164,6 +236,16 @@ func _build_multi_meshes(layout: DungeonLayout, result: DungeonBuildResult) -> v
 	var ceiling_mat := _make_terrain_mat("CEILING", Vector2(tile_size, tile_size))
 	_build_chunked_multi_meshes(layout, result, "CeilingMultiMesh", result.ceiling_transforms,
 		Vector3(tile_size, CEILING_THICKNESS, tile_size), ceiling_mat)
+	# 3. 高度差收边：填满相邻 3/4/5m 天花板之间的竖向交界。
+	for transition_key in result.ceiling_transition_transforms_by_size:
+		var transition_group: Dictionary = result.ceiling_transition_transforms_by_size[transition_key]
+		var transition_transforms: Array = transition_group.get("transforms", [])
+		if transition_transforms.is_empty():
+			continue
+		var transition_size: Vector3 = transition_group.get("size", Vector3(DOOR_SURROUND_THICKNESS, 1.0, tile_size))
+		var transition_mat := _make_terrain_mat("LINTEL", Vector2(maxf(transition_size.x, transition_size.z), transition_size.y))
+		_build_chunked_multi_meshes(layout, result, "CeilingTransitionMultiMesh_%s" % transition_key.replace(",", "_"),
+			transition_transforms, transition_size, transition_mat)
 	# 3. 墙面（按尺寸分组）
 	for wall_key in result.wall_transforms_by_height:
 		var group: Dictionary = result.wall_transforms_by_height[wall_key]
@@ -232,6 +314,14 @@ func _build_collisions(layout: DungeonLayout, result: DungeonBuildResult) -> voi
 		Vector3(tile_size, 0.1, tile_size))
 	_build_merged_collision_group(layout, result, "CeilingCollisions", result.ceiling_transforms,
 		Vector3(tile_size, CEILING_THICKNESS, tile_size))
+	for transition_key in result.ceiling_transition_transforms_by_size:
+		var transition_group: Dictionary = result.ceiling_transition_transforms_by_size[transition_key]
+		var transition_transforms: Array = transition_group.get("transforms", [])
+		if transition_transforms.is_empty():
+			continue
+		var transition_size: Vector3 = transition_group.get("size", Vector3(DOOR_SURROUND_THICKNESS, 1.0, tile_size))
+		_build_merged_collision_group(layout, result, "CeilingTransitionCollisions_%s" % transition_key.replace(",", "_"),
+			transition_transforms, transition_size)
 	for wall_key in result.wall_transforms_by_height:
 		var group: Dictionary = result.wall_transforms_by_height[wall_key]
 		var transforms: Array = group.get("transforms", [])
@@ -246,7 +336,6 @@ func _build_merged_collision_group(layout: DungeonLayout, result: DungeonBuildRe
 	if transforms.is_empty():
 		return
 	var by_chunk := _group_transforms_by_stream_chunk(transforms, layout.tile_size)
-	var physics := _physics_setup()
 	for chunk in by_chunk.keys():
 		var chunk_transforms: Array = by_chunk[chunk]
 		var body := StaticBody3D.new()
@@ -254,12 +343,15 @@ func _build_merged_collision_group(layout: DungeonLayout, result: DungeonBuildRe
 		# 合并碰撞体的 shape 顶点使用地牢局部世界坐标，因此 body 本身留在根原点。
 		# 显式保存几何所属 chunk，避免 streaming 按 body 原点把所有地板登记到 (0, 0)。
 		body.set_meta("stream_physics_chunk", chunk)
-		if physics != null:
-			body.collision_layer = physics.LAYER_ENVIRONMENT
-			body.collision_mask = physics.MASK_ENVIRONMENT
+		body.collision_layer = PhysicsSetup.LAYER_ENVIRONMENT
+		body.collision_mask = PhysicsSetup.MASK_ENVIRONMENT
 		var col := CollisionShape3D.new()
 		col.name = "MergedCollision"
 		var shape := ConcavePolygonShape3D.new()
+		# Merged terrain boxes are closed solid volumes. Players approach walls
+		# from the walkable side, which can be the back side of their triangle
+		# winding; without this flag a concave mesh can allow partial penetration.
+		shape.backface_collision = true
 		var faces: PackedVector3Array = PackedVector3Array()
 		for t in chunk_transforms:
 			var tr := t as Transform3D
@@ -321,6 +413,21 @@ func _build_wall_occluders(layout: DungeonLayout, result: DungeonBuildResult) ->
 				"transform": transform,
 				"size": size + Vector3(0.06, 0.06, 0.06),
 			})
+	for transition_key in result.ceiling_transition_transforms_by_size:
+		var transition_group: Dictionary = result.ceiling_transition_transforms_by_size[transition_key]
+		var transition_size: Vector3 = transition_group.get("size", Vector3(DOOR_SURROUND_THICKNESS, 1.0, layout.tile_size))
+		for t in transition_group.get("transforms", []):
+			var transition_transform := t as Transform3D
+			var transition_chunk := Vector2i(
+				floori(transition_transform.origin.x / chunk_size),
+				floori(transition_transform.origin.z / chunk_size)
+			)
+			if not boxes_by_chunk.has(transition_chunk):
+				boxes_by_chunk[transition_chunk] = []
+			(boxes_by_chunk[transition_chunk] as Array).append({
+				"transform": transition_transform,
+				"size": transition_size + Vector3(0.06, 0.06, 0.06),
+			})
 	for chunk in boxes_by_chunk.keys():
 		var vertices := PackedVector3Array()
 		var indices := PackedInt32Array()
@@ -359,13 +466,6 @@ func _append_occluder_box(vertices: PackedVector3Array, indices: PackedInt32Arra
 	]:
 		indices.append(base + index)
 
-func _physics_setup() -> Node:
-	# autoload singleton 走 /root/<name> 路径（builder 是 RefCounted 非节点，无 get_tree）
-	var tree := Engine.get_main_loop() as SceneTree
-	if tree == null or tree.root == null:
-		return null
-	return tree.root.get_node_or_null("PhysicsSetup")
-
 # ── downstairs portal（阶段 B3：迁自 procedural._spawn_downstairs_portal 纯 Mesh 拼装部分） ──
 ## 产 DownstairsPortal Node3D + 4 级 DownstairsStep MeshInstance3D，挂 build_result.interaction_root。
 ## 信号接线（area.body_entered.connect）属 runtime 范畴，builder 只 instantiate 不接——procedural 后续接。
@@ -392,6 +492,8 @@ func _build_downstairs_portal(layout: DungeonLayout, result: DungeonBuildResult)
 	var step_mat := StandardMaterial3D.new()
 	step_mat.albedo_color = Color(0.20, 0.18, 0.16)
 	step_mat.roughness = 0.9
+	step_mat.metallic = 0.0
+	step_mat.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	for i in range(4):
 		var step := MeshInstance3D.new()
 		step.name = "DownstairsStep%d" % (i + 1)
@@ -436,24 +538,10 @@ func _build_door_panels(layout: DungeonLayout, result: DungeonBuildResult, paren
 	var offset_x: float = -(float(layout.width) * tile_size) / 2.0
 	var offset_z: float = -(float(layout.height) * tile_size) / 2.0
 	var offset: Vector3 = Vector3(offset_x, 0, offset_z)
-	var door_specs := {}
-	for room in layout.rooms:
-		for spec in _collect_room_door_specs(layout, room):
-			var inside: Vector2i = spec["inside"]
-			var outside: Vector2i = spec["outside"]
-			var key := _door_edge_key(inside, outside)
-			var leads_to_boss := _is_boss_room_cell(layout, inside) or _is_boss_room_cell(layout, outside)
-			if door_specs.has(key):
-				var existing: Dictionary = door_specs[key]
-				existing["boss"] = bool(existing["boss"]) or leads_to_boss
-				door_specs[key] = existing
-			else:
-				var door_spec: Dictionary = spec.duplicate()
-				door_spec["boss"] = leads_to_boss
-				door_specs[key] = door_spec
+	var door_specs := _collect_layout_door_specs(layout)
 	var index := 0
-	for key in door_specs.keys():
-		_spawn_door_panel(door_specs[key], offset, tile_size, index, result, parent, layout)
+	for door_spec in door_specs:
+		_spawn_door_panel(door_spec, offset, tile_size, index, result, parent, layout)
 		index += 1
 
 # ── door panel（B3 第二版步3：迁自 procedural._spawn_door_panel） ──
@@ -463,6 +551,7 @@ func _spawn_door_panel(spec: Dictionary, offset: Vector3, tile_size: float, inde
 	var outside: Vector2i = spec["outside"]
 	var dir: Vector2i = spec["dir"]
 	var boss := bool(spec["boss"])
+	var door_size := DungeonDoor.size_for_kind(DungeonDoor.KIND_BOSS if boss else DungeonDoor.KIND_STANDARD)
 	var cell_pos := offset + Vector3(inside.x * tile_size, 0.0, inside.y * tile_size)
 	var panel_pos := cell_pos + Vector3(float(dir.x), 0.0, float(dir.y)) * (tile_size * 0.5)
 	var door := DUNGEON_DOOR_SCRIPT.new() as DungeonDoor
@@ -470,14 +559,14 @@ func _spawn_door_panel(spec: Dictionary, offset: Vector3, tile_size: float, inde
 	door.position = panel_pos
 	door.set_meta("inside_cell", inside)
 	door.set_meta("outside_cell", outside)
-	door.set_meta("door_size_m", BOSS_DOOR_SIZE_METERS if boss else STANDARD_DOOR_SIZE_METERS)
+	door.set_meta("door_size_m", door_size)
 	_spawn_door_wall_surround(door.name + "Surround", panel_pos, inside, outside, dir, boss, tile_size, result, parent, layout)
 	door.configure(
 		DungeonDoor.KIND_BOSS if boss else DungeonDoor.KIND_STANDARD,
 		dir,
 		_make_terrain_mat("BOSS_DOOR" if boss else "DOOR", Vector2(1.0, 1.0)),
-		_make_terrain_mat("DOOR_SIDE", Vector2(DungeonDoor.THICKNESS, BOSS_DOOR_SIZE_METERS.y if boss else STANDARD_DOOR_SIZE_METERS.y)),
-		_make_terrain_mat("DOOR_TOP", Vector2(BOSS_DOOR_SIZE_METERS.x * 0.5 if boss else STANDARD_DOOR_SIZE_METERS.x, DungeonDoor.THICKNESS))
+		_make_terrain_mat("DOOR_SIDE", Vector2(DungeonDoor.THICKNESS, door_size.y)),
+		_make_terrain_mat("DOOR_TOP", Vector2(door_size.x * 0.5, DungeonDoor.THICKNESS))
 	)
 	if result.doors_root != null:
 		result.doors_root.add_child(door)
@@ -488,9 +577,19 @@ func _spawn_door_panel(spec: Dictionary, offset: Vector3, tile_size: float, inde
 
 # ── door wall surround（B3 第二版步3：迁自 procedural._spawn_door_wall_surround） ──
 func _spawn_door_wall_surround(base_name: String, panel_pos: Vector3, inside: Vector2i, outside: Vector2i, dir: Vector2i, boss: bool, tile_size: float, result: DungeonBuildResult, parent: Node3D, layout: DungeonLayout) -> void:
-	var door_size := BOSS_DOOR_SIZE_METERS if boss else STANDARD_DOOR_SIZE_METERS
-	var wall_height := maxf(maxf(_height_at_cell_in_layout(inside, layout), _height_at_cell_in_layout(outside, layout)), door_size.y + 0.5)
-	var side_width := maxf((tile_size - door_size.x) * 0.5, 0.0)
+	var door_size := DungeonDoor.size_for_kind(DungeonDoor.KIND_BOSS if boss else DungeonDoor.KIND_STANDARD)
+	if door_size.x >= tile_size:
+		push_error("[DungeonSceneBuilder] door width must fit one tile: width=%f tile=%f" % [door_size.x, tile_size])
+		return
+	# The navmesh and enemy collision envelope are built for the largest enemy.
+	# A 2m visual doorway otherwise leaves a valid A* route that physically traps
+	# huge enemies under the lintel.
+	var max_enemy_height := PhysicsSetup.get_character_capsule_height("huge")
+	var door_clearance := maxf(door_size.y, max_enemy_height)
+	var wall_height := maxf(
+		maxf(_height_at_cell_in_layout(inside, layout), _height_at_cell_in_layout(outside, layout)),
+		door_clearance)
+	var side_width := DungeonDoor.side_wall_width(tile_size, DungeonDoor.KIND_BOSS if boss else DungeonDoor.KIND_STANDARD)
 	if side_width <= 0.01:
 		return
 	var width_axis := Vector3(0, 0, 1) if dir.x != 0 else Vector3(1, 0, 0)
@@ -498,10 +597,10 @@ func _spawn_door_wall_surround(base_name: String, panel_pos: Vector3, inside: Ve
 	var side_offset := door_size.x * 0.5 + side_width * 0.5
 	_spawn_door_wall_box(base_name + "LeftJamb", panel_pos - width_axis * side_offset + Vector3(0, wall_height * 0.5, 0), side_size, result, parent)
 	_spawn_door_wall_box(base_name + "RightJamb", panel_pos + width_axis * side_offset + Vector3(0, wall_height * 0.5, 0), side_size, result, parent)
-	var lintel_height := maxf(wall_height - door_size.y, 0.0)
+	var lintel_height := maxf(wall_height - door_clearance, 0.0)
 	if lintel_height > 0.05:
 		var lintel_size := _door_surround_size(door_size.x, lintel_height, dir, _rendering_thickness(parent))
-		var lintel_pos := panel_pos + Vector3(0, door_size.y + lintel_height * 0.5, 0)
+		var lintel_pos := panel_pos + Vector3(0, door_clearance + lintel_height * 0.5, 0)
 		_spawn_door_wall_box(base_name + "Lintel", lintel_pos, lintel_size, result, parent)
 
 func _door_surround_size(width: float, height: float, dir: Vector2i, thickness: float) -> Vector3:
@@ -519,10 +618,10 @@ func _rendering_thickness(parent: Node3D) -> float:
 func _height_at_cell_in_layout(cell: Vector2i, layout: DungeonLayout) -> float:
 	# 迁自 procedural._height_at_cell
 	if cell.y < 0 or cell.y >= layout.heights.size():
-		return 3.0
+		return HEIGHT_CONFIG.MIN_CEILING_HEIGHT_METERS
 	if cell.x < 0 or cell.x >= layout.heights[cell.y].size():
-		return 3.0
-	return maxf(float(layout.heights[cell.y][cell.x]), 3.0)
+		return HEIGHT_CONFIG.MIN_CEILING_HEIGHT_METERS
+	return HEIGHT_CONFIG.quantize_height(float(layout.heights[cell.y][cell.x]))
 
 # ── door 工具链（B3 第二版步4：迁自 procedural） ──
 func _collect_room_door_specs(layout: DungeonLayout, room: Rect2i) -> Array:
@@ -540,9 +639,48 @@ func _collect_room_door_specs(layout: DungeonLayout, room: Rect2i) -> Array:
 				if room.has_point(outside):
 					continue
 				if _is_walkable_hazard_cell(grid, outside.x, outside.y):
+					if _is_inside_another_room(layout, outside, room):
+						continue
 					if _is_door_location_supported(grid, cell, dir):
 						candidates.append({"inside": cell, "outside": outside, "dir": dir})
-	return _collapse_door_specs_by_contiguous_entry(candidates)
+	var collapsed := _collapse_door_specs_by_contiguous_entry(candidates)
+	var supported: Array = []
+	for spec in collapsed:
+		if _is_door_location_supported(grid, spec["inside"], spec["dir"]):
+			supported.append(spec)
+	return supported
+
+func _collect_layout_door_specs(layout: DungeonLayout) -> Array[Dictionary]:
+	if not layout.door_specs.is_empty():
+		return layout.door_specs
+	var by_edge: Dictionary = {}
+	for room in layout.rooms:
+		for spec in _collect_room_door_specs(layout, room):
+			var inside: Vector2i = spec["inside"]
+			var outside: Vector2i = spec["outside"]
+			var key := _door_edge_key(inside, outside)
+			var leads_to_boss := _is_boss_room_cell(layout, inside) or _is_boss_room_cell(layout, outside)
+			if by_edge.has(key):
+				var existing: Dictionary = by_edge[key]
+				existing["boss"] = bool(existing.get("boss", false)) or leads_to_boss
+				by_edge[key] = existing
+			else:
+				var door_spec: Dictionary = spec.duplicate()
+				door_spec["boss"] = leads_to_boss
+				by_edge[key] = door_spec
+	var result: Array[Dictionary] = []
+	for key in by_edge.keys():
+		result.append(by_edge[key])
+	layout.door_specs = result.duplicate(true)
+	return layout.door_specs
+
+func _is_inside_another_room(layout: DungeonLayout, cell: Vector2i, room: Rect2i) -> bool:
+	for other_room in layout.rooms:
+		if other_room == room:
+			continue
+		if other_room.has_point(cell):
+			return true
+	return false
 
 func _collapse_door_specs_by_contiguous_entry(candidates: Array) -> Array:
 	var groups := {}
@@ -602,7 +740,7 @@ func _is_door_location_supported(grid: Array, cell: Vector2i, dir: Vector2i) -> 
 	var inside_side_2 := cell + side_dir_2
 	var has_wall_1 := _is_grid_wall(grid, inside_side_1.x, inside_side_1.y)
 	var has_wall_2 := _is_grid_wall(grid, inside_side_2.x, inside_side_2.y)
-	return has_wall_1 or has_wall_2
+	return has_wall_1 and has_wall_2
 
 func _is_grid_wall(grid: Array, x: int, y: int) -> bool:
 	if y < 0 or y >= grid.size():
@@ -626,6 +764,7 @@ func _spawn_door_wall_box(name: String, pos: Vector3, size: Vector3, result: Dun
 	var mesh := MeshInstance3D.new()
 	mesh.name = name
 	mesh.set_meta("door_surround", true)
+	mesh.set_meta("voxel_grid_size_m", size)
 	mesh.set_meta("topdown_kind", "terrain_feature")
 	var box := BoxMesh.new()
 	box.size = size
@@ -644,6 +783,7 @@ func _spawn_door_wall_box(name: String, pos: Vector3, size: Vector3, result: Dun
 		col.shape = shape
 		body.add_child(col)
 		body.name = name + "Collision"
+		body.set_meta("door_surround", true)
 		body.position = pos
 		result.collision_root.add_child(body)
 		result.streamed_physics_nodes.append(body)
@@ -660,16 +800,19 @@ func _build_hazards(layout: DungeonLayout, result: DungeonBuildResult) -> void:
 		if instance == null:
 			continue
 		var cell: Vector2i = anchor["anchor_cell"]
-		instance.position = _cell_to_world(cell, layout.tile_size)
+		instance.position = _cell_to_world(cell, layout)
 		instance.set_meta("hazard_anchor", true)
 		instance.set_meta("topdown_kind", "hazard")
 		instance.set_meta("hazard_cell", cell)
+		instance.set_meta("hazard_type", String(anchor["hazard_type"]))
 		instance.set_meta("placement_role", "terrain_damage_anchor")
 		instance.set_meta("kick_lane_dir", anchor.get("direction", Vector2i.ZERO))
+		_configure_hazard_placement(instance, String(anchor["hazard_type"]), anchor)
 		var room_index := int(anchor.get("room_index", -1))
 		if room_index >= 0 and room_index < layout.rooms.size():
 			instance.set_meta("hazard_room", layout.rooms[room_index])
 		result.hazards_root.add_child(instance)
+		result.streamed_visual_nodes.append(instance)
 		result.streamed_physics_nodes.append(instance)
 
 func _hazard_prefab_for(hazard_type: String) -> PackedScene:
@@ -694,7 +837,7 @@ func _build_chests(layout: DungeonLayout, result: DungeonBuildResult) -> void:
 		if instance == null:
 			continue
 		var cell: Vector2i = spec["cell"]
-		instance.position = _cell_to_world(cell, layout.tile_size)
+		instance.position = _cell_to_world(cell, layout)
 		instance.set_meta("topdown_kind", "chest")
 		instance.set_meta("chest_type", chest_type)
 		# zone 决定材料掉落池（原 procedural._spawn_prefab 注入）
@@ -721,7 +864,7 @@ func _build_extraction_portal(layout: DungeonLayout, result: DungeonBuildResult)
 	var instance := EXTRACTION_PORTAL_PREFAB.instantiate() as Node3D
 	if instance == null:
 		return
-	instance.position = _cell_to_world(layout.extraction_cell, layout.tile_size)
+	instance.position = _cell_to_world(layout.extraction_cell, layout)
 	instance.name = "ExtractionPortal"
 	instance.set_meta("topdown_kind", "extraction")
 	result.interaction_root.add_child(instance)
@@ -734,10 +877,36 @@ func _new_root(name: String, parent: Node3D) -> Node3D:
 	parent.add_child(root)
 	return root
 
-## 格坐标 → 世界坐标（与 procedural_dungeon.gd 的 OFFSET 公式一致，但 scene builder 不持有 OFFSET；
-## 调用方若需居中，自行在 parent 上设 transform。这里返回格原点世界位）
-func _cell_to_world(cell: Vector2i, tile_size: float) -> Vector3:
-	return Vector3(cell.x * tile_size, 0.0, cell.y * tile_size)
+## 格坐标 → 以地牢中心为原点的世界坐标。
+## 地形、敌人和玩家都使用同一 OFFSET；prefab 不能落在未居中的格坐标系中。
+func _cell_to_world(cell: Vector2i, layout: DungeonLayout) -> Vector3:
+	var offset_x := -(float(layout.width) * layout.tile_size) / 2.0
+	var offset_z := -(float(layout.height) * layout.tile_size) / 2.0
+	return Vector3(
+		offset_x + cell.x * layout.tile_size,
+		0.0,
+		offset_z + cell.y * layout.tile_size
+	)
+
+func _configure_hazard_placement(instance: Node3D, hazard_type: String, anchor: Dictionary) -> void:
+	match hazard_type:
+		"spikes":
+			# 当前尖刺 prefab 是纵向模型；地牢锚点采用地面式陷阱，避免把碰撞体悬在墙角。
+			instance.set_meta("spike_mount", "floor")
+			instance.rotation_degrees.x = 90.0
+			instance.position.y = 0.0
+			var direction: Vector2i = anchor.get("direction", Vector2i(0, 1))
+			if direction != Vector2i.ZERO:
+				instance.rotation.y = atan2(float(direction.x), float(direction.y))
+		"acid":
+			instance.set_meta("acid_ground_only", true)
+			instance.set_meta("acid_pit", true)
+			instance.rotation = Vector3.ZERO
+			instance.position.y = 0.0
+
+func _is_walkable_navigation_cell(cell_type: int) -> bool:
+	# 与 WFC/BSP 的可达性定义保持一致；PILLAR 仍保留地板，后续由其实际碰撞体阻挡。
+	return cell_type in [1, 3, 4, 5]
 
 
 # ── navigation mesh（迁自 procedural._build_navigation_mesh） ──
@@ -748,12 +917,13 @@ func _build_navigation_mesh(layout: DungeonLayout, result: DungeonBuildResult, p
 	if DisplayServer.get_name() == "headless":
 		return
 	# 与默认 NavigationMap cell 对齐，避免 cell_height mismatch。
-	# headless 下超大 obstruction bake 偶发 native crash，故限制规模并仅用地板面片。
+	# 限制输入规模，避免超大地牢在烘焙时造成单帧尖峰。
 	var region := NavigationRegion3D.new()
 	region.name = "DungeonNavigationRegion"
 	var nav_mesh := NavigationMesh.new()
-	nav_mesh.agent_radius = PhysicsSetup.HUMANOID_COLLISION_RADIUS
-	nav_mesh.agent_height = PhysicsSetup.HUMANOID_COLLISION_HEIGHT
+	# 导航网格按最大敌人包络烘焙；运行时小型敌人仍由 NavigationAgent3D 的实际半径避障。
+	nav_mesh.agent_radius = PhysicsSetup.get_character_capsule_radius("huge") + PhysicsSetup.CHARACTER_COLLISION_MARGIN
+	nav_mesh.agent_height = PhysicsSetup.get_character_capsule_height("huge")
 	nav_mesh.cell_size = 0.25
 	nav_mesh.cell_height = 0.25
 	region.navigation_mesh = nav_mesh
@@ -769,7 +939,10 @@ func _build_navigation_mesh(layout: DungeonLayout, result: DungeonBuildResult, p
 	if floor_faces.is_empty():
 		return
 	source_geometry_data.add_faces(floor_faces, Transform3D.IDENTITY)
-	# 仅用地板可行走面；墙体 obstruction 在 headless 路径不稳定，生产可后续再开。
+	var wall_faces := _build_navigation_obstacle_faces(layout, result)
+	if not wall_faces.is_empty():
+		source_geometry_data.add_faces(wall_faces, Transform3D.IDENTITY)
+	# 地板定义可行走区域，墙体盒面定义不可穿越的垂直障碍。
 	# P-A：导航烘焙改异步可消除进场最长单帧 stall（ENABLE_ASYNC_NAVMESH_BAKE）。
 	# 异步在后台线程填充 nav_mesh；完成前 NavigationAgent3D 查询返回空路径、自然等待，不影响寻路正确性。
 	# 默认关闭（见 ENABLE_ASYNC_NAVMESH_BAKE 注释），开启前需窗口化冒烟测试确认敌人可寻路。
@@ -778,6 +951,137 @@ func _build_navigation_mesh(layout: DungeonLayout, result: DungeonBuildResult, p
 		NavigationServer3D.bake_from_source_geometry_data_async(nav_mesh, source_geometry_data, Callable())
 	else:
 		NavigationServer3D.bake_from_source_geometry_data(nav_mesh, source_geometry_data, Callable())
+
+func _build_navigation_obstacle_faces(layout: DungeonLayout, result: DungeonBuildResult, max_samples: int = 4096) -> PackedVector3Array:
+	var faces := PackedVector3Array()
+	if layout == null or result == null:
+		return faces
+	var sample_count := 0
+	for wall_key in result.wall_transforms_by_height:
+		if sample_count >= max_samples:
+			break
+		var group: Dictionary = result.wall_transforms_by_height[wall_key]
+		var size: Vector3 = group.get("size", Vector3(3.0, 3.0, 3.0))
+		for transform_value in group.get("transforms", []):
+			if sample_count >= max_samples:
+				break
+			var transform := transform_value as Transform3D
+			_append_box_faces(faces, transform.origin, size)
+			sample_count += 1
+	# 柱体格保留地板以维持房间连通性，但柱体自身必须作为局部障碍进入导航源，
+	# 否则路径会穿过柱心，再由 CharacterBody3D 被挤到墙角/柱边。
+	var grid: Array = layout.grid
+	var offset := Vector3(
+		-(float(layout.width) * layout.tile_size) / 2.0,
+		0.0,
+		-(float(layout.height) * layout.tile_size) / 2.0,
+	)
+	for y in range(grid.size()):
+		for x in range(grid[y].size()):
+			if sample_count >= max_samples:
+				return faces
+			if int(grid[y][x]) != 5:
+				continue
+			var pillar_height := _height_at_cell_in_layout(Vector2i(x, y), layout)
+			var pillar_center := offset + Vector3(x * layout.tile_size, pillar_height * 0.5, y * layout.tile_size)
+			_append_box_faces(faces, pillar_center, Vector3(0.75, pillar_height, 0.75))
+			sample_count += 1
+	# Hazard prefabs also contain runtime obstacles, but those are not guaranteed to
+	# affect the baked map. Add a static footprint so hunt paths avoid damage areas
+	# even when avoidance/RVO is disabled at full dark erosion.
+	for anchor in layout.hazard_anchors:
+		if sample_count >= max_samples:
+			return faces
+		var cell: Vector2i = anchor.get("anchor_cell", Vector2i(-1, -1))
+		if not layout.is_floor_cell(cell):
+			continue
+		var hazard_height := 2.0
+		var hazard_center := offset + Vector3(
+			cell.x * layout.tile_size,
+			hazard_height * 0.5,
+			cell.y * layout.tile_size
+		)
+		# Match the actual trap footprint. Blocking a full 3m cell plus 2m of
+		# clearance turns an edge hazard into a 5m wall and can disconnect a room.
+		var footprint := _hazard_navigation_footprint(String(anchor.get("hazard_type", "")), layout.tile_size)
+		_append_box_faces(faces, hazard_center, Vector3(footprint, hazard_height, footprint))
+		sample_count += 1
+	# 关闭门是导航上的真实阻挡；打开/破坏后，DungeonDoor 启用两侧的 NavigationLink3D。
+	if result.doors_root != null:
+		for child in result.doors_root.get_children():
+			if sample_count >= max_samples:
+				return faces
+			var door := child as DungeonDoor
+			if door == null or door.is_open or door.is_broken:
+				continue
+			var collision := door.get_node_or_null("CollisionShape3D") as CollisionShape3D
+			var box := collision.shape as BoxShape3D if collision != null else null
+			if box == null:
+				continue
+			var center := door.global_transform * collision.position
+			_append_box_faces(faces, center, box.size)
+			sample_count += 1
+	# Door surrounds are separate StaticBody3D nodes under collision_root. They are
+	# not represented by wall_transforms, so omitting them lets paths pass through
+	# the jamb/lintel while CharacterBody3D is still blocked by physics.
+	sample_count = _append_navigation_box_obstacles_from_root(
+		faces, result.collision_root, "door_surround", true, sample_count, max_samples)
+	# Chests build their visual collision in _ready() (including the ChestVisual
+	# VoxelProp child). Include every BoxShape in the chest subtree so the baked
+	# map matches the runtime collision that can stop a pursuing enemy.
+	sample_count = _append_navigation_box_obstacles_from_root(
+		faces, result.interaction_root, "topdown_kind", "chest", sample_count, max_samples)
+	# Decor prefabs may create their StaticBody3D at runtime or through the
+	# batched-decor path without a semantic meta tag. Any such collider still
+	# participates in CharacterBody3D physics and must be represented in navmesh.
+	sample_count = _append_navigation_box_obstacles_from_root(
+		faces, result.decor_root, "", null, sample_count, max_samples)
+	return faces
+
+func _hazard_navigation_footprint(hazard_type: String, tile_size: float) -> float:
+	var configured := float(HAZARD_NAV_FOOTPRINT_M.get(hazard_type, 1.5))
+	# Keep an unknown/future hazard inside its cell so it cannot seal adjacent cells.
+	return clampf(configured, 1.0, maxf(tile_size - 0.25, 1.0))
+
+func _append_navigation_box_obstacles_from_root(faces: PackedVector3Array, root: Node,
+		meta_name: String, meta_value: Variant, sample_count: int, max_samples: int) -> int:
+	if root == null or not is_instance_valid(root):
+		return sample_count
+	for body_node in root.find_children("*", "StaticBody3D", true, false):
+		if not meta_name.is_empty() \
+				and (not body_node.has_meta(meta_name) or body_node.get_meta(meta_name) != meta_value):
+			continue
+		for collision_node in body_node.find_children("*", "CollisionShape3D", true, false):
+			if sample_count >= max_samples:
+				return sample_count
+			var collision := collision_node as CollisionShape3D
+			var box := collision.shape as BoxShape3D if collision != null else null
+			if box == null:
+				continue
+			_append_box_faces_from_transform(faces, collision.global_transform, box.size)
+			sample_count += 1
+	return sample_count
+
+func _append_box_faces_from_transform(faces: PackedVector3Array, transform: Transform3D, size: Vector3) -> void:
+	var hx := size.x * 0.5
+	var hy := size.y * 0.5
+	var hz := size.z * 0.5
+	var p000 := transform * Vector3(-hx, -hy, -hz)
+	var p100 := transform * Vector3( hx, -hy, -hz)
+	var p110 := transform * Vector3( hx,  hy, -hz)
+	var p010 := transform * Vector3(-hx,  hy, -hz)
+	var p001 := transform * Vector3(-hx, -hy,  hz)
+	var p101 := transform * Vector3( hx, -hy,  hz)
+	var p111 := transform * Vector3( hx,  hy,  hz)
+	var p011 := transform * Vector3(-hx,  hy,  hz)
+	faces.append_array([
+		p000, p100, p110, p000, p110, p010,
+		p001, p011, p111, p001, p111, p101,
+		p000, p001, p101, p000, p101, p100,
+		p010, p110, p111, p010, p111, p011,
+		p000, p010, p011, p000, p011, p001,
+		p100, p101, p111, p100, p111, p110,
+	])
 
 func _append_floor_top_face(faces: PackedVector3Array, center: Vector3, size: Vector3) -> void:
 	var hx := size.x * 0.5
@@ -815,7 +1119,7 @@ func _build_decor_and_torches(layout: DungeonLayout, result: DungeonBuildResult,
 			var cell_pos := OFFSET + Vector3(x * tile_size, 0, y * tile_size)
 			match cell_type:
 				5:
-					var room_h: float = float(layout.heights[y][x]) if y < layout.heights.size() and x < layout.heights[y].size() else 3.0
+					var room_h: float = _height_at_cell_in_layout(Vector2i(x, y), layout)
 					var pillar_t := Transform3D(Basis.IDENTITY.scaled(Vector3(1.0, room_h / 3.0, 1.0)), cell_pos)
 					if not _spawn_batched_decor(result, parent, runtime_cfg, PILLAR_PREFAB.resource_path, pillar_t):
 						var pillar := PILLAR_PREFAB.instantiate()
@@ -845,7 +1149,7 @@ func _build_decor_and_torches(layout: DungeonLayout, result: DungeonBuildResult,
 							if nx >= 0 and nx < grid_width and ny >= 0 and ny < grid_height:
 								if int(grid[ny][nx]) == 2:
 									if randf() < 0.12:
-										var h: float = float(result.wall_h_map.get(Vector2i(nx, ny), 3.0))
+										var h: float = float(result.wall_h_map.get(Vector2i(nx, ny), HEIGHT_CONFIG.MIN_CEILING_HEIGHT_METERS))
 										_spawn_torch_on_wall(result, parent, cell_pos, dir, h, tile_size)
 										torch_spawned = true
 										break
@@ -897,11 +1201,13 @@ func _spawn_random_decor(result: DungeonBuildResult, parent: Node3D, runtime_cfg
 			instance.queue_free()
 		return
 	(instance as Node3D).position = pos
+	var decor_node := instance as Node3D
+	VOXEL_LIGHTING.apply_to_tree(decor_node, true)
 	if result.decor_root != null:
 		result.decor_root.add_child(instance)
 	else:
 		parent.add_child(instance)
-	_apply_distance_culling(instance as Node3D)
+	_apply_distance_culling(decor_node)
 	_ensure_collision_on_instance(instance)
 	_configure_scene_object(instance)
 	result.streamed_physics_nodes.append(instance)
@@ -1087,6 +1393,7 @@ func _get_batched_decor_cache(path: String, prefab: PackedScene) -> Dictionary:
 	var template_root := template as Node3D
 	if template_root.has_method("rebuild"):
 		template_root.rebuild()
+	VOXEL_LIGHTING.apply_to_tree(template_root, true)
 	cached_data["bounds"] = _combined_batched_mesh_aabb(template_root)
 	var parts: Array[Dictionary] = []
 	_collect_batched_mesh_parts(template_root, template_root, parts)

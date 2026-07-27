@@ -34,12 +34,16 @@ func _ensure_materials() -> void:
 	_stone_mat = StandardMaterial3D.new()
 	_stone_mat.albedo_color = Color(0.22, 0.20, 0.18)
 	_stone_mat.roughness = 0.95
+	_stone_mat.metallic = 0.0
+	_stone_mat.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	_rune_mat = StandardMaterial3D.new()
 	_rune_mat.albedo_color = Color(0.0, 0.8, 0.6)
 	_rune_mat.emission_enabled = true
 	_rune_mat.emission = Color(0.0, 0.5, 0.4)
 	_rune_mat.emission_energy_multiplier = 2.2
-	_rune_mat.roughness = 0.4
+	_rune_mat.roughness = 0.85
+	_rune_mat.metallic = 0.0
+	_rune_mat.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 
 
 func _box(node_name: String, size: Vector3, pos: Vector3, mat: Material) -> MeshInstance3D:
@@ -79,6 +83,7 @@ func _build_visual() -> void:
 	light.position = Vector3(0, 1.5, 0)
 	light.light_color = Color(0.0, 0.8, 0.6)
 	light.light_energy = 2.4
+	light.light_specular = 0.0
 	light.omni_range = 9.0
 	light.omni_attenuation = 1.2
 	add_child(light)

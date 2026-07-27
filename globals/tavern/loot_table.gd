@@ -149,6 +149,26 @@ func _pick_tier_index_for_zone(zone: int, max_tiers: int) -> int:
 			return i
 	return 0
 
+## Legacy/default tier roll used by standalone loot-table callers and tests.
+## Zone-aware callers must use _pick_tier_index_for_zone so early zones cannot
+## produce tiers that have not been unlocked yet.
+func _pick_tier_index(max_tiers: int) -> int:
+	if max_tiers <= 0:
+		return 0
+	var limit := mini(max_tiers, 3)
+	var total := 0.0
+	for i in range(limit):
+		total += float(TIER_WEIGHTS.get(i, 0.0))
+	if total <= 0.0:
+		return 0
+	var roll := randf() * total
+	var cumulative := 0.0
+	for i in range(limit):
+		cumulative += float(TIER_WEIGHTS.get(i, 0.0))
+		if roll <= cumulative:
+			return i
+	return limit - 1
+
 # ============================================================================
 # 材料掉落
 # ============================================================================
@@ -201,7 +221,7 @@ class LootDrop:
 func generate_loot(zone: int) -> LootDrop:
 	var drop := LootDrop.new()
 	if randf() < WEAPON_DROP_CHANCE:
-		drop.weapon = roll_weapon()
+		drop.weapon = roll_weapon(zone)
 	drop.materials = roll_materials(zone)
 	if randf() < RUNE_DROP_CHANCE_CHEST:
 		var rune := roll_rune("chest")
@@ -217,13 +237,7 @@ func roll_rune(source: String = "chest") -> Dictionary:
 # ============================================================================
 
 func _get_weapon_registry() -> Node:
-	var tree := get_tree()
-	if tree == null:
-		return null
-	return tree.root.get_node_or_null("WeaponRegistry")
+	return Service.weapon_registry()
 
 func _get_affix_system() -> Node:
-	var tree := get_tree()
-	if tree == null:
-		return null
-	return tree.root.get_node_or_null("AffixSystem")
+	return Service.affix_system()

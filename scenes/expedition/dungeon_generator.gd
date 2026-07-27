@@ -13,6 +13,8 @@ extends RefCounted
 const ISAAC_PATH := "res://scenes/expedition/isaac_room_dungeon_generator.gd"
 const BSP_PATH := "res://scenes/expedition/bsp_generator.gd"
 const WFC_PATH := "res://scenes/expedition/wfc_generator.gd"
+const LAYOUT_QUALITY := preload("res://scenes/expedition/dungeon_layout_quality.gd")
+const MAX_QUALITY_ATTEMPTS := 4
 
 ## 按配置生成地牢布局。失败时返回空 DungeonLayout（is_empty()==true）。
 ## 不抛异常；调用方应检查 layout.is_empty() 与 layout.validate()。
@@ -34,23 +36,44 @@ func generate(config: DungeonGenerationConfig) -> DungeonLayout:
 
 # ── isaac 包装 ──────────────────────────────────────────────
 func _generate_with_isaac(config: DungeonGenerationConfig) -> DungeonLayout:
-	var gen: Node = load(ISAAC_PATH).new()
-	# 阶段 9 条 6：注入可控 RandomNumberGenerator，使 isaac 生成可复现。
-	# config.seed=0 表示随机选种子——但 layout.seed 仍记实际值供追溯。
-	var rng := RandomNumberGenerator.new()
+	var seed_source := RandomNumberGenerator.new()
 	if config.seed != 0:
-		rng.seed = config.seed
+		seed_source.seed = config.seed
+	else:
+		seed_source.randomize()
+	var base_seed: int = seed_source.seed
+	var best_layout: DungeonLayout = null
+	var best_score := -1.0
+	for attempt in range(MAX_QUALITY_ATTEMPTS):
+		var attempt_seed := base_seed + attempt * 104729
+		var layout := _build_isaac_layout(config, attempt_seed)
+		var quality := LAYOUT_QUALITY.evaluate(layout)
+		layout.quality_report = quality
+		layout.generation_attempt = attempt + 1
+		var score := _quality_score(quality)
+		if best_layout == null or score > best_score:
+			best_layout = layout
+			best_score = score
+		if bool(quality["valid"]):
+			return layout
+	push_warning("[DungeonGenerator] quality gate exhausted; using best layout score=%.3f report=%s" % [best_score, best_layout.quality_report])
+	return best_layout
+
+func _build_isaac_layout(config: DungeonGenerationConfig, generation_seed: int) -> DungeonLayout:
+	var gen: Node = load(ISAAC_PATH).new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = generation_seed
 	gen.set_rng(rng)
 	var grid: Array = gen.generate_dungeon(config.width, config.height, config.target_room_count)
 	var layout := DungeonLayout.new()
-	layout.seed = rng.seed  # 记实际种子（config.seed=0 时 rng 随机选了某值）
+	layout.seed = config.seed if config.seed != 0 else generation_seed
 	layout.zone = config.zone
 	layout.tile_size = config.tile_size
 	layout.width = config.width
 	layout.height = config.height
 	layout.algorithm = "isaac"
 	layout.grid = grid
-	layout.heights = (gen.ceiling_heights).duplicate(true)
+	layout.heights = DungeonGenerationConfig.normalize_height_grid(gen.ceiling_heights)
 	layout.rooms = (gen.rooms).duplicate()
 	layout.room_roles = {}
 	for k in gen.room_roles.keys():
@@ -63,6 +86,16 @@ func _generate_with_isaac(config: DungeonGenerationConfig) -> DungeonLayout:
 	layout.reward_cell = _derive_role_center_cell(layout, "reward")
 	gen.free()
 	return layout
+
+func _quality_score(report: Dictionary) -> float:
+	return clampf(
+		float(report.get("walkable_ratio", 0.0)) * 1.5
+		+ float(report.get("reachable_ratio", 0.0))
+		+ minf(float(report.get("main_path_cells", 0)) / 30.0, 1.0)
+		+ minf(float(report.get("room_count", 0)) / 18.0, 1.0) * 0.5,
+		0.0,
+		4.0
+	)
 
 # ── bsp 包装（bsp 无 room_roles，关键点全 (-1,-1)，由 connectivity validator 报告）────
 func _generate_with_bsp(config: DungeonGenerationConfig) -> DungeonLayout:
@@ -81,7 +114,7 @@ func _generate_with_bsp(config: DungeonGenerationConfig) -> DungeonLayout:
 	layout.grid = grid
 	layout.heights = []
 	if gen.get("ceiling_heights") != null:
-		layout.heights = (gen.get("ceiling_heights")).duplicate(true)
+		layout.heights = DungeonGenerationConfig.normalize_height_grid(gen.get("ceiling_heights"))
 	layout.rooms = []
 	if gen.get("rooms") != null:
 		for r in gen.get("rooms"):

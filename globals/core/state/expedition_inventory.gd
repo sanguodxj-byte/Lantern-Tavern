@@ -81,7 +81,21 @@ func add_equipment_instance(data: WeaponData) -> bool:
 
 func get_equipment_instance(equipment_id: String) -> WeaponData:
 	var instances: Array = equipment_instances.get(equipment_id, [])
-	return instances[0] as WeaponData if not instances.is_empty() else null
+	if instances.is_empty():
+		return null
+	var data := instances[0] as WeaponData
+	return data.duplicate() as WeaponData if data != null else null
+
+## Remove and return the oldest rolled equipment instance as one operation.
+## Legacy id-only entries intentionally return null without removing anything;
+## callers can then resolve the id from WeaponRegistry without losing the item.
+func remove_equipment_instance(equipment_id: String) -> WeaponData:
+	var data := get_equipment_instance(equipment_id)
+	if data == null:
+		return null
+	if not remove_equipment(equipment_id, 1):
+		return null
+	return data
 
 func remove_equipment(equipment_id: String, amount: int = 1) -> bool:
 	if equipment_id.is_empty() or amount <= 0:

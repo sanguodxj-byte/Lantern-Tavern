@@ -5,8 +5,39 @@ const DEFAULT_WEAPON_ICON := "res://assets/textures/icons/icon-weapon.png"
 const DEFAULT_SHIELD_ICON := "res://assets/textures/icons/icon-shield.png"
 const RUNE_ICON_DIR := "res://assets/textures/icons/runes"
 const MATERIAL_ICON_DIR := "res://assets/textures/icons/materials"
+const PIXEL_THEME := preload("res://scenes/ui/lantern_theme.tres")
 const RD := preload("res://globals/combat/rune_data.gd")
 const BD := preload("res://globals/tavern/brewing_data.gd")
+const ZH_FALLBACKS := {
+	"Damage %d-%d": "伤害 %d-%d",
+	"Reach %.1fm": "距离 %.1f米",
+	"Crit %+0.1f%%": "暴击 %+0.1f%%",
+	"Crit Dmg %+0.0f%%": "暴击伤害 %+0.0f%%",
+	"Armor Pierce %+0.0f%%": "护甲穿透 %+0.0f%%",
+	"Knockback %+.1fm": "击退 %+.1f米",
+	"Stun %+.2fs": "眩晕 %+.2f秒",
+	"Phys Def %+d": "物防 %+d",
+	"Move Spd %+.0f%%": "移速 %+.0f%%",
+	"Shield Def %+d": "盾防 %+d",
+	"Carry Weight %+.0f%%": "负重 %+0.0f%%",
+	"Carry Capacity %+d": "携带容量 %+d",
+	"Durability %d/%d": "耐久 %d/%d",
+	"Qty x%d": "数量 x%d",
+	"Flavor: %s": "风味：%s",
+	"Rarity %s": "稀有度 %s",
+	"Weapon": "武器",
+	"Shield": "盾牌",
+	"Light Armor": "轻甲",
+	"Heavy Armor": "重甲",
+	"Accessory": "饰品",
+	"Movable Object": "可搬动物件",
+	"Material": "材料",
+	"Rune": "符文",
+	"A handheld weapon, configurable to any hand slot.": "手持装备，可配置到任意手持槽。",
+	"A shield shares the off-hand slot with weapons; switch via scroll wheel.": "盾牌与武器共用手持槽，可通过滚轮切换。",
+	"Armor participates in hit defense and may be damaged on extraction failure.": "防具参与受击防御，并可能在撤离失败时损坏。",
+	"Broken": "已损坏",
+}
 
 ## 详情悬浮窗相对物体屏幕坐标的偏移：正 X = 物体右侧，负 Y = 垂直居中略偏上。
 ## 与交互提示 HINT_OFFSET 一致，使弹窗"取代"交互提示在物体右侧的位置。
@@ -24,8 +55,13 @@ func _build_ui() -> void:
 	if _title_label != null:
 		return
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	theme = PIXEL_THEME
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	visible = false
 	z_index = 200
+	set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	custom_minimum_size = Vector2(260, 0)
 	var margin: MarginContainer = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 12)
@@ -42,15 +78,16 @@ func _build_ui() -> void:
 	text_box.add_theme_constant_override("separation", 4)
 	root.add_child(text_box)
 	_title_label = Label.new()
+	_title_label.add_theme_font_override("font", PIXEL_THEME.get_default_font())
 	_title_label.add_theme_font_size_override("font_size", 22)
-	_title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text_box.add_child(_title_label)
 	_category_label = Label.new()
+	_category_label.add_theme_font_override("font", PIXEL_THEME.get_default_font())
 	_category_label.add_theme_font_size_override("font_size", 15)
 	_category_label.add_theme_color_override("font_color", Color(0.95, 0.72, 0.35))
-	_category_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text_box.add_child(_category_label)
 	_body_label = Label.new()
+	_body_label.add_theme_font_override("font", PIXEL_THEME.get_default_font())
 	_body_label.custom_minimum_size = Vector2(236, 0)
 	_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text_box.add_child(_body_label)
@@ -70,10 +107,13 @@ func show_detail(detail: Dictionary, screen_position: Vector2 = Vector2.ZERO) ->
 	_body_label.text = _format_body(detail)
 	visible = true
 	reset_size()
+	var minimum_size := get_combined_minimum_size()
+	size = Vector2(maxf(260.0, minimum_size.x), minimum_size.y)
 	_position_near(screen_position)
 
 func hide_detail() -> void:
 	visible = false
+	modulate.a = 1.0
 
 func show_for_equipment_id(equipment_id: String, screen_position: Vector2 = Vector2.ZERO) -> void:
 	show_detail(detail_for_equipment_id(equipment_id), screen_position)
@@ -407,4 +447,9 @@ static func _read_bool(source, field: String, fallback: bool = false) -> bool:
 	return fallback
 
 static func _tr(message: String) -> String:
-	return TranslationServer.translate(message)
+	var translated := TranslationServer.translate(message)
+	if translated != message:
+		return translated
+	if TranslationServer.get_locale().begins_with("zh") and ZH_FALLBACKS.has(message):
+		return String(ZH_FALLBACKS[message])
+	return message

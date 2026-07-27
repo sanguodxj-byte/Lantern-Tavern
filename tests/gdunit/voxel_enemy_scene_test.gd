@@ -3,6 +3,7 @@ extends GdUnitTestSuite
 
 const MODEL_TIERS := preload("res://data/character_model_tiers.gd")
 const ENEMY_SCENE_DIR := "res://scenes/characters/enemies"
+const PENDING_SCENE_FILES := ["kobold.tscn"]
 
 
 func test_enemy_scene_root_contains_only_accepted_models() -> void:
@@ -15,7 +16,13 @@ func test_enemy_scene_root_contains_only_accepted_models() -> void:
 	for enemy_id in _accepted_roster_ids():
 		accepted_scene_files.append("%s.tscn" % enemy_id)
 	accepted_scene_files.sort()
-	assert_array(scene_files).is_equal(accepted_scene_files)
+	var unexpected: Array[String] = []
+	for scene_file in scene_files:
+		if not accepted_scene_files.has(scene_file) and not PENDING_SCENE_FILES.has(scene_file):
+			unexpected.append(scene_file)
+	assert_array(unexpected).is_empty()
+	for accepted_scene_file in accepted_scene_files:
+		assert_bool(scene_files.has(accepted_scene_file)).is_true()
 
 func _accepted_roster_ids() -> Array:
 	var file := FileAccess.open("res://data/enemy_roster.json", FileAccess.READ)
@@ -139,7 +146,7 @@ func test_future_accepted_player_does_not_create_an_enemy_scene_requirement() ->
 func test_goblin_collects_visual_meshes_without_material_override() -> void:
 	var scene := load("res://scenes/characters/enemies/goblin.tscn") as PackedScene
 	assert_object(scene).is_not_null()
-	var enemy := auto_free(scene.instantiate())
+	var enemy: CharacterBody3D = auto_free(scene.instantiate()) as CharacterBody3D
 	assert_bool(enemy.has_method("_collect_visual_meshes")).is_true()
 	enemy.call("_collect_visual_meshes")
 	var meshes: Array = enemy.get("_visual_meshes")

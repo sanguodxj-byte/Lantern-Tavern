@@ -57,7 +57,7 @@ func _physics_process(delta: float) -> void:
 	if is_zero_approx(interp_speed):
 		global_position = target_position
 	else:
-		var t := min(1.0, interp_speed * delta)
+		var t: float = minf(1.0, interp_speed * delta)
 		global_position = global_position.lerp(target_position, t)
 
 func _refresh_hp() -> void:

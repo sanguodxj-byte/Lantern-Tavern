@@ -146,7 +146,8 @@ func _on_event(event: Dictionary) -> void:
 				_apply_extraction_settlement(event.get("settlement", {}))
 
 ## 客户端收到：把某 peer 的权威快照应用到本地 avatar（插值由 avatar 自身完成）。
-@rpc("authority", "call_remote", "reliable")
+## 性能优化：位置快照走 unreliable 通道——丢包可容忍（下一帧自动补上），减少延迟。
+@rpc("authority", "call_remote", "unreliable")
 func rpc_snapshot(peer_id: int, position: Vector3, yaw: float) -> void:
 	if _is_server():
 		return

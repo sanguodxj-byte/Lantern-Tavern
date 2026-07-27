@@ -136,13 +136,20 @@ func test_check_for_selection_clears_stale_reference() -> void:
 
 func test_check_for_selection_filters_freed_collider() -> void:
 	# 回归测试：拾取后 queue_free 的物体可能仍被射线报告一帧，
-	# check_for_selection 必须用 is_instance_valid 过滤已释放的 collider，
+	# check_for_selection 必须经 _get_valid_select_collider() 过滤已释放的 collider，
 	# 否则会重新瞄准已释放物体并持续发射 detail 信号，导致悬浮窗不消失。
+	# 重构后 is_instance_valid 过滤收口到 _get_valid_select_collider()，check_for_selection 不得直接 get_collider()。
 	var script = load("res://scenes/characters/player/player.gd") as GDScript
 	var source: String = script.source_code
-	# check_for_selection 中应在 collider is PickableItem 前检查 is_instance_valid
-	assert_bool(source.contains("is_instance_valid(collider) and collider is PickableItem")) \
-		.override_failure_message("check_for_selection 必须在 collider is PickableItem 前检查 is_instance_valid(collider)").is_true()
+	var fn_start := source.find("func check_for_selection")
+	assert_int(fn_start).is_greater(0)
+	var fn_end := source.find("\nfunc ", fn_start + 1)
+	var fn_body := source.substr(fn_start, fn_end - fn_start)
+	# 必须调用 _get_valid_select_collider()（内部含 is_instance_valid 过滤），不得直接 get_collider()
+	assert_bool(fn_body.contains("_get_valid_select_collider()")) \
+		.override_failure_message("check_for_selection 必须经 _get_valid_select_collider() 过滤已释放 collider").is_true()
+	assert_bool(not fn_body.contains("select_raycast.get_collider()")) \
+		.override_failure_message("check_for_selection 不得直接调用 select_raycast.get_collider()，应统一走 _get_valid_select_collider()").is_true()
 
 
 func test_check_for_selection_validates_focused_item_before_emit() -> void:
@@ -158,37 +165,53 @@ func test_check_for_possible_action_filters_freed_collider_first_pass() -> void:
 	# 回归测试：check_for_possible_action 首次扫描必须过滤已释放的 collider，
 	# 否则 freed_obj == _last_possible_action_collider 导致 collider_changed=false，
 	# 提前返回不发射空 hint 信号，拾取提示悬浮窗不消失。
+	# 重构后 is_instance_valid 过滤收口到 _get_valid_select_collider()，不得直接 get_collider()。
 	var script = load("res://scenes/characters/player/player.gd") as GDScript
 	var source: String = script.source_code
-	# 首次扫描应使用 is_instance_valid 过滤
 	var fn_start := source.find("func check_for_possible_action")
-	var fn_body := source.substr(fn_start, 1200)
-	assert_bool(fn_body.contains("is_instance_valid(sel_collider)")) \
-		.override_failure_message("check_for_possible_action 首次扫描必须用 is_instance_valid 过滤 select_raycast collider").is_true()
+	assert_int(fn_start).is_greater(0)
+	var fn_end := source.find("\nfunc ", fn_start + 1)
+	var fn_body := source.substr(fn_start, fn_end - fn_start)
+	# 首次扫描必须经 _get_valid_select_collider()（内部含 is_instance_valid 过滤）
+	assert_bool(fn_body.contains("_get_valid_select_collider()")) \
+		.override_failure_message("check_for_possible_action 首次扫描必须经 _get_valid_select_collider() 过滤 select_raycast collider").is_true()
+	# select_raycast 路径不得直接 get_collider（kick_raycast 路径允许，因为 Door 专用）
+	var select_get_collider_count: int = fn_body.count("select_raycast.get_collider()")
+	assert_int(select_get_collider_count).is_equal(0) \
+		.override_failure_message("check_for_possible_action 不得对 select_raycast 直接调用 get_collider()，应统一走 _get_valid_select_collider()")
 
 
 func test_check_for_possible_action_filters_freed_collider_second_pass() -> void:
 	# 回归测试：check_for_possible_action 第二次扫描（构建 hint 字符串时）也必须过滤已释放的 collider，
 	# 否则会对已释放物体调用 get_item_name() 等方法。
+	# 重构后两次扫描均经 _get_valid_select_collider()，函数内应至少调用两次。
 	var script = load("res://scenes/characters/player/player.gd") as GDScript
 	var source: String = script.source_code
 	var fn_start := source.find("func check_for_possible_action")
-	var fn_body := source.substr(fn_start, 2000)
-	# 第二次扫描应在 get_collider 后检查 is_instance_valid
-	assert_bool(fn_body.contains("not is_instance_valid(current_collider)")) \
-		.override_failure_message("check_for_possible_action 第二次扫描必须过滤已释放的 current_collider").is_true()
+	assert_int(fn_start).is_greater(0)
+	var fn_end := source.find("\nfunc ", fn_start + 1)
+	var fn_body := source.substr(fn_start, fn_end - fn_start)
+	# 第二次扫描也必须经 _get_valid_select_collider()：函数内至少调用两次
+	var helper_count: int = fn_body.count("_get_valid_select_collider()")
+	assert_int(helper_count).is_greater_equal(2) \
+		.override_failure_message("check_for_possible_action 两次扫描均须经 _get_valid_select_collider() 过滤，当前仅 %d 次" % helper_count)
 
 
 func test_check_for_possible_action_kick_door_filters_freed() -> void:
 	# 回归测试：kick_raycast 路径也必须过滤已释放的 collider
+	# 优化后 kick_raycast collider 统一命名为 kick_collider（与 select_collider/current_collider 一致），
+	# 不再有独立的 kick_door 变量别名。核心安全要求不变：is_instance_valid 必须在解引用前过滤。
 	var script = load("res://scenes/characters/player/player.gd") as GDScript
 	var source: String = script.source_code
 	var fn_start := source.find("func check_for_possible_action")
-	var fn_body := source.substr(fn_start, 2500)
-	assert_bool(fn_body.contains("is_instance_valid(kick_door)")) \
-		.override_failure_message("check_for_possible_action kick_raycast 路径必须用 is_instance_valid 过滤 kick_door").is_true()
+	var fn_end := source.find("\nfunc ", fn_start + 1)
+	var fn_body := source.substr(fn_start, fn_end - fn_start)
+	# kick_raycast 路径必须用 is_instance_valid 过滤 kick_collider（优化后唯一变量名）
 	assert_bool(fn_body.contains("is_instance_valid(kick_collider)")) \
-		.override_failure_message("check_for_possible_action 首次扫描 kick_raycast 路径必须用 is_instance_valid 过滤 kick_collider").is_true()
+		.override_failure_message("check_for_possible_action kick_raycast 路径必须用 is_instance_valid 过滤 kick_collider").is_true()
+	# 不得残留未过滤的裸 kick_raycast.get_collider() is Door 模式
+	assert_bool(not fn_body.contains("kick_raycast.get_collider() is Door")) \
+		.override_failure_message("check_for_possible_action 不得在条件中直接 kick_raycast.get_collider() is Door（需先 is_instance_valid 过滤）").is_true()
 
 
 func test_check_for_possible_action_no_raw_get_collider_is_door() -> void:
@@ -243,13 +266,34 @@ func test_expedition_hud_add_material_routes_to_game_state_backpack() -> void:
 		.override_failure_message("ExpeditionHUD 不应直接写入 TavernManager 仓库").is_false()
 
 
+## 回归：地牢生产链必须生成可拾取材料物品。
+## 阶段 9 重构后 pickable 物品生成拆为三段流水线，旧的单体 _spawn_random_material 已退役：
+##   1. ProceduralDungeon._ready 调 DungeonSpawnPlanner.plan_item_spawns(layout) 填 layout.item_spawn_specs
+##   2. DungeonRuntime.spawn_items() 调 ItemSpawner.spawn_items_from_layout(layout, spawn_root)
+##   3. ItemSpawner 用 PICKABLE_ITEM_PREFAB 实例化 pickable_item.tscn 并挂到场景
+## 本测试断言三段接线均存在，防止任一环节被误删导致地牢不再产出材料。
 func test_procedural_dungeon_spawns_pickable_items() -> void:
+	# 1. ProceduralDungeon 必须调 plan_item_spawns 规划掉落 spec
 	var dg_script = load("res://scenes/expedition/procedural_dungeon.gd") as GDScript
-	var source = dg_script.source_code
-	assert_bool(source.contains("PICKABLE_ITEM_PREFAB")) \
-		.override_failure_message("地牢未引用 PickableItem 预制体").is_true()
-	assert_bool(source.contains("_spawn_random_material")) \
-		.override_failure_message("地牢缺少 _spawn_random_material()").is_true()
+	var dg_source: String = dg_script.source_code
+	assert_bool(dg_source.contains("plan_item_spawns")) \
+		.override_failure_message("ProceduralDungeon 必须调 DungeonSpawnPlanner.plan_item_spawns 规划物品掉落").is_true()
+
+	# 2. DungeonRuntime 必须调 ItemSpawner.spawn_items_from_layout 实例化物品
+	var rt_script = load("res://scenes/expedition/dungeon_runtime.gd") as GDScript
+	var rt_source: String = rt_script.source_code
+	assert_bool(rt_source.contains("spawn_items_from_layout")) \
+		.override_failure_message("DungeonRuntime 必须调 ItemSpawner.spawn_items_from_layout 实例化物品").is_true()
+
+	# 3. ItemSpawner 必须引用 PickableItem 预制体并提供按 layout 实例化的入口
+	var spawner_script = load("res://globals/equipment/item_spawner.gd") as GDScript
+	var spawner_source: String = spawner_script.source_code
+	assert_bool(spawner_source.contains("PICKABLE_ITEM_PREFAB")) \
+		.override_failure_message("ItemSpawner 未引用 PickableItem 预制体").is_true()
+	assert_bool(spawner_source.contains("func spawn_items_from_layout")) \
+		.override_failure_message("ItemSpawner 缺少 spawn_items_from_layout() 入口").is_true()
+	assert_bool(spawner_source.contains("layout.item_spawn_specs")) \
+		.override_failure_message("ItemSpawner 必须消费 layout.item_spawn_specs 实例化物品").is_true()
 
 
 func _collect_lights(root: Node) -> Array[Light3D]:

@@ -21,6 +21,7 @@ const PLACEMENT_DATA := preload("res://data/item_placement_data.gd")
 const TAGS := preload("res://data/item_tags.gd")
 const MATERIAL_MODELS := preload("res://data/material_model_registry.gd")
 const MATERIAL_SURPLUS_OVER_ENEMIES := 5
+const DECOR_VISIBILITY_RANGE_END := 60.0
 const DECOR_CONFIG_FALLBACK: Dictionary = {
 	"res://scenes/props/decor/bones.tscn": 20,
 	"res://scenes/props/decor/lit_candles.tscn": 15,
@@ -350,6 +351,8 @@ func _spawn_item_internal(tag: String, pos: Vector3, parent: Node, zone: int) ->
 
 	# 按物理模式设置碰撞
 	_setup_physics(instance, cfg.physics_mode)
+	if tag == TAGS.MATERIAL or tag == TAGS.DECOR:
+		_apply_distance_culling(instance)
 
 	# 注入标签元数据
 	_set_tag_meta(instance, tag, cfg, zone)
@@ -540,6 +543,7 @@ func _spawn_material_instance(mat_id: String, pos: Vector3, parent: Node, zone: 
 	item.set_meta("material_location_preference", MATERIAL_MODELS.get_location_preference(mat_id))
 	item.set_meta("material_align_to_wall", MATERIAL_MODELS.should_align_to_wall(mat_id))
 	item.set_meta("material_wall_direction", wall_direction)
+	_apply_distance_culling(item)
 	_notify_streamed_physics_parent(item, parent)
 	return item
 
@@ -588,6 +592,7 @@ func _spawn_decor_fallback(pos: Vector3, parent: Node) -> Node:
 	parent.add_child(instance)
 	# 装饰物补全碰撞
 	_ensure_scene_object_collision(instance)
+	_apply_distance_culling(instance)
 	_notify_streamed_physics_parent(instance, parent)
 	return instance
 
@@ -637,6 +642,16 @@ func _spawn_batched_static_scene(scene_path: String, pos: Vector3, parent: Node)
 func _notify_streamed_physics_parent(instance: Node, parent: Node) -> void:
 	if parent != null and parent.has_method("register_streamed_physics_node"):
 		parent.register_streamed_physics_node(instance)
+
+func _apply_distance_culling(node: Node, range_end: float = DECOR_VISIBILITY_RANGE_END) -> void:
+	if node == null or not (node is Node3D):
+		return
+	for child in node.find_children("*", "GeometryInstance3D", true, false):
+		var geometry := child as GeometryInstance3D
+		if geometry == null:
+			continue
+		geometry.visibility_range_end = range_end
+		geometry.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 
 # ============================================================================
 # 碰撞工具

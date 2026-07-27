@@ -428,6 +428,75 @@ func test_spawn_unknown_id_returns_null() -> void:
 
 
 # ============================================================================
+# 9. 投射物视觉延迟显示测试（修复：弓射击灰屏闪屏）
+# ============================================================================
+
+func test_projectile_entity_has_visual_spawn_delay_constant() -> void:
+	var source := (load("res://scenes/equipment/projectile_entity.gd") as GDScript).source_code
+	assert_bool(source.contains("VISUAL_SPAWN_DELAY")) \
+		.override_failure_message("ProjectileEntity 应有 VISUAL_SPAWN_DELAY 常量").is_true()
+
+func test_projectile_entity_has_defer_visual_visibility_method() -> void:
+	var source := (load("res://scenes/equipment/projectile_entity.gd") as GDScript).source_code
+	assert_bool(source.contains("func _defer_visual_visibility")) \
+		.override_failure_message("ProjectileEntity 应有 _defer_visual_visibility 方法").is_true()
+
+func test_projectile_entity_has_process_based_visual_delay() -> void:
+	var source := (load("res://scenes/equipment/projectile_entity.gd") as GDScript).source_code
+	assert_bool(source.contains("func _process")) \
+		.override_failure_message("ProjectileEntity 应有 _process 方法用于延迟恢复视觉").is_true()
+	assert_bool(source.contains("_visual_delay_remaining")) \
+		.override_failure_message("应有 _visual_delay_remaining 延迟计数器").is_true()
+
+func test_spawned_projectile_visual_starts_hidden() -> void:
+	# 投射物生成后首帧视觉应隐藏，避免箭尾贴脸铺满屏幕形成灰屏
+	var ps: Node = Service.projectile_service()
+	var source := _make_dummy_node3d()
+	var spawn_transform := Transform3D.IDENTITY
+	spawn_transform.origin = Vector3(0, 1, 0)
+	spawn_transform = spawn_transform.looking_at(Vector3(0, 1, -5), Vector3.UP)
+	var weapon := _make_weapon_with_class("longbow", "ranged")
+	var projectile: Node = ps.spawn("arrow", spawn_transform, source, weapon, {})
+	# 立即捕获 visible 状态，避免中间断言可能触发的帧处理改变状态
+	var visual_root: Node3D = projectile.get("visual_root") if projectile != null else null
+	var starts_hidden: bool = visual_root != null and not visual_root.visible
+	assert_bool(starts_hidden).is_true() \
+		.override_failure_message("投射物生成后首帧视觉应隐藏（visible=false）").is_true()
+	if projectile != null:
+		projectile.queue_free()
+	source.queue_free()
+
+func test_spawned_projectile_visual_becomes_visible_after_delay() -> void:
+	# 延迟后视觉应恢复显示
+	var ps: Node = Service.projectile_service()
+	var source := _make_dummy_node3d()
+	var spawn_transform := Transform3D.IDENTITY
+	spawn_transform.origin = Vector3(0, 1, 0)
+	spawn_transform = spawn_transform.looking_at(Vector3(0, 1, -5), Vector3.UP)
+	var weapon := _make_weapon_with_class("longbow", "ranged")
+	var projectile: Node = ps.spawn("arrow", spawn_transform, source, weapon, {})
+	assert_object(projectile).is_not_null()
+	var visual_root: Node3D = projectile.get("visual_root")
+	assert_object(visual_root).is_not_null()
+	# 等待延迟过后（VISUAL_SPAWN_DELAY=0.05s，等待 0.2s 确保超时）
+	await get_tree().create_timer(0.2).timeout
+	assert_bool(visual_root.visible).is_true() \
+		.override_failure_message("延迟后投射物视觉应恢复显示（visible=true）").is_true()
+	projectile.queue_free()
+	source.queue_free()
+
+func test_projectile_visual_uses_process_based_delay() -> void:
+	# 验证使用 _process 追踪延迟而非 create_timer，避免测试环境中帧间 delta 过大导致计时器提前触发
+	var source := (load("res://scenes/equipment/projectile_entity.gd") as GDScript).source_code
+	assert_bool(source.contains("_visual_delay_remaining")) \
+		.override_failure_message("应有 _visual_delay_remaining 延迟计数器").is_true()
+	assert_bool(source.contains("set_process(true)")) \
+		.override_failure_message("_defer_visual_visibility 应启用 _process").is_true()
+	assert_bool(source.contains("_visual_delay_remaining -= delta")) \
+		.override_failure_message("_process 应递减延迟计数器").is_true()
+
+
+# ============================================================================
 # 辅助函数
 # ============================================================================
 

@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://du4iytvqujxe7"]
 
 [ext_resource type="Script" uid="uid://g64lpuyecptu" path="res://scenes/world/world.gd" id="1_6m72w"]
+[ext_resource type="Script" path="res://scenes/world/pixel_view.gd" id="1_pixv"]
 [ext_resource type="PackedScene" uid="uid://37tccejpw454" path="res://scenes/ui/ui.tscn" id="2_sl2e5"]
 [ext_resource type="PackedScene" path="res://scenes/ui/combat_hud.tscn" id="3_chud"]
 
@@ -34,6 +35,12 @@ light_color = Color(0.7, 0.7, 0.75, 1)
 light_energy = 0.08
 light_angular_distance = 0.5
 shadow_enabled = true
+
+[node name="PixelView" type="SubViewportContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_pixv")
 
 [node name="UI" parent="." unique_id=123153430 instance=ExtResource("2_sl2e5")]
 

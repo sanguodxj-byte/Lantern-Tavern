@@ -15,7 +15,13 @@ const REACH_SCALE := 0.7
 ## 创建/复用攻击 hitbox。
 ## hitbox 始终挂在 owner（角色 CharacterBody3D）上，确保 Z 轴 = 角色前方（-Z），
 ## 不跟随武器骨骼旋转。武器网格（attach_to）仅用于查询 X/Y 尺寸参考。
-static func ensure_hitbox(owner: Node3D, attach_to: Node3D, fallback_reach: float, target_mask: int) -> Area3D:
+static func ensure_hitbox(
+	owner: Node3D,
+	attach_to: Node3D,
+	fallback_reach: float,
+	target_mask: int,
+	radius_mult: float = 1.0
+) -> Area3D:
 	# hitbox 始终挂在 owner 上，而非武器骨骼节点
 	var hitbox := owner.get_node_or_null(HITBOX_NAME) as Area3D
 	if hitbox == null:
@@ -32,7 +38,7 @@ static func ensure_hitbox(owner: Node3D, attach_to: Node3D, fallback_reach: floa
 		hitbox.reparent(owner)
 	hitbox.collision_layer = 0
 	hitbox.collision_mask = target_mask
-	_configure_shape(hitbox, owner, attach_to, fallback_reach)
+	_configure_shape(hitbox, owner, attach_to, fallback_reach, radius_mult)
 	return hitbox
 
 static func set_active(hitbox: Area3D, active: bool) -> void:
@@ -46,11 +52,17 @@ static func set_active(hitbox: Area3D, active: bool) -> void:
 ## 配置 hitbox 形状。
 ## hitbox 挂在 owner 上，Z 轴 = 角前方（-Z），从角色中心向前延伸 reach 距离。
 ## 武器网格 AABB 仅用于 X/Y 尺寸参考（取较大值），不再决定 Z 深度或位置。
-static func _configure_shape(hitbox: Area3D, owner: Node3D, weapon_model: Node3D, fallback_reach: float) -> void:
+static func _configure_shape(
+	hitbox: Area3D,
+	owner: Node3D,
+	weapon_model: Node3D,
+	fallback_reach: float,
+	radius_mult: float = 1.0
+) -> void:
 	var col := hitbox.get_node_or_null("CollisionShape3D") as CollisionShape3D
 	if col == null:
 		return
-	var reach := maxf(fallback_reach, 0.8)
+	var reach := maxf(fallback_reach, 0.8) * maxf(radius_mult, 1.0)
 	var shape := BoxShape3D.new()
 	# X/Y 宽高：默认值确保覆盖人体目标，武器网格仅作最小值参考
 	var width := HITBOX_DEFAULT_WIDTH
@@ -60,7 +72,7 @@ static func _configure_shape(hitbox: Area3D, owner: Node3D, weapon_model: Node3D
 		if aabb.size != Vector3.ZERO:
 			width = maxf(aabb.size.x, MIN_MODEL_HITBOX_SIZE.x)
 			height = maxf(aabb.size.y, MIN_MODEL_HITBOX_SIZE.y)
-	shape.size = Vector3(width, height, reach)
+	shape.size = Vector3(width * maxf(radius_mult, 1.0), height, reach)
 	# 位置：从角色胸部高度向前延伸 reach 距离
 	col.position = Vector3(0, HITBOX_CENTER_Y, -reach * 0.5)
 	col.shape = shape

@@ -288,6 +288,61 @@ func test_minimap_refresh_references_resets_fog_on_level_change() -> void:
 		.override_failure_message("_refresh_references 应在关卡失效时调用 reset_fog()").is_true()
 
 
+# ── CombatMinimap: 阶段 9 地形网格数据源（_grid 退役 → layout.grid）──────────
+# 继承 Node 以匹配 minimap._level: Node 的静态类型；模拟 ProceduralDungeon 的 layout 契约。
+class _MockProceduralLevel:
+	extends Node
+	var layout = null
+	func is_procedural() -> bool:
+		return true
+
+
+func test_minimap_cache_grid_data_reads_layout_grid() -> void:
+	var minimap := CombatMinimap.new()
+	add_child(minimap)
+	var mock_level := _MockProceduralLevel.new()
+	var mock_layout := DungeonLayout.new()
+	mock_layout.grid = [[1, 1, 0], [1, 0, 2]]
+	mock_layout.tile_size = 3.0
+	mock_level.layout = mock_layout
+	minimap._level = mock_level
+	minimap._cache_grid_data()
+	assert_bool(minimap._has_grid).is_true()
+	assert_int(minimap._cached_grid.size()).is_equal(2)
+	assert_int(minimap._cached_grid[0].size()).is_equal(3)
+	assert_float(minimap._grid_tile_size).is_equal(3.0)
+	# 偏移：gw=3, gh=2, tile=3 → ox=-(3*3)/2=-4.5, oz=-(2*3)/2=-3.0（与 layout.calc_player_spawn_pos 对齐）
+	assert_float(minimap._grid_offset.x).is_equal_approx(-4.5, 0.001)
+	assert_float(minimap._grid_offset.z).is_equal_approx(-3.0, 0.001)
+	minimap.queue_free()
+	mock_level.free()
+
+
+func test_minimap_cache_grid_data_null_layout_no_grid() -> void:
+	# 生成失败时 layout 为 null，不应误置 _has_grid
+	var minimap := CombatMinimap.new()
+	add_child(minimap)
+	var mock_level := _MockProceduralLevel.new()
+	mock_level.layout = null
+	minimap._level = mock_level
+	minimap._cache_grid_data()
+	assert_bool(minimap._has_grid).is_false()
+	minimap.queue_free()
+	mock_level.free()
+
+
+func test_minimap_no_longer_references_retired_grid_field() -> void:
+	# 阶段 9 回归：_level._grid / _level.TILE_SIZE 已退役，地形必须经 layout.grid 读取
+	var script: GDScript = load("res://scenes/ui/minimap.gd") as GDScript
+	var source := script.source_code
+	assert_bool(source.contains("layout.grid")) \
+		.override_failure_message("_cache_grid_data 应从 layout.grid 读取地形网格").is_true()
+	assert_bool(not source.contains("_level._grid")) \
+		.override_failure_message("minimap 不应引用已退役的 _level._grid 字段").is_true()
+	assert_bool(not source.contains("_level.TILE_SIZE")) \
+		.override_failure_message("minimap 不应引用已退役的 _level.TILE_SIZE").is_true()
+
+
 # ── EnemyHealthBar ───────────────────────────────────────
 
 func test_enemy_health_bar_set_target() -> void:

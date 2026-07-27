@@ -1,9 +1,11 @@
 extends Node
 class_name IsaacRoomDungeonGenerator
 
+const HEIGHT_CONFIG := preload("res://scenes/expedition/dungeon_generation_config.gd")
+
 const ROOM_SIZE := 5
 const ROOM_SPACING := 8
-const TARGET_ROOM_COUNT := 14
+const TARGET_ROOM_COUNT := 18
 const MACRO_RADIUS := 2
 const EXTRACTION_ROOM_PROBABILITY := 0.2
 const SHORTCUT_CONNECTOR_SIZE := 5
@@ -20,6 +22,7 @@ const GUARANTEED_ROOM_SHAPES := [
 ]
 const START_ROOM_SHAPES := ["wide", "tall", "alcove", "offset_chamber"]
 const ROOM_CONTENT_THEMES := ["empty", "loot", "resource", "pillars", "mixed", "stash", "ritual"]
+const BOSS_SET_PIECE_PATH := "res://data/set_pieces/boss_arena_simple.tres"
 
 var rooms: Array[Rect2i] = []
 var room_roles: Dictionary = {}
@@ -89,17 +92,37 @@ func generate_dungeon(width: int, height: int, target_room_count: int = TARGET_R
 	_start_macro = Vector2i.ZERO
 
 	var grid := _make_filled_grid(width, height, BSP_DungeonGenerator.TileType.WALL)
-	ceiling_heights = _make_height_grid(width, height, 3.4)
+	ceiling_heights = _make_height_grid(width, height, HEIGHT_CONFIG.MIN_CEILING_HEIGHT_METERS)
 	_generate_room_graph(clampi(target_room_count, 6, 18))
 	_start_macro = _pick_start_macro()
 	_build_room_defs()
 	_assign_room_roles()
 	_ensure_merged_room_connection_count(3)
 	_carve_rooms_and_corridors(grid)
+	_apply_boss_set_piece(grid)
 	_mark_special_room_cells(grid)
 	_ensure_walkable_connectivity(grid)
 	_lock_outer_walls(grid)
 	return grid
+
+func _apply_boss_set_piece(grid: Array) -> void:
+	if not room_roles.has("boss"):
+		return
+	var piece := load(BOSS_SET_PIECE_PATH) as SetPieceRoom
+	if piece == null or not piece.is_valid():
+		return
+	var boss_rect: Rect2i = room_roles["boss"]
+	for local_y in range(1, maxi(1, boss_rect.size.y - 1)):
+		for local_x in range(1, maxi(1, boss_rect.size.x - 1)):
+			var source_x := clampi(local_x, 0, (piece.tile_pattern[0] as Array).size() - 1)
+			var source_y := clampi(local_y, 0, piece.tile_pattern.size() - 1)
+			var value := int((piece.tile_pattern[source_y] as Array)[source_x])
+			if value == SetPieceRoom.TILE_ANY:
+				continue
+			if value == SetPieceRoom.TILE_PILLAR:
+				_set_cell(grid, boss_rect.position + Vector2i(local_x, local_y), BSP_DungeonGenerator.TileType.PILLAR)
+			elif value == SetPieceRoom.TILE_LOOT or value == SetPieceRoom.TILE_RESOURCE:
+				_set_cell(grid, boss_rect.position + Vector2i(local_x, local_y), value)
 
 
 func get_terminal_macro_rooms() -> Array[Vector2i]:
@@ -1031,7 +1054,7 @@ func _carve_shortcut_connection(grid: Array, from_macro: Vector2i, to_macro: Vec
 		)
 		_shortcut_connector_rects.append(connector_rect)
 		_carve_rect(grid, connector_rect, BSP_DungeonGenerator.TileType.FLOOR)
-		_apply_room_height(connector_rect, 3.2)
+		_apply_room_height(connector_rect, HEIGHT_CONFIG.MIN_CEILING_HEIGHT_METERS)
 
 
 func _carve_merged_room_connection(grid: Array, from_macro: Vector2i, to_macro: Vector2i) -> void:
@@ -1219,26 +1242,22 @@ func _rect_center(rect: Rect2i) -> Vector2i:
 
 
 func _apply_room_height(rect: Rect2i, height: float) -> void:
+	var normalized_height := HEIGHT_CONFIG.quantize_height(height)
 	for y in range(rect.position.y, rect.position.y + rect.size.y):
 		for x in range(rect.position.x, rect.position.x + rect.size.x):
 			if y >= 0 and y < ceiling_heights.size() and x >= 0 and x < ceiling_heights[y].size():
-				ceiling_heights[y][x] = height
+				ceiling_heights[y][x] = normalized_height
 
 
 func _height_for_room(macro: Vector2i, shape: String = "") -> float:
 	var dist: int = abs(macro.x) + abs(macro.y)
-	var shape_bonus := 0.0
-	if shape == "pillar_hall" or shape == "cross" or shape == "great_hall":
-		shape_bonus = 0.6
-	elif shape == "circle" or shape == "ellipse" or shape == "noise_cavern":
-		shape_bonus = 0.4
-	elif shape == "wide" or shape == "tall" or shape == "ring" or shape == "split_chamber":
-		shape_bonus = 0.25
+	# 房型继续影响平面轮廓；垂直方向只允许固定整数层，避免同一墙体被
+	# 形状小数加成切成不连续的台阶。
 	if dist >= 4:
-		return 4.6 + shape_bonus
+		return 5.0
 	if dist >= 2:
-		return 3.8 + shape_bonus
-	return 3.0 + shape_bonus
+		return 4.0
+	return 3.0
 
 
 func _make_filled_grid(width: int, height: int, cell_type: int) -> Array:
@@ -1253,10 +1272,11 @@ func _make_filled_grid(width: int, height: int, cell_type: int) -> Array:
 
 func _make_height_grid(width: int, height: int, value: float) -> Array:
 	var result: Array = []
+	var normalized_value := HEIGHT_CONFIG.quantize_height(value)
 	for y in range(height):
 		var row: Array = []
 		for x in range(width):
-			row.append(value)
+			row.append(normalized_value)
 		result.append(row)
 	return result
 

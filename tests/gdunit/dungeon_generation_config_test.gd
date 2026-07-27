@@ -13,8 +13,17 @@ func test_default_config_has_procedural_dungeon_defaults() -> void:
 	assert_float(cfg.ceiling_transition_gap).is_equal(0.015)
 	assert_vector(cfg.standard_door_size_meters).is_equal(Vector2(1.0, 2.0))
 	assert_vector(cfg.boss_door_size_meters).is_equal(Vector2(2.0, 2.0))
-	assert_int(cfg.target_room_count).is_equal(14)
+	assert_int(cfg.target_room_count).is_equal(18)
 	assert_str(cfg.algorithm).is_equal("isaac")
+	assert_float(cfg.ceiling_height_base).is_equal(3.0)
+
+func test_height_contract_quantizes_to_integer_meter_layers() -> void:
+	assert_float(DungeonGenerationConfig.quantize_height(2.4)).is_equal(3.0)
+	assert_float(DungeonGenerationConfig.quantize_height(3.4)).is_equal(3.0)
+	assert_float(DungeonGenerationConfig.quantize_height(3.8)).is_equal(4.0)
+	assert_float(DungeonGenerationConfig.quantize_height(4.6)).is_equal(5.0)
+	assert_bool(DungeonGenerationConfig.is_integer_height(5.0)).is_true()
+	assert_bool(DungeonGenerationConfig.is_integer_height(4.6)).is_false()
 
 func test_default_config_matches_procedural_dungeon_defaults_helper() -> void:
 	var cfg := DungeonLayout.new()  # 占位，避免 import 段
@@ -28,7 +37,7 @@ func test_default_for_zone_sets_zone_only() -> void:
 	var cfg := DungeonGenerationConfig.default_for_zone(3)
 	assert_int(cfg.zone).is_equal(3)
 	# 其余字段仍为默认
-	assert_int(cfg.target_room_count).is_equal(14)
+	assert_int(cfg.target_room_count).is_equal(18)
 
 func test_validate_rejects_zero_dimensions() -> void:
 	var cfg := DungeonGenerationConfig.new()
@@ -53,6 +62,12 @@ func test_validate_rejects_out_of_range_target_room_count() -> void:
 func test_validate_rejects_negative_extraction_probability() -> void:
 	var cfg := DungeonGenerationConfig.new()
 	cfg.isaac_params["extraction_room_probability"] = -0.5
+	var r := cfg.validate()
+	assert_bool(r["valid"]).is_false()
+
+func test_validate_rejects_door_width_that_breaks_tile_alignment() -> void:
+	var cfg := DungeonGenerationConfig.new()
+	cfg.standard_door_size_meters = Vector2(3.0, 2.0)
 	var r := cfg.validate()
 	assert_bool(r["valid"]).is_false()
 

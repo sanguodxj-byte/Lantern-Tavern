@@ -27,6 +27,15 @@ func test_make_terrain_mat_sets_shader() -> void:
 	var mat := TERRAIN_CFG.make_terrain_mat("FLOOR", Vector2(2, 2)) as ShaderMaterial
 	assert_object(mat.shader).is_not_null()
 
+func test_make_terrain_mat_uses_matte_non_metal_profile() -> void:
+	var mat := TERRAIN_CFG.make_terrain_mat("FLOOR", Vector2(2, 2)) as ShaderMaterial
+	var roughness: float = mat.get_shader_parameter("roughness")
+	var specular: float = mat.get_shader_parameter("specular")
+	assert_float(roughness) \
+		.override_failure_message("地牢环境材质粗糙度必须显式固定为哑光值").is_equal_approx(0.9, 0.001)
+	assert_float(specular) \
+		.override_failure_message("地牢环境材质必须显式关闭镜面参数").is_equal_approx(0.0, 0.001)
+
 # ── 黑地形回归防护（根因：make_terrain_mat 曾误设 base_texture/" atlas_offset"/"atlas_size"。
 # shader dungeon_terrain.gdshader 的真实 uniform 是 atlas / tile_col_row / tile_span / atlas_grid /
 # tile_repeat；若 sampler 未绑定则地形全采样成黑色，墙/地/天花板一片黑。）─────────────

@@ -36,3 +36,25 @@ func test_torch_light_is_registered_for_flicker() -> void:
 	assert_bool(light.is_in_group("flicker_light")).is_true()
 	assert_str(light.get_meta("light_role", "")).is_equal("torch")
 	torch.free()
+
+
+func test_dynamic_torch_light_disables_specular_contribution() -> void:
+	var torch_scene := load("res://scenes/props/torch/torch.tscn") as PackedScene
+	var torch: Node = torch_scene.instantiate()
+	add_child(torch)
+	var light := _find_first_omni(torch)
+	assert_object(light).is_not_null()
+	assert_float(light.light_specular) \
+		.override_failure_message("动态地牢火把不得向环境材质贡献镜面高光").is_equal_approx(0.0, 0.001)
+	torch.free()
+
+
+func test_baked_torch_light_disables_specular_contribution() -> void:
+	var baked_scene := load("res://assets/meshes/props/baked_torch.tscn") as PackedScene
+	var baked: Node = baked_scene.instantiate()
+	add_child(baked)
+	var light := baked.get_node("OmniLight3D") as OmniLight3D
+	assert_object(light).is_not_null()
+	assert_float(light.light_specular) \
+		.override_failure_message("烘焙地牢火把不得向环境材质贡献镜面高光").is_equal_approx(0.0, 0.001)
+	baked.free()

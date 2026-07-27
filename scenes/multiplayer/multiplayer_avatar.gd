@@ -33,7 +33,7 @@ func _physics_process(delta: float) -> void:
 		global_position = target_position
 		rotation.y = target_yaw
 		return
-	var t := min(1.0, interp_speed * delta)
+	var t: float = minf(1.0, interp_speed * delta)
 	global_position = global_position.lerp(target_position, t)
 	rotation.y = lerp_angle(rotation.y, target_yaw, t)
 

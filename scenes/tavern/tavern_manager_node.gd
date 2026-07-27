@@ -221,12 +221,22 @@ func toggle_tavern_hud() -> void:
 	if tavern_hud_layer == null:
 		return
 	var will_show: bool = not tavern_hud_layer.visible
-	tavern_hud_layer.visible = will_show
-	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE if will_show else Input.MOUSE_MODE_CAPTURED)
+	_set_tavern_hud_visible(will_show)
+
+
+func close_tavern_hud() -> void:
+	if tavern_hud_layer == null or not tavern_hud_layer.visible:
+		return
+	_set_tavern_hud_visible(false)
+
+
+func _set_tavern_hud_visible(should_show: bool) -> void:
+	tavern_hud_layer.visible = should_show
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE if should_show else Input.MOUSE_MODE_CAPTURED)
 	# 经营 HUD 打开时通知战斗 HUD 整层隐藏，避免战斗 UI 泄露到经营界面上方
 	# 并拦截鼠标点击（CombatHUD 边角 Control 默认 mouse_filter=STOP 会吞掉点击）。
 	if GameEvents != null:
-		GameEvents.tavern_hud_visibility_changed.emit(will_show)
+		GameEvents.tavern_hud_visibility_changed.emit(should_show)
 
 func _mount_tavern_hud() -> void:
 	var hud_scene: PackedScene = load("res://scenes/ui/tavern_ui.tscn")

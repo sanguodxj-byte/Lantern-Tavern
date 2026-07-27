@@ -104,7 +104,8 @@ func _spawn_barrel() -> void:
 
 func _spawn_weapon_pickup() -> void:
 	tutorial_weapon = WEAPON_SCENE.instantiate() as PickableItem
-	tutorial_weapon.weapon_data = load("res://data/weapons/axe.tres")
+	var wd = WeaponRegistry.get_weapon_data("axe")
+	tutorial_weapon.weapon_data = wd if wd != null else load("res://data/weapons/axe.tres")
 	tutorial_weapon.global_position = Vector3(0.0, 0.2, -5.6)
 	tavern.add_child(tutorial_weapon)
 
@@ -121,8 +122,26 @@ func _open_name_prompt() -> void:
 		layer.add_child(name_prompt)
 	if name_prompt != null:
 		name_prompt.name_confirmed.connect(_on_name_confirmed, CONNECT_ONE_SHOT)
+		name_prompt.cancelled.connect(_on_name_cancelled, CONNECT_ONE_SHOT)
 
 func _on_name_confirmed(_name_text: String) -> void:
+	if hint_overlay != null:
+		hint_overlay.clear_hint()
+	if dialogue_box != null:
+		dialogue_box.hide_line()
+	GameEvents.subtitle_changed.emit("")
+	GameEvents.tutorial_hint_changed.emit("")
+	if TavernManager != null:
+		TavernManager.tutorial_completed = false
+	stage = Stage.COMPLETE
+
+
+func _on_name_cancelled() -> void:
+	# Cancelling the modal must leave the tutorial in a valid terminal state;
+	# otherwise the hidden prompt would block the player indefinitely.
+	var world := _find_world()
+	if world != null and world.has_method("close_overlay"):
+		world.call("close_overlay")
 	if hint_overlay != null:
 		hint_overlay.clear_hint()
 	if dialogue_box != null:

@@ -119,7 +119,7 @@ func test_all_rune_pixel_png_assets_exist_and_fit_128px() -> void:
 
 func test_armor_detail_shows_move_speed_penalty() -> void:
 	var detail: Dictionary = DETAIL_POPUP.detail_for_equipment_id("plate_armor")
-	assert_str(detail.get("title", "")).is_equal("钢板半身铠")
+	assert_str(detail.get("title", "")).is_equal("铁质 钢板半身铠")
 	assert_array(detail.get("lines", [])).contains("Phys Def +10")
 	assert_array(detail.get("lines", [])).contains("Move Spd -12%")
 
@@ -167,6 +167,16 @@ func test_detail_popup_lines_localize_by_locale() -> void:
 	TranslationServer.set_locale(prev)
 	assert_bool(_lines_contain(en_detail.get("lines", []), "Shield Def")).is_true()
 	assert_bool(_lines_contain(zh_detail.get("lines", []), "盾防")).is_true()
+
+
+func test_detail_popup_has_chinese_fallback_templates() -> void:
+	var prev := TranslationServer.get_locale()
+	TranslationServer.set_locale("zh")
+	var damage_template := DETAIL_POPUP._tr("Damage %d-%d")
+	var reach_template := DETAIL_POPUP._tr("Reach %.1fm")
+	TranslationServer.set_locale(prev)
+	assert_str(damage_template).is_equal("伤害 %d-%d")
+	assert_str(reach_template).is_equal("距离 %.1f米")
 
 
 func _lines_contain(lines: Array, substr: String) -> bool:

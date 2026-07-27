@@ -20,12 +20,23 @@ func _enter_tree() -> void:
 		var resolved_data: WeaponData = pickable_object.weapon_data
 		if WeaponRegistry != null and WeaponRegistry.has_method("resolve_weapon_data"):
 			resolved_data = WeaponRegistry.resolve_weapon_data(pickable_object.weapon_data)
-		if not player.equipment.equip_weapon(resolved_data, pickable_object.global_transform):
+		# 护甲与武器共用 WeaponData 承载，但护甲走护甲槽（equip_armor）；
+		# 走 equip_weapon 会被 _is_hand_equipment 拒绝，导致护甲拾取失败、留在地上。
+		var is_armor_pickup := player.equipment.is_armor_equipment(resolved_data)
+		var equipped_ok := false
+		if is_armor_pickup:
+			equipped_ok = player.equipment.equip_armor(resolved_data, pickable_object.global_transform)
+		else:
+			equipped_ok = player.equipment.equip_weapon(resolved_data, pickable_object.global_transform)
+		if not equipped_ok:
 			transition_state(Player.State.MOVING)
 			return
 		player.animation_player.play("pickup")
 		player.animation_player.animation_finished.connect(on_animation_finished)
-		if _is_weapondata_shield(resolved_data):
+		if is_armor_pickup:
+			AudioManager.play("pick-up", player.action_audio_stream_player)
+			GameState.add_carried_weapon()
+		elif _is_weapondata_shield(resolved_data):
 			AudioManager.play("pick-up", player.action_audio_stream_player)
 			GameState.add_carried_shield()
 		else:

@@ -32,7 +32,8 @@ func test_settings_scene_exists() -> void:
 
 func test_settings_button_routes_to_settings_menu() -> void:
 	var script := load("res://scenes/ui/main_menu.gd") as GDScript
-	assert_bool(script.source_code.contains('change_scene_to_file("res://scenes/ui/settings_menu.tscn")')).is_true()
+	assert_str(script.source_code).contains("UI_ROUTES.SETTINGS")
+	assert_str(script.source_code).contains("request_navigation(UI_ROUTES.SETTINGS)")
 
 
 func test_main_menu_has_no_keyboard_shortcuts_or_shortcut_labels() -> void:

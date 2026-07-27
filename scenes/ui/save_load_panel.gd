@@ -82,3 +82,13 @@ func _on_delete_requested(slot_index: int) -> void:
 
 func _on_back_pressed() -> void:
 	back_pressed.emit()
+
+
+func _input(event: InputEvent) -> void:
+	if not visible or not (event is InputEventKey):
+		return
+	var key_event := event as InputEventKey
+	if not key_event.pressed or key_event.echo or (key_event.keycode != KEY_ESCAPE and key_event.keycode != KEY_TAB):
+		return
+	get_viewport().set_input_as_handled()
+	back_pressed.emit()

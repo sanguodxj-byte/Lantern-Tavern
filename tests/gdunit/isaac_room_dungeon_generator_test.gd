@@ -59,6 +59,19 @@ func test_start_room_is_not_fixed_center_and_varies_by_seed() -> void:
 		.is_greater_equal(3)
 
 
+func test_fixed_seed_generates_only_integer_height_layers() -> void:
+	var generator: Node = GENERATOR.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 94021
+	generator.set_rng(rng)
+	generator.generate_dungeon(TEST_GRID_SIZE, TEST_GRID_SIZE, 14)
+	for row in generator.ceiling_heights:
+		for value in row:
+			assert_bool(DungeonGenerationConfig.is_integer_height(float(value))) \
+				.override_failure_message("高度必须严格落在整数米层: %s" % value).is_true()
+	generator.free()
+
+
 func test_isaac_room_generator_marks_reward_and_boss_cells_for_content() -> void:
 	seed(91811)
 	var generator: Node = GENERATOR.new()
@@ -88,6 +101,35 @@ func test_isaac_room_generator_creates_interconnected_room_loops() -> void:
 			.is_true()
 
 		generator.free()
+
+
+func test_default_layout_keeps_walkable_density_above_empty_map_threshold() -> void:
+	for test_seed in [94021, 3401, 71231, 91811, 271828]:
+		var generator: Node = GENERATOR.new()
+		var grid: Array = generator.generate_dungeon(TEST_GRID_SIZE, TEST_GRID_SIZE)
+		var walkable := 0
+		for row in grid:
+			for cell_type in row:
+				if int(cell_type) != BSP_DungeonGenerator.TileType.EMPTY and int(cell_type) != BSP_DungeonGenerator.TileType.WALL:
+					walkable += 1
+		assert_int(walkable) \
+			.override_failure_message("默认地牢可行走空间过少，地图过于空旷: seed=%d walkable=%d" % [test_seed, walkable]) \
+			.is_greater_equal(480)
+		generator.free()
+
+
+func test_boss_room_applies_registered_set_piece_features() -> void:
+	var generator: Node = GENERATOR.new()
+	var grid: Array = generator.generate_dungeon(TEST_GRID_SIZE, TEST_GRID_SIZE, 18)
+	var boss: Rect2i = generator.room_roles["boss"]
+	var pillar_count := 0
+	for y in range(boss.position.y, boss.position.y + boss.size.y):
+		for x in range(boss.position.x, boss.position.x + boss.size.x):
+			if int(grid[y][x]) == BSP_DungeonGenerator.TileType.PILLAR:
+				pillar_count += 1
+	assert_int(pillar_count) \
+			.override_failure_message("Boss 房未应用 boss_arena_simple 作者化柱位").is_greater_equal(2)
+	generator.free()
 
 
 func test_shortcut_connections_are_broken_up_by_connector_chambers() -> void:

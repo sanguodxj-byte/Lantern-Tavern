@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Generate the dedicated symmetric knight longsword voxel model."""
+"""Generate the dedicated symmetric one-handed knight sword voxel model."""
 
 import sys
 from pathlib import Path
@@ -30,29 +30,37 @@ from voxel_weapon_model_lib import (  # noqa: E402
 
 
 MODEL_ID = "sword"
-WIDTH_PX = 17.0
+# Axis contract: author the blade and grip on one Z length axis. After the
+# shared export_yup=True conversion this is Godot local +Y; blade width stays
+# local X and the one-voxel blade thickness stays local Z.
+AUTHORED_LENGTH_AXIS = "Z"
+AUTHORED_BLADE_WIDTH_AXIS = "X"
+AUTHORED_BLADE_THICKNESS_AXIS = "Y"
+WIDTH_PX = 19.0
 DEPTH_PX = 7.0
-LENGTH_PX = 43.0
+LENGTH_PX = 95.0
 
 OUT_GLB = ROOT / "assets" / "meshes" / "weapons" / "weapons_voxel_sword.glb"
 PREVIEW_DIR = ROOT / "reports" / "props_preview"
 
 
 def build_sword() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
-    """Build a 17 x 7 x 43px symmetric knight longsword.
+    """Build a 19 x 7 x 95px symmetric one-handed knight sword.
 
-    The straight blade narrows from 7px at the forte through 5px and 3px
-    sections to a 1px point. Paired exterior ridges provide a diamond-like
-    blade depth without intersecting the blade core.
+    The blade is a real voxel assembly: integer-pixel boxes share faces
+    end-to-end, keep a 1px blade thickness on the depth axis, use odd
+    horizontal widths throughout, and narrow only at the terminal tip.
+    The broad cutting face is parallel to the horizontal guard; only the
+    guard uses cross-like quillons.
     """
     steel_core = make_material(
         "sword_steel_core", (0.24, 0.29, 0.32, 1.0), metallic=0.82, roughness=0.38
     )
-    steel_edge = make_material(
-        "sword_steel_edge", (0.56, 0.65, 0.69, 1.0), metallic=0.88, roughness=0.27
-    )
     steel_polished = make_material(
         "sword_steel_polished", (0.79, 0.84, 0.86, 1.0), metallic=0.93, roughness=0.20
+    )
+    steel_edge = make_material(
+        "sword_steel_edge", (0.47, 0.56, 0.61, 1.0), metallic=0.84, roughness=0.30
     )
     blackened_iron = make_material(
         "sword_blackened_iron", (0.10, 0.12, 0.12, 1.0), metallic=0.75, roughness=0.48
@@ -91,19 +99,20 @@ def build_sword() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
         add(f"{prefix}_left", (-x, 0.0, z), size, material)
         add(f"{prefix}_right", (x, 0.0, z), size, material)
 
-    # Keep this first: runtime collision uses the first large blade mesh.
-    add("a_blade_spine_core", (0.0, 0.0, -16.5), (3.0, 3.0, 27.0), steel_core)
-    add_x_pair("blade_forte_edge", 2.5, -7.0, (2.0, 3.0, 8.0), steel_edge)
-    add_x_pair("blade_mid_edge", 2.0, -16.0, (1.0, 3.0, 10.0), steel_polished)
-    add("blade_tip", (0.0, 0.0, -30.5), (1.0, 3.0, 1.0), steel_polished)
-    add("blade_ridge_front", (0.0, 2.0, -16.0), (1.0, 1.0, 24.0), steel_polished)
-    add("blade_ridge_back", (0.0, -2.0, -16.0), (1.0, 1.0, 24.0), steel_polished)
+    # A readable voxel blade is a single symmetric 5px-wide, 3px-thick
+    # cutting body. Keeping the broad body as one volume prevents the
+    # structural front projection from creating a false one-sided seam.
+    # Blade thickness is always one voxel. The final two sections form a
+    # stepped triangular silhouette without creating a 1x1 section early.
+    add("blade_body", (0.0, 0.0, -41.5), (5.0, 1.0, 77.0), steel_polished)
+    add("blade_taper", (0.0, 0.0, -81.0), (3.0, 1.0, 2.0), steel_edge)
+    add("blade_point", (0.0, 0.0, -82.5), (1.0, 1.0, 1.0), steel_polished)
 
     # The stepped quillons rise evenly on both sides.
     add("guard_center", (0.0, 0.0, -1.5), (5.0, 5.0, 3.0), blackened_iron)
     add_x_pair("guard_inner", 4.0, -1.0, (3.0, 5.0, 2.0), blackened_iron)
-    add_x_pair("guard_outer", 6.5, 0.0, (2.0, 3.0, 2.0), old_brass)
-    add_x_pair("guard_tip", 8.0, 0.5, (1.0, 3.0, 3.0), steel_polished)
+    add_x_pair("guard_outer", 7.0, 0.0, (3.0, 3.0, 2.0), old_brass)
+    add_x_pair("guard_tip", 9.0, 0.5, (1.0, 3.0, 3.0), steel_polished)
 
     # Grip volumes meet end-to-end; paired widths create readable wrap bands.
     add("grip_collar", (0.0, 0.0, 0.5), (5.0, 5.0, 1.0), knight_brass)

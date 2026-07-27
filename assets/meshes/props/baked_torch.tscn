@@ -12,7 +12,7 @@ shader_parameter/tile_span = Vector2(1, 1)
 shader_parameter/atlas_grid = Vector2(8, 4)
 shader_parameter/tile_repeat = Vector2(1, 1)
 shader_parameter/roughness = 0.76
-shader_parameter/specular = 0.35
+shader_parameter/specular = 0.0
 shader_parameter/voxel_light_wrap = 0.58
 shader_parameter/voxel_light_floor = 0.3
 shader_parameter/voxel_light_steps = 4.0
@@ -41,7 +41,7 @@ shader_parameter/tile_span = Vector2(1, 1)
 shader_parameter/atlas_grid = Vector2(8, 4)
 shader_parameter/tile_repeat = Vector2(1, 1)
 shader_parameter/roughness = 0.88
-shader_parameter/specular = 0.1
+shader_parameter/specular = 0.0
 shader_parameter/voxel_light_wrap = 0.58
 shader_parameter/voxel_light_floor = 0.3
 shader_parameter/voxel_light_steps = 4.0
@@ -70,6 +70,7 @@ size = Vector3(0.21875, 0.4375, 0.34375)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.28125, -0.25)
 light_color = Color(1, 0.58, 0.25, 1)
 light_energy = 3.4
+light_specular = 0.0
 light_size = 0.08
 shadow_enabled = true
 shadow_bias = 0.03
@@ -82,6 +83,7 @@ metadata/voxel_generated = true
 metadata/light_role = "torch"
 
 [node name="VoxelMesh_0" type="MeshInstance3D" parent="." unique_id=1083025965]
+cast_shadow = 0
 material_override = SubResource("ShaderMaterial_i2lmo")
 visibility_range_end = 25.0
 visibility_range_end_margin = 6.0
@@ -90,6 +92,7 @@ mesh = SubResource("ArrayMesh_eko8l")
 metadata/voxel_generated = true
 
 [node name="VoxelMesh_1" type="MeshInstance3D" parent="." unique_id=516128520]
+cast_shadow = 0
 material_override = SubResource("ShaderMaterial_vm8de")
 visibility_range_end = 25.0
 visibility_range_end_margin = 6.0

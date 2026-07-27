@@ -394,6 +394,7 @@ func _instantiate_enemy(enemy_type: String, pos: Vector3, player: Node, config: 
 	enemy.set_meta("is_boss", BOSS_TYPES.has(base_type))
 	enemy.set_meta("enemy_rank", "boss" if BOSS_TYPES.has(base_type) else ("elite" if is_elite else "normal"))
 	enemy.set_meta("body_size", get_body_size(base_type))
+	enemy.set_meta("attack_mode", get_attack_mode(base_type))
 	enemy.set_meta("player_ref", player)
 	enemy.set_meta("spawn_pos", pos)
 	var zone_hp_mult: float = float(config.get("hp_mult", 1.0))
@@ -458,6 +459,19 @@ func get_body_size(enemy_type: String) -> String:
 	if not MODEL_TIERS.is_accepted(base_type) or not _enemies_by_id.has(base_type):
 		return ""
 	return String(BODY_SIZE_BY_TYPE.get(base_type, ""))
+
+func get_attack_mode(enemy_type: String) -> String:
+	if _enemies_by_id.is_empty():
+		_load_roster()
+	var base_type := enemy_type.trim_prefix("elite_")
+	if not _enemies_by_id.has(base_type):
+		return "weapon"
+	var entry: Dictionary = _enemies_by_id.get(base_type, {})
+	var configured := String(entry.get("attack_mode", ""))
+	if configured in ["weapon", "body"]:
+		return configured
+	# 兼容尚未补充 attack_mode 的旧条目：claw 表示天然攻击，其余默认为持械。
+	return "body" if String(entry.get("weapon", "")).to_lower() == "claw" else "weapon"
 
 
 func is_boss_type(enemy_type: String) -> bool:

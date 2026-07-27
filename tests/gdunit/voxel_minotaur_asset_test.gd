@@ -179,7 +179,7 @@ func test_minotaur_static_ast_has_zero_overlap_and_one_face_contact_component() 
 	var visited := {0: true}
 	var queue: Array[int] = [0]
 	while not queue.is_empty():
-		var current := queue.pop_front()
+		var current: int = queue.pop_front()
 		for neighbour in adjacency[current]:
 			if not visited.has(neighbour):
 				visited[neighbour] = true
@@ -458,7 +458,8 @@ func test_minotaur_exports_match_authored_geometry_and_rig_contract() -> void:
 	var size_px := SUPPORT.combined_aabb(instance).size * PX_PER_METER
 	assert_float(size_px.x).is_between(47.0, 49.0)
 	assert_float(size_px.y).is_between(71.0, 73.0)
-	assert_float(size_px.z).is_between(27.0, 29.0)
+	# The authored source contract is 32px deep; static export must preserve it.
+	assert_float(size_px.z).is_between(31.0, 33.0)
 	assert_array(SUPPORT.find_positive_volume_overlaps(instance)).is_empty()
 	assert_array(SUPPORT.find_face_disconnected_parts(instance)).is_empty()
 	instance.free()

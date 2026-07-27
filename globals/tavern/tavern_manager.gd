@@ -185,12 +185,15 @@ func _go_to_world_space(space: String) -> void:
 # 存档/读档
 # ============================================================================
 
-## 序列化为字典（供 SaveManager 存档）
-## inventory / runes_inventory 已委托给 GameState，不再在此序列化（避免重复）。
+## 序列化为字典（供 SaveManager 存档）。
+## tavern_ledger 是当前规范字段；旧字段继续输出，保证旧存档工具和外部调用方兼容。
 func serialize() -> Dictionary:
 	return {
 		"day": day,
 		"tavern_ledger": tavern_ledger.to_dict(),
+		"gold": tavern_ledger.gold,
+		"inventory": tavern_ledger.materials.duplicate(),
+		"runes_inventory": tavern_ledger.runes.duplicate(),
 		"current_phase": current_phase,
 		"tutorial_active": tutorial_active,
 		"tutorial_completed": tutorial_completed,

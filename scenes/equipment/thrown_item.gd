@@ -78,7 +78,7 @@ func _instantiate_furniture_visual() -> Node3D:
 		visual.name = "%sVoxelVisual" % prop_kind.capitalize()
 		visual.prop_kind = prop_kind
 		return visual
-	if furniture_data.glb_mesh != null:
+	if furniture_data != null and furniture_data.glb_mesh != null:
 		return furniture_data.glb_mesh.instantiate()
 	return null
 

@@ -154,8 +154,8 @@ func test_positive_affix_ids_are_valid() -> void:
 		assert_bool(not asys.is_negative(id)).is_true()
 
 func test_negative_affix_ids_are_valid() -> void:
-	var negative_ids := ["rusty", "clunky", "worn", "inferior", "cracked", "dim"]
-	for id in negative_ids:
+	for raw_id in asys.NEGATIVE_AFFIXES.keys():
+		var id := String(raw_id)
 		assert_bool(asys.is_negative(id)).is_true()
 		assert_bool(not asys.is_positive(id)).is_true()
 
@@ -163,45 +163,45 @@ func test_apply_affixes_modifies_damage_mult() -> void:
 	var data := wr.build_weapon_data_with_tier("shortsword", 0)
 	var original_mult := data.damage_mult
 	asys.apply_affixes(data, ["sharp"])
-	# sharp: damage_mult +0.10
-	assert_float(data.damage_mult).is_equal_approx(original_mult + 0.10, 0.001)
+	# sharp: 物理伤害 +3%（权威规则见 docs/06-装备系统.md §5.1）
+	assert_float(data.damage_mult).is_equal_approx(original_mult + 0.03, 0.001)
 
 func test_apply_affixes_rusty_reduces_damage() -> void:
 	var data := wr.build_weapon_data_with_tier("shortsword", 0)
 	var original_mult := data.damage_mult
 	asys.apply_affixes(data, ["rusty"])
-	# rusty: damage_mult -0.15
-	assert_float(data.damage_mult).is_equal_approx(original_mult - 0.15, 0.001)
+	# rusty: 物理伤害 -4%（权威规则见 docs/06-装备系统.md §5.2）
+	assert_float(data.damage_mult).is_equal_approx(original_mult - 0.04, 0.001)
 
 func test_apply_affixes_focused_adds_crit_bonus() -> void:
 	var data := wr.build_weapon_data_with_tier("shortsword", 0)
 	var original_crit := data.crit_bonus_percent
 	asys.apply_affixes(data, ["focused"])
-	# focused: 暴击率 +10%（动作化替代命中率 hit_bonus）
-	assert_float(data.crit_bonus_percent).is_equal_approx(original_crit + 10.0, 0.01)
+	# focused: 暴击率 +3%（不再使用旧命中率口径）
+	assert_float(data.crit_bonus_percent).is_equal_approx(original_crit + 3.0, 0.01)
 
 func test_apply_affixes_furious_adds_crit_and_crit_dmg() -> void:
 	var data := wr.build_weapon_data_with_tier("dagger", 0)
 	var original_crit := data.crit_bonus_percent
 	var original_crit_dmg := data.crit_damage_bonus
 	asys.apply_affixes(data, ["furious"])
-	# furious: crit +8%, crit_dmg +15%
-	assert_float(data.crit_bonus_percent).is_equal_approx(original_crit + 8.0, 0.01)
-	assert_float(data.crit_damage_bonus).is_equal_approx(original_crit_dmg + 15.0, 0.01)
+	# furious: 暴击率 +2%，暴击伤害 +4%
+	assert_float(data.crit_bonus_percent).is_equal_approx(original_crit + 2.0, 0.01)
+	assert_float(data.crit_damage_bonus).is_equal_approx(original_crit_dmg + 4.0, 0.01)
 
 func test_apply_affixes_inferior_reduces_max_condition() -> void:
 	var data := wr.build_weapon_data_with_tier("shortsword", 0)
 	var original_max := data.max_condition
 	asys.apply_affixes(data, ["inferior"])
-	# inferior: max_condition * 0.8
-	assert_int(data.max_condition).is_equal(int(round(float(original_max) * 0.8)))
+	# inferior: max_condition * 0.92
+	assert_int(data.max_condition).is_equal(int(round(float(original_max) * 0.92)))
 
 func test_apply_affixes_sturdy_adds_phys_def() -> void:
 	var data := wr.build_weapon_data_with_tier("shield", 0)
 	var original_def := data.shield_phys_def
 	asys.apply_affixes(data, ["sturdy"])
-	# sturdy: phys_def +4
-	assert_int(data.shield_phys_def).is_equal(original_def + 4)
+	# sturdy: 物理防御 +1
+	assert_int(data.shield_phys_def).is_equal(original_def + 1)
 
 func test_apply_affixes_does_not_go_negative_damage() -> void:
 	var data := wr.build_weapon_data_with_tier("shortsword", 0)
@@ -378,6 +378,6 @@ func test_decrease_condition_sets_broken_flag() -> void:
 func test_affix_system_in_project_autoloads() -> void:
 	var project := ConfigFile.new()
 	project.load("res://project.godot")
-	var autoload_path := project.get_value("autoload", "AffixSystem", "")
+	var autoload_path: String = String(project.get_value("autoload", "AffixSystem", ""))
 	assert_bool(not autoload_path.is_empty()) \
 		.override_failure_message("AffixSystem 未注册为 autoload").is_true()

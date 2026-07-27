@@ -127,6 +127,8 @@ func open_zone_select() -> void:
 
 func close_overlay() -> void:
 	_clear_overlay()
+	if not OS.has_feature("web"):
+		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 func _clear_overlay() -> void:
 	if overlay_layer != null:

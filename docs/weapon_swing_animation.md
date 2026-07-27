@@ -1,18 +1,20 @@
 # 武器挥舞动画（第一人称层 + 世界层）
 
 ## 两层动画（关键架构）
-- **第一人称 ViewModel 动作层**（`ViewModelAnimator` + `view_model_animation_library.tres`）
-  只动玩家自己看到的 `ActionPivot` 旋转/位移。由 `arm_animation_enabled` 开关控制——**当前默认 false（上一轮需求关闭手臂动画），此层不播放，第一人称武器恒静态**。开启后由 `sample_action(action, progress)` 按挥砍进度 0→1 逐帧采样。
+- **第一人称 ViewModel 动作层**（`ViewModelAnimator` + `first_person_animation_library.gd`）
+  只动第一人称自己的 `ActionPivot`、武器/盾牌副本和手臂骨架。由状态机按 `vm_*` 动作驱动，
+  `first_person_arm_animator.gd` 同步采样手臂骨骼；它不写第三人称玩家骨骼，也不参与命中判定。
 - **世界层武器弧线**（`CombatSlashAnimator.apply_weapon_arc`）
-  作用于世界中真实武器占位网格（敌人/友军所见、决定命中方向与刀光）。由战斗状态 `player_state_slashing` 驱动，**不受第一人称开关影响，始终生效**。
+  作用于第三人称世界中真实武器占位网格（敌人/友军所见、决定命中方向与刀光）。由战斗状态
+  `player_state_slashing` 驱动，第三人称 `AnimationPlayer` 仍负责状态退出信号。
 
 ## 第一人称动作（按 `resolve_melee_action()` 的武器 profile 解析）
 | profile | 动画 | 时长 | 运动类型 |
 |---|---|---|---|
 | dagger | `vm_stab_dagger` | 0.28s | 位移前刺 z -0.22 |
 | spear | `vm_thrust_spear` | 0.52s | 位移长矛前刺 z -0.42 |
-| heavy (two_hand) | `vm_slash_heavy` | 0.78s | 旋转：举过头俯砍 pitch +38°→-49° |
-| 其余 | `vm_slash_one_hand` | 0.46s | 旋转：斜向挥砍 |
+| greatsword / axe / warhammer / spear | `vm_<style>_heavy_swing` | style-specific | 双手武器被动重型挥舞 |
+| 其余流派 | `vm_<style>_attack` | style-specific | 各流派独立的攻击轨迹 |
 
 ### vm_slash_one_hand 关键帧（ActionPivot 旋转，弧度，顺序 XYZ=pitch/yaw/roll）
 - 0%   (0, 0, 0)            静止
@@ -40,5 +42,6 @@
 - 命中活跃段 28%–78% ≈ 115–321ms。
 
 ## 源码位置
-- 第一人称：`scenes/characters/player/view_model.gd`（sample_action/play_action/stop_action + arm_animation_enabled）、`view_model_animator.gd`、`view_model_animation_library.tres`
+- 第一人称：`scenes/characters/player/view_model.gd`、`view_model_animator.gd`、
+  `first_person_animation_library.gd`、`first_person_arm_animator.gd`
 - 世界层：`globals/combat/combat_slash_animator.gd`、`scenes/characters/player/state/player_state_slashing.gd`

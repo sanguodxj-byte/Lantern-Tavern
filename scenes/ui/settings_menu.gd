@@ -56,6 +56,10 @@ func _on_language_selected(index: int) -> void:
 func _on_back_pressed() -> void:
 	request_navigation(UI_ROUTES.MAIN_MENU)
 
+
+func _on_cancel_input() -> void:
+	_on_back_pressed()
+
 func _update_master_volume_label(value: float) -> void:
 	master_volume_value.text = "%d%%" % int(round(value))
 

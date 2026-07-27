@@ -36,8 +36,8 @@ func test_runtime_applies_dark_erosion_to_player_light() -> void:
 		GameState.current_player = previous_player
 	else:
 		GameState.current_player = null
-	player.queue_free()
-	runtime.queue_free()
+	player.free()
+	runtime.free()
 
 func test_runtime_pressure_snapshot_forces_monster_hunt_path() -> void:
 	var source := (load("res://scenes/expedition/dungeon_runtime.gd") as GDScript).source_code
@@ -50,3 +50,58 @@ func test_runtime_pressure_snapshot_forces_monster_hunt_path() -> void:
 	assert_bool(source.contains("force_monster_hunt")) \
 		.override_failure_message("地牢应从 ExplorationPressure snapshot 读取 100% 暗蚀狩猎标记") \
 		.is_true()
+
+func test_runtime_toggles_hunt_state_on_real_enemy() -> void:
+	var previous_player = GameState.current_player
+	var runtime := DungeonRuntime.new()
+	add_child(runtime)
+	var player := (load("res://scenes/characters/player/player.tscn") as PackedScene).instantiate() as Player
+	player.process_mode = Node.PROCESS_MODE_DISABLED
+	add_child(player)
+	var enemy := (load("res://scenes/characters/enemies/slime.tscn") as PackedScene).instantiate() as Enemy
+	add_child(enemy)
+	GameState.current_player = player
+
+	runtime.apply_monster_hunt_pressure(true)
+	assert_bool(enemy.get_meta("dark_erosion_hunt", false)).is_true()
+	assert_bool(enemy.player == player).is_true()
+	runtime.apply_monster_hunt_pressure(false)
+	assert_bool(enemy.get_meta("dark_erosion_hunt", false)).is_false()
+
+	GameState.current_player = previous_player if previous_player != null and is_instance_valid(previous_player) else null
+	enemy.queue_free()
+	player.queue_free()
+	runtime.queue_free()
+
+
+func test_runtime_opens_dungeon_doors_for_monster_hunt_without_pressure_action() -> void:
+	var previous_player = GameState.current_player
+	var runtime := DungeonRuntime.new()
+	add_child(runtime)
+	var player := (load("res://scenes/characters/player/player.tscn") as PackedScene).instantiate() as Player
+	player.process_mode = Node.PROCESS_MODE_DISABLED
+	add_child(player)
+	var doors_root := Node3D.new()
+	add_child(doors_root)
+	var door := DungeonDoor.new()
+	doors_root.add_child(door)
+	door.configure(DungeonDoor.KIND_STANDARD, Vector2i(0, 1), StandardMaterial3D.new())
+	var actions: Array[String] = []
+	door.pressure_action.connect(func(action: String) -> void:
+		actions.append(action)
+	)
+	var result := DungeonBuildResult.new()
+	result.doors_root = doors_root
+	runtime.build_result = result
+	GameState.current_player = player
+
+	runtime.apply_monster_hunt_pressure(true)
+
+	assert_bool(door.is_open).is_true()
+	assert_array(actions).is_empty()
+	GameState.current_player = previous_player if previous_player != null and is_instance_valid(previous_player) else null
+	result.dispose()
+	door.queue_free()
+	doors_root.queue_free()
+	player.queue_free()
+	runtime.queue_free()

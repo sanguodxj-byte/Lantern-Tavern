@@ -33,7 +33,7 @@ func test_runtime_scene_keeps_raw_rig_facing_and_origin() -> void:
 
 
 func test_runtime_scene_retains_hand_attachments_under_skeleton() -> void:
-	var runtime := auto_free((load(RUNTIME_PATH) as PackedScene).instantiate())
+	var runtime := auto_free((load(RUNTIME_PATH) as PackedScene).instantiate()) as CharacterBody3D
 	var skeleton := _find_skeleton(runtime)
 	var weapon_attach := runtime.find_child("WeaponBoneAttachment", true, false) as BoneAttachment3D
 	var shield_attach := runtime.find_child("ShieldBoneAttachment", true, false) as BoneAttachment3D
@@ -47,7 +47,7 @@ func test_runtime_scene_retains_hand_attachments_under_skeleton() -> void:
 
 
 func test_equipment_placeholders_resolve_to_hand_attachments() -> void:
-	var runtime := auto_free((load(RUNTIME_PATH) as PackedScene).instantiate())
+	var runtime := auto_free((load(RUNTIME_PATH) as PackedScene).instantiate()) as CharacterBody3D
 	var equipment := runtime.get_node("EquipmentComponent") as EquipmentComponent
 	var weapon_attach := runtime.find_child("WeaponBoneAttachment", true, false) as BoneAttachment3D
 	var shield_attach := runtime.find_child("ShieldBoneAttachment", true, false) as BoneAttachment3D
@@ -67,7 +67,7 @@ func test_goblin_shield_loadout_uses_a_one_hand_weapon() -> void:
 
 
 func test_voxel_weapon_placeholder_uses_goblin_one_hand_scale_without_rotation_or_offset() -> void:
-	var runtime := auto_free((load(RUNTIME_PATH) as PackedScene).instantiate())
+	var runtime := auto_free((load(RUNTIME_PATH) as PackedScene).instantiate()) as CharacterBody3D
 	var placeholder := runtime.find_child("WeaponPlaceholder", true, false) as Node3D
 	assert_object(placeholder).is_not_null()
 	assert_bool(placeholder.position.is_zero_approx()) \
@@ -107,7 +107,7 @@ func test_mounted_shortsword_has_goblin_sized_visible_span() -> void:
 
 
 func test_voxel_shield_placeholder_uses_goblin_buckler_scale() -> void:
-	var runtime := auto_free((load(RUNTIME_PATH) as PackedScene).instantiate())
+	var runtime := auto_free((load(RUNTIME_PATH) as PackedScene).instantiate()) as CharacterBody3D
 	var placeholder := runtime.find_child("ShieldPlaceholder", true, false) as Node3D
 	assert_object(placeholder).is_not_null()
 	assert_bool(placeholder.scale.is_equal_approx(Vector3.ONE * GOBLIN_SHIELD_SCALE)) \
@@ -116,7 +116,7 @@ func test_voxel_shield_placeholder_uses_goblin_buckler_scale() -> void:
 
 
 func test_runtime_scene_exposes_required_animations() -> void:
-	var runtime := auto_free((load(RUNTIME_PATH) as PackedScene).instantiate())
+	var runtime := auto_free((load(RUNTIME_PATH) as PackedScene).instantiate()) as CharacterBody3D
 	var animation_player := runtime.get_node("character/AnimationPlayer") as AnimationPlayer
 	for animation_name in ["idle", "run", "slash_one_hand"]:
 		assert_bool(animation_player.has_animation(animation_name)) \
@@ -129,7 +129,7 @@ func test_runtime_scene_exposes_required_animations() -> void:
 
 
 func test_one_hand_slash_authors_wrist_rotation_through_the_full_arc() -> void:
-	var runtime := auto_free((load(RUNTIME_PATH) as PackedScene).instantiate())
+	var runtime := auto_free((load(RUNTIME_PATH) as PackedScene).instantiate()) as CharacterBody3D
 	var animation_player := runtime.get_node("character/AnimationPlayer") as AnimationPlayer
 	var animation := animation_player.get_animation("slash_one_hand")
 	var wrist_key_count := 0
@@ -190,7 +190,7 @@ func test_one_hand_slash_moves_blade_from_back_windup_to_front_strike() -> void:
 
 
 func test_one_hand_slash_raises_weapon_hand_to_shoulder_for_windup() -> void:
-	var runtime := auto_free((load(RUNTIME_PATH) as PackedScene).instantiate())
+	var runtime := auto_free((load(RUNTIME_PATH) as PackedScene).instantiate()) as CharacterBody3D
 	var animation_player := runtime.get_node("character/AnimationPlayer") as AnimationPlayer
 	var skeleton := _find_skeleton(runtime)
 	var attack := animation_player.get_animation("slash_one_hand")
@@ -208,8 +208,8 @@ func test_one_hand_slash_raises_weapon_hand_to_shoulder_for_windup() -> void:
 
 
 func test_runtime_scene_pose_matches_raw_rig() -> void:
-	var raw_rig := auto_free((load(RIG_PATH) as PackedScene).instantiate())
-	var runtime := auto_free((load(RUNTIME_PATH) as PackedScene).instantiate())
+	var raw_rig := auto_free((load(RIG_PATH) as PackedScene).instantiate()) as Node3D
+	var runtime := auto_free((load(RUNTIME_PATH) as PackedScene).instantiate()) as CharacterBody3D
 	var raw_player := raw_rig.get_node("AnimationPlayer") as AnimationPlayer
 	var runtime_player := runtime.get_node("character/AnimationPlayer") as AnimationPlayer
 	var raw_skeleton := _find_skeleton(raw_rig)
@@ -254,8 +254,8 @@ func _find_skeleton(node: Node) -> Skeleton3D:
 
 
 func _facial_forward(root: Node) -> Vector3:
-	var head := root.find_child("head_main", true, false) as Node3D
-	var nose := root.find_child("nose", true, false) as Node3D
+	var head := root.find_child("head_cranium", true, false) as Node3D
+	var nose := root.find_child("nose_hook_tip", true, false) as Node3D
 	assert_object(head).is_not_null()
 	assert_object(nose).is_not_null()
 	var head_position := _transform_relative_to(head, root).origin

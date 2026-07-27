@@ -69,6 +69,8 @@ var WEAPON_TYPE_NAMES: Dictionary = {
 
 func _ready() -> void:
 	add_to_group("character_panel")
+	theme = preload("res://scenes/ui/lantern_theme.tres")
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	return_btn.pressed.connect(_on_return_pressed)
 	
 	# Connect slots signals
@@ -105,6 +107,16 @@ func _ready() -> void:
 	if gear_list.item_count > 0:
 		gear_list.select(0)
 		_on_gear_selected(0)
+
+
+func _input(event: InputEvent) -> void:
+	if not visible or not (event is InputEventKey):
+		return
+	var key_event := event as InputEventKey
+	if not key_event.pressed or key_event.echo or (key_event.keycode != KEY_ESCAPE and key_event.keycode != KEY_TAB):
+		return
+	get_viewport().set_input_as_handled()
+	_on_return_pressed()
 
 # ==================== Battle Stats Panel (Left Column) ====================
 
@@ -542,13 +554,12 @@ func _spawn_preview_character(weapon_data, shield_data) -> void:
 	var player_instance := PLAYER_PREFAB.instantiate() as Player
 	if player_instance == null:
 		return
-	var game_state: Node = Engine.get_main_loop().root.get_node_or_null("GameState")
-	var previous_player: Player = game_state.current_player if game_state != null and "current_player" in game_state else null
-	
+	# 标记为装备预览实例：Player._ready 检测此 meta 后跳过 GameState.register_player，
+	# 避免预览实例覆盖真实 current_player。必须在 add_child 前设置以在 _ready 前生效。
+	player_instance.set_meta("equipment_preview", true)
+
 	# 先加到视口激活 _ready，确保所有 @onready 变量初始化
 	eq_viewport.add_child(player_instance)
-	if game_state != null and "current_player" in game_state:
-		game_state.current_player = previous_player
 	current_eq_mesh = player_instance
 	player_instance.position = Vector3(0, -0.8, 0)
 	player_instance.rotation = Vector3(0, deg_to_rad(225), 0)

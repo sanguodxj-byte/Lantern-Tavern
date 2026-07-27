@@ -58,6 +58,73 @@ func test_update_missing_rejected() -> void:
 	var r: Dictionary = esa.update_entity(404, {"hp": 1}, {})
 	assert_bool(r["success"]).is_false()
 
+# ============================================================================
+# 性能优化：update_entity 变化检测——无实质变化时跳过事件生成与广播
+# ============================================================================
+
+func test_update_no_change_returns_empty_event() -> void:
+	# 用与当前值完全相同的值更新 → 无实质变化 → 成功但事件为空（跳过冗余广播）
+	var esa = auto_free(EntitySyncAuthority.new())
+	var ents := {}
+	esa.spawn_entity(11, {"hp": 30, "pos": "a"}, ents)
+	var r: Dictionary = esa.update_entity(11, {"hp": 30}, ents)
+	assert_bool(r["success"]).is_true()
+	assert_bool(r["event"].is_empty()).is_true()
+	# 原值不变
+	assert_int(int(ents[11]["hp"])).is_equal(30)
+
+func test_update_all_fields_unchanged_no_event() -> void:
+	# 多字段全部未变 → 事件为空
+	var esa = auto_free(EntitySyncAuthority.new())
+	var ents := {}
+	esa.spawn_entity(11, {"hp": 30, "pos": "a", "kind": "enemy"}, ents)
+	var r: Dictionary = esa.update_entity(11, {"hp": 30, "pos": "a", "kind": "enemy"}, ents)
+	assert_bool(r["success"]).is_true()
+	assert_bool(r["event"].is_empty()).is_true()
+
+func test_update_mixed_change_and_no_change_emits_once() -> void:
+	# hp 不变、pos 变化 → 有变化 → 发出单个 snapshot（含完整当前状态）
+	var esa = auto_free(EntitySyncAuthority.new())
+	var ents := {}
+	esa.spawn_entity(11, {"hp": 30, "pos": "a"}, ents)
+	var r: Dictionary = esa.update_entity(11, {"hp": 30, "pos": "b"}, ents)
+	assert_bool(r["success"]).is_true()
+	assert_str(r["event"]["event"]).is_equal(NP.EVT_ENTITY_SNAPSHOT)
+	assert_str(String(r["event"]["data"]["pos"])).is_equal("b")
+	# 未变更字段仍保留在快照中
+	assert_int(int(r["event"]["data"]["hp"])).is_equal(30)
+
+func test_update_type_mismatch_counts_as_change() -> void:
+	# String "30" vs int 30 → 类型不同（GDScript != 判 true）→ 视为变化
+	# 注意：int 30 与 float 30.0 在 GDScript 中数值相等（!= 判 false），不算变化
+	var esa = auto_free(EntitySyncAuthority.new())
+	var ents := {}
+	esa.spawn_entity(11, {"hp": 30}, ents)
+	var r: Dictionary = esa.update_entity(11, {"hp": "30"}, ents)
+	assert_bool(r["success"]).is_true()
+	assert_str(r["event"]["event"]).is_equal(NP.EVT_ENTITY_SNAPSHOT)
+
+func test_update_empty_partial_no_event() -> void:
+	# 空 partial 字典 → 无字段需比较 → 无变化 → 事件为空
+	var esa = auto_free(EntitySyncAuthority.new())
+	var ents := {}
+	esa.spawn_entity(11, {"hp": 30}, ents)
+	var r: Dictionary = esa.update_entity(11, {}, ents)
+	assert_bool(r["success"]).is_true()
+	assert_bool(r["event"].is_empty()).is_true()
+
+func test_update_change_then_no_change_idempotent() -> void:
+	# 先变更（发事件），再用相同值更新（不发事件）——验证变更后的状态成为新基线
+	var esa = auto_free(EntitySyncAuthority.new())
+	var ents := {}
+	esa.spawn_entity(11, {"hp": 30}, ents)
+	# 第一次：变更 → 发事件
+	var r1: Dictionary = esa.update_entity(11, {"hp": 20}, ents)
+	assert_str(r1["event"]["event"]).is_equal(NP.EVT_ENTITY_SNAPSHOT)
+	# 第二次：用新值再更新 → 无变化 → 不发事件
+	var r2: Dictionary = esa.update_entity(11, {"hp": 20}, ents)
+	assert_bool(r2["event"].is_empty()).is_true()
+
 func test_build_delta_new_entity_spawns() -> void:
 	var esa = auto_free(EntitySyncAuthority.new())
 	var prev := {}

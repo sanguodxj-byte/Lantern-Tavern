@@ -25,7 +25,7 @@ func test_visual_review_reorders_seen_models() -> void:
 		"plague_doctor",
 	])
 	assert_array(TIERS.model_ids_for_tier(TIERS.C)).contains("kobold")
-	assert_array(TIERS.model_ids_for_tier(TIERS.D)).is_equal(["zombie"])
+	assert_array(TIERS.model_ids_for_tier(TIERS.D)).is_equal(["anime_girl", "zombie"])
 
 
 func test_only_individually_accepted_models_are_runtime_eligible() -> void:
@@ -39,7 +39,7 @@ func test_only_individually_accepted_models_are_runtime_eligible() -> void:
 		assert_str(TIERS.tier_for(model_id)).is_equal(TIERS.S)
 	for model_id in ["drow_blade", "spider", "orc_raider", "skeleton", "troll", "player", "minotaur", "slime"]:
 		assert_str(TIERS.tier_for(model_id)).is_equal(TIERS.A)
-	for model_id in ["necrolord", "rat", "kobold", "zombie", "not_a_real_model"]:
+	for model_id in ["necrolord", "rat", "kobold", "zombie", "anime_girl", "not_a_real_model"]:
 		assert_bool(TIERS.is_accepted(model_id)) \
 			.override_failure_message("unaccepted model leaked into runtime: %s" % model_id) \
 			.is_false()
@@ -65,7 +65,8 @@ func test_remake_queue_models_keep_historical_subtags() -> void:
 	assert_str(TIERS.tier_for("player")).is_equal(TIERS.A)
 	assert_str(TIERS.tier_for("plague_doctor")).is_equal(TIERS.B)
 	assert_str(TIERS.tier_for("shadow_assassin")).is_equal(TIERS.C)
-	assert_str(TIERS.tier_for("kobold")).is_equal(TIERS.D)
+	assert_str(TIERS.tier_for("kobold")).is_equal(TIERS.C)
+	assert_str(TIERS.tier_for("anime_girl")).is_equal(TIERS.D)
 	assert_str(TIERS.tier_for("zombie")).is_equal(TIERS.D)
 
 

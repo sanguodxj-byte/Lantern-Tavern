@@ -83,8 +83,34 @@ func test_character_panel_preview_does_not_replace_current_player() -> void:
 	tree.root.add_child(panel)
 	panel._spawn_preview_character(null, null)
 	assert_object(gs.current_player).is_equal(real_player)
+	# 回归：预览 Player 必须携带 equipment_preview meta，
+	# Player._ready 检测此 meta 后跳过 GameState.register_player。
+	assert_bool(panel.current_eq_mesh.has_meta("equipment_preview")) \
+		.override_failure_message("预览 Player 必须设置 equipment_preview meta 以跳过注册").is_true()
 	tree.root.remove_child(panel)
 	panel.free()
 	real_player.free()
 	gs.current_player = previous_player
+
+
+## 回归：EquipmentPanelPlayerFinder._register_current_player 必须走 register_player 而非直写。
+func test_finder_register_current_player_uses_register_player() -> void:
+	var src: String = _source("res://scenes/ui/equipment_panel_player_finder.gd")
+	var fn_start: int = src.find("static func _register_current_player")
+	assert_int(fn_start).is_greater(0)
+	var fn_end: int = src.find("\nstatic func", fn_start + 1)
+	if fn_end == -1:
+		fn_end = src.length()
+	var fn_body: String = src.substr(fn_start, fn_end - fn_start)
+	assert_bool(fn_body.contains("register_player")) \
+		.override_failure_message("_register_current_player 必须调用 register_player 而非直写 current_player").is_true()
+	# 不得直写 current_player（应走 register_player），用局部变量避免多行 and 表达式解析问题
+	var direct_write: bool = fn_body.contains("gs.set(\"current_player\"") or fn_body.contains("gs.current_player =")
+	assert_bool(not direct_write) \
+		.override_failure_message("_register_current_player 不得直写 current_player").is_true()
+
+
+static func _source(path: String) -> String:
+	var script := load(path) as GDScript
+	return script.source_code
 

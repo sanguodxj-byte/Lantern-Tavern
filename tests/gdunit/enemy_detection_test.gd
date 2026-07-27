@@ -10,7 +10,7 @@ func test_enemy_default_detection_range_is_five_meters() -> void:
 		.override_failure_message("索敌距离应可导出但默认使用统一 5m").is_true()
 
 func test_enemy_detection_area_radius_is_configured_from_detection_range() -> void:
-	var scene := load("res://scenes/characters/enemies/goblin.tscn") as PackedScene
+	var scene := load("res://scenes/characters/enemies/slime.tscn") as PackedScene
 	var enemy := scene.instantiate()
 	add_child(enemy)
 	var shape_node := enemy.get_node("PlayerDetectionArea/CollisionShape3D") as CollisionShape3D
@@ -161,21 +161,55 @@ func test_should_chase_player_detects_without_wall() -> void:
 	player.queue_free()
 	enemy.queue_free()
 
-func test_chase_continues_for_registered_player_behind_wall() -> void:
-	# 已登记的玩家即使在墙后，也应继续追击（允许绕墙短暂追击）
+func test_registered_player_behind_wall_uses_last_seen_position() -> void:
+	# 已登记的玩家失去视线后，只能沿最后已知位置短暂追击，不能读取实时位置。
 	var enemy := _new_enemy()
 	var player := _new_player()
 	add_child(enemy)
 	add_child(player)
 	enemy.global_position = Vector3.ZERO
 	player.global_position = Vector3(3.0, 0.0, 0.0)
-	enemy.player = player  # 模拟已通过视野检测并登记
+	await get_tree().create_timer(0.05).timeout
+	enemy.on_player_detected(player)
+	var last_seen := enemy.get_navigation_target_position()
 	var wall := _new_wall(Vector3(1.5, 0.0, 0.0), Vector3(0.2, 3.0, 3.0))
 	add_child(wall)
-	await get_tree().create_timer(0.05).timeout
+	await get_tree().physics_frame
+	player.global_position = Vector3(4.0, 0.0, 0.0)
+	enemy._los_cache_timer = 0.0
 	assert_bool(enemy.should_chase_player()) \
-		.override_failure_message("已登记玩家在墙后也应继续追击").is_true()
+		.override_failure_message("失去视线后应在记忆窗口内前往最后已知位置").is_true()
+	assert_bool(enemy.is_target_visible()).is_false()
+	assert_bool(enemy.get_navigation_target_position().is_equal_approx(last_seen)).is_true()
+	assert_bool(enemy.get_navigation_target_position().is_equal_approx(player.global_position)).is_false()
 	wall.queue_free()
+	player.queue_free()
+	enemy.queue_free()
+
+func test_registered_player_beyond_detection_range_uses_last_seen_position() -> void:
+	# 已发现目标跑出索敌距离后，追击只使用最后已知位置，不读取实时坐标。
+	var enemy := _new_enemy()
+	var player := _new_player()
+	add_child(enemy)
+	add_child(player)
+	enemy.global_position = Vector3.ZERO
+	player.global_position = Vector3(3.0, 0.0, 0.0)
+	await get_tree().create_timer(0.05).timeout
+	enemy.on_player_detected(player)
+	var last_seen := enemy.get_navigation_target_position()
+	player.global_position = Vector3(50.0, 0.0, 0.0)
+	enemy._los_cache_timer = 0.0
+
+	assert_bool(enemy.should_chase_player()) \
+		.override_failure_message("已发现玩家跑出索敌距离后，应在记忆窗口内继续追最后已知位置").is_true()
+	assert_bool(enemy.is_target_visible()).is_false()
+	assert_bool(enemy.get_navigation_target_position().is_equal_approx(last_seen)).is_true()
+	assert_bool(enemy.get_navigation_target_position().is_equal_approx(player.global_position)).is_false()
+
+	var targeting = enemy.get("_targeting")
+	targeting.tick(1.51)
+	assert_bool(enemy.should_chase_player()) \
+		.override_failure_message("最后已知位置记忆耗尽后，不应继续长距离追击").is_false()
 	player.queue_free()
 	enemy.queue_free()
 
@@ -234,19 +268,25 @@ func test_dark_erosion_hunt_ignores_wall() -> void:
 # ==================== 辅助方法 ====================
 
 func _new_enemy() -> Enemy:
-	var scene := load("res://scenes/characters/enemies/goblin.tscn") as PackedScene
-	return scene.instantiate() as Enemy
+	var scene := load("res://scenes/characters/enemies/slime.tscn") as PackedScene
+	var enemy := scene.instantiate() as Enemy
+	# 这些历史检测用例以 +X 为“敌人正前方”，与场景默认 -Z 朝向对齐。
+	enemy.rotation.y = -PI * 0.5
+	enemy.process_mode = Node.PROCESS_MODE_DISABLED
+	return enemy
 
 func _new_player() -> Player:
 	var scene := load("res://scenes/characters/player/player.tscn") as PackedScene
-	return scene.instantiate() as Player
+	var player := scene.instantiate() as Player
+	player.process_mode = Node.PROCESS_MODE_DISABLED
+	return player
 
 ## 创建一面墙壁 StaticBody3D（环境层），用于阻挡视野
 func _new_wall(pos: Vector3, box_size: Vector3) -> StaticBody3D:
 	var body := StaticBody3D.new()
 	body.collision_layer = PhysicsSetup.LAYER_ENVIRONMENT
 	body.collision_mask = 0
-	body.global_position = pos
+	body.position = pos
 	var col := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
 	shape.size = box_size

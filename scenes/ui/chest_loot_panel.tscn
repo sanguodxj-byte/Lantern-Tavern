@@ -1,12 +1,29 @@
-[gd_scene load_steps=3 format=3 uid="uid://chest_loot_panel_v1"]
+[gd_scene load_steps=4 format=3 uid="uid://chest_loot_panel_v1"]
 
 [ext_resource type="Script" path="res://scenes/ui/chest_loot_panel.gd" id="1_script"]
 [ext_resource type="Theme" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
+
+[sub_resource type="StyleBoxFlat" id="CornerStud"]
+bg_color = Color(0.94, 0.62, 0.22, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0, 0, 0, 0.8)
+corner_radius_top_left = 1
+corner_radius_top_right = 1
+corner_radius_bottom_right = 1
+corner_radius_bottom_left = 1
+corner_detail = 1
+anti_aliasing = false
 
 [node name="ChestLootPanel" type="CanvasLayer"]
 layer = 30
 script = ExtResource("1_script")
 
+; ============================================================================
+; 背景遮罩(暗哑)
+; ============================================================================
 [node name="Root" type="Control" parent="."]
 layout_mode = 3
 anchors_preset = 15
@@ -16,6 +33,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 1
 theme = ExtResource("2_theme")
+texture_filter = 1
 
 [node name="DimBackground" type="ColorRect" parent="Root"]
 layout_mode = 1
@@ -25,107 +43,332 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 1
-color = Color(0, 0, 0, 0.4)
+color = Color(0, 0, 0, 0.55)
 
-[node name="MainPanel" type="PanelContainer" parent="Root"]
-custom_minimum_size = Vector2(640, 520)
+; ============================================================================
+; LootFrame —— Tarkov/Barony 风格主面板
+;   - 4px 黑金属外框
+;   - 紧贴视口左右各留 24px 边距
+;   - 顶部 32px,底部 24px 边距
+;   - 整体尺寸 = 视口宽 - 48, 视口高 - 56
+; ============================================================================
+[node name="LootFrame" type="PanelContainer" parent="Root"]
 layout_mode = 1
-anchors_preset = 9
+anchors_preset = 15
+anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = 40.0
-offset_bottom = -40.0
+offset_left = 24.0
+offset_top = 32.0
+offset_right = -24.0
+offset_bottom = -24.0
+grow_horizontal = 2
 grow_vertical = 2
+theme_type_variation = &"LootFrame"
 
-[node name="VBox" type="VBoxContainer" parent="Root/MainPanel"]
+[node name="Margin" type="MarginContainer" parent="Root/LootFrame"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
 
-[node name="Header" type="HBoxContainer" parent="Root/MainPanel/VBox"]
+[node name="LootBody" type="PanelContainer" parent="Root/LootFrame/Margin"]
+layout_mode = 2
+theme_type_variation = &"LootSectionAlt"
+
+[node name="Margin2" type="MarginContainer" parent="Root/LootFrame/Margin/LootBody"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 6
+
+[node name="VBox" type="VBoxContainer" parent="Root/LootFrame/Margin/LootBody/Margin2"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+; ── 标题区(LootHeader:带底边的琥珀高光) ──
+[node name="Header" type="PanelContainer" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox"]
+layout_mode = 2
+theme_type_variation = &"LootHeader"
+
+[node name="HeaderRow" type="HBoxContainer" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/Header"]
 layout_mode = 2
 
-[node name="TitleLabel" type="Label" parent="Root/MainPanel/VBox/Header"]
+[node name="TitleLabel" type="Label" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/Header/HeaderRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 28
-text = "宝箱战利品"
+theme_type_variation = &"LootTitle"
+text = "LOOT"
 
-[node name="CloseBtn" type="Button" parent="Root/MainPanel/VBox/Header"]
+[node name="ItemCount" type="Label" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/Header/HeaderRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "关闭"
+theme_type_variation = &"LootHint"
+text = ""
+horizontal_alignment = 2
+vertical_alignment = 1
 
-[node name="ContentRow" type="HBoxContainer" parent="Root/MainPanel/VBox"]
+[node name="CloseBtn" type="Button" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/Header/HeaderRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 38)
+layout_mode = 2
+theme_type_variation = &"LootButton"
+text = "CLOSE"
+
+; ── 内容主体(3 列布局) ──
+[node name="ContentRow" type="HBoxContainer" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
-[node name="ChestColumn" type="VBoxContainer" parent="Root/MainPanel/VBox/ContentRow"]
+; ── 左列: 装备槽(LootSection 风格) ──
+[node name="EquipmentColumn" type="PanelContainer" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.9
+theme_type_variation = &"LootSection"
 
-[node name="ChestLabel" type="Label" parent="Root/MainPanel/VBox/ContentRow/ChestColumn"]
+[node name="EquipMargin" type="MarginContainer" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow/EquipmentColumn"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="EquipVBox" type="VBoxContainer" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow/EquipmentColumn/EquipMargin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="EquipTitle" type="Label" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow/EquipmentColumn/EquipMargin/EquipVBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "📦 宝箱内容"
+theme_type_variation = &"LootSectionTitle"
+text = "EQUIPMENT"
+horizontal_alignment = 1
 
-[node name="ChestList" type="ItemList" parent="Root/MainPanel/VBox/ContentRow/ChestColumn"]
+[node name="EquipLabel" type="Label" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow/EquipmentColumn/EquipMargin/EquipVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"LootHint"
+text = "click slot to unequip"
+horizontal_alignment = 1
+
+[node name="EquipGrid" type="GridContainer" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow/EquipmentColumn/EquipMargin/EquipVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
+size_flags_stretch_ratio = 1.0
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 2
+
+[node name="EquipHint" type="Label" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow/EquipmentColumn/EquipMargin/EquipVBox"]
+layout_mode = 2
+theme_type_variation = &"LootHint"
+text = "double-click a gear item to equip"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+; ── 中列: 宝箱内容(LootSectionAlt 风格) ──
+[node name="ChestColumn" type="PanelContainer" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.4
+theme_type_variation = &"LootSectionAlt"
+
+[node name="ChestMargin" type="MarginContainer" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow/ChestColumn"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="ChestVBox" type="VBoxContainer" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow/ChestColumn/ChestMargin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ChestLabel" type="Label" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow/ChestColumn/ChestMargin/ChestVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"LootSectionTitle"
+text = "CHEST"
+horizontal_alignment = 1
+
+[node name="ChestList" type="ItemList" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow/ChestColumn/ChestMargin/ChestVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"LootSlot"
 theme_override_font_sizes/font_size = 14
 item_count = 0
 same_column_width = true
 icon_mode = 1
-fixed_icon_size = Vector2i(64, 64)
+fixed_icon_size = Vector2i(56, 56)
 max_columns = 0
-fixed_column_width = 80
+fixed_column_width = 72
 select_mode = 1
 allow_reselect = true
 
-[node name="BackpackColumn" type="VBoxContainer" parent="Root/MainPanel/VBox/ContentRow"]
+[node name="ChestHint" type="Label" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow/ChestColumn/ChestMargin/ChestVBox"]
+layout_mode = 2
+theme_type_variation = &"LootHint"
+text = "double-click to loot"
+horizontal_alignment = 1
+
+; ── 右列: 背包(LootSection 风格) ──
+[node name="BackpackColumn" type="PanelContainer" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.4
+theme_type_variation = &"LootSection"
 
-[node name="BackpackLabel" type="Label" parent="Root/MainPanel/VBox/ContentRow/BackpackColumn"]
+[node name="BackpackMargin" type="MarginContainer" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow/BackpackColumn"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="BackpackVBox" type="VBoxContainer" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow/BackpackColumn/BackpackMargin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="BackpackLabel" type="Label" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow/BackpackColumn/BackpackMargin/BackpackVBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "🎒 背包"
+theme_type_variation = &"LootSectionTitle"
+text = "BACKPACK"
+horizontal_alignment = 1
 
-[node name="BackpackList" type="ItemList" parent="Root/MainPanel/VBox/ContentRow/BackpackColumn"]
+[node name="BackpackList" type="ItemList" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow/BackpackColumn/BackpackMargin/BackpackVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
+theme_type_variation = &"LootSlot"
 theme_override_font_sizes/font_size = 14
 item_count = 0
 same_column_width = true
 icon_mode = 1
-fixed_icon_size = Vector2i(64, 64)
+fixed_icon_size = Vector2i(56, 56)
 max_columns = 0
-fixed_column_width = 80
+fixed_column_width = 72
 select_mode = 1
 allow_reselect = true
 
-[node name="Footer" type="HBoxContainer" parent="Root/MainPanel/VBox"]
+[node name="BackpackHint" type="Label" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow/BackpackColumn/BackpackMargin/BackpackVBox"]
 layout_mode = 2
-alignment = 1
+theme_type_variation = &"LootHint"
+text = "double-click to store"
+horizontal_alignment = 1
 
-[node name="Spacer" type="Control" parent="Root/MainPanel/VBox/Footer"]
+; ── 底部操作行(重量/容量条 + 按钮) ──
+[node name="Footer" type="PanelContainer" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox"]
+layout_mode = 2
+theme_type_variation = &"LootHeader"
+
+[node name="FooterRow" type="HBoxContainer" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/Footer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="WeightColumn" type="VBoxContainer" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/Footer/FooterRow"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.4
+theme_override_constants/separation = 2
 
-[node name="HarvestAllBtn" type="Button" parent="Root/MainPanel/VBox/Footer"]
+[node name="WeightLabel" type="Label" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/Footer/FooterRow/WeightColumn"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(200, 50)
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "✅ 一键收获"
+theme_type_variation = &"LootHint"
+text = ""
+horizontal_alignment = 0
 
-[node name="Spacer2" type="Control" parent="Root/MainPanel/VBox/Footer"]
+[node name="WeightBar" type="ProgressBar" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/Footer/FooterRow/WeightColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 14)
 layout_mode = 2
 size_flags_horizontal = 3
+min_value = 0.0
+max_value = 30.0
+value = 0.0
+step = 0.0
+show_percentage = false
+
+[node name="DetailHint" type="Label" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/Footer/FooterRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+theme_type_variation = &"LootHint"
+text = "hover items to inspect"
+vertical_alignment = 1
+horizontal_alignment = 2
+
+[node name="HarvestAllBtn" type="Button" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/Footer/FooterRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 44)
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"LootButton"
+text = "HARVEST ALL"
+
+; ============================================================================
+; 角部装饰 (4 个角的金属钉) — 放在 Root 下,避免被 PanelContainer 自动布局拉伸
+; 位置对应 LootFrame (24,32) - (1896,1056) 的四个内角
+; ============================================================================
+[node name="CornerTL" type="Panel" parent="Root"]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = 32.0
+offset_top = 40.0
+offset_right = 40.0
+offset_bottom = 48.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("CornerStud")
+
+[node name="CornerTR" type="Panel" parent="Root"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 0.0
+offset_left = -40.0
+offset_top = 40.0
+offset_right = -32.0
+offset_bottom = 48.0
+grow_horizontal = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("CornerStud")
+
+[node name="CornerBL" type="Panel" parent="Root"]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 0.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 32.0
+offset_top = -48.0
+offset_right = 40.0
+offset_bottom = -40.0
+grow_vertical = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("CornerStud")
+
+[node name="CornerBR" type="Panel" parent="Root"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = -40.0
+offset_top = -48.0
+offset_right = -32.0
+offset_bottom = -40.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("CornerStud")

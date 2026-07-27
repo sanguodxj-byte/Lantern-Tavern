@@ -106,7 +106,7 @@ func test_voxel_rock_golem_generator_owns_its_static_and_rig_outputs() -> void:
 	assert_str(source).contains("RIG_OUTPUT")
 	assert_str(source).contains("voxel_rock_golem_80px_rig.glb")
 	assert_str(source).contains("reject_target_override(MODEL_ID)")
-	assert_str(source).contains("build_humanoid_rig")
+	assert_str(source).contains("create_voxel_humanoid_armature")
 
 
 func test_voxel_rock_golem_rig_outputs_exist_when_generated() -> void:

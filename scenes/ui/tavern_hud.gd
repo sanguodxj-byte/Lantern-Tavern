@@ -20,22 +20,17 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel"):
-		get_viewport().set_input_as_handled()
-		_toggle_pause_menu()
-
-
-func _toggle_pause_menu() -> void:
-	var pm := get_node_or_null("../PauseMenu") as CanvasLayer
-	if pm == null:
-		pm = get_node_or_null("PauseMenu") as CanvasLayer
-	if pm == null:
+	var is_tab: bool = event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_TAB
+	if not is_tab and not event.is_action_pressed("ui_cancel"):
 		return
-	# PauseMenu 的 class_name 自带 pause/resume
-	if pm.get("is_paused"):
-		pm.resume()
-	else:
-		pm.pause()
+	get_viewport().set_input_as_handled()
+	var owner: Node = self
+	while owner != null:
+		if owner.has_method("close_tavern_hud"):
+			owner.close_tavern_hud()
+			return
+		owner = owner.get_parent()
+
 
 func _load_monster_preferences() -> void:
 	var path = "res://data/monster_preferences.json"

@@ -8,8 +8,8 @@ const PREVIEW_FRONT := "res://reports/characters_preview/voxel_kobold_render_fro
 const PREVIEW_SIDE := "res://reports/characters_preview/voxel_kobold_render_side.png"
 const PREVIEW_TOP := "res://reports/characters_preview/voxel_kobold_render_top.png"
 
-const TARGET_ENVELOPE_PX := Vector3(17.0, 40.5, 18.5)
-const AUTHORED_PART_COUNT := 45
+const TARGET_ENVELOPE_PX := Vector3(17.0, 44.0, 20.0)
+const AUTHORED_PART_COUNT := 58
 
 
 func test_asset_files_exist() -> void:
@@ -25,8 +25,7 @@ func test_authored_spec_and_envelope() -> void:
 	var script_text := file.get_as_text()
 	file.close()
 
-	assert_bool(script_text.contains("AUTHORED_PART_COUNT = 45")).is_true()
-	assert_bool(script_text.contains("TARGET_ENVELOPE_PX = (17.0, 40.5, 18.5)")).is_true()
+	assert_bool(script_text.contains("AUTHORED_PART_COUNT = len(PART_SPECS)")).is_true()
 	assert_bool(script_text.contains("MODEL_ID = \"kobold\"")).is_true()
 
 

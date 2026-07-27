@@ -18,6 +18,20 @@ func test_filter_entries_preserves_order_and_metadata() -> void:
 	assert_str(String(filtered[0].get("id"))).is_equal("shortsword")
 	assert_str(String(filtered[1].get("id"))).is_equal("chain")
 
+func test_sort_inventory_entries_uses_category_order_without_mutating_input() -> void:
+	var entries := [
+		{"type": "rune", "id": "ember", "display_name": "ᛖᛗᛒᛖᚱ"},
+		{"type": "material", "id": "ash", "display_name": "灰烬"},
+		{"type": "armor", "id": "plate", "display_name": "板甲"},
+		{"type": "weapon", "id": "axe", "display_name": "斧"},
+	]
+	var sorted: Array = VIEW_MODEL.sort_inventory_entries(entries)
+	assert_str(String(sorted[0].get("id"))).is_equal("axe")
+	assert_str(String(sorted[1].get("id"))).is_equal("plate")
+	assert_str(String(sorted[2].get("id"))).is_equal("ash")
+	assert_str(String(sorted[3].get("id"))).is_equal("ember")
+	assert_str(String(entries[0].get("id"))).is_equal("ember")
+
 func test_unknown_filter_is_explicitly_empty() -> void:
 	var entries := [{"type": "weapon", "id": "shortsword"}]
 	assert_array(VIEW_MODEL.filter_entries(entries, "missing")).is_empty()

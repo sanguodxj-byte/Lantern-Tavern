@@ -271,6 +271,12 @@ func spawn(projectile_id: String, spawn_transform: Transform3D, source_player: N
 	projectile.set("weapon_condition_wear", WEAPON_CONDITION_WEAR)
 	# 先设置本地 transform（add_child 前 global_transform 不可用）
 	projectile.transform = spawn_transform
+	# 在 add_child 前隐藏视觉根节点，防止首帧渲染时箭尾贴脸形成灰屏闪屏。
+	# 对象池复用时 visual_root.visible 可能为 true（上次飞行结束后未重置），
+	# 新实例化时也需预先隐藏，确保 _ready 中 _build_visual 添加的网格首帧不可见。
+	var vr: Node3D = projectile.get_node_or_null("VisualRoot")
+	if vr != null:
+		vr.visible = false
 	# 如果是池中复用的节点，标记需要重新 _ready
 	if projectile.get_parent() == null and projectile.is_inside_tree() == false:
 		projectile.request_ready()

@@ -94,16 +94,150 @@ func test_attack_input_is_hold_then_release_instead_of_click_attack() -> void:
 	var prepare_source := _source("res://scenes/characters/player/state/player_state_attack_preparing.gd")
 	assert_bool(moving_source.contains("make_primary_weapon_attack_data()")) \
 		.override_failure_message("移动状态按下攻击键时必须进入攻击准备数据流").is_true()
-	assert_bool(prepare_source.contains("Input.is_action_pressed(input_action)")) \
-		.override_failure_message("攻击准备状态必须在按住时保持，不得点击即攻击").is_true()
+	assert_bool(prepare_source.contains("player.is_weapon_action_held(input_action)")) \
+		.override_failure_message("攻击准备状态必须读取 Player 的按住状态，不得点击即攻击").is_true()
+	assert_bool(moving_source.contains("player.consume_weapon_action_pressed(\"action\")")) \
+		.override_failure_message("移动状态必须消费 Player 输入边界捕获的左键按下边沿").is_true()
 	assert_bool(prepare_source.contains("transition_state(release_state, state_data)")) \
 		.override_failure_message("攻击准备状态必须在释放后进入真实攻击状态").is_true()
+	assert_bool(prepare_source.contains("const MIN_HOLD_MSEC := 0")) \
+		.override_failure_message("近战点按松开也必须能够释放攻击").is_true()
+	assert_bool(prepare_source.contains("is_melee_on_cooldown(state_data.weapon_attack_hand)")) \
+		.override_failure_message("攻击准备状态必须在冷却期间退出，不得蓄力或攻击").is_true()
+
+
+func test_melee_cooldown_blocks_primary_and_secondary_attack_entry() -> void:
+	var player := _make_player_with_equipment()
+	player.equipment.configure_weapon_slot(0, _make_weapon("Cooldown Sword", "one_hand_melee", "melee", "one_hand"), true)
+	player._melee_cd_primary = 0.2
+	assert_int(player.get_primary_weapon_action_state()).is_equal(-1)
+	assert_int(player.get_primary_weapon_release_state()).is_equal(-1)
+	player._melee_cd_primary = 0.0
+	assert_int(player.get_primary_weapon_action_state()).is_equal(Player.State.ATTACK_PREPARING)
+
+	player._melee_cd_secondary = 0.2
+	assert_int(player.get_secondary_weapon_action_state()).is_equal(-1)
+	assert_int(player.get_secondary_weapon_release_state()).is_equal(-1)
+	player.free()
+
+
+func test_melee_cooldown_blocks_runtime_prepare_and_cancels_stale_prepare() -> void:
+	var player := _make_player_with_equipment()
+	player.equipment.configure_weapon_slot(0, _make_weapon("Runtime Cooldown Sword", "one_hand_melee", "melee", "one_hand"), true)
+	player._melee_cd_primary = 0.2
+	player.switch_state(Player.State.MOVING)
+
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	player._input(press)
+	(player.state_node as PlayerStateMoving)._process(0.016)
+	assert_int(player.state) \
+		.override_failure_message("近战冷却期间按下左键不得进入攻击蓄力状态").is_equal(Player.State.MOVING)
+
+	player._melee_cd_primary = 0.0
+	player.switch_state(Player.State.ATTACK_PREPARING, player.make_primary_weapon_attack_data())
+	player._melee_cd_primary = 0.2
+	(player.state_node as PlayerStateAttackPreparing)._process(0.016)
+	assert_int(player.state) \
+		.override_failure_message("攻击准备期间进入冷却后必须取消蓄力并回到移动状态").is_equal(Player.State.MOVING)
+	player.free()
+
+
+func test_player_captures_mouse_press_and_release_for_weapon_actions() -> void:
+	var player := Player.new()
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	player._input(press)
+	assert_bool(player.is_weapon_action_held("action")).is_true()
+
+	var release := InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	player._input(release)
+	assert_bool(player.is_weapon_action_held("action")).is_false()
+	player.free()
+
+
+func test_mouse_press_edge_is_consumed_once() -> void:
+	var player := Player.new()
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	player._input(press)
+	assert_bool(player.consume_weapon_action_pressed("action")).is_true()
+	assert_bool(player.consume_weapon_action_pressed("action")).is_false()
+	player.free()
+
+
+func test_production_player_routes_mouse_press_into_attack_preparing() -> void:
+	var packed := load("res://scenes/characters/player/player.tscn") as PackedScene
+	var player := auto_free(packed.instantiate()) as Player
+	add_child(player)
+	await get_tree().process_frame
+
+	var weapon := _make_weapon("Runtime Sword", "one_hand_melee", "melee", "one_hand")
+	assert_bool(player.equipment.configure_weapon_slot(0, weapon, true)).is_true()
+	await get_tree().process_frame
+	assert_bool(player.has_active_hand_equipment()).is_true()
+
+	player.switch_state(Player.State.MOVING)
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	player._input(press)
+	(player.state_node as PlayerStateMoving)._process(0.016)
+
+	assert_int(player.state) \
+		.override_failure_message("生产 Player 收到左键按下后必须进入 ATTACK_PREPARING").is_equal(Player.State.ATTACK_PREPARING)
+
+	var release := InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	player._input(release)
+	(player.state_node as PlayerStateAttackPreparing)._process(0.016)
+	assert_int(player.state) \
+		.override_failure_message("生产 Player 收到左键释放后必须进入 SLASHING").is_equal(Player.State.SLASHING)
+
+
+func test_production_player_can_attack_unarmed_before_weapon_pickup() -> void:
+	var packed := load("res://scenes/characters/player/player.tscn") as PackedScene
+	var player := auto_free(packed.instantiate()) as Player
+	add_child(player)
+	await get_tree().process_frame
+
+	assert_bool(player.has_active_hand_equipment()).is_false()
+	player.switch_state(Player.State.MOVING)
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	player._input(press)
+	(player.state_node as PlayerStateMoving)._process(0.016)
+	assert_int(player.state).is_equal(Player.State.ATTACK_PREPARING)
+
+	var release := InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	player._input(release)
+	(player.state_node as PlayerStateAttackPreparing)._process(0.016)
+	assert_int(player.state).is_equal(Player.State.SLASHING)
 
 
 func test_blocking_holds_until_right_button_released() -> void:
 	var source := _source("res://scenes/characters/player/state/player_state_blocking.gd")
 	assert_bool(source.contains('not Input.is_action_pressed("block")')) \
 		.override_failure_message("格挡必须按住保持，松开才退出").is_true()
+
+
+func test_network_attack_is_sent_on_release_not_press() -> void:
+	var source := _source("res://scenes/characters/player/state/player_state_moving.gd")
+	var network_start := source.find("func _process_network_intents()")
+	var network_end := source.find("\nfunc _physics_process", network_start)
+	var network_body := source.substr(network_start, network_end - network_start)
+	assert_bool(network_body.contains("_network_primary_attack_held = true")).is_true()
+	assert_bool(network_body.contains("not player.is_weapon_action_held(\"action\")")).is_true()
+	assert_bool(network_body.contains("drv.send_attack(0, atk_type)")).is_true()
 
 
 func test_aiming_changes_camera_fov_and_can_reset() -> void:

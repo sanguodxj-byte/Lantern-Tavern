@@ -39,19 +39,31 @@ func test_dungeon_merges_collisions_into_few_bodies() -> void:
 
 func test_dungeon_merged_collision_bodies_are_environment_layered() -> void:
 	var dungeon := load("res://scenes/expedition/procedural_dungeon.tscn").instantiate() as ProceduralDungeon
+	# 本测试只验证地形碰撞；关闭人口生成，避免把导航与蒙皮资源生命周期混入碰撞断言。
+	dungeon.spawn_population_enabled = false
+	dungeon.generation_seed = 1601
 	add_child(dungeon)
 	await await_idle_frame()
 
+	assert_object(dungeon.build_result).is_not_null()
+	if dungeon.build_result == null:
+		return
+	var collision_root := dungeon.build_result.collision_root
+	assert_object(collision_root).is_not_null()
+	if collision_root == null:
+		return
 	var merged_body_count := 0
-	for child in dungeon.get_children():
+	for child in collision_root.get_children():
 		var body := child as StaticBody3D
 		if body == null:
 			continue
 		# 合并 body 名以 Collisions 结尾
 		if String(body.name).contains("Collisions"):
 			merged_body_count += 1
-			assert_int(body.collision_layer).is_equal(PhysicsSetup.LAYER_ENVIRONMENT)
-			assert_int(body.collision_mask).is_equal(PhysicsSetup.MASK_ENVIRONMENT)
+			# 流式系统会按玩家 chunk 将远处 body 的当前 layer/mask 置 0；
+			# 配置真值保存在注册元数据中，应检查该值而非瞬时激活状态。
+			assert_int(int(body.get_meta("stream_collision_layer", -1))).is_equal(PhysicsSetup.LAYER_ENVIRONMENT)
+			assert_int(int(body.get_meta("stream_collision_mask", -1))).is_equal(PhysicsSetup.MASK_ENVIRONMENT)
 			# 应仅有一个 CollisionShape3D 子节点（ConcavePolygonShape3D）
 			var col_count := 0
 			var concave_count := 0
@@ -99,6 +111,8 @@ func test_dungeon_bakes_navigation_mesh() -> void:
 
 func test_dungeon_has_navigation_region_after_ready() -> void:
 	var dungeon := load("res://scenes/expedition/procedural_dungeon.tscn").instantiate() as ProceduralDungeon
+	dungeon.spawn_population_enabled = false
+	dungeon.generation_seed = 1602
 	add_child(dungeon)
 	await await_idle_frame()
 
@@ -107,12 +121,18 @@ func test_dungeon_has_navigation_region_after_ready() -> void:
 		if child is NavigationRegion3D:
 			nav_region = child as NavigationRegion3D
 			break
-	assert_object(nav_region) \
-		.override_failure_message("地牢 ready 后必须存在 NavigationRegion3D 节点") \
-		.is_not_null()
-	assert_object(nav_region.navigation_mesh) \
-		.override_failure_message("NavigationRegion3D 必须挂载 NavigationMesh") \
-		.is_not_null()
+	if DisplayServer.get_name() == "headless":
+		# headless 下 builder 为避免导航原生崩溃会跳过烘焙，不能访问空 region 的属性。
+		assert_bool(nav_region == null) \
+			.override_failure_message("headless 下应跳过导航烘焙，避免创建不可用的导航 region").is_true()
+	else:
+		assert_object(nav_region) \
+			.override_failure_message("地牢 ready 后必须存在 NavigationRegion3D 节点") \
+			.is_not_null()
+		if nav_region != null:
+			assert_object(nav_region.navigation_mesh) \
+				.override_failure_message("NavigationRegion3D 必须挂载 NavigationMesh") \
+				.is_not_null()
 
 	remove_child(dungeon)
 	dungeon.free()
@@ -139,8 +159,14 @@ func test_minimap_caches_enemies_and_not_scan_per_draw() -> void:
 		.override_failure_message("minimap 必须用 _refresh_enemy_cache 节流刷新敌人缓存") \
 		.is_true()
 	# _draw_enemies 不应再每帧 get_nodes_in_group
-	var draw_section := source.substr(source.find("_draw_enemies"))
-	assert_bool(not draw_section.contains("get_nodes_in_group")) \
+	var draw_start := source.find("func _draw_enemies")
+	var draw_end := source.find("\nfunc ", draw_start + 1)
+	var draw_section := source.substr(draw_start, draw_end - draw_start if draw_end > draw_start else source.length() - draw_start)
+	var draw_code := ""
+	for line in draw_section.split("\n"):
+		if not line.strip_edges().begins_with("#"):
+			draw_code += line + "\n"
+	assert_bool(not draw_code.contains("get_nodes_in_group")) \
 		.override_failure_message("_draw_enemies 不应每帧调用 get_nodes_in_group，必须读缓存") \
 		.is_true()
 
@@ -156,15 +182,17 @@ func test_minimap_refresh_enemy_cache_filters_dead_and_non_enemy() -> void:
 	fake.add_to_group("enemies")
 	add_child(fake)
 	# 真实 Enemy 入组
-	var enemy := Enemy.new()
+	var enemy_scene := load("res://scenes/characters/enemies/slime.tscn") as PackedScene
+	var enemy := enemy_scene.instantiate() as Enemy
+	enemy.process_mode = Node.PROCESS_MODE_DISABLED
 	enemy.add_to_group("enemies")
 	add_child(enemy)
 	minimap._refresh_enemy_cache()
 	assert_int(minimap._cached_enemies.size()).is_equal(1)
 	assert_object(minimap._cached_enemies[0]).is_equal(enemy)
-	fake.queue_free()
-	enemy.queue_free()
-	minimap.queue_free()
+	fake.free()
+	enemy.free()
+	minimap.free()
 
 
 # ── P2: enemy_health_bar 节流 ──────────────────────────────
@@ -263,7 +291,7 @@ func test_player_check_for_possible_action_skips_build_when_collider_unchanged()
 # ── P1-2: 静态装饰并入 MultiMesh 批处理（铁栅栏）──────────────
 
 func test_batched_decor_includes_iron_bar_grate() -> void:
-	var script: GDScript = load(DUNGEON_SCRIPT)
+	var script: GDScript = load("res://scenes/expedition/dungeon_runtime_config.gd")
 	var source := script.source_code
 	# iron_bar_grate 必须纳入批处理集合，10 根铁栏合并为每批 1 个 draw call
 	assert_bool(source.contains("\"res://scenes/props/decor/iron_bar_grate.tscn\": true")) \
@@ -284,27 +312,31 @@ func test_batched_decor_includes_iron_bar_grate() -> void:
 		.override_failure_message("iron_bar_grate 不得含 Light3D，否则批处理会丢失光源").is_false()
 	assert_bool(has_particle).is_false() \
 		.override_failure_message("iron_bar_grate 不得含 GPUParticles3D，否则批处理会丢失粒子").is_false()
-	grate_inst.queue_free()
+	grate_inst.free()
 
 
 # ── P1-3: 散落装饰/材料距离剔除（visibility_range）────────────
 
 func test_distance_culling_helper_sets_visibility_range() -> void:
-	var script: GDScript = load(DUNGEON_SCRIPT)
-	var source := script.source_code
+	var builder_script: GDScript = load("res://scenes/expedition/dungeon_scene_builder.gd")
+	var builder_source := builder_script.source_code
+	var item_spawner_script: GDScript = load("res://globals/equipment/item_spawner.gd")
+	var item_spawner_source := item_spawner_script.source_code
 	# 必须提供距离剔除辅助函数与阈值常量
-	assert_bool(source.contains("func _apply_distance_culling")) \
+	assert_bool(builder_source.contains("func _apply_distance_culling")) \
 		.override_failure_message("地牢必须提供 _apply_distance_culling 距离剔除辅助函数").is_true()
-	assert_bool(source.contains("const DECOR_VISIBILITY_RANGE_END")) \
+	assert_bool(builder_source.contains("const DECOR_VISIBILITY_RANGE_END")) \
 		.override_failure_message("必须定义 DECOR_VISIBILITY_RANGE_END 距离剔除阈值").is_true()
 	# 应基于 SELF 淡出模式设置每个 GeometryInstance3D 的 visibility_range_end
-	assert_bool(source.contains("visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF")) \
+	assert_bool(builder_source.contains("visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF")) \
 		.override_failure_message("_apply_distance_culling 应使用 SELF 淡出模式").is_true()
-	# 单体装饰分支与材料分支都必须调用距离剔除
-	assert_bool(source.contains("_apply_distance_culling(instance)")) \
+	# 单体装饰分支必须调用距离剔除；材料已由 ItemSpawner 的真实生成入口负责。
+	assert_bool(builder_source.contains("_apply_distance_culling(decor_node)")) \
 		.override_failure_message("_spawn_random_decor 的单体装饰分支必须应用距离剔除").is_true()
-	assert_bool(source.contains("_apply_distance_culling(item)")) \
-		.override_failure_message("_spawn_random_material 必须应用距离剔除").is_true()
+	assert_bool(item_spawner_source.contains("const DECOR_VISIBILITY_RANGE_END")) \
+		.override_failure_message("ItemSpawner 必须定义材料/装饰距离剔除阈值").is_true()
+	assert_bool(item_spawner_source.contains("_apply_distance_culling(item)")) \
+		.override_failure_message("ItemSpawner 材料生成必须应用距离剔除").is_true()
 
 
 # ── P0-3: 导航网格直接面片烘焙（无 GPU 回传）────────────────
@@ -320,12 +352,12 @@ func test_dungeon_navmesh_uses_add_faces_not_rendering_server() -> void:
 	assert_bool(source.contains("_append_floor_top_face")) \
 		.override_failure_message("必须有 _append_floor_top_face 辅助函数构建可行走面片") \
 		.is_true()
-	# 必须有障碍面片（墙体）——使用 has_method 兼容检查
-	assert_bool(source.contains("add_obstruction_faces")) \
-		.override_failure_message("navmesh 必须用 add_obstruction_faces 添加墙体障碍几何（通过 has_method 兼容检查）") \
+	# 墙体使用与地板相同的直接面片源注入，避免依赖不存在/不稳定的 obstruction API。
+	assert_bool(source.contains("_build_navigation_obstacle_faces")) \
+		.override_failure_message("navmesh 必须构建墙体障碍面片") \
 		.is_true()
-	assert_bool(source.contains('has_method("add_obstruction_faces")')) \
-		.override_failure_message("add_obstruction_faces 调用前必须有 has_method 兼容检查，因为该方法在部分 Godot 4.x 版本不存在") \
+	assert_bool(source.contains("wall_faces")) \
+		.override_failure_message("navmesh 必须把墙体障碍面片加入 source geometry") \
 		.is_true()
 
 
@@ -393,7 +425,9 @@ func test_projectile_entity_ready_clears_visual_for_reuse() -> void:
 	var script: GDScript = load(PROJECTILE_ENTITY_SCRIPT)
 	var source := script.source_code
 	# _ready 必须重置状态（对象池复用）
-	var ready_section := source.substr(source.find("func _ready"), 800)
+	var ready_start := source.find("func _ready")
+	var ready_end := source.find("\n\n##", ready_start)
+	var ready_section := source.substr(ready_start, ready_end - ready_start if ready_end > ready_start else source.length() - ready_start)
 	assert_bool(ready_section.contains("_is_destroyed = false")) \
 		.override_failure_message("_ready 必须重置 _is_destroyed（对象池复用）") \
 		.is_true()
@@ -424,14 +458,12 @@ func test_projectile_service_clear_pool_on_level_change() -> void:
 # ── P1-2: 物理串流增量更新 ─────────────────────────────────
 
 func test_dungeon_physics_streaming_uses_incremental_update() -> void:
-	var script: GDScript = load(DUNGEON_SCRIPT)
-	var source := script.source_code
-	# 必须有 _last_active_physics_chunks 增量对比
-	assert_bool(source.contains("_last_active_physics_chunks")) \
+	# 物理串流已由 ProceduralDungeon 迁移到独立 controller，状态必须由实际所有者维护。
+	var ctrl_src := (load("res://scenes/expedition/dungeon_streaming_controller.gd") as GDScript).source_code
+	assert_bool(ctrl_src.contains("_last_active_physics_chunks")) \
 		.override_failure_message("地牢物理串流必须用 _last_active_physics_chunks 做增量对比") \
 		.is_true()
 	# streaming 物理更新已迁入 DungeonStreamingController，不应再全量遍历旧 registry
-	var ctrl_src := (load("res://scenes/expedition/dungeon_streaming_controller.gd") as GDScript).source_code
 	assert_bool(ctrl_src.contains("func update_streaming") or ctrl_src.contains("_physics_chunks")) \
 		.override_failure_message("streaming controller 应按 chunk 管理物理体") \
 		.is_true()
@@ -456,8 +488,14 @@ func test_lighting_controller_caches_flicker_lights() -> void:
 		.override_failure_message("LightingController 必须有 _flicker_cache_dirty 脏标记") \
 		.is_true()
 	# _process 不应每帧调用 get_nodes_in_group
-	var proc_section := source.substr(source.find("func _process"), source.find("\n\n##", source.find("func _process")))
-	assert_bool(not proc_section.contains("get_nodes_in_group")) \
+	var proc_start := source.find("func _process")
+	var proc_end := source.find("\nfunc ", proc_start + 1)
+	var proc_section := source.substr(proc_start, proc_end - proc_start if proc_end > proc_start else source.length() - proc_start)
+	var proc_code := ""
+	for line in proc_section.split("\n"):
+		if not line.strip_edges().begins_with("#"):
+			proc_code += line + "\n"
+	assert_bool(not proc_code.contains("get_nodes_in_group")) \
 		.override_failure_message("_process 不应每帧调用 get_nodes_in_group，应使用缓存") \
 		.is_true()
 	# 必须有刷新缓存的函数

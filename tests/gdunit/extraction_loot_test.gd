@@ -101,7 +101,7 @@ func test_player_state_picking_up_records_carried() -> void:
 	assert_bool(source.find("TavernManager.add_material") == -1).is_true()
 
 func test_settle_extraction_loot_reads_game_state() -> void:
-	var script: Resource = load("res://scenes/expedition/procedural_dungeon.gd")
+	var script: Resource = load("res://scenes/expedition/dungeon_runtime.gd")
 	var source: String = (script as GDScript).source_code
 	assert_bool(source.find("GameState.get_carried_materials") != -1).is_true()
 	assert_bool(source.find("GameState.get_carried_weapons") != -1).is_true()
@@ -121,6 +121,6 @@ func test_tavern_manager_add_material_accumulates() -> void:
 	tm.inventory.clear()
 
 func test_settle_extraction_loot_calls_record_expedition_loot() -> void:
-	var script: Resource = load("res://scenes/expedition/procedural_dungeon.gd")
+	var script: Resource = load("res://scenes/expedition/dungeon_runtime.gd")
 	var source: String = (script as GDScript).source_code
 	assert_bool(source.find("record_expedition_loot") != -1).is_true()

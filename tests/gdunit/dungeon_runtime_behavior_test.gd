@@ -48,6 +48,45 @@ func test_stop_sets_expedition_finished() -> void:
 	assert_bool(rt.expedition_finished).is_true()
 	rt.free()
 
+
+func test_stabilize_lighting_disables_specular_on_all_dungeon_lights() -> void:
+	var level := Node3D.new()
+	add_child(level)
+	var local_light := OmniLight3D.new()
+	local_light.light_specular = 0.8
+	var ambient_light := DirectionalLight3D.new()
+	ambient_light.light_specular = 0.8
+	level.add_child(local_light)
+	level.add_child(ambient_light)
+
+	var rt := DungeonRuntime.new()
+	rt.configure(DungeonLayout.new(), DungeonBuildResult.new(), level)
+	rt.stabilize_lighting()
+
+	assert_float(local_light.light_specular) \
+		.override_failure_message("地牢局部光源必须关闭镜面贡献").is_equal_approx(0.0, 0.001)
+	assert_float(ambient_light.light_specular) \
+		.override_failure_message("地牢方向光必须关闭镜面贡献").is_equal_approx(0.0, 0.001)
+	rt.free()
+	level.free()
+
+func test_stop_cancels_deferred_enemy_spawn_state() -> void:
+	var src := (load("res://scenes/expedition/dungeon_runtime.gd") as GDScript).source_code
+	assert_bool(src.contains("_enemy_spawn_active = false")) \
+		.override_failure_message("stop() 必须停止待处理的分帧刷怪").is_true()
+	assert_bool(src.contains("_enemy_spawn_generation += 1")) \
+		.override_failure_message("stop() 必须使已排队的刷怪回调失效").is_true()
+	assert_bool(src.contains("_enemy_spawn_timer = null")) \
+		.override_failure_message("stop() 不应继续持有待处理 SceneTreeTimer").is_true()
+
+func test_spawn_pump_rejects_stale_generation_and_removed_runtime() -> void:
+	var src := (load("res://scenes/expedition/dungeon_runtime.gd") as GDScript).source_code
+	var pump_start := src.find("func _pump_enemy_spawns")
+	var pump := src.substr(pump_start) if pump_start >= 0 else ""
+	assert_bool(pump.contains("generation != _enemy_spawn_generation")).is_true()
+	assert_bool(pump.contains("not _enemy_spawn_active")).is_true()
+	assert_bool(pump.contains("not is_inside_tree()")).is_true()
+
 func test_finish_expedition_after_stop_is_noop() -> void:
 	# stop 后 finish_expedition 应被守卫拦住（已 finished）
 	var rt := DungeonRuntime.new()

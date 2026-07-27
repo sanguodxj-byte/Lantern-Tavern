@@ -77,16 +77,16 @@ shape = SubResource("CapsuleShape3D_ik1ic")
 
 [node name="character" parent="." instance=ExtResource("1_jcgx1")]
 
-[node name="WeaponBoneAttachment" type="BoneAttachment3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D"]
+[node name="WeaponBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D"]
 bone_name = "Hand.R"
 
-[node name="WeaponPlaceholder" type="Node3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/WeaponBoneAttachment"]
+[node name="WeaponPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/WeaponBoneAttachment"]
 scale = Vector3(0.45, 0.45, 0.45)
 
-[node name="PhysicalBoneSimulator3D" type="PhysicalBoneSimulator3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D"]
+[node name="PhysicalBoneSimulator3D" type="PhysicalBoneSimulator3D" parent="character/Armature/Skeleton3D"]
 unique_name_in_owner = true
 
-[node name="Physical Bone Torso" type="PhysicalBone3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D"]
+[node name="Physical Bone Torso" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D"]
 unique_name_in_owner = true
 collision_layer = 0
 joint_type = 3
@@ -101,11 +101,11 @@ joint_constraints/angular_limit_bias = 0.3
 joint_constraints/angular_limit_softness = 0.9
 joint_constraints/angular_limit_relaxation = 1.0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone Torso"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone Torso"]
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0)
 shape = SubResource("CapsuleShape3D_yjp8u")
 
-[node name="Physical Bone Head" type="PhysicalBone3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D"]
+[node name="Physical Bone Head" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D"]
 unique_name_in_owner = true
 collision_layer = 0
 joint_type = 2
@@ -119,11 +119,11 @@ joint_constraints/bias = 0.3
 joint_constraints/softness = 0.8
 joint_constraints/relaxation = 1.0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone Head"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone Head"]
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0)
 shape = SubResource("CapsuleShape3D_cyclm")
 
-[node name="Physical Bone UpperArm_R" type="PhysicalBone3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D"]
+[node name="Physical Bone UpperArm_R" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D"]
 unique_name_in_owner = true
 collision_layer = 0
 joint_type = 3
@@ -138,11 +138,11 @@ joint_constraints/angular_limit_bias = 0.3
 joint_constraints/angular_limit_softness = 0.9
 joint_constraints/angular_limit_relaxation = 1.0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone UpperArm_R"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone UpperArm_R"]
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0)
 shape = SubResource("CapsuleShape3D_ntygi")
 
-[node name="Physical Bone LowerArm_R" type="PhysicalBone3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D"]
+[node name="Physical Bone LowerArm_R" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D"]
 unique_name_in_owner = true
 collision_layer = 0
 joint_type = 3
@@ -157,11 +157,11 @@ joint_constraints/angular_limit_bias = 0.3
 joint_constraints/angular_limit_softness = 0.9
 joint_constraints/angular_limit_relaxation = 1.0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone LowerArm_R"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone LowerArm_R"]
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0)
 shape = SubResource("CapsuleShape3D_8us64")
 
-[node name="Physical Bone UpperLeg_R" type="PhysicalBone3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D"]
+[node name="Physical Bone UpperLeg_R" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D"]
 unique_name_in_owner = true
 collision_layer = 0
 joint_type = 3
@@ -176,11 +176,11 @@ joint_constraints/angular_limit_bias = 0.3
 joint_constraints/angular_limit_softness = 0.9
 joint_constraints/angular_limit_relaxation = 1.0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone UpperLeg_R"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone UpperLeg_R"]
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0)
 shape = SubResource("CapsuleShape3D_7a75t")
 
-[node name="Physical Bone LowerLeg_R" type="PhysicalBone3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D"]
+[node name="Physical Bone LowerLeg_R" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D"]
 unique_name_in_owner = true
 collision_layer = 0
 joint_type = 3
@@ -195,11 +195,11 @@ joint_constraints/angular_limit_bias = 0.3
 joint_constraints/angular_limit_softness = 0.9
 joint_constraints/angular_limit_relaxation = 1.0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone LowerLeg_R"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone LowerLeg_R"]
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0)
 shape = SubResource("CapsuleShape3D_wb7e6")
 
-[node name="Physical Bone UpperArm_L" type="PhysicalBone3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D"]
+[node name="Physical Bone UpperArm_L" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D"]
 unique_name_in_owner = true
 collision_layer = 0
 joint_type = 3
@@ -214,11 +214,11 @@ joint_constraints/angular_limit_bias = 0.3
 joint_constraints/angular_limit_softness = 0.9
 joint_constraints/angular_limit_relaxation = 1.0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone UpperArm_L"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone UpperArm_L"]
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0)
 shape = SubResource("CapsuleShape3D_frauy")
 
-[node name="Physical Bone LowerArm_L" type="PhysicalBone3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D"]
+[node name="Physical Bone LowerArm_L" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D"]
 unique_name_in_owner = true
 collision_layer = 0
 joint_type = 3
@@ -233,11 +233,11 @@ joint_constraints/angular_limit_bias = 0.3
 joint_constraints/angular_limit_softness = 0.9
 joint_constraints/angular_limit_relaxation = 1.0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone LowerArm_L"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone LowerArm_L"]
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0)
 shape = SubResource("CapsuleShape3D_k6e44")
 
-[node name="Physical Bone UpperLeg_L" type="PhysicalBone3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D"]
+[node name="Physical Bone UpperLeg_L" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D"]
 unique_name_in_owner = true
 collision_layer = 0
 joint_type = 3
@@ -252,11 +252,11 @@ joint_constraints/angular_limit_bias = 0.3
 joint_constraints/angular_limit_softness = 0.9
 joint_constraints/angular_limit_relaxation = 1.0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone UpperLeg_L"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone UpperLeg_L"]
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0)
 shape = SubResource("CapsuleShape3D_k8dtq")
 
-[node name="Physical Bone LowerLeg_L" type="PhysicalBone3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D"]
+[node name="Physical Bone LowerLeg_L" type="PhysicalBone3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D"]
 unique_name_in_owner = true
 collision_layer = 0
 joint_type = 3
@@ -271,26 +271,23 @@ joint_constraints/angular_limit_bias = 0.3
 joint_constraints/angular_limit_softness = 0.9
 joint_constraints/angular_limit_relaxation = 1.0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone LowerLeg_L"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="character/Armature/Skeleton3D/PhysicalBoneSimulator3D/Physical Bone LowerLeg_L"]
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0)
 shape = SubResource("CapsuleShape3D_fw75e")
 
-[node name="ShieldBoneAttachment" type="BoneAttachment3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D"]
+[node name="ShieldBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D"]
 bone_name = "Hand.L"
 
-[node name="ShieldPlaceholder" type="Node3D" parent="character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/ShieldBoneAttachment"]
+[node name="ShieldPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/ShieldBoneAttachment"]
 transform = Transform3D(1, 0, 0, 0, 0.8660254, 0.5, 0, -0.5, 0.8660254, 0, 0, 0)
 scale = Vector3(0.4, 0.4, 0.4)
-
-[node name="AnimationPlayer" parent="character" index="1"]
-autoplay = &"idle"
 
 [node name="EquipmentComponent" parent="." node_paths=PackedStringArray("shield_placeholder", "weapon_placeholder", "weapon_reach_raycast", "weapon_spawn_position") instance=ExtResource("3_ewb0t")]
 unique_name_in_owner = true
 shield_data = ExtResource("5_cyclm")
-shield_placeholder = NodePath("../character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/ShieldBoneAttachment/ShieldPlaceholder")
+shield_placeholder = NodePath("../character/Armature/Skeleton3D/ShieldBoneAttachment/ShieldPlaceholder")
 weapon_data = ExtResource("4_lahws")
-weapon_placeholder = NodePath("../character/voxel_goblin_32px_scale_height_42px/VoxelHumanoidRig/Skeleton3D/WeaponBoneAttachment/WeaponPlaceholder")
+weapon_placeholder = NodePath("../character/Armature/Skeleton3D/WeaponBoneAttachment/WeaponPlaceholder")
 weapon_reach_raycast = NodePath("../WeaponReachRaycast")
 weapon_spawn_position = NodePath("../WeaponSpawnPosition")
 

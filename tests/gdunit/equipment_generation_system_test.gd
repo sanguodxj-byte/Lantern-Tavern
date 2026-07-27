@@ -28,6 +28,7 @@ func test_affix_application() -> void:
 	weapon_data.damage_mult = 1.0
 
 	var affix_system: Node = auto_free(AS.new())
-	affix_system.apply_affixes(weapon_data, ["flamereached"])
+	var affix_ids: Array[String] = ["flamereached"]
+	affix_system.apply_affixes(weapon_data, affix_ids)
 	
-	assert_float(weapon_data.damage_mult).is_equal_approx(1.04)
+	assert_float(weapon_data.damage_mult).is_equal_approx(1.03, 0.001)

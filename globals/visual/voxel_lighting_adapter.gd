@@ -79,6 +79,12 @@ static func apply_shader_profile(material: ShaderMaterial, shader_profile: Dicti
 		material.set_shader_parameter(String(key), shader_profile[key])
 
 
+static func disable_light_specular(light: Light3D) -> void:
+	## 环境光源统一不贡献镜面高光；武器金属表现由材质模式单独管理。
+	if light != null:
+		light.light_specular = 0.0
+
+
 static func adapt_standard_material(
 	source: StandardMaterial3D,
 	mode: String = MODE_DEFAULT,

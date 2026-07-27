@@ -18,6 +18,7 @@ offset_bottom = -14.0
 grow_horizontal = 2
 grow_vertical = 0
 theme = ExtResource("3_theme")
+texture_filter = 1
 script = ExtResource("1_sb")
 
 [node name="Backdrop" type="Panel" parent="."]

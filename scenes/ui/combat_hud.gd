@@ -4,14 +4,15 @@ extends CanvasLayer
 ## 战斗视角 UI —— 在酒馆和所有地牢场景统一使用。
 ## 组件：
 ##   右上角: 旋转小地图 (CombatMinimap)
-##   左下角: 血量 + 蓝量 (PixelBar x2)
+##   左下角: 血量 + 蓝量 (PixelBar x2) + 物理/法术护盾 (ShieldBar x2)
+##   左下角上方: 武器 + 盾牌 耐久度 (StatIndicator x2, 旧版布局)
+##   左下角更上方: Buff 状态行 (BuffContainer)
 ##   左上角: Roguelike 信息日志 (CombatLog)
 ##   顶部居中: 鼠标指向敌人血量条 (EnemyHealthBar)
 ##
 ## 自动注入 ManaComponent 到 Player（若不存在）。
 
 const ManaComponentScript := preload("res://scenes/characters/component/mana_component.gd")
-
 const BuffIconScript := preload("res://scenes/ui/buff_icon.gd")
 const Service := preload("res://globals/core/service.gd")
 
@@ -22,7 +23,7 @@ const Service := preload("res://globals/core/service.gd")
 @onready var mp_bar: PixelBar = $BottomLeft/MPBar
 @onready var combat_log: CombatLog = $TopLeft/CombatLog
 @onready var enemy_hp_bar: EnemyHealthBar = $TopCenter/EnemyHealthBar
-# 武器 / 护盾（原 UI 层的战斗节点，已收口到 CombatHUD 作为唯一战斗 HUD）
+# 武器 / 护盾耐久条（远端旧版 StatIndicator 风格，置在 BottomLeftExtras 容器里）
 @onready var weapon_icon: TextureRect = $BottomLeftExtras/WeaponIcon
 @onready var weapon_indicator: StatIndicator = $BottomLeftExtras/WeaponIndicator
 @onready var shield_icon: TextureRect = $BottomLeftExtras/ShieldIcon
@@ -299,7 +300,6 @@ func _on_shield_changed(shield_data: Resource) -> void:
 	shield_indicator.visible = shield_data != null
 	if shield_data:
 		shield_indicator.refresh(shield_data.condition, shield_data.max_condition)
-
 
 
 

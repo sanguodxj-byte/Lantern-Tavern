@@ -15,6 +15,7 @@ extends RefCounted
 const LARGE_ROOM_AREA := 48  # 与 procedural_dungeon.gd / DungeonGenerationConfig.large_room_area 对齐
 const BREATHER_ROOM_COUNT := 2  # 最靠近出生点的普通房设为无陷阱喘息房（制造节奏对比）
 const MIN_ROOMS_FOR_BREATHER := 6  # 房间太少不设喘息房，避免掏空陷阱
+const MAX_HAZARD_ANCHORS := 6
 
 ## 规划全部房间的危险锚点与踢击路线，就地填入 layout.hazard_anchors / layout.kick_lanes。
 ## 不返回值；调用方持 layout 引用读取结果。
@@ -32,10 +33,11 @@ func plan(layout: DungeonLayout) -> void:
 	# 喘息房：最靠近出生点的若干普通房设为无陷阱（按房间 index 存），制造节奏对比
 	var breather_rooms := _select_breather_rooms(layout)
 	for room in layout.rooms:
+		if layout.hazard_anchors.size() >= MAX_HAZARD_ANCHORS:
+			break
 		if layout.is_start_room_cell(room.position) or _room_is_start_room(layout, room):
 			continue
-		if _room_is_boss_room(layout, room):
-			continue  # boss 房仍允许陷阱（boss 战场地）
+		# boss 房仍允许陷阱（boss 战场地）；关键 boss 格及其邻格由 forbidden 保护。
 		if breather_rooms.has(_find_room_index(layout, room)):
 			continue  # 喘息房：跳过陷阱放置
 		var candidates := _collect_hazard_candidates_for_room(layout, room)
@@ -46,7 +48,7 @@ func plan(layout: DungeonLayout) -> void:
 		var room_spawned := 0
 		var room_index := _find_room_index(layout, room)
 		for candidate in candidates:
-			if room_spawned >= room_target_count:
+			if room_spawned >= room_target_count or layout.hazard_anchors.size() >= MAX_HAZARD_ANCHORS:
 				break
 			var cell: Vector2i = candidate["cell"]
 			var min_gap := 2 if room.size.x * room.size.y >= LARGE_ROOM_AREA else 3
@@ -134,8 +136,8 @@ func _get_hazard_anchor_count_for_room(room: Rect2i, candidate_count: int) -> in
 	if area < 48:
 		return min(candidate_count, 1)
 	if area < 80:
-		return min(candidate_count, 3)
-	return min(candidate_count, 4)
+		return min(candidate_count, 1)
+	return min(candidate_count, 2)
 
 func _find_room_entrance_cells(layout: DungeonLayout, room: Rect2i) -> Array:
 	var entrances: Array = []
@@ -274,6 +276,10 @@ func _select_breather_rooms(layout: DungeonLayout) -> Dictionary:
 		if layout.is_start_room_cell(room.position) or _room_is_start_room(layout, room):
 			continue
 		if _room_is_boss_room(layout, room):
+			continue
+		# 大房间承担地形节奏和战斗锚点，不能被喘息房规则掏空。
+		# 喘息房只从普通小房间中选择，避免与大房间密度契约冲突。
+		if room.size.x * room.size.y >= LARGE_ROOM_AREA:
 			continue
 		candidates.append({"index": _find_room_index(layout, room), "depth": layout.depth_of_room_with_field(room, field)})
 	candidates.sort_custom(func(a, b): return a["depth"] < b["depth"])

@@ -136,6 +136,12 @@ func test_player_try_receive_hit_result_checks_ignores_block() -> void:
 	assert_bool(func_body.contains("ignores_block")) \
 		.override_failure_message("try_receive_hit_result 必须检查 result.ignores_block").is_true()
 
+func test_player_script_compiles_after_hit_result_branch() -> void:
+	# 受伤分支的熟练度累积必须留在 if/elif 条件链内，避免缩进错位导致整场景无法加载。
+	var script := load("res://scenes/characters/player/player.gd") as GDScript
+	assert_object(script) \
+		.override_failure_message("Player 脚本必须可加载，try_receive_hit_result 的 if/elif 分支不能破坏编译").is_not_null()
+
 func test_player_blocking_branch_checks_grace_window() -> void:
 	# BLOCKING 分支必须检查完美格挡窗口
 	var source := _source("res://scenes/characters/player/player.gd")

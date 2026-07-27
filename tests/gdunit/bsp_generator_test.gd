@@ -100,8 +100,8 @@ func test_ceiling_heights() -> void:
 			var h = heights[y][x]
 			
 			if cell_type == 1 or cell_type == 5:
-				# Walkable floors/pillars must have valid heights: 2.4 (corridor), 3.0 (small), 3.8 (medium), 4.6 (large)
-				assert_bool(h in [2.4, 3.0, 3.8, 4.6]) \
+				# 所有可行走空间必须落在整数米层：3m（通道/小房）、4m、5m。
+				assert_bool(h in [3.0, 4.0, 5.0]) \
 					.override_failure_message("Invalid floor ceiling height %.1f at (%d, %d)" % [h, x, y]) \
 					.is_true()
 			elif cell_type == 2:

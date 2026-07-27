@@ -9,7 +9,6 @@
 [ext_resource type="FontFile" path="res://assets/fonts/ark-pixel-12px-proportional-zh_cn.ttf" id="7_font"]
 [ext_resource type="PackedScene" uid="uid://dbh0cjexla54w" path="res://scenes/ui/stat_indicator.tscn" id="8_stat"]
 [ext_resource type="Texture2D" uid="uid://b28rngnslxysr" path="res://assets/textures/tick.png" id="10_tick"]
-[ext_resource type="Script" path="res://scenes/ui/buff_icon.gd" id="11_buff"]
 [ext_resource type="Script" path="res://scenes/ui/shield_bar.gd" id="12_shield"]
 [ext_resource type="Theme" path="res://scenes/ui/lantern_theme.tres" id="13_theme"]
 
@@ -56,6 +55,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 theme = ExtResource("13_theme")
+texture_filter = 1
 script = ExtResource("6_cross")
 
 [node name="MinimapContainer" type="Control" parent="."]
@@ -69,6 +69,7 @@ offset_right = -16.0
 offset_bottom = 304.0
 grow_horizontal = 0
 theme = ExtResource("13_theme")
+texture_filter = 1
 
 [node name="TimePanel" type="Panel" parent="MinimapContainer"]
 layout_mode = 1
@@ -136,6 +137,7 @@ offset_top = 18.0
 offset_right = 448.0
 offset_bottom = 188.0
 theme = ExtResource("13_theme")
+texture_filter = 1
 
 [node name="CombatLog" type="Control" parent="TopLeft"]
 layout_mode = 1
@@ -155,6 +157,7 @@ offset_right = 210.0
 offset_bottom = 72.0
 grow_horizontal = 2
 theme = ExtResource("13_theme")
+texture_filter = 1
 
 [node name="EnemyHealthBar" type="Control" parent="TopCenter"]
 layout_mode = 1
@@ -163,121 +166,154 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource("5_ehpb")
 
+; ============================================================================
+; BottomLeft：HP/MP(320×36×2 + 6 gap) + 物理/法术护盾(320×36×2 + 6 gap)
+; 紧贴视口左下角。护盾已对齐到 HP/MP 的 320 宽 / 36 高 / 4px 高光 / 2px 外框。
+; ============================================================================
 [node name="BottomLeft" type="Control" parent="."]
 layout_mode = 3
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 20.0
-offset_top = -230.0
-offset_right = 360.0
-offset_bottom = -22.0
+offset_top = -160.0
+offset_right = 340.0
+offset_bottom = -18.0
 grow_vertical = 0
 theme = ExtResource("13_theme")
-
-[node name="BuffContainer" type="HBoxContainer" parent="BottomLeft" unique_name_in_owner = true]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_bottom = 44.0
-grow_horizontal = 2
-theme_override_constants/separation = 4
-
-[node name="MagicShieldBar" type="Control" parent="BottomLeft" unique_name_in_owner = true]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 0
-offset_top = 48.0
-offset_right = 340.0
-offset_bottom = 74.0
-script = ExtResource("12_shield")
-shield_type = 0
-
-[node name="PhysicalShieldBar" type="Control" parent="BottomLeft" unique_name_in_owner = true]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 0
-offset_top = 48.0
-offset_right = 340.0
-offset_bottom = 74.0
-script = ExtResource("12_shield")
-shield_type = 1
+texture_filter = 1
 
 [node name="HPBar" type="Control" parent="BottomLeft"]
 layout_mode = 1
 anchors_preset = 0
-offset_top = 124.0
-offset_right = 340.0
-offset_bottom = 162.0
+offset_left = 0.0
+offset_top = 106.0
+offset_right = 320.0
+offset_bottom = 142.0
 script = ExtResource("3_pbar")
 bar_color = Color(0.85, 0.15, 0.12, 1)
 
 [node name="Label" type="Label" parent="BottomLeft/HPBar"]
 layout_mode = 0
-offset_left = 8.0
-offset_top = 7.0
-offset_right = 332.0
-offset_bottom = 31.0
+offset_left = 10.0
+offset_top = 8.0
+offset_right = 310.0
+offset_bottom = 32.0
+theme_override_fonts/font = ExtResource("7_font")
 theme_override_font_sizes/font_size = 18
 text = "HP  100 / 100"
+vertical_alignment = 1
 
 [node name="MPBar" type="Control" parent="BottomLeft"]
 layout_mode = 1
 anchors_preset = 0
-offset_top = 166.0
-offset_right = 340.0
-offset_bottom = 204.0
+offset_left = 0.0
+offset_top = 64.0
+offset_right = 320.0
+offset_bottom = 100.0
 script = ExtResource("3_pbar")
 bar_color = Color(0.2, 0.35, 0.9, 1)
 
 [node name="Label" type="Label" parent="BottomLeft/MPBar"]
 layout_mode = 0
-offset_left = 8.0
-offset_top = 7.0
-offset_right = 332.0
-offset_bottom = 31.0
+offset_left = 10.0
+offset_top = 8.0
+offset_right = 310.0
+offset_bottom = 32.0
+theme_override_fonts/font = ExtResource("7_font")
 theme_override_font_sizes/font_size = 18
 text = "MP  100 / 100"
+vertical_alignment = 1
 
+; 物理护盾：紧贴 MP 上方，gap 6
+[node name="PhysicalShieldBar" type="Control" parent="BottomLeft" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 0
+offset_left = 0.0
+offset_top = 22.0
+offset_right = 320.0
+offset_bottom = 58.0
+script = ExtResource("12_shield")
+shield_type = 1
+
+; 法术护盾：物理护盾上方，gap 6
+[node name="MagicShieldBar" type="Control" parent="BottomLeft" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 0
+offset_left = 0.0
+offset_top = -20.0
+offset_right = 320.0
+offset_bottom = 16.0
+script = ExtResource("12_shield")
+shield_type = 0
+
+; ============================================================================
+; BottomLeftExtras：远端旧版 (commit 77a30b1b) 的耐久度容器。
+; 整块上移到 BuffContainer 上方,避免耐久度与 Buff 倒数文字/盾条重合。
+;   BuffContainer 顶 ≈ 屏幕高-260, 底 ≈ 屏幕高-176(包含 20 像素计时条 + 文字)
+;   BottomLeftExtras 顶 = 屏幕高-500, 底 = 屏幕高-432
+;   两者间距 = (屏幕高-260) - (屏幕高-432) = 172px gap(充足分离)
+; 武器图标 y=0..32，耐久 y=8..24；盾牌图标 y=36..68，耐久 y=44..60。
+; ============================================================================
 [node name="BottomLeftExtras" type="Control" parent="."]
 layout_mode = 3
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 20.0
-offset_top = -316.0
-offset_right = 284.0
-offset_bottom = -238.0
+offset_top = -500.0
+offset_right = 240.0
+offset_bottom = -432.0
 grow_vertical = 0
 theme = ExtResource("13_theme")
+texture_filter = 1
 
 [node name="WeaponIcon" type="TextureRect" parent="BottomLeftExtras"]
 visible = false
 offset_left = 0.0
 offset_top = 0.0
-offset_right = 42.0
-offset_bottom = 42.0
+offset_right = 32.0
+offset_bottom = 32.0
 texture = ExtResource("10_tick")
 
 [node name="WeaponIndicator" parent="BottomLeftExtras" instance=ExtResource("8_stat")]
 visible = false
-offset_left = 50.0
-offset_top = 10.0
-offset_right = 264.0
-offset_bottom = 30.0
+offset_left = 40.0
+offset_top = 8.0
+offset_right = 208.0
+offset_bottom = 24.0
 
 [node name="ShieldIcon" type="TextureRect" parent="BottomLeftExtras"]
 visible = false
 offset_left = 0.0
-offset_top = 44.0
-offset_right = 42.0
-offset_bottom = 76.0
+offset_top = 36.0
+offset_right = 32.0
+offset_bottom = 68.0
 texture = ExtResource("10_tick")
 
 [node name="ShieldIndicator" parent="BottomLeftExtras" instance=ExtResource("8_stat")]
 visible = false
-offset_left = 50.0
-offset_top = 50.0
-offset_right = 264.0
-offset_bottom = 70.0
+offset_left = 40.0
+offset_top = 44.0
+offset_right = 208.0
+offset_bottom = 60.0
+
+; ============================================================================
+; Buff 容器：耐久度下方,法术护盾上方,作为状态显示行。
+;   顶端 = BottomLeft 顶 - 148 = 屏幕高-160 + (-148) = 屏幕高-308
+;   底端 = BottomLeft 顶 - 64  = 屏幕高-160 + (-64)  = 屏幕高-224
+;   BuffContainer 实际高度 84 = 64(图标) + 20(计时文字)
+;   与 MagicShieldBar 顶端(屏幕高-180)间距 44 像素,倒数文字与盾条不再重叠。
+; 与 BottomLeftExtras 底端(屏幕高-432)间距 124 像素,耐久度与 Buff 不再重叠。
+; ============================================================================
+[node name="BuffContainer" type="HBoxContainer" parent="BottomLeft" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 0
+offset_left = 0.0
+offset_top = -148.0
+offset_right = 320.0
+offset_bottom = -64.0
+theme_override_constants/separation = 8

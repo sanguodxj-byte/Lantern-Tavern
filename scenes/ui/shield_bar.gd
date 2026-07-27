@@ -1,14 +1,22 @@
 extends Control
 
-## 护盾条 UI 组件 —— 在 HP 条上方显示，生效时从上方渐入。
+## 护盾条 UI 组件 —— 与 HP/MP 像素条同款视觉：相同尺寸 (320×36)、
+## 相同外框颜色、相同内部阶梯纹理、相同文字样式。
 ## 两种类型：
 ##   - MAGIC（法术/技能护盾）：蓝色，来自 damage_absorb buff
 ##   - PHYSICAL（持盾格挡）：金属灰白色，来自盾牌装备耐久
+##
+## 唯一的样式差异：填充色用护盾专属颜色，文字前缀区分。
+## 视觉框架、字体、阶梯纹理完全复刻 PixelBar，保证尺寸/样式对齐。
 
 enum ShieldType { MAGIC, PHYSICAL }
 
-const COLOR_MAGIC := Color(0.3, 0.55, 1.0)
-const COLOR_PHYSICAL := Color(0.75, 0.72, 0.68)
+const COLOR_MAGIC := Color(0.32, 0.58, 1.0, 1.0)
+const COLOR_PHYSICAL := Color(0.78, 0.74, 0.62, 1.0)
+## 与 HP/MP 像素条严格统一：宽 320、高 36、2px 外框
+const BAR_SIZE := Vector2(320, 36)
+const FRAME_W := 2
+const PIXEL_SIZE := 4
 const FADE_DURATION := 0.25
 const SLIDE_OFFSET := -12.0
 
@@ -25,17 +33,23 @@ var _base_y: float = 0.0  # 原始布局位置，用于滑入动画基准
 
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(280, 22)
+	custom_minimum_size = BAR_SIZE
 	_bar_color = COLOR_MAGIC if shield_type == ShieldType.MAGIC else COLOR_PHYSICAL
 	_base_y = position.y
 	modulate.a = 0.0
 	position.y = _base_y + SLIDE_OFFSET
 	_label = Label.new()
-	_label.offset_left = 8.0
-	_label.offset_top = 3.0
-	_label.offset_right = 272.0
-	_label.offset_bottom = 19.0
-	_label.add_theme_font_size_override("font_size", 12)
+	_label.anchor_left = 0.0
+	_label.anchor_top = 0.0
+	_label.anchor_right = 1.0
+	_label.anchor_bottom = 1.0
+	_label.offset_left = 10.0
+	_label.offset_top = 8.0
+	_label.offset_right = -10.0
+	_label.offset_bottom = -8.0
+	_label.add_theme_font_override("font", load("res://assets/fonts/ark-pixel-12px-proportional-zh_cn.ttf"))
+	_label.add_theme_font_size_override("font_size", 18)
+	_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_label)
 
@@ -57,24 +71,35 @@ func _draw() -> void:
 	if _fade_t <= 0.01:
 		return
 	var rect := Rect2(Vector2.ZERO, size)
-	var frame_w := 2
-	var frame_color := _bar_color.darkened(0.3)
+	# 与 PixelBar 一致：HP/MP 用的外框色 (0.72, 0.43, 0.20, 0.96) 是暖橙，
+	# 护盾条也用同款外框色，让四个条看起来出自同一 UI 组件族
+	var frame_color := Color(0.72, 0.43, 0.20, 0.96)
 	# 外框
-	draw_rect(rect, frame_color, false, frame_w)
+	draw_rect(rect, frame_color, false, FRAME_W)
 	# 背景
-	var bg_rect := rect.grow_individual(-frame_w, -frame_w, -frame_w, -frame_w)
-	draw_rect(bg_rect, Color(0.08, 0.082, 0.09, 0.85), true)
+	var bg_rect := rect.grow_individual(-FRAME_W, -FRAME_W, -FRAME_W, -FRAME_W)
+	draw_rect(bg_rect, Color(0.035, 0.037, 0.043, 0.94), true)
 	# 填充
 	var fill_w := int(bg_rect.size.x * _display_ratio)
-	fill_w = floori(fill_w / 4) * 4
+	# 对齐到 4px 像素网格（与 PixelBar 一致）
+	fill_w = floori(fill_w / PIXEL_SIZE) * PIXEL_SIZE
 	if fill_w > 0:
 		var fill_rect := Rect2(bg_rect.position, Vector2(fill_w, bg_rect.size.y))
+		# 像素风：用方块逐块绘制边缘锯齿
 		draw_rect(fill_rect, _bar_color, true)
-		# 顶部高光
+		# 顶部高光（4px 亮色，与 PixelBar 一致）
+		var hl := _bar_color.lightened(0.3)
 		draw_rect(
-			Rect2(fill_rect.position, Vector2(fill_rect.size.x, 4)),
-			_bar_color.lightened(0.3), true
+			Rect2(fill_rect.position, Vector2(fill_rect.size.x, PIXEL_SIZE)),
+			hl, true
 		)
+		# 阶梯纹理（与 PixelBar 完全一致：每隔 24px 画 8×4 暗块，
+		# 错位 2 行让大色块保留体素/像素质感，同时不干扰读数）
+		var texture_color := _bar_color.darkened(0.16)
+		texture_color.a = 0.55
+		for x in range(PIXEL_SIZE * 4, fill_w, PIXEL_SIZE * 6):
+			var block_y := PIXEL_SIZE * (2 if int(x / PIXEL_SIZE) % 2 == 0 else 4)
+			draw_rect(Rect2(bg_rect.position + Vector2(x, block_y), Vector2(PIXEL_SIZE * 2, PIXEL_SIZE)), texture_color, true)
 
 
 ## 设置护盾值并激活显示

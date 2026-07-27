@@ -1,18 +1,13 @@
 class_name ViewModelAnimator
 extends RefCounted
-## Owns first-person action sampling only.
-## Combat code remains authoritative for timing and hit resolution.
+## 第一人称专用动作播放器。
+## Combat code remains authoritative for timing and hit resolution; this player
+## only drives the ViewModel's ActionPivot / WeaponSocket visual layer.
 
-const LIBRARY_PATH := "res://scenes/characters/player/view_model_animation_library.tres"
+const FIRST_PERSON_LIBRARY := preload("res://scenes/characters/player/first_person_animation_library.gd")
 const LIBRARY_KEY := &""
 const DEFAULT_ACTION := &"vm_slash_default"
-const REQUIRED_ACTIONS: Array[StringName] = [
-	&"vm_idle", &"vm_equip", &"vm_shortsword_hold", &"vm_shortsword_thrust", &"vm_sword_hold", &"vm_sword_slash",
-	&"vm_slash_one_hand", &"vm_slash_heavy",
-	&"vm_stab_dagger", &"vm_thrust_spear", &"vm_slash_default", &"vm_stab_default",
-	&"vm_melee_charge", &"vm_bow_draw", &"vm_bow_release", &"vm_crossbow_fire",
-	&"vm_crossbow_reload", &"vm_wand_cast",
-]
+const REQUIRED_ACTIONS: Array[StringName] = FIRST_PERSON_LIBRARY.REQUIRED_ACTIONS
 
 var _action_pivot: Node3D
 var _animation_player: AnimationPlayer
@@ -29,8 +24,10 @@ func _init(action_pivot: Node3D = null, animation_player: AnimationPlayer = null
 func bind(action_pivot: Node3D, animation_player: AnimationPlayer, library: AnimationLibrary = null) -> void:
 	_action_pivot = action_pivot
 	_animation_player = animation_player
-	_library = library if library != null else load(LIBRARY_PATH) as AnimationLibrary
-	if _animation_player != null and _library != null and not _animation_player.has_animation_library(LIBRARY_KEY):
+	_library = library if library != null else FIRST_PERSON_LIBRARY.build()
+	if _animation_player != null and _library != null:
+		if _animation_player.has_animation_library(LIBRARY_KEY):
+			_animation_player.remove_animation_library(LIBRARY_KEY)
 		_animation_player.add_animation_library(LIBRARY_KEY, _library)
 
 func configure(animation_player: AnimationPlayer, action_pivot: Node3D) -> void:

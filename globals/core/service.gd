@@ -64,6 +64,10 @@ static func projectile_service() -> Node:
 	var r := _root()
 	return r.get_node_or_null("ProjectileService") if r != null else null
 
+static func armor_proficiency() -> Node:
+	var r := _root()
+	return r.get_node_or_null("ArmorProficiency") if r != null else null
+
 # ── tavern ────────────────────────────────────────────
 static func tavern_manager() -> Node:
 	var r := _root()

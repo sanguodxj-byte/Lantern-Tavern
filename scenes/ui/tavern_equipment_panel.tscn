@@ -12,16 +12,15 @@
 [ext_resource type="Texture2D" path="res://assets/textures/ui/equipment_preview_dungeon.png" id="10_preview_background"]
 [ext_resource type="Texture2D" path="res://assets/textures/ui/equipment_panel_background_parchment_v2.png" id="11_panel_background"]
 [ext_resource type="Script" path="res://scenes/ui/weapon_hand_link_visual.gd" id="12_weapon_hand_link"]
+[ext_resource type="Script" path="res://scenes/ui/pixel_border_frame.gd" id="13_pixel_border"]
 
 [sub_resource type="StyleBoxFlat" id="EquipmentRootPanel"]
 bg_color = Color(0, 0, 0, 0)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.48, 0.31, 0.18, 0.96)
-shadow_color = Color(0.012, 0.008, 0.016, 0.95)
-shadow_size = 5
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
+shadow_size = 0
 
 [sub_resource type="StyleBoxFlat" id="EquipmentSectionPanel"]
 bg_color = Color(0, 0, 0, 0)
@@ -50,6 +49,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("2_theme")
+texture_filter = 1
 script = ExtResource("1_panel")
 
 [node name="Background" type="TextureRect" parent="."]
@@ -77,6 +77,55 @@ offset_bottom = -20.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("EquipmentRootPanel")
+
+[node name="PixelRootBorder" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+z_index = 20
+script = ExtResource("13_pixel_border")
+border_texture = ExtResource("11_panel_background")
+border_inset = 4.0
+border_width = 3.0
+corner_size = 11.0
+texture_tint = Color(1.04, 0.74, 0.32, 0.14)
+outer_line_color = Color(0.40, 0.23, 0.11, 0.92)
+inner_line_color = Color(0.17, 0.10, 0.06, 0.82)
+highlight_color = Color(0.58, 0.34, 0.13, 0.46)
+
+[node name="PixelRightTabsBorder" type="Control" parent="."]
+layout_mode = 0
+mouse_filter = 2
+z_index = 19
+script = ExtResource("13_pixel_border")
+target_path = NodePath("PanelContainer/VBoxContainer/MainLayout/RightTabs")
+border_texture = ExtResource("11_panel_background")
+border_inset = 2.0
+border_width = 4.0
+corner_size = 9.0
+texture_tint = Color(1.04, 0.74, 0.32, 0.15)
+outer_line_color = Color(0.54, 0.33, 0.16, 0.95)
+inner_line_color = Color(0.23, 0.14, 0.08, 0.88)
+highlight_color = Color(0.70, 0.43, 0.17, 0.54)
+
+[node name="PixelSkillWorkspaceBorder" type="Control" parent="."]
+layout_mode = 0
+mouse_filter = 2
+z_index = 18
+script = ExtResource("13_pixel_border")
+target_path = NodePath("PanelContainer/VBoxContainer/MainLayout/RightTabs/技能")
+border_texture = ExtResource("11_panel_background")
+border_inset = 4.0
+border_width = 3.0
+corner_size = 8.0
+texture_tint = Color(1.04, 0.74, 0.32, 0.10)
+outer_line_color = Color(0.48, 0.29, 0.14, 0.92)
+inner_line_color = Color(0.20, 0.12, 0.07, 0.82)
+highlight_color = Color(0.64, 0.39, 0.15, 0.48)
 
 [node name="VBoxContainer" type="VBoxContainer" parent="PanelContainer"]
 layout_mode = 2
@@ -217,6 +266,25 @@ grow_vertical = 2
 z_index = 1
 stretch = true
 
+[node name="PixelPreviewBorder" type="Control" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox/PreviewFrame/PreviewCanvas"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+z_index = 10
+script = ExtResource("13_pixel_border")
+border_texture = ExtResource("11_panel_background")
+border_inset = 3.0
+border_width = 3.0
+corner_size = 7.0
+texture_tint = Color(1.04, 0.74, 0.32, 0.08)
+outer_line_color = Color(0.38, 0.22, 0.11, 0.90)
+inner_line_color = Color(0.16, 0.09, 0.05, 0.80)
+highlight_color = Color(0.54, 0.32, 0.13, 0.42)
+
 [node name="EqSubViewport" type="SubViewport" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder/PreviewInfoBox/PreviewFrame/PreviewCanvas/ModelViewer" unique_name_in_owner = true]
 unique_name_in_owner = true
 own_world_3d = true
@@ -301,6 +369,25 @@ mouse_filter = 2
 script = ExtResource("9_stats_visual")
 source_label_path = NodePath("../CharacterStatsText")
 
+[node name="PixelStatsBorder" type="Control" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel/属性/StatsScroll/StatsBox/StatsVisual"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+z_index = 10
+script = ExtResource("13_pixel_border")
+border_texture = ExtResource("11_panel_background")
+border_inset = 2.0
+border_width = 3.0
+corner_size = 7.0
+texture_tint = Color(1.04, 0.74, 0.32, 0.07)
+outer_line_color = Color(0.36, 0.21, 0.10, 0.88)
+inner_line_color = Color(0.15, 0.09, 0.05, 0.78)
+highlight_color = Color(0.50, 0.30, 0.12, 0.40)
+
 [node name="熟练度" type="MarginContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel"]
 visible = false
 layout_mode = 2
@@ -338,7 +425,7 @@ text = "暂无熟练度记录"
 autowrap_mode = 3
 
 [node name="ProficiencyVisual" type="Control" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo/StatsPanel/熟练度/ProfScroll/ProficiencyBox"]
-custom_minimum_size = Vector2(0, 244)
+custom_minimum_size = Vector2(0, 366)
 layout_mode = 2
 size_flags_vertical = 3
 mouse_filter = 2
@@ -482,60 +569,25 @@ text = "全部 · 0件"
 horizontal_alignment = 2
 vertical_alignment = 1
 
+[node name="SortInventoryBtn" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/FilterBar" unique_name_in_owner = true]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(84, 38)
+layout_mode = 2
+toggle_mode = true
+text = "整理"
+
 [node name="GearList" type="ItemList" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox" unique_name_in_owner = true]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-max_columns = 6
+max_columns = 8
 theme_override_styles/panel = SubResource("EquipmentListPanel")
 script = ExtResource("3_drag")
 inventory_source = "items"
-
-[node name="ItemDetailPanel" type="PanelContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox"]
-visible = true
-custom_minimum_size = Vector2(0, 184)
-layout_mode = 2
-theme_override_styles/panel = SubResource("EquipmentSectionPanel")
-
-[node name="ItemDetailBox" type="VBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/ItemDetailPanel"]
-layout_mode = 2
-theme_override_constants/separation = 3
-
-[node name="ItemDetailTitle" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/ItemDetailPanel/ItemDetailBox" unique_name_in_owner = true]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"SectionTitle"
-text = "选择物品"
-
-[node name="ItemDetailMeta" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/ItemDetailPanel/ItemDetailBox" unique_name_in_owner = true]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"MutedLabel"
-text = "物品详情"
-
-[node name="ItemDetailBody" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/ItemDetailPanel/ItemDetailBox" unique_name_in_owner = true]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_font_sizes/font_size = 17
-text = "点击物品查看属性、词缀和装备效果。"
-autowrap_mode = 2
-
-[node name="ItemDetailCompare" type="Label" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox/ItemDetailPanel/ItemDetailBox" unique_name_in_owner = true]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"MutedLabel"
-theme_override_font_sizes/font_size = 16
-text = ""
-autowrap_mode = 2
-
-[node name="EquipSelectedBtn" type="Button" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs/物品/ItemsBox" unique_name_in_owner = true]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 46)
-layout_mode = 2
-theme_type_variation = &"PrimaryButton"
-text = "装备到当前槽"
+fixed_grid_cells = true
+show_grid_cell_masks = true
+square_grid_cells = true
 
 [node name="技能" type="MarginContainer" parent="PanelContainer/VBoxContainer/MainLayout/RightTabs"]
 visible = false
@@ -913,6 +965,11 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_vertical = 3
+icon_mode = 0
+fixed_icon_size = Vector2i(64, 64)
+max_columns = 2
+same_column_width = true
+fixed_column_width = 132
 theme_override_styles/panel = SubResource("EquipmentListPanel")
 script = ExtResource("6_skill_drag")
 drag_source = "available_skills"

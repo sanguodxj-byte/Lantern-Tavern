@@ -56,6 +56,7 @@ func test_freeze_sleeps_fragments() -> void:
 	var ragdoll := VOXEL_RAGDOLL.new()
 	add_child(ragdoll)
 	ragdoll.activate(source, Vector3(0, 1, 0), 3.0)
+	await get_tree().physics_frame
 	ragdoll.freeze()
 	var fragments := source.get_parent().find_children("*", "RigidBody3D", true, false)
 	assert_int(fragments.size()).is_greater(0)

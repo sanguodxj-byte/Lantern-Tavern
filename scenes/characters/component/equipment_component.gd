@@ -16,6 +16,15 @@ const THROWN_ITEM_PREFAB := preload("res://scenes/equipment/thrown_item.tscn")
 @export var weapon_placeholder: Node3D
 @export var weapon_reach_raycast: RayCast3D
 @export var weapon_spawn_position: Node3D
+@export var armor_head_placeholder: Node3D
+@export var armor_body_placeholder: Node3D
+@export var armor_hand_l_placeholder: Node3D
+@export var armor_hand_r_placeholder: Node3D
+@export var armor_foot_l_placeholder: Node3D
+@export var armor_foot_r_placeholder: Node3D
+
+var _mounted_weapon_instance: EquipedItem
+var _mounted_armor_instances: Dictionary = {}
 
 const WEAPON_SLOT_COUNT := 4
 const DEFAULT_WEAPON_REACH := -1.4
@@ -36,6 +45,11 @@ func _ready() -> void:
 		configure_weapon_slot(active_weapon_slot, weapon_data, true)
 	if shield_data != null:
 		equip_shield(shield_data)
+	for slot_name in ARMOR_SLOT_NAMES:
+		var slot_data: WeaponData = armor_slots.get(slot_name, null)
+		if slot_data != null:
+			armor_slots[slot_name] = WeaponRegistry.resolve_weapon_data(slot_data)
+			_remount_armor_slot(slot_name)
 
 func equip_weapon(data: WeaponData, pickup_transform: Transform3D = Transform3D.IDENTITY) -> bool:
 	if data == null:
@@ -45,7 +59,11 @@ func equip_weapon(data: WeaponData, pickup_transform: Transform3D = Transform3D.
 	if target_slot == -1:
 		target_slot = active_weapon_slot
 		if weapon_slots[target_slot] != null:
-			_spawn_dropped_weapon(weapon_slots[target_slot], weapon_placeholder.global_transform if weapon_placeholder != null else Transform3D.IDENTITY, true)
+			_spawn_dropped_weapon(
+				weapon_slots[target_slot],
+				_fallback_drop_transform(get_active_weapon_placeholder()),
+				true,
+			)
 	return configure_weapon_slot(target_slot, data, true, pickup_transform)
 
 func configure_weapon_slot(slot_index: int, data: WeaponData, make_active: bool = true, pickup_transform: Transform3D = Transform3D.IDENTITY) -> bool:
@@ -63,9 +81,9 @@ func activate_weapon_slot(slot_index: int, pickup_transform: Transform3D = Trans
 	_ensure_weapon_slots()
 	if slot_index < 0 or slot_index >= WEAPON_SLOT_COUNT:
 		return false
+	_clear_current_weapon_mount()
 	active_weapon_slot = slot_index
 	weapon_data = weapon_slots[active_weapon_slot]
-	_clear_weapon_placeholder()
 	if weapon_data == null:
 		_reset_weapon_reach()
 		if is_linked_to_ui:
@@ -124,8 +142,56 @@ func configure_armor_slot(slot_name: String, data: WeaponData) -> bool:
 		return false
 	if data != null and not _is_armor_equipment(data):
 		return false
+	if data != null and not String(data.armor_slot).is_empty() and data.armor_slot != slot_name:
+		return false
 	armor_slots[slot_name] = data.duplicate() if data != null else null
+	_remount_armor_slot(slot_name)
 	return true
+
+
+## 装备护甲到对应护甲槽（拾取入口）。槽位已占用时把旧护甲掉落到拾取点附近。
+## 与 equip_weapon 对称：护甲分流入口，避免护甲走 equip_weapon 被 _is_hand_equipment 拒绝。
+func equip_armor(data: WeaponData, pickup_transform: Transform3D = Transform3D.IDENTITY) -> bool:
+	if data == null:
+		return false
+	if not _is_armor_equipment(data):
+		return false
+	_ensure_armor_slots()
+	var target_slot := String(data.armor_slot)
+	if target_slot.is_empty():
+		target_slot = "body"
+	if not armor_slots.has(target_slot):
+		return false
+	var existing: WeaponData = armor_slots.get(target_slot, null)
+	if existing != null:
+		# 与 equip_weapon 丢旧武器对称：旧护甲掉落到拾取点，避免直接覆盖丢失
+		_spawn_dropped_weapon(existing, pickup_transform, true)
+	return configure_armor_slot(target_slot, data)
+
+
+## 判定数据是否为护甲（公开接口，供拾取/UI 流程分流，避免护甲误走武器槽被拒）
+func is_armor_equipment(data: WeaponData) -> bool:
+	return _is_armor_equipment(data)
+
+
+func equip_armor_set(set_id: String) -> int:
+	## Equip every registered armor piece belonging to set_id. Returns count equipped.
+	if set_id.is_empty() or WeaponRegistry == null:
+		return 0
+	var equipped := 0
+	for armor_id in WeaponRegistry.get_all_ids():
+		var meta: Dictionary = WeaponRegistry.get_entry_meta(armor_id)
+		if String(meta.get("set_id", "")) != set_id:
+			continue
+		var data: WeaponData = WeaponRegistry.get_weapon_data(armor_id)
+		if data == null:
+			continue
+		var slot_name := String(data.armor_slot)
+		if slot_name.is_empty():
+			continue
+		if configure_armor_slot(slot_name, data):
+			equipped += 1
+	return equipped
 
 func get_armor_slot_data(slot_name: String) -> WeaponData:
 	_ensure_armor_slots()
@@ -161,7 +227,8 @@ func get_armor_move_speed_mult() -> float:
 	return mult
 
 func _mount_weapon_to_hand(pickup_transform: Transform3D = Transform3D.IDENTITY) -> void:
-	if weapon_placeholder == null:
+	var target_placeholder := get_active_weapon_placeholder()
+	if target_placeholder == null:
 		return
 	var weapon := EQUIPED_ITEM_PREFAB.instantiate() as EquipedItem
 	if weapon == null:
@@ -169,7 +236,8 @@ func _mount_weapon_to_hand(pickup_transform: Transform3D = Transform3D.IDENTITY)
 		return
 	weapon.weapon_data = weapon_data
 	weapon.is_always_in_front = is_always_in_front
-	weapon_placeholder.add_child(weapon)
+	target_placeholder.add_child(weapon)
+	_mounted_weapon_instance = weapon
 	if weapon_reach_raycast != null:
 		weapon_reach_raycast.target_position.z = -maxf(weapon_data.reach * CombatHitboxBuilder.REACH_SCALE, 0.8)
 	if is_linked_to_ui:
@@ -243,23 +311,34 @@ func has_furniture() -> bool:
 	return furniture_data != null and furniture_placeholder != null and furniture_placeholder.get_child_count() > 0
 
 func has_weapon() -> bool:
-	return weapon_data != null and not _is_shield_weapon(weapon_data) and (weapon_placeholder == null or weapon_placeholder.get_child_count() > 0)
+	var mount := get_active_weapon_placeholder()
+	return weapon_data != null and not _is_shield_weapon(weapon_data) and (mount == null or mount.get_child_count() > 0)
 
 func has_hand_equipment() -> bool:
-	return weapon_data != null and (weapon_placeholder == null or weapon_placeholder.get_child_count() > 0)
+	var mount := get_active_weapon_placeholder()
+	return weapon_data != null and (mount == null or mount.get_child_count() > 0)
+
+## 活动武器实例所在的骨骼挂点。主手使用 Hand.R，盾牌/副手武器使用 Hand.L。
+func get_active_weapon_placeholder() -> Node3D:
+	if _weapon_uses_off_hand(weapon_data):
+		return shield_placeholder
+	return weapon_placeholder
 
 func hide_weapon() -> void:
-	if weapon_placeholder != null:
-		weapon_placeholder.visible = false
+	var mount := get_active_weapon_placeholder()
+	if mount != null:
+		mount.visible = false
 
 func show_weapon() -> void:
-	if weapon_placeholder != null:
-		weapon_placeholder.visible = true
+	var mount := get_active_weapon_placeholder()
+	if mount != null:
+		mount.visible = true
 
 func throw_weapon(is_being_dropped: bool = false, aim_point: Vector3 = Vector3.ZERO) -> void:
-	if weapon_data != null and (weapon_placeholder == null or weapon_placeholder.get_child_count() > 0):
+	var mount := get_active_weapon_placeholder()
+	if weapon_data != null and (mount == null or mount.get_child_count() > 0):
 		var was_shield := _is_shield_weapon(weapon_data)
-		var spawn_transform := _fallback_drop_transform(weapon_placeholder)
+		var spawn_transform := _fallback_drop_transform(mount)
 		if not is_being_dropped and weapon_spawn_position != null and is_instance_valid(weapon_spawn_position):
 			var muzzle_pos := weapon_spawn_position.global_position
 			if aim_point != Vector3.ZERO:
@@ -276,6 +355,7 @@ func throw_weapon(is_being_dropped: bool = false, aim_point: Vector3 = Vector3.Z
 			else:
 				spawn_transform = weapon_spawn_position.global_transform
 		_spawn_dropped_weapon(weapon_data, spawn_transform, is_being_dropped)
+		_clear_current_weapon_mount()
 		weapon_slots[active_weapon_slot] = null
 		weapon_data = null
 		_clear_weapon_placeholder()
@@ -340,7 +420,8 @@ func drop_shield() -> void:
 			GameEvents.shield_changed.emit(shield_data)
 
 func apply_weapon_damage(amount: int) -> void:
-	if weapon_data != null and (weapon_placeholder == null or weapon_placeholder.get_child_count() > 0):
+	var mount := get_active_weapon_placeholder()
+	if weapon_data != null and (mount == null or mount.get_child_count() > 0):
 		weapon_data.decrease_condition(amount)
 		if weapon_data.condition <= 0:
 			drop_weapon()
@@ -376,6 +457,76 @@ func _ensure_weapon_slots() -> void:
 		weapon_slots.resize(WEAPON_SLOT_COUNT)
 	active_weapon_slot = clampi(active_weapon_slot, 0, WEAPON_SLOT_COUNT - 1)
 
+func _remount_armor_slot(slot_name: String) -> void:
+	_clear_armor_slot_mounts(slot_name)
+	var data: WeaponData = get_armor_slot_data(slot_name)
+	if data == null or data.glb_mesh == null:
+		return
+	var placeholders := _armor_placeholders_for_slot(slot_name)
+	if placeholders.is_empty():
+		return
+	var ArmorMount := preload("res://globals/visual/armor_mount_profile.gd")
+	var VoxelLighting := preload("res://globals/visual/voxel_lighting_adapter.gd")
+	for entry in placeholders:
+		var placeholder: Node3D = entry.get("node", null)
+		var side := String(entry.get("side", ""))
+		if placeholder == null or not is_instance_valid(placeholder):
+			continue
+		var inst: Node3D = data.glb_mesh.instantiate() as Node3D
+		if inst == null:
+			continue
+		placeholder.add_child(inst)
+		inst.transform = ArmorMount.local_transform(slot_name, side)
+		VoxelLighting.apply_weapon_tree(inst, data.material_tier)
+		_set_armor_render_layer(inst)
+		if not _mounted_armor_instances.has(slot_name):
+			_mounted_armor_instances[slot_name] = []
+		(_mounted_armor_instances[slot_name] as Array).append(inst)
+
+
+func _clear_armor_slot_mounts(slot_name: String) -> void:
+	if _mounted_armor_instances.has(slot_name):
+		var instances: Array = _mounted_armor_instances[slot_name]
+		for inst in instances:
+			if is_instance_valid(inst):
+				inst.queue_free()
+		_mounted_armor_instances.erase(slot_name)
+	for entry in _armor_placeholders_for_slot(slot_name):
+		var placeholder: Node3D = entry.get("node", null)
+		if placeholder == null or not is_instance_valid(placeholder):
+			continue
+		for child in placeholder.get_children():
+			child.queue_free()
+
+
+func _armor_placeholders_for_slot(slot_name: String) -> Array:
+	match slot_name:
+		"head":
+			return [{"node": armor_head_placeholder, "side": ""}]
+		"body":
+			return [{"node": armor_body_placeholder, "side": ""}]
+		"hands":
+			return [
+				{"node": armor_hand_l_placeholder, "side": "L"},
+				{"node": armor_hand_r_placeholder, "side": "R"},
+			]
+		"feet":
+			return [
+				{"node": armor_foot_l_placeholder, "side": "L"},
+				{"node": armor_foot_r_placeholder, "side": "R"},
+			]
+		_:
+			return []
+
+
+func _set_armor_render_layer(root: Node) -> void:
+	## Keep third-person armor off the first-person camera layer (bit 0).
+	if root is GeometryInstance3D:
+		(root as GeometryInstance3D).layers = 1 << 9
+	for child in root.get_children():
+		_set_armor_render_layer(child)
+
+
 func _ensure_armor_slots() -> void:
 	if armor_slots == null:
 		armor_slots = {}
@@ -388,6 +539,21 @@ func _clear_weapon_placeholder() -> void:
 		return
 	for child in weapon_placeholder.get_children():
 		child.queue_free()
+	if is_instance_valid(_mounted_weapon_instance):
+		_mounted_weapon_instance = null
+
+func _clear_current_weapon_mount() -> void:
+	if is_instance_valid(_mounted_weapon_instance):
+		_mounted_weapon_instance.queue_free()
+		_mounted_weapon_instance = null
+		return
+	# Compatibility cleanup for instances created before the tracked mount was set.
+	var mount := get_active_weapon_placeholder()
+	if mount == null:
+		return
+	for child in mount.get_children():
+		if child is EquipedItem and (child as EquipedItem).weapon_data != null:
+			child.queue_free()
 
 func _reset_weapon_reach() -> void:
 	if weapon_reach_raycast != null:
@@ -426,6 +592,11 @@ func _is_shield_weapon(data: WeaponData) -> bool:
 	if data == null:
 		return false
 	return data.item_tag == "shield" or data.weapon_class == "shield" or data.equipment_category == "shields"
+
+func _weapon_uses_off_hand(data: WeaponData) -> bool:
+	if data == null:
+		return false
+	return _is_shield_weapon(data) or data.hands.to_lower() == "off_hand"
 
 func _fallback_drop_transform(placeholder: Node3D) -> Transform3D:
 	if placeholder != null and is_instance_valid(placeholder):
@@ -474,7 +645,7 @@ func is_active_weapon_two_handed() -> bool:
 	if weapon.hands == "two_hand":
 		return true
 	var weapon_class := CB_LIB_EQ.get_weapon_class(weapon)
-	if ["two_hand", "longbow", "crossbow", "wand", "grimoire"].has(weapon_class):
+	if ["two_hand", "longbow", "crossbow", "wand"].has(weapon_class):
 		return true
 	return weapon.tags.has("two_hand")
 
@@ -482,7 +653,12 @@ func is_active_weapon_two_handed() -> bool:
 func can_block() -> bool:
 	if is_active_weapon_ranged():
 		return false
-	return has_shield() or is_active_weapon_two_handed()
+	# An off-hand grimoire has a short focus-guard window, but is not a
+	# two-handed weapon and therefore must keep its own grimoire_guard clip.
+	return has_shield() or is_active_weapon_two_handed() or _is_grimoire_weapon(weapon_data)
+
+func _is_grimoire_weapon(data: WeaponData) -> bool:
+	return data != null and (data.weapon_class.to_lower() == "grimoire" or data.skill_school.to_lower() == "grimoire")
 
 ## 当前装备是否可以双持攻击
 func can_dual_wield() -> bool:

@@ -128,7 +128,9 @@ func test_voxel_material_render_preview_tool_covers_new_decor_materials() -> voi
 func test_voxel_prop_material_atlas_defines_pixel_style_tiles() -> void:
 	assert_bool(FileAccess.file_exists(VOXEL_PROP_ATLAS)).is_true()
 	assert_bool(FileAccess.file_exists(VOXEL_PROP_META)).is_true()
-	var image := Image.load_from_file(VOXEL_PROP_ATLAS)
+	var atlas := load(VOXEL_PROP_ATLAS) as Texture2D
+	assert_object(atlas).is_not_null()
+	var image := atlas.get_image()
 	assert_int(image.get_width()).is_equal(256)
 	assert_int(image.get_height()).is_equal(128)
 	var meta: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(VOXEL_PROP_META))
@@ -175,25 +177,22 @@ func test_voxel_prop_scenes_generate_one_pixel_aligned_box_meshes() -> void:
 		var inst := (load(scene_path) as PackedScene).instantiate()
 		add_child(inst)
 		await await_idle_frame()
-		var meshes := _collect_meshes(inst)
-		assert_int(meshes.size()) \
-			.override_failure_message("%s 必须生成多个体素盒 mesh" % scene_path) \
+		var boxes := _collect_source_voxel_boxes(inst)
+		assert_int(boxes.size()) \
+			.override_failure_message("%s 必须由多个源体素盒构成" % scene_path) \
 			.is_greater_equal(3)
-		for mesh_instance in meshes:
-			var box := mesh_instance.mesh as BoxMesh
-			assert_object(box) \
-				.override_failure_message("%s/%s 必须是 BoxMesh" % [scene_path, mesh_instance.name]) \
-				.is_not_null()
-			for size in [box.size.x, box.size.y, box.size.z]:
+		for box_data in boxes:
+			var size_px: Vector3 = box_data["max"] - box_data["min"]
+			for size in [size_px.x, size_px.y, size_px.z]:
 				assert_float(size) \
-					.override_failure_message("%s/%s 体素盒尺寸不能为 0: %s" % [scene_path, mesh_instance.name, str(box.size)]) \
+					.override_failure_message("%s/%s 体素盒尺寸不能为 0: %s" % [scene_path, box_data["name"], str(size_px)]) \
 					.is_greater(0.0)
 				assert_bool(_is_voxel_aligned(size)) \
-					.override_failure_message("%s/%s 尺寸未对齐 1px=1/32m: %s" % [scene_path, mesh_instance.name, str(box.size)]) \
+					.override_failure_message("%s/%s 尺寸未对齐 1px=1/32m: %s" % [scene_path, box_data["name"], str(size_px)]) \
 					.is_true()
-			var material := mesh_instance.material_override as ShaderMaterial
+			var material := box_data["material"] as ShaderMaterial
 			assert_object(material) \
-				.override_failure_message("%s/%s 不能使用平色材质，必须贴像素风材质图" % [scene_path, mesh_instance.name]) \
+				.override_failure_message("%s/%s 不能使用平色材质，必须贴像素风材质图" % [scene_path, box_data["name"]]) \
 				.is_not_null()
 			assert_str((material.get_shader_parameter("atlas") as Texture2D).resource_path) \
 				.is_equal(VOXEL_PROP_ATLAS)
@@ -206,12 +205,12 @@ func test_voxel_props_keep_odd_width_centerline_details() -> void:
 		add_child(inst)
 		await await_idle_frame()
 		var found_odd_detail := false
-		for mesh_instance in _collect_meshes(inst):
-			var name := String(mesh_instance.name)
+		for box_data in _collect_source_voxel_boxes(inst):
+			var name := String(box_data["name"])
 			if not _is_centerline_detail(name):
 				continue
-			var box := mesh_instance.mesh as BoxMesh
-			for size in [box.size.x, box.size.y, box.size.z]:
+			var size_px: Vector3 = box_data["max"] - box_data["min"]
+			for size in [size_px.x, size_px.y, size_px.z]:
 				if int(roundf(size * 32.0)) % 2 == 1:
 					found_odd_detail = true
 					break
@@ -261,7 +260,7 @@ func test_voxel_box_meshes_form_one_attached_component() -> void:
 		var inst := (load(scene_path) as PackedScene).instantiate()
 		add_child(inst)
 		await await_idle_frame()
-		var boxes := _voxel_boxes(_collect_meshes(inst))
+		var boxes := _collect_source_voxel_boxes(inst)
 		assert_int(boxes.size()) \
 			.override_failure_message("%s 没有可验证的体素盒" % scene_path) \
 			.is_greater_equal(1)
@@ -416,7 +415,7 @@ func test_barrel_voxel_boxes_do_not_overlap_positive_volume() -> void:
 	var inst := (load("res://scenes/props/barrel/barrel.tscn") as PackedScene).instantiate()
 	add_child(inst)
 	await await_idle_frame()
-	var boxes := _voxel_boxes(_collect_meshes(inst))
+	var boxes := _collect_source_voxel_boxes(inst)
 	for i in range(boxes.size()):
 		for j in range(i + 1, boxes.size()):
 			assert_bool(_boxes_overlap_with_positive_volume(boxes[i], boxes[j])) \
@@ -434,7 +433,7 @@ func test_reported_voxel_props_do_not_overlap_positive_volume() -> void:
 		var inst := (load(scene_path) as PackedScene).instantiate()
 		add_child(inst)
 		await await_idle_frame()
-		var boxes := _voxel_boxes(_collect_meshes(inst))
+		var boxes := _collect_source_voxel_boxes(inst)
 		for i in range(boxes.size()):
 			for j in range(i + 1, boxes.size()):
 				assert_bool(_boxes_overlap_with_positive_volume(boxes[i], boxes[j])) \
@@ -627,6 +626,23 @@ func _voxel_boxes(meshes: Array[MeshInstance3D]) -> Array[Dictionary]:
 			"max": Vector3i(roundi(max_v.x), roundi(max_v.y), roundi(max_v.z)),
 		})
 	return boxes
+
+
+func _collect_source_voxel_boxes(root: Node) -> Array[Dictionary]:
+	var prop := _find_voxel_prop(root)
+	if prop != null:
+		return prop.collect_box_bounds()
+	return _voxel_boxes(_collect_meshes(root))
+
+
+func _find_voxel_prop(root: Node) -> VoxelProp:
+	if root is VoxelProp:
+		return root as VoxelProp
+	for child in root.get_children():
+		var found := _find_voxel_prop(child)
+		if found != null:
+			return found
+	return null
 
 
 func _count_attached_components(boxes: Array[Dictionary]) -> int:

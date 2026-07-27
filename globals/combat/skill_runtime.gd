@@ -118,7 +118,7 @@ func bind_skill(slot_index: int, skill_id: String) -> bool:
 			var skill: Dictionary = SD.get_skill_by_id(skill_id)
 			if skill.is_empty() or skill["type"] != "passive":
 				return false
-			var ap: Node = Engine.get_main_loop().root.get_node_or_null("AttrPanel")
+			var ap: Node = Service.attr_panel()
 			if ap == null or not ap.has_skill(skill_id):
 				return false
 			slots[slot_index] = skill_id
@@ -132,7 +132,7 @@ func _can_bind_active_skill(skill_id: String) -> bool:
 	var skill: Dictionary = SD.get_skill_by_id(skill_id)
 	if skill.is_empty() or skill.get("type", "") != "active":
 		return false
-	var ap: Node = Engine.get_main_loop().root.get_node_or_null("AttrPanel")
+	var ap: Node = Service.attr_panel()
 	return ap != null and ap.has_skill(skill_id)
 
 ## 解绑槽位
@@ -217,7 +217,7 @@ func grant_mechanism_passive(id: String, level: int = 1) -> void:
 ## 已落地的机制被动及其代码 hook（has_mechanism_passive 调用点）：
 ##   charge / cd_reduce / air_dash / quick_reload / afterimage / perfect_block_window / perfect_block_empower
 func recompute_mechanism_passives() -> void:
-	var ap = Engine.get_main_loop().root.get_node_or_null("AttrPanel")
+	var ap = Service.attr_panel()
 	if ap == null:
 		return
 	var attrs: Dictionary = ap.get_player_attrs()
@@ -271,7 +271,8 @@ func recompute_mechanism_passives() -> void:
 	if SD.can_unlock(1, prof_xb, dex_v):
 		grant_mechanism_passive("quick_reload")
 
-## 依据玩家当前的握持流派激活 7 大流派的核心纯被动
+## 依据玩家当前的握持流派激活 7 大流派的核心纯被动（共 17 项，doc21 §一）。
+## 徒手流派以 5 项专属被动特别对待（其余 6 流派各 2 项）。
 func _apply_current_style_passives() -> void:
 	var player = Engine.get_main_loop().root.get_node_or_null("Player")
 	if player == null:
@@ -293,6 +294,9 @@ func _apply_current_style_passives() -> void:
 		CE.Style.UNARMED:
 			grant_mechanism_passive("passive_style_unarmed_flurry_storm")
 			grant_mechanism_passive("passive_style_unarmed_over_shoulder_slam")
+			grant_mechanism_passive("passive_style_unarmed_grapple")
+			grant_mechanism_passive("passive_style_unarmed_swift_kick")
+			grant_mechanism_passive("passive_style_unarmed_arrow_break")
 		CE.Style.RANGED:
 			grant_mechanism_passive("passive_style_ranged_weakpoint_sight")
 			grant_mechanism_passive("passive_style_ranged_piercing")

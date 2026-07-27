@@ -4,6 +4,7 @@ const ACCEPTED_HUMANOID_RIG := \
 	"res://assets/meshes/characters/voxel_goblin_32px_rig.glb"
 const PLAYER_VISUAL_ROUTE := \
 	"res://scenes/characters/player/player_visual_model.tscn"
+const PLAYER_ANIMATION_PROFILE := preload("res://globals/visual/player_animation_profile.gd")
 
 func test_hit_stop_low_impact_does_not_pause_tree() -> void:
 	var source := _source("res://globals/core/hit_stop_server.gd")
@@ -38,14 +39,24 @@ func test_combat_hitbox_builder_attaches_to_weapon_model_mesh() -> void:
 
 func test_slash_animation_uses_tuned_progress_windows_and_weapon_arc() -> void:
 	var animator_source := _source("res://globals/combat/combat_slash_animator.gd")
+	var profile_source := _source("res://globals/visual/player_animation_profile.gd")
 	var player_slash := _source("res://scenes/characters/player/state/player_state_slashing.gd")
 	var enemy_slash := _source("res://scenes/characters/enemies/state/enemy_state_slashing.gd")
 	assert_bool(animator_source.contains("PLAYER_SPEED_SCALE")).is_true()
 	assert_bool(animator_source.contains("ENEMY_SPEED_SCALE")).is_true()
 	assert_bool(animator_source.contains("player_animation_name")).is_true()
-	assert_bool(animator_source.contains("bash_shield")).is_true()
-	assert_bool(animator_source.contains("thrust_spear")).is_true()
-	assert_bool(animator_source.contains("slash_heavy")).is_true()
+	assert_bool(animator_source.contains("PLAYER_ANIMATION_PROFILE")).is_true()
+	assert_bool(profile_source.contains("attack_animation")).is_true()
+	var shield := WeaponData.new()
+	shield.item_tag = "shield"
+	var spear := WeaponData.new()
+	spear.skill_school = "spear"
+	var greatsword := WeaponData.new()
+	greatsword.skill_school = "two_hand_sword"
+	assert_str(String(PLAYER_ANIMATION_PROFILE.defense_animation(shield, true))).is_equal("shield_block")
+	assert_str(String(PLAYER_ANIMATION_PROFILE.attack_animation(spear))).is_equal("spear_attack")
+	assert_str(String(PLAYER_ANIMATION_PROFILE.attack_animation(greatsword))).is_equal("greatsword_attack")
+	assert_str(String(PLAYER_ANIMATION_PROFILE.attack_animation(null))).is_equal("claw_swipe")
 	assert_bool(animator_source.contains("static func apply_weapon_arc")).is_true()
 	assert_bool(animator_source.contains("TRAIL_SIZE")).is_true()
 	assert_bool(animator_source.contains("TRAIL_MAX_ALPHA")).is_true()

@@ -7,7 +7,8 @@ const GROUND_FRICTION := 10.0
 var time_start := Time.get_ticks_msec()
 
 func _enter_tree() -> void:
-	enemy.animation_player.play("stunned")
+	if enemy.animation_player != null and enemy.animation_player.has_animation("stunned"):
+		enemy.animation_player.play("stunned")
 	var knockback := KNOCKBACK_FORCE
 	if state_data.knockback_force != 0:
 		knockback = state_data.knockback_force

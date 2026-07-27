@@ -1,4 +1,5 @@
 key,en,zh
+LANTERN TAVERN,LANTERN TAVERN,灯笼酒馆
 LONE LIGHT TAVERN,LONE LIGHT TAVERN,孤灯酒馆
 Day Expedition (WFC),Day Expedition (WFC),白天探险（WFC）
 Classic Dungeon Campaign,Classic Dungeon Campaign,经典地牢战役
@@ -332,7 +333,7 @@ Item,Item,物品
 Object,Object,物体
 Door,Door,门
 Damage %d-%d,Damage %d-%d,伤害 %d-%d
-Reach %.1fm,Reach %.1fm,距离 %.1fm
+Reach %.1fm,Reach %.1fm,距离 %.1f米
 Phys Def %+d,Phys Def %+d,物防 %+d
 Evade %+0.1f%%,Evade %+0.1f%%,闪避 %+0.1f%%
 Move Spd %+.0f%%,Move Spd %+.0f%%,移速 %+.0f%%
@@ -1001,3 +1002,27 @@ D 档,D Tier,D 档
 破圆木盾,Broken Round Shield,破圆木盾
 精铁圆盾,Fine Iron Round Shield,精铁圆盾
 矮人叹息,Dwarven Sigh,矮人叹息
+LOOT,LOOT,战利品
+CLOSE,CLOSE,关闭
+EQUIPMENT,EQUIPMENT,装备槽
+CHEST,CHEST,宝箱内容
+BACKPACK,BACKPACK,背包
+HARVEST ALL,HARVEST ALL,一键收获
+click slot to unequip,click slot to unequip,点击槽位卸下
+double-click a gear item to equip,double-click a gear item to equip,双击装备物品进行装备
+double-click to loot,double-click to loot,双击拾取
+double-click to store,double-click to store,双击存入
+hover items to inspect,hover items to inspect,悬停查看详情
+click to unequip,click to unequip,点击卸下
+Empty slot,Empty slot,空槽
+[Empty],[Empty],[空]
+items  chest %d  /  bag %d    weight  %.2fkg,items  chest %d  /  bag %d    weight  %.2fkg,物品  宝箱 %d  /  背包 %d    重量  %.2fkg
+BAG  %d / %d  (%d%%),BAG  %d / %d  (%d%%),背包  %d / %d  (%d%%)
+EQ_SLOT_HEAD,Head,头
+EQ_SLOT_CHEST,Chest,胸
+EQ_SLOT_HANDS,Hands,手
+EQ_SLOT_FEET,Feet,脚
+EQ_SLOT_MAIN,Main,主手
+EQ_SLOT_OFF,Off,副手
+EQ_SLOT_BACK,Back,背
+EQ_SLOT_ACC,Acc.,饰

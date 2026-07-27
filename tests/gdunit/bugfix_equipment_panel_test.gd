@@ -123,7 +123,7 @@ func test_spawn_preview_does_not_touch_gamestate() -> void:
 	# 不应包含 previous_player 或 gs.set("current_player" 的恢复操作
 	assert_bool(func_body.contains("previous_player")).is_false()
 	assert_bool(func_body.contains('gs.set("current_player"')).is_false()
-	assert_bool(source.contains("PLAYER_PREVIEW_MODEL")).is_true()
+	assert_bool(source.contains("PLAYER_PREVIEW_SCENE_PATH") or source.contains("PLAYER_PREVIEW_MODEL")).is_true()
 	assert_bool(source.contains("func _spawn_fallback_preview_model")).is_true()
 
 
@@ -156,15 +156,15 @@ func test_empty_equipment_slots_use_generated_pixel_icons() -> void:
 	var source := (load("res://scenes/ui/tavern_equipment_panel.gd") as GDScript).source_code
 	assert_bool(source.contains("func _empty_slot_icon")).is_true()
 	assert_bool(source.contains("GENERATED_SLOT_BACKGROUND_TEXTURES")).is_true()
-	assert_bool(source.contains("slot_background_head.png")).is_true()
-	assert_bool(source.contains("slot_background_body.png")).is_true()
-	assert_bool(source.contains("slot_background_hands.png")).is_true()
-	assert_bool(source.contains("slot_background_feet.png")).is_true()
-	assert_bool(source.contains("slot_background_weapon.png")).is_true()
+	assert_bool(source.contains("slot_background_head_generated_v3.png")).is_true()
+	assert_bool(source.contains("slot_background_body_generated_v3.png")).is_true()
+	assert_bool(source.contains("slot_background_hands_generated_v3.png")).is_true()
+	assert_bool(source.contains("slot_background_feet_generated_v4.png")).is_true()
+	assert_bool(source.contains("slot_background_weapon_generated_v3.png")).is_true()
 	assert_bool(source.contains('gear_list.max_columns = INVENTORY_GRID_COLUMNS')).is_true()
 	assert_bool(source.contains('theme_type_variation = &"SlotButton"')).is_true()
 	assert_bool(source.contains("StyleBoxTexture")).is_true()
-	assert_bool(source.contains("_slot_background_style")).is_true()
+	assert_bool(source.contains("SlotHintIcons.build_solid_slot_hint_image")).is_true()
 	assert_bool(source.contains("_prepare_preview_frame")).is_true()
 	assert_bool(source.contains("_format_inventory_label")).is_true()
 	assert_bool(source.contains("Older hand-authored versions keep ModelViewer directly under PreviewFrame")).is_true()
@@ -197,9 +197,9 @@ func test_can_bind_skill_uses_enum_constants() -> void:
 	assert_bool(func_body.contains("\n\t\t1:")).is_false()
 	assert_bool(func_body.contains("\n\t\t2:")).is_false()
 	# 应使用 SkillRuntime.SlotType 枚举
-	assert_bool(func_body.contains("SkillRuntime.SlotType.F_ACTION")).is_true()
-	assert_bool(func_body.contains("SkillRuntime.SlotType.G_WEAPON")).is_true()
-	assert_bool(func_body.contains("SkillRuntime.SlotType.PASSIVE")).is_true()
+	assert_bool(func_body.contains("SKILL_RUNTIME_SCRIPT.SlotType.F_ACTION")).is_true()
+	assert_bool(func_body.contains("SKILL_RUNTIME_SCRIPT.SlotType.G_WEAPON")).is_true()
+	assert_bool(func_body.contains("SKILL_RUNTIME_SCRIPT.SlotType.PASSIVE")).is_true()
 
 
 # ── Bug 13: hide_panel 检查暂停状态 ────────────────────────────────────────

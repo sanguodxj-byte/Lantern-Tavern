@@ -84,11 +84,12 @@ func register_physics_node(node: Node) -> void:
 		_register_one_physics_body(entry["body"], entry["visual_root"])
 	if _streaming_ready and _streaming_state_initialized:
 		for entry in bodies:
-			var body := entry["body"] as CollisionObject3D
+			var body := _collision_object_or_null(entry.get("body"))
 			if body == null or not is_instance_valid(body):
 				continue
 			var chunk: Vector2i = body.get_meta("stream_physics_chunk", Vector2i.ZERO)
-			_set_physics_body_active(body, _is_chunk_within_radius(chunk, _last_player_chunk, STREAM_PHYSICS_CHUNK_RADIUS))
+			_set_physics_body_active(body, _is_chunk_within_radius(chunk, _last_player_chunk, STREAM_PHYSICS_CHUNK_RADIUS) \
+				or _is_forced_hunt_enemy(body))
 
 ## 注册一个 terrain chunk 节点。
 func register_terrain_chunk(chunk: Vector2i, node: Node3D) -> void:
@@ -103,6 +104,8 @@ func register_terrain_chunk(chunk: Vector2i, node: Node3D) -> void:
 func register_light(light: Light3D) -> void:
 	if light == null:
 		return
+	# 动态注册的地牢灯也必须遵守环境光源无镜面规范，不能依赖 runtime 初始扫描。
+	light.light_specular = 0.0
 	var chunk := _world_to_chunk(light.global_position if light.is_inside_tree() else light.position)
 	if not _light_chunks.has(chunk):
 		_light_chunks[chunk] = []
@@ -116,7 +119,7 @@ func update_streaming(force: bool = false) -> void:
 		return
 	var player_pos := _player_position()
 	var player_chunk := _world_to_chunk(player_pos)
-	if not force and player_chunk == _last_player_chunk:
+	if not force and player_chunk == _last_player_chunk and not _has_forced_hunt_enemies():
 		return
 	_streaming_refresh_count += 1
 	_last_player_chunk = player_chunk
@@ -185,26 +188,63 @@ func _update_lights(player_chunk: Vector2i, player_pos: Vector3, _force: bool) -
 	_active_light_set = new_active
 
 func _update_physics(player_chunk: Vector2i) -> void:
+	_prune_invalid_physics_bodies()
 	var active := {}
 	for chunk in _iter_chunks(player_chunk, STREAM_PHYSICS_CHUNK_RADIUS):
 		active[chunk] = true
+	_add_forced_hunt_physics_chunks(active)
 	# 新激活的 chunk：激活其中所有物理体
 	for chunk in active.keys():
 		if _last_active_physics_chunks.has(chunk):
 			continue
 		var bodies: Array = _physics_chunks.get(chunk, [])
-		for body in bodies:
-			if body != null and is_instance_valid(body):
+		for body_variant in bodies:
+			var body := _collision_object_or_null(body_variant)
+			if body != null:
 				_set_physics_body_active(body, true)
 	# 仅停用刚离开半径的 chunk。注册时节点已经默认停用，因此无需扫描全地图。
 	for chunk in _last_active_physics_chunks.keys():
 		if active.has(chunk):
 			continue
 		var bodies: Array = _physics_chunks.get(chunk, [])
-		for body in bodies:
-			if body != null and is_instance_valid(body):
+		for body_variant in bodies:
+			var body := _collision_object_or_null(body_variant)
+			if body != null:
 				_set_physics_body_active(body, false)
 	_last_active_physics_chunks = active
+	_update_forced_hunt_enemies(active)
+
+## 满暗蚀敌人移动时，玩家所在 chunk 不变也必须刷新其脚下环境碰撞。
+## 物理 chunk 半径只扩展到强制敌人当前位置附近，暗蚀结束后下一次刷新会收回。
+func _add_forced_hunt_physics_chunks(active_chunks: Dictionary) -> void:
+	for registered_chunk in _physics_chunks.keys():
+		var bodies: Array = _physics_chunks.get(registered_chunk, [])
+		for body_variant in bodies:
+			var body := _collision_object_or_null(body_variant)
+			if not _is_forced_hunt_enemy(body):
+				continue
+			var enemy_chunk := _world_to_chunk(body.global_position)
+			for chunk in _iter_chunks(enemy_chunk, STREAM_PHYSICS_CHUNK_RADIUS):
+				active_chunks[chunk] = true
+
+## 满暗蚀时，敌人跨越普通物理 chunk 半径仍必须运行 CharacterBody3D 的 AI。
+## 只扫描已注册的物理节点，并且仅在玩家跨 chunk 或压力强制刷新时执行，不影响每帧开销。
+func _update_forced_hunt_enemies(active_chunks: Dictionary) -> void:
+	for chunk in _physics_chunks.keys():
+		var bodies: Array = _physics_chunks.get(chunk, [])
+		for body_variant in bodies:
+			var body := _collision_object_or_null(body_variant)
+			if body == null or not body is CharacterBody3D:
+				continue
+			if not body.is_in_group("enemies"):
+				continue
+			if _is_forced_hunt_enemy(body):
+				_set_physics_body_active(body, true)
+				body.set_meta("stream_forced_hunt_active", true)
+			elif bool(body.get_meta("stream_forced_hunt_active", false)):
+				if not active_chunks.has(chunk):
+					_set_physics_body_active(body, false)
+				body.set_meta("stream_forced_hunt_active", false)
 
 func _update_visuals(player_chunk: Vector2i) -> void:
 	if _visual_chunks.is_empty():
@@ -304,6 +344,8 @@ func _collect_nested_static_bodies(node: Node, result: Array, visual_root: Node)
 		_collect_nested_static_bodies(child, result, visual_root)
 
 func _register_one_physics_body(body: CollisionObject3D, visual_root: Node = null) -> void:
+	if not is_instance_valid(body):
+		return
 	if body.get_meta("stream_physics_registered", false):
 		return
 	var stream_position := _node_position(body)
@@ -331,6 +373,8 @@ func _register_one_physics_body(body: CollisionObject3D, visual_root: Node = nul
 	_set_physics_body_active(body, false)
 
 func _set_physics_body_active(body: CollisionObject3D, active: bool) -> void:
+	if not is_instance_valid(body):
+		return
 	# 不早返回：远离后再次设 false 必须强制 layer=0，否则激活残留的 layer 不会清。
 	# （早返回会跳过 layer=0 设置，导致停用的 body 仍持碰撞。）
 	body.set_meta("stream_physics_active", active)
@@ -397,8 +441,44 @@ func _iter_chunks(center: Vector2i, radius: int) -> Array:
 func _is_chunk_within_radius(chunk: Vector2i, center: Vector2i, radius: int) -> bool:
 	return absi(chunk.x - center.x) <= radius and absi(chunk.y - center.y) <= radius
 
+func _is_forced_hunt_enemy(body: CollisionObject3D) -> bool:
+	if not is_instance_valid(body):
+		return false
+	return body is CharacterBody3D \
+		and body.is_in_group("enemies") \
+		and bool(body.get_meta("dark_erosion_hunt", false))
+
+func _has_forced_hunt_enemies() -> bool:
+	_prune_invalid_physics_bodies()
+	for chunk in _physics_chunks.keys():
+		for body_variant in _physics_chunks.get(chunk, []):
+			var body := _collision_object_or_null(body_variant)
+			if _is_forced_hunt_enemy(body):
+				return true
+	return false
+
 func _node_position(node: Node3D) -> Vector3:
+	if not is_instance_valid(node):
+		return Vector3.ZERO
 	return node.global_position if node.is_inside_tree() else node.position
+
+func _collision_object_or_null(value: Variant) -> CollisionObject3D:
+	# is_instance_valid must run before `as`: a queued/free'd Godot object can
+	# still remain in a registry until the next streaming refresh.
+	if not is_instance_valid(value):
+		return null
+	if not (value is CollisionObject3D):
+		return null
+	return value as CollisionObject3D
+
+func _prune_invalid_physics_bodies() -> void:
+	for chunk in _physics_chunks.keys():
+		var valid_bodies: Array = []
+		for body_variant in _physics_chunks.get(chunk, []):
+			var body := _collision_object_or_null(body_variant)
+			if body != null:
+				valid_bodies.append(body)
+		_physics_chunks[chunk] = valid_bodies
 
 func _player_position() -> Vector3:
 	if _player != null and is_instance_valid(_player):

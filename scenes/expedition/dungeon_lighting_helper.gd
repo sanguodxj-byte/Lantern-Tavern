@@ -9,6 +9,13 @@ static func collect_local_lights(node: Node, result: Array[Light3D]) -> void:
 	for child in node.get_children():
 		collect_local_lights(child, result)
 
+## 递归收集场景中的全部光源，包括区域环境方向光。
+static func collect_scene_lights(node: Node, result: Array[Light3D]) -> void:
+	if node is Light3D:
+		result.append(node as Light3D)
+	for child in node.get_children():
+		collect_scene_lights(child, result)
+
 ## 判断灯光是否为玩家视野灯。
 static func is_player_vision_light(light: Light3D, vision_light_name: String) -> bool:
 	return light.name == vision_light_name
@@ -18,6 +25,7 @@ static func configure_player_vision_light(light: Light3D, base_energy: float, ba
 	var omni := light as OmniLight3D
 	if omni == null:
 		return
+	omni.light_specular = 0.0
 	omni.visible = true
 	omni.light_energy = base_energy
 	omni.omni_range = base_range

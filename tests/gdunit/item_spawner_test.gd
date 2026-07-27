@@ -13,14 +13,14 @@ class BatchParent:
 	extends Node3D
 
 	var requested_paths: Array[String] = []
-	var requested_positions: Array[Vector3] = []
+	var requested_transforms: Array[Transform3D] = []
 
-	func _spawn_batched_decor(path: String, pos: Vector3) -> bool:
+	func _spawn_batched_decor(path: String, transform: Transform3D) -> bool:
 		requested_paths.append(path)
-		requested_positions.append(pos)
+		requested_transforms.append(transform)
 		var shell := StaticBody3D.new()
 		shell.name = "BatchedCollisionShell"
-		shell.position = pos
+		shell.transform = transform
 		add_child(shell)
 		return true
 
@@ -179,7 +179,8 @@ func test_spawn_item_by_tag_decor_uses_parent_batching_when_available() -> void:
 	assert_object(result).is_not_null()
 	assert_int(parent.requested_paths.size()).is_equal(1)
 	assert_str(parent.requested_paths[0]).is_equal("res://scenes/props/decor/bench.tscn")
-	assert_bool(parent.requested_positions[0].is_equal_approx(spawn_pos)).is_true()
+	assert_bool(parent.requested_transforms[0].origin.is_equal_approx(spawn_pos)).is_true()
+	assert_bool(parent.requested_transforms[0].basis.is_equal_approx(Basis.IDENTITY)).is_true()
 	assert_int(parent.get_child_count()).is_equal(1)
 	assert_object(result).is_equal(parent.get_child(0))
 	assert_str(result.get_meta("item_tag")).is_equal(TAGS.DECOR)
@@ -397,7 +398,7 @@ func test_spawn_material_instance_applies_wall_alignment_and_metadata() -> void:
 	assert_str(item.get_meta("material_location_preference")).is_equal("near_wall")
 	assert_bool(item.get_meta("material_align_to_wall")).is_true()
 	assert_float((item as Node3D).rotation.y).is_equal_approx(PI * 0.5, 0.001)
-	assert_float((item as Node3D).position.y).is_equal_approx(0.3, 0.001)
+	assert_float((item as Node3D).position.y).is_equal_approx(0.28, 0.001)
 	parent.free()
 
 

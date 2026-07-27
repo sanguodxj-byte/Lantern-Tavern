@@ -23,6 +23,7 @@ from voxel_humanoid_rig import (  # noqa: E402
     create_voxel_humanoid_armature,
     parent_parts_by_bone,
 )
+from voxel_character_rig import build_all_actions, build_weapon_actions, export_glb as export_rig_glb  # noqa: E402
 from voxel_model_primitives import (  # noqa: E402
     bounds_center_scale,
     cube_px,
@@ -33,6 +34,7 @@ from voxel_model_primitives import (  # noqa: E402
     reset_scene,
     setup_lights_and_camera,
 )
+from voxel_single_model_cli import reject_target_override  # noqa: E402
 from voxel_overlap_guard import (  # noqa: E402
     assert_parts_no_positive_volume_overlap,
     assert_parts_single_face_connected_component,
@@ -177,6 +179,7 @@ def build_goblin_mesh() -> tuple[bpy.types.Object, list[bpy.types.Object], dict[
 
 
 def main() -> None:
+    reject_target_override(MODEL_ID)
     _assert_authored_contract()
     parts = tuple({
         "name": p.name,
@@ -198,8 +201,14 @@ def main() -> None:
     root, parts_objs, parts_by_bone = build_goblin_mesh()
     armature = create_voxel_humanoid_armature(height_px=42.0, name="Armature")
     parent_parts_by_bone(parts_by_bone, armature)
+    build_all_actions(armature)
+    build_weapon_actions(armature)
+    armature.rotation_euler.z = math.pi
+    bpy.context.view_layer.update()
     RIG_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    export_glb(armature, RIG_OUTPUT)
+    export_rig_glb(RIG_OUTPUT)
+    armature.rotation_euler.z = 0.0
+    bpy.context.view_layer.update()
 
     # 3. 渲染 3D 视觉图片
     root, parts_objs, _ = build_goblin_mesh()

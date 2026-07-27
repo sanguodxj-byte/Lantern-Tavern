@@ -77,8 +77,23 @@ func test_skill_pixel_png_assets_exist_and_fit_128px() -> void:
 		assert_bool(FileAccess.file_exists(ProjectSettings.globalize_path(path))) \
 			.override_failure_message("缺少技能像素图标: %s" % path) \
 			.is_true()
-		var image := Image.new()
-		assert_int(image.load(path)).is_equal(OK)
-		assert_bool(image.get_width() <= 128 and image.get_height() <= 128) \
+		var texture := ResourceLoader.load(path, "Texture2D") as Texture2D
+		assert_object(texture).is_not_null()
+		assert_bool(texture.get_width() <= 128 and texture.get_height() <= 128) \
 			.override_failure_message("%s 超过 128px" % path) \
 			.is_true()
+
+func test_pixel_loader_uses_export_safe_texture_resources() -> void:
+	var source := (load("res://globals/combat/skill_icons.gd") as GDScript).source_code
+	assert_bool(source.contains('ResourceLoader.load(path, "Texture2D")')) \
+		.override_failure_message("技能图标必须通过 ResourceLoader 加载导入纹理，避免导出包无法读取 PNG").is_true()
+	assert_bool(not source.contains("image.load(path)")) \
+		.override_failure_message("技能图标加载器不应直接读取原始 PNG 路径").is_true()
+
+func test_missing_pixel_icons_fall_back_without_resource_loader_errors() -> void:
+	var source := (load("res://globals/combat/skill_icons.gd") as GDScript).source_code
+	assert_bool(source.contains("FileAccess.file_exists(ProjectSettings.globalize_path(path))")) \
+		.override_failure_message("可选技能图标缺失时必须先检查文件，不能让 ResourceLoader 输出运行时错误").is_true()
+	var icons: Node = Engine.get_main_loop().root.get_node("SkillIcons")
+	var missing: Texture2D = icons._load_pixel_icon("res://assets/textures/icons/skills/definitely_missing.png")
+	assert_object(missing).is_null()

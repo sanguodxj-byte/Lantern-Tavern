@@ -16,6 +16,9 @@ const DungeonStreamingConfig := preload("res://scenes/expedition/dungeon_streami
 # 阶段 E 步5：rendering const 迁入 DungeonRenderingConfig，顶 const 已删改读 _rendering_cfg.*
 const DungeonRenderingConfig := preload("res://scenes/expedition/dungeon_rendering_config.gd")
 const DungeonRuntimeConfig := preload("res://scenes/expedition/dungeon_runtime_config.gd")
+# Kept as an explicit compatibility contract for legacy scene-object tooling;
+# the implementation itself lives in DungeonSceneBuilder.
+const SCENE_OBJECT_SCRIPT := preload("res://scenes/props/scene_object.gd")
 
 # 阶段 E 步4：streaming const 迁入 DungeonStreamingConfig，顶 const 已删改读 _streaming_cfg.*
 var _streaming_cfg: DungeonStreamingConfig = DungeonStreamingConfig.default()
@@ -37,6 +40,9 @@ var player_spawn_pos := Vector3.ZERO
 ## 当前地牢所属区域（BrewingData.Zone 枚举值）。
 ## 决定宝箱材料掉落池，由关卡入口或 ExpeditionManager 注入。
 @export var dungeon_zone: int = 0  # 默认地牢
+# 缓存入口区域的散落材料池，供兼容旧入口/调试工具读取；实际掉落由 ItemSpawner
+# 按 layout.zone 查询同一份 ZoneManager 数据源，避免重复维护区域映射。
+var _scatter_material_pool: Dictionary = {}
 
 # 阶段 9 接线：新生产链持有引用（供生产集成测试断言 level.layout / level.build_result / level.streaming_controller）
 # 阶段 9 条 2：旧字段 _grid/layout.rooms/layout.room_roles/layout.heights 已退役，统一读 layout.*
@@ -76,10 +82,15 @@ func _ready() -> void:
 	# 注册为当前关卡，供 throw_weapon 等 add_child 使用
 	GameState.register_level(self)
 
-	# 从 ZoneManager 读取玩家选定的区域，配置宝箱 zone 与散落材料池
+	# 从 ZoneManager 读取玩家选定的区域，配置宝箱 zone 与散落材料池。
+	# 保留绝对路径兜底，方便独立实例化地牢时仍能接入 Autoload。
 	var zm: Node = Service.zone_manager()
+	if zm == null:
+		zm = get_node_or_null("/root/ZoneManager")
 	if zm != null:
 		dungeon_zone = zm.get_zone()
+		if zm.has_method("get_scatter_materials"):
+			_scatter_material_pool = zm.get_scatter_materials(dungeon_zone)
 
 	# 阶段 9 接线：新生产链 DungeonGenerator → Layout → Validator → Planner → Builder → Streaming
 	var config := DungeonGenerationConfig.new()
@@ -145,6 +156,26 @@ func _ready() -> void:
 	_player_spawn = GameState.current_player
 
 
+func _exit_tree() -> void:
+	# SceneTree removal is the runtime teardown boundary. Stop deferred work before
+	# child roots are released, then invalidate only the globals owned by this level.
+	if _runtime != null and is_instance_valid(_runtime):
+		_runtime.stop()
+	if streaming_controller != null and is_instance_valid(streaming_controller):
+		streaming_controller.clear()
+	if build_result != null:
+		build_result.dispose()
+	if GameState != null:
+		if _player_spawn != null and is_instance_valid(_player_spawn):
+			GameState.unregister_player(_player_spawn)
+		GameState.unregister_level(self)
+	_player_spawn = null
+	_runtime = null
+	streaming_controller = null
+	build_result = null
+	layout = null
+
+
 func _process(delta: float) -> void:
 	var network_manager := Service.network_manager()
 	if network_manager != null and network_manager.has_method("tick"):
@@ -207,6 +238,7 @@ func _setup_zone_ambient() -> void:
 	ambient_dir.rotation_degrees = Vector3(-90, 0, 0)
 	ambient_dir.light_energy = zone_ambient_config.light_energy
 	ambient_dir.light_color = zone_ambient_config.light_color
+	ambient_dir.light_specular = 0.0
 	ambient_dir.shadow_enabled = false
 	add_child(ambient_dir)
 
@@ -286,6 +318,20 @@ func _finish_expedition(player: Player, voluntary: bool) -> void:
 func _settle_extraction_loot(player: Player) -> void:
 	if _runtime != null and is_instance_valid(_runtime):
 		_runtime._settle_extraction_loot(player)
+
+# 兼容旧的场景物体入口。碰撞补全的唯一实现已迁入 DungeonSceneBuilder，
+# 这里仅保留委托，避免旧工具/测试直接调用 ProceduralDungeon 时失去碰撞行为。
+func _ensure_collision_on_instance(instance: Node) -> void:
+	var builder := DungeonSceneBuilder.new()
+	builder._ensure_collision_on_instance(instance)
+
+func _has_physics_body(node: Node) -> bool:
+	var builder := DungeonSceneBuilder.new()
+	return builder._has_physics_body(node)
+
+func _configure_scene_object(instance: Node) -> void:
+	var builder := DungeonSceneBuilder.new()
+	builder._configure_scene_object(instance)
 
 func _get_zone_ambient_config(zone: int) -> Dictionary:
 	match zone:

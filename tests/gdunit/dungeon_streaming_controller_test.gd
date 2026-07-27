@@ -115,6 +115,56 @@ func test_update_physics_chunk_radius_activates_bodies() -> void:
 	player.queue_free()
 	body.queue_free()
 
+func test_dark_erosion_enemy_remains_active_outside_physics_radius() -> void:
+	# 满暗蚀时敌人必须跨越 chunk 物理流式半径继续运行 AI，才能实现全图追击。
+	var ctrl := _make_controller()
+	ctrl.configure(_make_8x8_layout(), DungeonBuildResult.new())
+	var enemy := CharacterBody3D.new()
+	enemy.add_to_group("enemies")
+	enemy.set_meta("dark_erosion_hunt", true)
+	enemy.position = Vector3(72.0, 0.0, 0.0) # chunk (3, 0), 远超 physics radius=1
+	add_child(enemy)
+	var remote_floor := StaticBody3D.new()
+	remote_floor.position = enemy.position
+	remote_floor.collision_layer = 4
+	var floor_shape := CollisionShape3D.new()
+	floor_shape.shape = BoxShape3D.new()
+	remote_floor.add_child(floor_shape)
+	add_child(remote_floor)
+	ctrl.register_physics_node(enemy)
+	ctrl.register_physics_node(remote_floor)
+	var player := Node3D.new()
+	player.position = Vector3.ZERO
+	add_child(player)
+	ctrl.set_player(player)
+	ctrl.update_streaming(true)
+
+	assert_bool(enemy.get_meta("stream_physics_active", false)) \
+		.override_failure_message("满暗蚀远处敌人不应被物理流式停用").is_true()
+	assert_bool(enemy.is_physics_processing()).is_true()
+	assert_int(enemy.collision_layer).is_greater(0)
+	assert_int(remote_floor.collision_layer).is_equal(4)
+
+	_teardown_controller(ctrl)
+	player.queue_free()
+	remote_floor.queue_free()
+	enemy.queue_free()
+
+func test_physics_registry_ignores_freed_collision_objects() -> void:
+	# Regression: a picked-up material queues its RigidBody3D for deletion, but
+	# the streaming registry can still hold the old reference for one or more
+	# refreshes. Stale entries must be removed before any typed cast.
+	var ctrl := _make_controller()
+	ctrl.configure(_make_8x8_layout(), DungeonBuildResult.new())
+	var stale_body := StaticBody3D.new()
+	add_child(stale_body)
+	ctrl._physics_chunks[Vector2i.ZERO] = [stale_body]
+	stale_body.free()
+
+	assert_bool(ctrl._has_forced_hunt_enemies()).is_false()
+	assert_int((ctrl._physics_chunks[Vector2i.ZERO] as Array).size()).is_equal(0)
+	_teardown_controller(ctrl)
+
 func test_player_cross_chunk_incremental_update() -> void:
 	var ctrl := _make_controller()
 	ctrl.configure(_make_8x8_layout(), DungeonBuildResult.new())

@@ -15,7 +15,9 @@ void vertex() {
 
 void fragment() {
 	vec4 tex_color = texture(liquid_texture, UV + TIME * texture_scroll_speed);
-	ALBEDO = tex_color.rgb;
+	vec3 acid_color = vec3(0.03, 0.68, 0.025);
+	ALBEDO = acid_color * mix(vec3(1.0), tex_color.rgb, 0.25);
+	EMISSION = vec3(0.0, 0.33, 0.015);
 	METALLIC = 0.0;
 	ROUGHNESS = 1.0;
 }

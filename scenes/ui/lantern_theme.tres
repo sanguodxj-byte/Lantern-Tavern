@@ -397,9 +397,282 @@ shadow_offset = Vector2(0, 3)
 corner_detail = 1
 anti_aliasing = false
 
+; ============================================================================
+; Tarkov / Barony 风格装备界面边框
+;
+; 设计语言:黑色金属外框 + 琥珀色内高光 + 角部暗钉,整体偏厚重的"军火箱"质感。
+;
+; 层次 (从外到内):
+;   1) OuterFrame       — 主面板外框 (LootPanel)     : 4px 黑金属 + 2px 琥珀
+;   2) InnerSection     — 子区段边框 (LootSection)    : 2px 暗金 + 1px 琥珀高光
+;   3) SlotCell         — 物品格背景 (LootSlot)       : 1px 灰金属网格
+;   4) CornerStud       — 角部装饰 (LootCorner)       : 圆角 0, 1px 琥珀钉
+; ============================================================================
+
+[sub_resource type="StyleBoxFlat" id="OuterFrame"]
+content_margin_left = 18.0
+content_margin_top = 18.0
+content_margin_right = 18.0
+content_margin_bottom = 18.0
+bg_color = Color(0.045, 0.032, 0.038, 0.985)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.025, 0.018, 0.022, 1)
+shadow_color = Color(0, 0, 0, 0.92)
+shadow_size = 12
+shadow_offset = Vector2(0, 6)
+corner_detail = 1
+anti_aliasing = false
+
+; OuterFrame 的子节点用这个叠加: 形成 4px 黑外 + 2px 琥珀内的双层效果。
+[sub_resource type="StyleBoxFlat" id="InnerHighlight"]
+content_margin_left = 14.0
+content_margin_top = 14.0
+content_margin_right = 14.0
+content_margin_bottom = 14.0
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.94, 0.62, 0.22, 0.78)
+corner_detail = 1
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="LootSection"]
+content_margin_left = 14.0
+content_margin_top = 12.0
+content_margin_right = 14.0
+content_margin_bottom = 12.0
+bg_color = Color(0.075, 0.052, 0.058, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.55, 0.36, 0.19, 0.92)
+shadow_color = Color(0, 0, 0, 0.6)
+shadow_size = 4
+shadow_offset = Vector2(0, 2)
+corner_detail = 1
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="LootSectionAlt"]
+content_margin_left = 14.0
+content_margin_top = 12.0
+content_margin_right = 14.0
+content_margin_bottom = 12.0
+bg_color = Color(0.082, 0.058, 0.064, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.34, 0.24, 0.17, 0.95)
+shadow_color = Color(0, 0, 0, 0.55)
+shadow_size = 4
+shadow_offset = Vector2(0, 2)
+corner_detail = 1
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="LootSlot"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.038, 0.028, 0.034, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.28, 0.20, 0.16, 1)
+shadow_color = Color(0, 0, 0, 0.4)
+shadow_size = 2
+shadow_offset = Vector2(0, 1)
+corner_detail = 1
+anti_aliasing = false
+
+; 装备槽专用样式(Tarkov 风格:2px 琥珀边 + 内部深色背景)
+[sub_resource type="StyleBoxFlat" id="LootEquipSlotNormal"]
+content_margin_left = 6.0
+content_margin_top = 4.0
+content_margin_right = 6.0
+content_margin_bottom = 4.0
+bg_color = Color(0.058, 0.040, 0.046, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.55, 0.36, 0.19, 0.95)
+shadow_color = Color(0, 0, 0, 0.55)
+shadow_size = 3
+shadow_offset = Vector2(0, 1)
+corner_detail = 1
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="LootEquipSlotHover"]
+content_margin_left = 6.0
+content_margin_top = 4.0
+content_margin_right = 6.0
+content_margin_bottom = 4.0
+bg_color = Color(0.18, 0.105, 0.075, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.78, 0.32, 0.95)
+shadow_color = Color(0.94, 0.62, 0.22, 0.45)
+shadow_size = 5
+shadow_offset = Vector2(0, 2)
+corner_detail = 1
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="LootEquipSlotPressed"]
+content_margin_left = 6.0
+content_margin_top = 4.0
+content_margin_right = 6.0
+content_margin_bottom = 4.0
+bg_color = Color(0.10, 0.07, 0.05, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.78, 0.40, 0.13, 0.95)
+shadow_color = Color(0, 0, 0, 0.7)
+shadow_size = 2
+shadow_offset = Vector2(0, 1)
+corner_detail = 1
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="LootEquipSlotDisabled"]
+content_margin_left = 6.0
+content_margin_top = 4.0
+content_margin_right = 6.0
+content_margin_bottom = 4.0
+bg_color = Color(0.038, 0.026, 0.030, 0.85)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.22, 0.16, 0.13, 0.7)
+corner_detail = 1
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="LootSlotHover"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.15, 0.11, 0.10, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.94, 0.62, 0.22, 0.95)
+shadow_color = Color(0.94, 0.62, 0.22, 0.5)
+shadow_size = 4
+shadow_offset = Vector2(0, 0)
+corner_detail = 1
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="LootSlotSelected"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.22, 0.14, 0.10, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.78, 0.32, 1)
+shadow_color = Color(1, 0.78, 0.32, 0.55)
+shadow_size = 5
+shadow_offset = Vector2(0, 0)
+corner_detail = 1
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="LootCorner"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.94, 0.62, 0.22, 1)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
+corner_detail = 1
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="LootButton"]
+content_margin_left = 18.0
+content_margin_top = 10.0
+content_margin_right = 18.0
+content_margin_bottom = 12.0
+bg_color = Color(0.18, 0.105, 0.075, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 4
+border_color = Color(0.96, 0.61, 0.2, 0.95)
+shadow_color = Color(0, 0, 0, 0.95)
+shadow_size = 5
+shadow_offset = Vector2(0, 3)
+corner_detail = 1
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="LootButtonHover"]
+content_margin_left = 18.0
+content_margin_top = 10.0
+content_margin_right = 18.0
+content_margin_bottom = 12.0
+bg_color = Color(0.32, 0.18, 0.10, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 4
+border_color = Color(1, 0.78, 0.32, 1)
+shadow_color = Color(0.94, 0.62, 0.22, 0.55)
+shadow_size = 6
+shadow_offset = Vector2(0, 3)
+corner_detail = 1
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="LootButtonPressed"]
+content_margin_left = 18.0
+content_margin_top = 12.0
+content_margin_right = 18.0
+content_margin_bottom = 10.0
+bg_color = Color(0.12, 0.07, 0.05, 1)
+border_width_left = 2
+border_width_top = 4
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.78, 0.40, 0.13, 1)
+shadow_color = Color(0, 0, 0, 0.7)
+shadow_size = 2
+shadow_offset = Vector2(0, 1)
+corner_detail = 1
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="LootHeader"]
+content_margin_left = 16.0
+content_margin_top = 8.0
+content_margin_right = 16.0
+content_margin_bottom = 8.0
+bg_color = Color(0.085, 0.052, 0.052, 0.98)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 3
+border_color = Color(0.94, 0.62, 0.22, 0.85)
+corner_detail = 1
+anti_aliasing = false
+
 [resource]
 default_font = ExtResource("1_arkpx")
-default_font_size = 22
+default_font_size = 24
 
 Button/colors/font_color = Color(0.94, 0.82, 0.64, 1)
 Button/colors/font_disabled_color = Color(0.42, 0.36, 0.32, 1)
@@ -538,3 +811,61 @@ SlotButton/styles/pressed = SubResource("SlotPressed")
 
 HUDPanel/base_type = &"Panel"
 HUDPanel/styles/panel = SubResource("HUDPanel")
+
+; ── Tarkov / Barony 风格装备界面边框 ──
+LootFrame/base_type = &"PanelContainer"
+LootFrame/styles/panel = SubResource("OuterFrame")
+
+LootSection/base_type = &"PanelContainer"
+LootSection/styles/panel = SubResource("LootSection")
+
+LootSectionAlt/base_type = &"PanelContainer"
+LootSectionAlt/styles/panel = SubResource("LootSectionAlt")
+
+LootHeader/base_type = &"PanelContainer"
+LootHeader/styles/panel = SubResource("LootHeader")
+
+LootSlot/base_type = &"ItemList"
+LootSlot/styles/panel = SubResource("LootSlot")
+LootSlot/styles/focus = SubResource("Focus")
+LootSlot/styles/selected = SubResource("LootSlotSelected")
+
+LootEquipSlot/base_type = &"Button"
+LootEquipSlot/colors/font_color = Color(0.94, 0.82, 0.64, 1)
+LootEquipSlot/colors/font_disabled_color = Color(0.42, 0.36, 0.32, 1)
+LootEquipSlot/colors/font_hover_color = Color(1, 0.96, 0.82, 1)
+LootEquipSlot/colors/font_pressed_color = Color(0.94, 0.62, 0.22, 1)
+LootEquipSlot/font_sizes/font_size = 17
+LootEquipSlot/styles/normal = SubResource("LootEquipSlotNormal")
+LootEquipSlot/styles/hover = SubResource("LootEquipSlotHover")
+LootEquipSlot/styles/pressed = SubResource("LootEquipSlotPressed")
+LootEquipSlot/styles/disabled = SubResource("LootEquipSlotDisabled")
+LootEquipSlot/styles/focus = SubResource("Focus")
+
+LootButton/base_type = &"Button"
+LootButton/colors/font_color = Color(1, 0.92, 0.78, 1)
+LootButton/colors/font_hover_color = Color(1, 1, 0.86, 1)
+LootButton/colors/font_pressed_color = Color(0.94, 0.62, 0.22, 1)
+LootButton/font_sizes/font_size = 22
+LootButton/styles/normal = SubResource("LootButton")
+LootButton/styles/hover = SubResource("LootButtonHover")
+LootButton/styles/pressed = SubResource("LootButtonPressed")
+LootButton/styles/focus = SubResource("Focus")
+
+LootTitle/base_type = &"Label"
+LootTitle/colors/font_color = Color(1, 0.78, 0.32, 1)
+LootTitle/colors/font_shadow_color = Color(0, 0, 0, 0.95)
+LootTitle/constants/shadow_offset_x = 2
+LootTitle/constants/shadow_offset_y = 2
+LootTitle/font_sizes/font_size = 26
+
+LootSectionTitle/base_type = &"Label"
+LootSectionTitle/colors/font_color = Color(0.96, 0.72, 0.42, 1)
+LootSectionTitle/colors/font_shadow_color = Color(0, 0, 0, 0.8)
+LootSectionTitle/constants/shadow_offset_x = 1
+LootSectionTitle/constants/shadow_offset_y = 1
+LootSectionTitle/font_sizes/font_size = 20
+
+LootHint/base_type = &"Label"
+LootHint/colors/font_color = Color(0.66, 0.58, 0.50, 1)
+LootHint/font_sizes/font_size = 15

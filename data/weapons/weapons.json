@@ -1,987 +1,1273 @@
 {
-  "comment": "Dungeon Tavern / Lantern Tavern — Equipment Database",
-  "version": 2,
-  "categories": [
-    "weapons",
-    "shields",
-    "armor_light",
-    "armor_heavy",
-    "accessories"
-  ],
-  "weapons": [
-    {
-      "id": "shortsword",
-      "name": "Shortsword",
-      "name_zh": "短剑",
-      "category": "weapons",
-      "item_tag": "weapon",
-      "tags": [
-        "weapon",
-        "melee",
-        "one_hand",
-        "blade",
-        "one_hand_sword"
-      ],
-      "weapon_class": "one_hand_melee",
-      "attack_type": "melee",
-      "skill_school": "one_hand_sword",
-      "view_model_profile": "shortsword",
-      "combat_styles": [
-        "one_hand",
-        "one_hand_shield",
-        "dual_wield"
-      ],
-      "proficiency_key": "sword",
-      "hands": "one_hand",
-      "glb_path": "res://assets/meshes/weapons/weapons_voxel_shortsword.glb",
-      "icon": "res://assets/textures/icons/equipment/weapons_shortsword.png",
-      "tiers": [
-        {
-          "name": "青铜短剑",
-          "material_tier": "iron",
-          "damage_dice": "1d6+3",
-          "reach": 2.5,
-          "condition": 800,
-          "crit_bonus": 0
-        },
-        {
-          "name": "精钢长剑",
-          "material_tier": "steel",
-          "damage_dice": "2d6+8",
-          "reach": 2.5,
-          "condition": 1120,
-          "crit_bonus": 0
-        },
-        {
-          "name": "誓约之刃",
-          "material_tier": "mithril",
-          "damage_dice": "3d6+20",
-          "reach": 2.5,
-          "condition": 1400,
-          "crit_bonus": 0.05
-        }
-      ],
-      "stats": {
-        "condition": 1200,
-        "max_condition": 1200,
-        "damage_min": 3,
-        "damage_max": 5,
-        "reach": 3.5,
-        "throw_rotation_speed": 40.0,
-        "throw_movement_speed": 10.0,
-        "impale_local_translation": [
-          0,
-          0,
-          0.7
-        ],
-        "impale_local_rotation": 0.0
-      }
-    },
-    {
-      "id": "greatsword",
-      "name": "Greatsword",
-      "name_zh": "双手大剑",
-      "category": "weapons",
-      "item_tag": "weapon",
-      "tags": [
-        "weapon",
-        "melee",
-        "two_hand",
-        "blade",
-        "two_hand_sword",
-        "heavy"
-      ],
-      "weapon_class": "two_hand",
-      "attack_type": "melee",
-      "skill_school": "two_hand_sword",
-      "combat_styles": [
-        "two_hand"
-      ],
-      "proficiency_key": "sword",
-      "hands": "two_hand",
-      "glb_path": "res://assets/meshes/weapons/weapons_voxel_greatsword.glb",
-      "icon": "res://assets/textures/icons/equipment/weapons_greatsword.png",
-      "tiers": [
-        {
-          "name": "锈铁大剑",
-          "material_tier": "iron",
-          "damage_dice": "1d12+5",
-          "reach": 3.5,
-          "condition": 880,
-          "knockback": 1,
-          "crit_bonus": 0
-        },
-        {
-          "name": "精钢斩马刀",
-          "material_tier": "steel",
-          "damage_dice": "2d12+12",
-          "reach": 3.5,
-          "condition": 1200,
-          "knockback": 2,
-          "crit_bonus": 0
-        },
-        {
-          "name": "屠魔狂剑",
-          "material_tier": "adamantite",
-          "damage_dice": "3d12+28",
-          "reach": 3.5,
-          "condition": 1520,
-          "knockback": 2,
-          "crit_bonus": 0.08
-        }
-      ],
-      "stats": {
-        "condition": 1400,
-        "max_condition": 1400,
-        "damage_min": 5,
-        "damage_max": 8,
-        "reach": 5.0,
-        "throw_rotation_speed": 35.0,
-        "throw_movement_speed": 8.0,
-        "impale_local_translation": [
-          0,
-          0,
-          0.9
-        ],
-        "impale_local_rotation": 0.0
-      }
-    },
-    {
-      "id": "axe",
-      "name": "Axe",
-      "name_zh": "双手斧",
-      "category": "weapons",
-      "item_tag": "weapon",
-      "tags": [
-        "weapon",
-        "melee",
-        "two_hand",
-        "axe",
-        "two_hand_axe",
-        "heavy"
-      ],
-      "weapon_class": "two_hand",
-      "attack_type": "melee",
-      "skill_school": "two_hand_axe",
-      "combat_styles": [
-        "two_hand"
-      ],
-      "proficiency_key": "axe",
-      "hands": "two_hand",
-      "glb_path": "res://assets/meshes/weapons/weapons_voxel_axe.glb",
-      "icon": "res://assets/textures/icons/equipment/weapons_axe.png",
-      "tiers": [
-        {
-          "name": "木柄伐木斧",
-          "material_tier": "wood",
-          "damage_dice": "2d6+4",
-          "reach": 3.0,
-          "condition": 800,
-          "armor_pierce": 0.05,
-          "crit_dmg_bonus": 0
-        },
-        {
-          "name": "精钢战斧",
-          "material_tier": "steel",
-          "damage_dice": "3d6+10",
-          "reach": 3.0,
-          "condition": 1120,
-          "armor_pierce": 0.1,
-          "crit_dmg_bonus": 0
-        },
-        {
-          "name": "崩岩巨斧",
-          "material_tier": "adamantite",
-          "damage_dice": "4d6+24",
-          "reach": 3.0,
-          "condition": 1440,
-          "armor_pierce": 0.15,
-          "crit_dmg_bonus": 0.2
-        }
-      ],
-      "stats": {
-        "condition": 1000,
-        "max_condition": 1000,
-        "damage_min": 4,
-        "damage_max": 5,
-        "reach": 4.0,
-        "throw_rotation_speed": 50.0,
-        "throw_movement_speed": 12.0,
-        "impale_local_translation": [
-          0,
-          0,
-          1
-        ],
-        "impale_local_rotation": 0.5
-      }
-    },
-    {
-      "id": "warhammer",
-      "name": "Warhammer",
-      "name_zh": "战锤",
-      "category": "weapons",
-      "item_tag": "weapon",
-      "tags": [
-        "weapon",
-        "melee",
-        "two_hand",
-        "hammer",
-        "war_hammer",
-        "blunt",
-        "heavy"
-      ],
-      "weapon_class": "two_hand",
-      "attack_type": "melee",
-      "skill_school": "war_hammer",
-      "combat_styles": [
-        "two_hand"
-      ],
-      "proficiency_key": "hammer",
-      "hands": "two_hand",
-      "glb_path": "res://assets/meshes/weapons/weapons_voxel_warhammer.glb",
-      "icon": "res://assets/textures/icons/equipment/weapons_warhammer.png",
-      "tiers": [
-        {
-          "name": "采石木槌",
-          "material_tier": "wood",
-          "damage_dice": "1d10+4",
-          "reach": 3.0,
-          "condition": 1000,
-          "knockback": 1,
-          "wall_bonus": 0.3,
-          "stun": 1
-        },
-        {
-          "name": "铁铸战锤",
-          "material_tier": "iron",
-          "damage_dice": "2d10+10",
-          "reach": 3.0,
-          "condition": 1280,
-          "knockback": 2,
-          "wall_bonus": 0.45,
-          "stun": 2
-        },
-        {
-          "name": "灭世雷锤",
-          "material_tier": "meteoric",
-          "damage_dice": "3d10+25",
-          "reach": 3.0,
-          "condition": 1600,
-          "knockback": 2,
-          "wall_bonus": 0.6,
-          "stun": 2
-        }
-      ],
-      "stats": {
-        "condition": 1200,
-        "max_condition": 1200,
-        "damage_min": 5,
-        "damage_max": 9,
-        "reach": 4.0,
-        "throw_rotation_speed": 35.0,
-        "throw_movement_speed": 8.0,
-        "impale_local_translation": [
-          0,
-          0,
-          0.8
-        ],
-        "impale_local_rotation": 0.0
-      }
-    },
-    {
-      "id": "spear",
-      "name": "Spear",
-      "name_zh": "长枪",
-      "category": "weapons",
-      "item_tag": "weapon",
-      "tags": [
-        "weapon",
-        "melee",
-        "two_hand",
-        "polearm",
-        "spear",
-        "reach"
-      ],
-      "weapon_class": "two_hand",
-      "attack_type": "melee",
-      "skill_school": "spear",
-      "combat_styles": [
-        "two_hand"
-      ],
-      "proficiency_key": "spear",
-      "hands": "two_hand",
-      "glb_path": "res://assets/meshes/weapons/weapons_voxel_spear.glb",
-      "icon": "res://assets/textures/icons/equipment/weapons_spear.png",
-      "tiers": [
-        {
-          "name": "竹尖长枪",
-          "material_tier": "wood",
-          "damage_dice": "1d8+3",
-          "reach": 4.0,
-          "condition": 800,
-          "range": 2
-        },
-        {
-          "name": "精钢骑士长枪",
-          "material_tier": "steel",
-          "damage_dice": "2d8+9",
-          "reach": 4.0,
-          "condition": 1120,
-          "range": 2
-        },
-        {
-          "name": "破空闪电枪",
-          "material_tier": "meteoric",
-          "damage_dice": "3d8+22",
-          "reach": 4.0,
-          "condition": 1400,
-          "range": 2,
-          "crit_bonus": 0.05
-        }
-      ],
-      "stats": {
-        "condition": 1000,
-        "max_condition": 1000,
-        "damage_min": 4,
-        "damage_max": 7,
-        "reach": 5.5,
-        "throw_rotation_speed": 30.0,
-        "throw_movement_speed": 9.0,
-        "impale_local_translation": [
-          0,
-          0,
-          0.7
-        ],
-        "impale_local_rotation": 0.0
-      }
-    },
-    {
-      "id": "dagger",
-      "name": "Dagger",
-      "name_zh": "匕首",
-      "category": "weapons",
-      "item_tag": "weapon",
-      "tags": [
-        "weapon",
-        "melee",
-        "one_hand",
-        "dagger",
-        "blade",
-        "dual_wield"
-      ],
-      "weapon_class": "one_hand_melee",
-      "attack_type": "melee",
-      "skill_school": "one_hand_sword",
-      "view_model_profile": "sword",
-      "combat_styles": [
-        "one_hand",
-        "one_hand_shield",
-        "dual_wield"
-      ],
-      "proficiency_key": "dagger",
-      "hands": "one_hand",
-      "glb_path": "res://assets/meshes/weapons/weapons_voxel_dagger.glb",
-      "icon": "res://assets/textures/icons/equipment/weapons_dagger.png",
-      "tiers": [
-        {
-          "name": "骨质飞刃",
-          "material_tier": "wood",
-          "damage_dice": "1d4+2",
-          "reach": 1.5,
-          "condition": 600,
-          "crit_bonus": 0.05
-        },
-        {
-          "name": "暗影短刀",
-          "material_tier": "meteoric",
-          "damage_dice": "2d4+7",
-          "reach": 1.5,
-          "condition": 880,
-          "crit_bonus": 0.1
-        },
-        {
-          "name": "无声瞬杀",
-          "material_tier": "mithril",
-          "damage_dice": "3d4+16",
-          "reach": 1.5,
-          "condition": 1120,
-          "crit_bonus": 0.15
-        }
-      ],
-      "stats": {
-        "condition": 800,
-        "max_condition": 800,
-        "damage_min": 2,
-        "damage_max": 4,
-        "reach": 2.5,
-        "throw_rotation_speed": 60.0,
-        "throw_movement_speed": 15.0,
-        "impale_local_translation": [
-          0,
-          0,
-          0.4
-        ],
-        "impale_local_rotation": 0.0
-      }
-    },
-    {
-      "id": "longbow",
-      "name": "Longbow",
-      "name_zh": "长弓",
-      "category": "weapons",
-      "item_tag": "weapon",
-      "tags": [
-        "weapon",
-        "ranged",
-        "two_hand",
-        "bow",
-        "longbow"
-      ],
-      "weapon_class": "longbow",
-      "attack_type": "ranged",
-      "skill_school": "longbow",
-      "combat_styles": [
-        "ranged"
-      ],
-      "proficiency_key": "bow",
-      "hands": "two_hand",
-      "glb_path": "res://assets/meshes/weapons/weapons_voxel_longbow.glb",
-      "icon": "res://assets/textures/icons/equipment/weapons_longbow.png",
-      "tiers": [
-        {
-          "name": "猎人木弓",
-          "material_tier": "wood",
-          "damage_dice": "1d8+2",
-          "reach": 6.0,
-          "condition": 600,
-          "range": 3
-        },
-        {
-          "name": "精灵长弓",
-          "material_tier": "mithril",
-          "damage_dice": "2d8+8",
-          "reach": 6.0,
-          "condition": 880,
-          "range": 4
-        },
-        {
-          "name": "群星之怒",
-          "material_tier": "meteoric",
-          "damage_dice": "3d8+20",
-          "reach": 6.0,
-          "condition": 1200,
-          "range": 5,
-          "crit_bonus": 0.05
-        }
-      ],
-      "stats": {
-        "condition": 800,
-        "max_condition": 800,
-        "damage_min": 3,
-        "damage_max": 6,
-        "reach": 8.0,
-        "throw_rotation_speed": 0,
-        "throw_movement_speed": 0,
-        "impale_local_translation": [
-          0,
-          0,
-          0.5
-        ],
-        "impale_local_rotation": 0.0
-      }
-    },
-    {
-      "id": "crossbow",
-      "name": "Crossbow",
-      "name_zh": "轻弩",
-      "category": "weapons",
-      "item_tag": "weapon",
-      "tags": [
-        "weapon",
-        "ranged",
-        "two_hand",
-        "crossbow",
-        "light_crossbow"
-      ],
-      "weapon_class": "crossbow",
-      "attack_type": "ranged",
-      "skill_school": "light_crossbow",
-      "combat_styles": [
-        "ranged"
-      ],
-      "proficiency_key": "crossbow",
-      "hands": "two_hand",
-      "glb_path": "res://assets/meshes/weapons/weapons_voxel_crossbow.glb",
-      "icon": "res://assets/textures/icons/equipment/weapons_crossbow.png",
-      "tiers": [
-        {
-          "name": "木制轻弩",
-          "material_tier": "wood",
-          "damage_dice": "1d6+4",
-          "reach": 5.0,
-          "condition": 800,
-          "range": 3
-        },
-        {
-          "name": "钢翼弩",
-          "material_tier": "steel",
-          "damage_dice": "2d6+10",
-          "reach": 5.0,
-          "condition": 1120,
-          "range": 3
-        },
-        {
-          "name": "幻影连弩",
-          "material_tier": "mithril",
-          "damage_dice": "3d6+22",
-          "reach": 5.0,
-          "condition": 1400,
-          "range": 4,
-          "crit_bonus": 0.05
-        }
-      ],
-      "stats": {
-        "condition": 1000,
-        "max_condition": 1000,
-        "damage_min": 4,
-        "damage_max": 7,
-        "reach": 7.0,
-        "throw_rotation_speed": 0,
-        "throw_movement_speed": 0,
-        "impale_local_translation": [
-          0,
-          0,
-          0.6
-        ],
-        "impale_local_rotation": 0.0
-      }
-    },
-    {
-      "id": "staff",
-      "name": "Staff",
-      "name_zh": "法杖",
-      "category": "weapons",
-      "item_tag": "weapon",
-      "tags": [
-        "weapon",
-        "spell",
-        "two_hand",
-        "magic",
-        "wand",
-        "enchant_wand"
-      ],
-      "weapon_class": "wand",
-      "attack_type": "spell",
-      "skill_school": "enchant_wand",
-      "combat_styles": [
-        "two_hand",
-        "spell"
-      ],
-      "proficiency_key": "staff",
-      "hands": "two_hand",
-      "glb_path": "res://assets/meshes/weapons/weapons_voxel_staff.glb",
-      "icon": "res://assets/textures/icons/equipment/weapons_staff.png",
-      "tiers": [
-        {
-          "name": "学徒橡木棒",
-          "material_tier": "wood",
-          "damage_dice": "1d6+3",
-          "reach": 3.0,
-          "condition": 600,
-          "range": 2,
-          "magic_mult": 0.05
-        },
-        {
-          "name": "元素法杖",
-          "material_tier": "mithril",
-          "damage_dice": "2d6+8",
-          "reach": 3.0,
-          "condition": 880,
-          "range": 3,
-          "magic_mult": 0.1
-        },
-        {
-          "name": "贤者之理",
-          "material_tier": "adamantite",
-          "damage_dice": "3d6+20",
-          "reach": 3.0,
-          "condition": 1200,
-          "range": 3,
-          "magic_mult": 0.15,
-          "crit_bonus": 0.05
-        }
-      ],
-      "stats": {
-        "condition": 800,
-        "max_condition": 800,
-        "damage_min": 3,
-        "damage_max": 5,
-        "reach": 4.5,
-        "throw_rotation_speed": 0,
-        "throw_movement_speed": 0,
-        "impale_local_translation": [
-          0,
-          0,
-          0.7
-        ],
-        "impale_local_rotation": 0.0
-      }
-    },
-    {
-      "id": "grimoire",
-      "name": "Grimoire",
-      "name_zh": "魔导书",
-      "category": "weapons",
-      "item_tag": "weapon",
-      "tags": [
-        "weapon",
-        "spell",
-        "off_hand",
-        "magic",
-        "grimoire",
-        "spellbook"
-      ],
-      "weapon_class": "grimoire",
-      "attack_type": "spell",
-      "skill_school": "grimoire",
-      "view_model_profile": "grimoire",
-      "combat_styles": [
-        "one_hand_shield",
-        "spell"
-      ],
-      "proficiency_key": "grimoire",
-      "hands": "off_hand",
-      "glb_path": "res://assets/meshes/weapons/weapons_voxel_grimoire.glb",
-      "icon": "res://assets/textures/icons/equipment/weapons_grimoire.png",
-      "tiers": [
-        {
-          "name": "残破笔记",
-          "material_tier": "wood",
-          "damage_dice": "1d4",
-          "reach": 1.0,
-          "condition": 520,
-          "magic_mult": 0.02
-        },
-        {
-          "name": "学者符文书",
-          "material_tier": "mithril",
-          "damage_dice": "2d4+3",
-          "reach": 1.0,
-          "condition": 800,
-          "magic_mult": 0.05
-        },
-        {
-          "name": "禁忌启示录",
-          "material_tier": "adamantite",
-          "damage_dice": "3d4+8",
-          "reach": 1.0,
-          "condition": 1120,
-          "magic_mult": 0.10,
-          "crit_bonus": 0.03
-        }
-      ],
-      "stats": {
-        "condition": 720,
-        "max_condition": 720,
-        "damage_min": 1,
-        "damage_max": 4,
-        "reach": 1.5,
-        "throw_rotation_speed": 0.0,
-        "throw_movement_speed": 0.0,
-        "impale_local_translation": [
-          0,
-          0,
-          0.2
-        ],
-        "impale_local_rotation": 0.0
-      }
-    },
-    {
-      "id": "shield",
-      "name": "Shield",
-      "name_zh": "盾牌",
-      "category": "shields",
-      "item_tag": "shield",
-      "tags": [
-        "shield",
-        "off_hand",
-        "defense",
-        "one_hand_shield",
-        "shield_style"
-      ],
-      "weapon_class": "shield",
-      "attack_type": "shield",
-      "skill_school": "",
-      "combat_styles": [
-        "one_hand_shield"
-      ],
-      "proficiency_key": "shield",
-      "hands": "off_hand",
-      "glb_path": "res://assets/meshes/weapons/weapons_voxel_shield.glb",
-      "icon": "res://assets/textures/icons/equipment/weapons_shield.png",
-      "tiers": [
-        {
-          "name": "破圆木盾",
-          "material_tier": "wood",
-          "damage_dice": "0",
-          "reach": 1.0,
-          "condition": 1000,
-          "phys_def": 1,
-          "block_value": 5
-        },
-        {
-          "name": "精铁圆盾",
-          "material_tier": "iron",
-          "damage_dice": "0",
-          "reach": 1.0,
-          "condition": 1280,
-          "phys_def": 3,
-          "block_value": 15
-        },
-        {
-          "name": "矮人叹息",
-          "material_tier": "adamantite",
-          "damage_dice": "0",
-          "reach": 1.0,
-          "condition": 1600,
-          "phys_def": 8,
-          "block_value": 35
-        }
-      ],
-      "stats": {
-        "condition": 1400,
-        "max_condition": 1400,
-        "damage_min": 1,
-        "damage_max": 2,
-        "reach": 2.0,
-        "throw_rotation_speed": 20.0,
-        "throw_movement_speed": 6.0,
-        "impale_local_translation": [
-          0,
-          0,
-          0.3
-        ],
-        "impale_local_rotation": 0.0
-      }
-    },
-    {
-      "id": "sword",
-      "name": "Sword",
-      "name_zh": "长剑",
-      "category": "weapons",
-      "item_tag": "weapon",
-      "tags": [
-        "weapon",
-        "melee",
-        "one_hand",
-        "blade",
-        "one_hand_sword"
-      ],
-      "weapon_class": "one_hand_melee",
-      "attack_type": "melee",
-      "skill_school": "one_hand_sword",
-      "combat_styles": [
-        "one_hand",
-        "one_hand_shield",
-        "dual_wield"
-      ],
-      "proficiency_key": "sword",
-      "hands": "one_hand",
-      "glb_path": "res://assets/meshes/weapons/weapons_voxel_sword.glb",
-      "icon": "res://assets/textures/icons/equipment/weapons_sword.png",
-      "tiers": [
-        {
-          "name": "铁制长剑",
-          "material_tier": "iron",
-          "damage_dice": "1d8+3",
-          "reach": 3.0,
-          "condition": 800
-        },
-        {
-          "name": "精钢长剑",
-          "material_tier": "steel",
-          "damage_dice": "2d8+8",
-          "reach": 3.0,
-          "condition": 1120
-        },
-        {
-          "name": "骑士誓约剑",
-          "material_tier": "mithril",
-          "damage_dice": "3d8+18",
-          "reach": 3.0,
-          "condition": 1400,
-          "crit_bonus": 0.04
-        }
-      ],
-      "stats": {
-        "condition": 800,
-        "max_condition": 800,
-        "damage_min": 1,
-        "damage_max": 3,
-        "reach": 3.0,
-        "throw_rotation_speed": 40.0,
-        "throw_movement_speed": 10.0,
-        "impale_local_translation": [
-          0,
-          0,
-          0.7
-        ],
-        "impale_local_rotation": 0.0
-      }
-    }
-  ],
-  "armor": [
-    {
-      "id": "cloth_armor",
-      "name": "Cloth Armor",
-      "name_zh": "布甲",
-      "category": "armor_light",
-      "item_tag": "armor",
-      "tags": [
-        "armor",
-        "cloth",
-        "light",
-        "body"
-      ],
-      "armor_slot": "body",
-      "glb_path": "res://assets/meshes/armor/armor_voxel_cloth_armor.glb",
-      "icon": "res://assets/textures/icons/equipment/armor_cloth_armor.png",
-      "tiers": [
-        {
-          "name": "粗麻布甲",
-          "phys_def": 1,
-          "move_speed_mult": 1.0,
-          "condition": 560
-        }
-      ],
-      "proficiency_perks": [
-        {
-          "name": "轻盈布料",
-          "effect": "几乎不影响移动，提供最低基础防护"
-        }
-      ]
-    },
-    {
-      "id": "leather_armor",
-      "name": "Leather Armor",
-      "name_zh": "皮甲",
-      "category": "armor_light",
-      "item_tag": "armor",
-      "tags": [
-        "armor",
-        "leather",
-        "light",
-        "body"
-      ],
-      "armor_slot": "body",
-      "glb_path": "res://assets/meshes/armor/armor_voxel_leather_armor.glb",
-      "icon": "res://assets/textures/icons/equipment/armor_leather_armor.png",
-      "tiers": [
-        {
-          "name": "硬化皮甲",
-          "phys_def": 3,
-          "move_speed_mult": 0.98,
-          "condition": 800
-        }
-      ],
-      "proficiency_perks": [
-        {
-          "name": "贴身护具",
-          "effect": "轻微降低移动速度，换取稳定防护"
-        },
-        {
-          "name": "侧身闪避",
-          "effect": "轻甲熟练后更适合闪避和游走"
-        }
-      ]
-    },
-    {
-      "id": "chain_armor",
-      "name": "Chain Armor",
-      "name_zh": "链甲",
-      "category": "armor_heavy",
-      "item_tag": "armor",
-      "tags": [
-        "armor",
-        "chainmail",
-        "heavy",
-        "body"
-      ],
-      "armor_slot": "body",
-      "glb_path": "res://assets/meshes/armor/armor_voxel_chain_armor.glb",
-      "icon": "res://assets/textures/icons/equipment/armor_chain_armor.png",
-      "tiers": [
-        {
-          "name": "生铁链甲",
-          "phys_def": 6,
-          "move_speed_mult": 0.94,
-          "condition": 1120
-        }
-      ],
-      "proficiency_perks": [
-        {
-          "name": "环甲缓冲",
-          "effect": "中等防御，明显降低移动速度"
-        }
-      ]
-    },
-    {
-      "id": "plate_armor",
-      "name": "Plate Armor",
-      "name_zh": "板甲",
-      "category": "armor_heavy",
-      "item_tag": "armor",
-      "tags": [
-        "armor",
-        "plate",
-        "heavy",
-        "body"
-      ],
-      "armor_slot": "body",
-      "glb_path": "res://assets/meshes/armor/armor_voxel_plate_armor.glb",
-      "icon": "res://assets/textures/icons/equipment/armor_plate_armor.png",
-      "tiers": [
-        {
-          "name": "钢板半身铠",
-          "phys_def": 10,
-          "move_speed_mult": 0.88,
-          "condition": 1520
-        }
-      ],
-      "proficiency_perks": [
-        {
-          "name": "装甲加固",
-          "effect": "最高基础防御，显著降低移动速度"
-        },
-        {
-          "name": "不屈壁垒",
-          "effect": "重甲熟练后更适合抗击退和正面对抗"
-        }
-      ]
-    },
-    {
-      "id": "weight_accessory",
-      "name": "Weight Accessory",
-      "name_zh": "负重挂件",
-      "category": "accessories",
-      "icon": "res://assets/textures/icons/icon-bag.png",
-      "tiers": [
-        {
-          "name": "旧布袋",
-          "carry_bonus": 5,
-          "condition": 400
-        },
-        {
-          "name": "旅行皮包",
-          "carry_bonus": 12,
-          "condition": 720
-        },
-        {
-          "name": "冒险多功能背篓",
-          "carry_bonus": 25,
-          "condition": 1000
-        }
-      ]
-    }
-  ]
+	"comment": "Dungeon Tavern / Lantern Tavern — Equipment Database",
+	"version": 2,
+	"categories": [
+		"weapons",
+		"shields",
+		"armor_light",
+		"armor_heavy",
+		"accessories"
+	],
+	"weapons": [
+		{
+			"id": "shortsword",
+			"name": "Shortsword",
+			"name_zh": "短剑",
+			"first_person": {
+				"view_scale": 0.42,
+				"mount_position": [0.12, 0.02, -0.02],
+				"mount_rotation": [-8.0, -12.0, -135.0]
+			},
+			"category": "weapons",
+			"item_tag": "weapon",
+			"tags": [
+				"weapon",
+				"melee",
+				"one_hand",
+				"blade",
+				"one_hand_sword"
+			],
+			"weapon_class": "one_hand_melee",
+			"attack_type": "melee",
+			"skill_school": "one_hand_sword",
+			"view_model_profile": "shortsword",
+			"combat_styles": [
+				"one_hand",
+				"one_hand_shield",
+				"dual_wield"
+			],
+			"proficiency_key": "sword",
+			"hands": "one_hand",
+			"glb_path": "res://assets/meshes/weapons/weapons_voxel_shortsword.glb",
+			"icon": "res://assets/textures/icons/equipment/weapons_shortsword.png",
+			"tiers": [
+				{
+					"name": "青铜短剑",
+					"material_tier": "iron",
+					"damage_dice": "1d6+3",
+					"reach": 2.5,
+					"condition": 800,
+					"crit_bonus": 0
+				},
+				{
+					"name": "精钢长剑",
+					"material_tier": "steel",
+					"damage_dice": "2d6+8",
+					"reach": 2.5,
+					"condition": 1120,
+					"crit_bonus": 0
+				},
+				{
+					"name": "誓约之刃",
+					"material_tier": "mithril",
+					"damage_dice": "3d6+20",
+					"reach": 2.5,
+					"condition": 1400,
+					"crit_bonus": 0.05
+				}
+			],
+			"stats": {
+				"condition": 1200,
+				"max_condition": 1200,
+				"damage_min": 3,
+				"damage_max": 5,
+				"reach": 3.5,
+				"throw_rotation_speed": 40,
+				"throw_movement_speed": 10,
+				"impale_local_translation": [
+					0,
+					0,
+					0.7
+				],
+				"impale_local_rotation": 0
+			}
+		},
+		{
+			"id": "greatsword",
+			"name": "Greatsword",
+			"name_zh": "双手大剑",
+			"first_person": {
+				"view_scale": 0.32,
+				"mount_position": [-0.02, 0.08, -0.01],
+				"mount_rotation": [-14.0, -8.0, -135.0]
+			},
+			"category": "weapons",
+			"item_tag": "weapon",
+			"tags": [
+				"weapon",
+				"melee",
+				"two_hand",
+				"blade",
+				"two_hand_sword",
+				"heavy"
+			],
+			"weapon_class": "two_hand",
+			"attack_type": "melee",
+			"skill_school": "two_hand_sword",
+			"combat_styles": [
+				"two_hand"
+			],
+			"proficiency_key": "sword",
+			"hands": "two_hand",
+			"glb_path": "res://assets/meshes/weapons/weapons_voxel_greatsword.glb",
+			"icon": "res://assets/textures/icons/equipment/weapons_greatsword.png",
+			"tiers": [
+				{
+					"name": "锈铁大剑",
+					"material_tier": "iron",
+					"damage_dice": "1d12+5",
+					"reach": 3.5,
+					"condition": 880,
+					"knockback": 1,
+					"crit_bonus": 0
+				},
+				{
+					"name": "精钢斩马刀",
+					"material_tier": "steel",
+					"damage_dice": "2d12+12",
+					"reach": 3.5,
+					"condition": 1200,
+					"knockback": 2,
+					"crit_bonus": 0
+				},
+				{
+					"name": "屠魔狂剑",
+					"material_tier": "adamantite",
+					"damage_dice": "3d12+28",
+					"reach": 3.5,
+					"condition": 1520,
+					"knockback": 2,
+					"crit_bonus": 0.08
+				}
+			],
+			"stats": {
+				"condition": 1400,
+				"max_condition": 1400,
+				"damage_min": 5,
+				"damage_max": 8,
+				"reach": 5,
+				"throw_rotation_speed": 35,
+				"throw_movement_speed": 8,
+				"impale_local_translation": [
+					0,
+					0,
+					0.9
+				],
+				"impale_local_rotation": 0
+			}
+		},
+		{
+			"id": "axe",
+			"name": "Axe",
+			"name_zh": "双手斧",
+			"first_person": {
+				"view_scale": 0.30,
+				"mount_position": [-0.04, 0.07, -0.02],
+				"mount_rotation": [-18.0, 8.0, -120.0]
+			},
+			"category": "weapons",
+			"item_tag": "weapon",
+			"tags": [
+				"weapon",
+				"melee",
+				"two_hand",
+				"axe",
+				"two_hand_axe",
+				"heavy"
+			],
+			"weapon_class": "two_hand",
+			"attack_type": "melee",
+			"skill_school": "two_hand_axe",
+			"combat_styles": [
+				"two_hand"
+			],
+			"proficiency_key": "axe",
+			"hands": "two_hand",
+			"glb_path": "res://assets/meshes/weapons/weapons_voxel_axe.glb",
+			"icon": "res://assets/textures/icons/equipment/weapons_axe.png",
+			"tiers": [
+				{
+					"name": "木柄伐木斧",
+					"material_tier": "wood",
+					"damage_dice": "2d6+4",
+					"reach": 3,
+					"condition": 800,
+					"armor_pierce": 0.05,
+					"crit_dmg_bonus": 0
+				},
+				{
+					"name": "精钢战斧",
+					"material_tier": "steel",
+					"damage_dice": "3d6+10",
+					"reach": 3,
+					"condition": 1120,
+					"armor_pierce": 0.1,
+					"crit_dmg_bonus": 0
+				},
+				{
+					"name": "崩岩巨斧",
+					"material_tier": "adamantite",
+					"damage_dice": "4d6+24",
+					"reach": 3,
+					"condition": 1440,
+					"armor_pierce": 0.15,
+					"crit_dmg_bonus": 0.2
+				}
+			],
+			"stats": {
+				"condition": 1000,
+				"max_condition": 1000,
+				"damage_min": 4,
+				"damage_max": 5,
+				"reach": 4,
+				"throw_rotation_speed": 50,
+				"throw_movement_speed": 12,
+				"impale_local_translation": [
+					0,
+					0,
+					1
+				],
+				"impale_local_rotation": 0.5
+			}
+		},
+		{
+			"id": "warhammer",
+			"name": "Warhammer",
+			"name_zh": "战锤",
+			"first_person": {
+				"view_scale": 0.28,
+				"mount_position": [-0.05, 0.05, -0.02],
+				"mount_rotation": [-20.0, 12.0, -112.0]
+			},
+			"category": "weapons",
+			"item_tag": "weapon",
+			"tags": [
+				"weapon",
+				"melee",
+				"two_hand",
+				"hammer",
+				"war_hammer",
+				"blunt",
+				"heavy"
+			],
+			"weapon_class": "two_hand",
+			"attack_type": "melee",
+			"skill_school": "war_hammer",
+			"combat_styles": [
+				"two_hand"
+			],
+			"proficiency_key": "hammer",
+			"hands": "two_hand",
+			"glb_path": "res://assets/meshes/weapons/weapons_voxel_warhammer.glb",
+			"icon": "res://assets/textures/icons/equipment/weapons_warhammer.png",
+			"tiers": [
+				{
+					"name": "采石木槌",
+					"material_tier": "wood",
+					"damage_dice": "1d10+4",
+					"reach": 3,
+					"condition": 1000,
+					"knockback": 1,
+					"wall_bonus": 0.3,
+					"stun": 1
+				},
+				{
+					"name": "铁铸战锤",
+					"material_tier": "iron",
+					"damage_dice": "2d10+10",
+					"reach": 3,
+					"condition": 1280,
+					"knockback": 2,
+					"wall_bonus": 0.45,
+					"stun": 2
+				},
+				{
+					"name": "灭世雷锤",
+					"material_tier": "meteoric",
+					"damage_dice": "3d10+25",
+					"reach": 3,
+					"condition": 1600,
+					"knockback": 2,
+					"wall_bonus": 0.6,
+					"stun": 2
+				}
+			],
+			"stats": {
+				"condition": 1200,
+				"max_condition": 1200,
+				"damage_min": 5,
+				"damage_max": 9,
+				"reach": 4,
+				"throw_rotation_speed": 35,
+				"throw_movement_speed": 8,
+				"impale_local_translation": [
+					0,
+					0,
+					0.8
+				],
+				"impale_local_rotation": 0
+			}
+		},
+		{
+			"id": "spear",
+			"name": "Spear",
+			"name_zh": "长枪",
+			"first_person": {
+				"view_scale": 0.32,
+				"mount_position": [0.04, 0.03, -0.01],
+				"mount_rotation": [-8.0, -4.0, -155.0]
+			},
+			"category": "weapons",
+			"item_tag": "weapon",
+			"tags": [
+				"weapon",
+				"melee",
+				"two_hand",
+				"polearm",
+				"spear",
+				"reach"
+			],
+			"weapon_class": "two_hand",
+			"attack_type": "melee",
+			"skill_school": "spear",
+			"combat_styles": [
+				"two_hand"
+			],
+			"proficiency_key": "spear",
+			"hands": "two_hand",
+			"glb_path": "res://assets/meshes/weapons/weapons_voxel_spear.glb",
+			"icon": "res://assets/textures/icons/equipment/weapons_spear.png",
+			"tiers": [
+				{
+					"name": "竹尖长枪",
+					"material_tier": "wood",
+					"damage_dice": "1d8+3",
+					"reach": 4,
+					"condition": 800,
+					"range": 2
+				},
+				{
+					"name": "精钢骑士长枪",
+					"material_tier": "steel",
+					"damage_dice": "2d8+9",
+					"reach": 4,
+					"condition": 1120,
+					"range": 2
+				},
+				{
+					"name": "破空闪电枪",
+					"material_tier": "meteoric",
+					"damage_dice": "3d8+22",
+					"reach": 4,
+					"condition": 1400,
+					"range": 2,
+					"crit_bonus": 0.05
+				}
+			],
+			"stats": {
+				"condition": 1000,
+				"max_condition": 1000,
+				"damage_min": 4,
+				"damage_max": 7,
+				"reach": 5.5,
+				"throw_rotation_speed": 30,
+				"throw_movement_speed": 9,
+				"impale_local_translation": [
+					0,
+					0,
+					0.7
+				],
+				"impale_local_rotation": 0
+			}
+		},
+		{
+			"id": "dagger",
+			"name": "Dagger",
+			"name_zh": "匕首",
+			"first_person": {
+				"view_scale": 0.44,
+				"mount_position": [0.12, 0.04, -0.04],
+				"mount_rotation": [-4.0, -18.0, -118.0]
+			},
+			"category": "weapons",
+			"item_tag": "weapon",
+			"tags": [
+				"weapon",
+				"melee",
+				"one_hand",
+				"dagger",
+				"blade",
+				"dual_wield"
+			],
+			"weapon_class": "one_hand_melee",
+			"attack_type": "melee",
+			"skill_school": "one_hand_sword",
+			"view_model_profile": "sword",
+			"combat_styles": [
+				"one_hand",
+				"one_hand_shield",
+				"dual_wield"
+			],
+			"proficiency_key": "dagger",
+			"hands": "one_hand",
+			"glb_path": "res://assets/meshes/weapons/weapons_voxel_dagger.glb",
+			"icon": "res://assets/textures/icons/equipment/weapons_dagger.png",
+			"tiers": [
+				{
+					"name": "骨质飞刃",
+					"material_tier": "wood",
+					"damage_dice": "1d4+2",
+					"reach": 1.5,
+					"condition": 600,
+					"crit_bonus": 0.05
+				},
+				{
+					"name": "暗影短刀",
+					"material_tier": "meteoric",
+					"damage_dice": "2d4+7",
+					"reach": 1.5,
+					"condition": 880,
+					"crit_bonus": 0.1
+				},
+				{
+					"name": "无声瞬杀",
+					"material_tier": "mithril",
+					"damage_dice": "3d4+16",
+					"reach": 1.5,
+					"condition": 1120,
+					"crit_bonus": 0.15
+				}
+			],
+			"stats": {
+				"condition": 800,
+				"max_condition": 800,
+				"damage_min": 2,
+				"damage_max": 4,
+				"reach": 2.5,
+				"throw_rotation_speed": 60,
+				"throw_movement_speed": 15,
+				"impale_local_translation": [
+					0,
+					0,
+					0.4
+				],
+				"impale_local_rotation": 0
+			}
+		},
+		{
+			"id": "longbow",
+			"name": "Longbow",
+			"name_zh": "长弓",
+			"first_person": {
+				"view_scale": 0.36,
+				"mount_position": [0.16, -0.01, -0.02],
+				"mount_rotation": [0.0, 0.0, -90.0]
+			},
+			"category": "weapons",
+			"item_tag": "weapon",
+			"tags": [
+				"weapon",
+				"ranged",
+				"two_hand",
+				"bow",
+				"longbow"
+			],
+			"weapon_class": "longbow",
+			"attack_type": "ranged",
+			"skill_school": "longbow",
+			"combat_styles": [
+				"ranged"
+			],
+			"proficiency_key": "bow",
+			"hands": "two_hand",
+			"glb_path": "res://assets/meshes/weapons/weapons_voxel_longbow.glb",
+			"icon": "res://assets/textures/icons/equipment/weapons_longbow.png",
+			"tiers": [
+				{
+					"name": "猎人木弓",
+					"material_tier": "wood",
+					"damage_dice": "1d8+2",
+					"reach": 6,
+					"condition": 600,
+					"range": 3
+				},
+				{
+					"name": "精灵长弓",
+					"material_tier": "mithril",
+					"damage_dice": "2d8+8",
+					"reach": 6,
+					"condition": 880,
+					"range": 4
+				},
+				{
+					"name": "群星之怒",
+					"material_tier": "meteoric",
+					"damage_dice": "3d8+20",
+					"reach": 6,
+					"condition": 1200,
+					"range": 5,
+					"crit_bonus": 0.05
+				}
+			],
+			"stats": {
+				"condition": 800,
+				"max_condition": 800,
+				"damage_min": 3,
+				"damage_max": 6,
+				"reach": 8,
+				"throw_rotation_speed": 0,
+				"throw_movement_speed": 0,
+				"impale_local_translation": [
+					0,
+					0,
+					0.5
+				],
+				"impale_local_rotation": 0
+			}
+		},
+		{
+			"id": "crossbow",
+			"name": "Crossbow",
+			"name_zh": "轻弩",
+			"first_person": {
+				"view_scale": 0.38,
+				"mount_position": [0.14, -0.02, -0.04],
+				"mount_rotation": [-6.0, 6.0, -90.0]
+			},
+			"category": "weapons",
+			"item_tag": "weapon",
+			"tags": [
+				"weapon",
+				"ranged",
+				"two_hand",
+				"crossbow",
+				"light_crossbow"
+			],
+			"weapon_class": "crossbow",
+			"attack_type": "ranged",
+			"skill_school": "light_crossbow",
+			"combat_styles": [
+				"ranged"
+			],
+			"proficiency_key": "crossbow",
+			"hands": "two_hand",
+			"glb_path": "res://assets/meshes/weapons/weapons_voxel_crossbow.glb",
+			"icon": "res://assets/textures/icons/equipment/weapons_crossbow.png",
+			"tiers": [
+				{
+					"name": "木制轻弩",
+					"material_tier": "wood",
+					"damage_dice": "1d6+4",
+					"reach": 5,
+					"condition": 800,
+					"range": 3
+				},
+				{
+					"name": "钢翼弩",
+					"material_tier": "steel",
+					"damage_dice": "2d6+10",
+					"reach": 5,
+					"condition": 1120,
+					"range": 3
+				},
+				{
+					"name": "幻影连弩",
+					"material_tier": "mithril",
+					"damage_dice": "3d6+22",
+					"reach": 5,
+					"condition": 1400,
+					"range": 4,
+					"crit_bonus": 0.05
+				}
+			],
+			"stats": {
+				"condition": 1000,
+				"max_condition": 1000,
+				"damage_min": 4,
+				"damage_max": 7,
+				"reach": 7,
+				"throw_rotation_speed": 0,
+				"throw_movement_speed": 0,
+				"impale_local_translation": [
+					0,
+					0,
+					0.6
+				],
+				"impale_local_rotation": 0
+			}
+		},
+		{
+			"id": "staff",
+			"name": "Staff",
+			"name_zh": "法杖",
+			"first_person": {
+				"view_scale": 0.34,
+				"mount_position": [0.10, 0.03, -0.02],
+				"mount_rotation": [-12.0, -4.0, -148.0]
+			},
+			"category": "weapons",
+			"item_tag": "weapon",
+			"tags": [
+				"weapon",
+				"spell",
+				"two_hand",
+				"magic",
+				"wand",
+				"enchant_wand"
+			],
+			"weapon_class": "wand",
+			"attack_type": "spell",
+			"skill_school": "enchant_wand",
+			"combat_styles": [
+				"two_hand",
+				"spell"
+			],
+			"proficiency_key": "staff",
+			"hands": "two_hand",
+			"glb_path": "res://assets/meshes/weapons/weapons_voxel_staff.glb",
+			"icon": "res://assets/textures/icons/equipment/weapons_staff.png",
+			"tiers": [
+				{
+					"name": "学徒橡木棒",
+					"material_tier": "wood",
+					"damage_dice": "1d6+3",
+					"reach": 3,
+					"condition": 600,
+					"range": 2,
+					"magic_mult": 0.05
+				},
+				{
+					"name": "元素法杖",
+					"material_tier": "mithril",
+					"damage_dice": "2d6+8",
+					"reach": 3,
+					"condition": 880,
+					"range": 3,
+					"magic_mult": 0.1
+				},
+				{
+					"name": "贤者之理",
+					"material_tier": "adamantite",
+					"damage_dice": "3d6+20",
+					"reach": 3,
+					"condition": 1200,
+					"range": 3,
+					"magic_mult": 0.15,
+					"crit_bonus": 0.05
+				}
+			],
+			"stats": {
+				"condition": 800,
+				"max_condition": 800,
+				"damage_min": 3,
+				"damage_max": 5,
+				"reach": 4.5,
+				"throw_rotation_speed": 0,
+				"throw_movement_speed": 0,
+				"impale_local_translation": [
+					0,
+					0,
+					0.7
+				],
+				"impale_local_rotation": 0
+			}
+		},
+		{
+			"id": "grimoire",
+			"name": "Grimoire",
+			"name_zh": "魔导书",
+			"first_person": {
+				"view_scale": 0.40,
+				"mount_position": [0.14, 0.08, -0.04],
+				"mount_rotation": [-2.0, -20.0, -96.0]
+			},
+			"category": "weapons",
+			"item_tag": "weapon",
+			"tags": [
+				"weapon",
+				"spell",
+				"off_hand",
+				"magic",
+				"grimoire",
+				"spellbook"
+			],
+			"weapon_class": "grimoire",
+			"attack_type": "spell",
+			"skill_school": "grimoire",
+			"view_model_profile": "grimoire",
+			"combat_styles": [
+				"one_hand_shield",
+				"spell"
+			],
+			"proficiency_key": "grimoire",
+			"hands": "off_hand",
+			"glb_path": "res://assets/meshes/weapons/weapons_voxel_grimoire.glb",
+			"icon": "res://assets/textures/icons/equipment/weapons_grimoire.png",
+			"tiers": [
+				{
+					"name": "残破笔记",
+					"material_tier": "wood",
+					"damage_dice": "1d4",
+					"reach": 1,
+					"condition": 520,
+					"magic_mult": 0.02
+				},
+				{
+					"name": "学者符文书",
+					"material_tier": "mithril",
+					"damage_dice": "2d4+3",
+					"reach": 1,
+					"condition": 800,
+					"magic_mult": 0.05
+				},
+				{
+					"name": "禁忌启示录",
+					"material_tier": "adamantite",
+					"damage_dice": "3d4+8",
+					"reach": 1,
+					"condition": 1120,
+					"magic_mult": 0.1,
+					"crit_bonus": 0.03
+				}
+			],
+			"stats": {
+				"condition": 720,
+				"max_condition": 720,
+				"damage_min": 1,
+				"damage_max": 4,
+				"reach": 1.5,
+				"throw_rotation_speed": 0,
+				"throw_movement_speed": 0,
+				"impale_local_translation": [
+					0,
+					0,
+					0.2
+				],
+				"impale_local_rotation": 0
+			}
+		},
+		{
+			"id": "shield",
+			"name": "Shield",
+			"name_zh": "盾牌",
+			"first_person": {
+				"view_scale": 0.42,
+				"mount_position": [-0.28, -0.02, -0.02],
+				"mount_rotation": [8.0, -18.0, 10.0]
+			},
+			"category": "shields",
+			"item_tag": "shield",
+			"tags": [
+				"shield",
+				"off_hand",
+				"defense",
+				"one_hand_shield",
+				"shield_style"
+			],
+			"weapon_class": "shield",
+			"attack_type": "shield",
+			"skill_school": "",
+			"combat_styles": [
+				"one_hand_shield"
+			],
+			"proficiency_key": "shield",
+			"hands": "off_hand",
+			"glb_path": "res://assets/meshes/weapons/weapons_voxel_shield.glb",
+			"icon": "res://assets/textures/icons/equipment/weapons_shield.png",
+			"tiers": [
+				{
+					"name": "破圆木盾",
+					"material_tier": "wood",
+					"damage_dice": "0",
+					"reach": 1,
+					"condition": 1000,
+					"phys_def": 1,
+					"block_value": 5
+				},
+				{
+					"name": "精铁圆盾",
+					"material_tier": "iron",
+					"damage_dice": "0",
+					"reach": 1,
+					"condition": 1280,
+					"phys_def": 3,
+					"block_value": 15
+				},
+				{
+					"name": "矮人叹息",
+					"material_tier": "adamantite",
+					"damage_dice": "0",
+					"reach": 1,
+					"condition": 1600,
+					"phys_def": 8,
+					"block_value": 35
+				}
+			],
+			"stats": {
+				"condition": 1400,
+				"max_condition": 1400,
+				"damage_min": 1,
+				"damage_max": 2,
+				"reach": 2,
+				"throw_rotation_speed": 20,
+				"throw_movement_speed": 6,
+				"impale_local_translation": [
+					0,
+					0,
+					0.3
+				],
+				"impale_local_rotation": 0
+			}
+		},
+		{
+			"id": "sword",
+			"name": "Sword",
+			"name_zh": "长剑",
+			"first_person": {
+				"view_scale": 0.22,
+				"mount_position": [0.08, 0.06, -0.01],
+				"mount_rotation": [-10.0, -8.0, -140.0]
+			},
+			"category": "weapons",
+			"item_tag": "weapon",
+			"tags": [
+				"weapon",
+				"melee",
+				"one_hand",
+				"blade",
+				"one_hand_sword"
+			],
+			"weapon_class": "one_hand_melee",
+			"attack_type": "melee",
+			"skill_school": "one_hand_sword",
+			"view_model_profile": "sword",
+			"combat_styles": [
+				"one_hand",
+				"one_hand_shield",
+				"dual_wield"
+			],
+			"proficiency_key": "sword",
+			"hands": "one_hand",
+			"glb_path": "res://assets/meshes/weapons/weapons_voxel_sword.glb",
+			"icon": "res://assets/textures/icons/equipment/weapons_sword.png",
+			"tiers": [
+				{
+					"name": "铁制长剑",
+					"material_tier": "iron",
+					"damage_dice": "1d8+3",
+					"reach": 3,
+					"condition": 800
+				},
+				{
+					"name": "精钢长剑",
+					"material_tier": "steel",
+					"damage_dice": "2d8+8",
+					"reach": 3,
+					"condition": 1120
+				},
+				{
+					"name": "骑士誓约剑",
+					"material_tier": "mithril",
+					"damage_dice": "3d8+18",
+					"reach": 3,
+					"condition": 1400,
+					"crit_bonus": 0.04
+				}
+			],
+			"stats": {
+				"condition": 800,
+				"max_condition": 800,
+				"damage_min": 1,
+				"damage_max": 3,
+				"reach": 3,
+				"throw_rotation_speed": 40,
+				"throw_movement_speed": 10,
+				"impale_local_translation": [
+					0,
+					0,
+					0.7
+				],
+				"impale_local_rotation": 0
+			}
+		}
+	],
+	"armor": [
+		{
+			"id": "cloth_armor",
+			"name": "Cloth Armor",
+			"name_zh": "布甲",
+			"category": "armor_light",
+			"item_tag": "armor",
+			"tags": [
+				"armor",
+				"cloth",
+				"light",
+				"body"
+			],
+			"armor_slot": "body",
+			"glb_path": "res://assets/meshes/armor/armor_voxel_cloth_armor.glb",
+			"icon": "res://assets/textures/icons/equipment/armor_cloth_armor.png",
+			"tiers": [
+				{
+					"name": "粗麻布甲",
+					"phys_def": 1,
+					"move_speed_mult": 1,
+					"condition": 560
+				}
+			],
+			"proficiency_perks": [
+				{
+					"name": "轻盈布料",
+					"effect": "几乎不影响移动，提供最低基础防护"
+				}
+			],
+			"armor_type": "light",
+			"armor_knockback_res": 0
+		},
+		{
+			"id": "leather_armor",
+			"name": "Leather Armor",
+			"name_zh": "皮甲",
+			"category": "armor_light",
+			"item_tag": "armor",
+			"tags": [
+				"armor",
+				"leather",
+				"light",
+				"body"
+			],
+			"armor_slot": "body",
+			"glb_path": "res://assets/meshes/armor/armor_voxel_leather_armor.glb",
+			"icon": "res://assets/textures/icons/equipment/armor_leather_armor.png",
+			"tiers": [
+				{
+					"name": "硬化皮甲",
+					"phys_def": 3,
+					"move_speed_mult": 0.98,
+					"condition": 800
+				}
+			],
+			"proficiency_perks": [
+				{
+					"name": "贴身护具",
+					"effect": "轻微降低移动速度，换取稳定防护"
+				},
+				{
+					"name": "侧身闪避",
+					"effect": "轻甲熟练后更适合闪避和游走"
+				}
+			],
+			"armor_type": "light",
+			"armor_knockback_res": 0,
+			"set_id": "leather_set"
+		},
+		{
+			"id": "chain_armor",
+			"name": "Chain Armor",
+			"name_zh": "链甲",
+			"category": "armor_heavy",
+			"item_tag": "armor",
+			"tags": [
+				"armor",
+				"chainmail",
+				"heavy",
+				"body"
+			],
+			"armor_slot": "body",
+			"glb_path": "res://assets/meshes/armor/armor_voxel_chain_armor.glb",
+			"icon": "res://assets/textures/icons/equipment/armor_chain_armor.png",
+			"tiers": [
+				{
+					"name": "生铁链甲",
+					"phys_def": 6,
+					"move_speed_mult": 0.94,
+					"condition": 1120
+				}
+			],
+			"proficiency_perks": [
+				{
+					"name": "环甲缓冲",
+					"effect": "中等防御，明显降低移动速度"
+				}
+			],
+			"armor_type": "heavy",
+			"armor_knockback_res": 0.1,
+			"set_id": "iron_set"
+		},
+		{
+			"id": "plate_armor",
+			"name": "Plate Armor",
+			"name_zh": "板甲",
+			"category": "armor_heavy",
+			"item_tag": "armor",
+			"tags": [
+				"armor",
+				"plate",
+				"heavy",
+				"body"
+			],
+			"armor_slot": "body",
+			"glb_path": "res://assets/meshes/armor/armor_voxel_plate_armor.glb",
+			"icon": "res://assets/textures/icons/equipment/armor_plate_armor.png",
+			"tiers": [
+				{
+					"name": "钢板半身铠",
+					"phys_def": 10,
+					"move_speed_mult": 0.88,
+					"condition": 1520
+				}
+			],
+			"proficiency_perks": [
+				{
+					"name": "装甲加固",
+					"effect": "最高基础防御，显著降低移动速度"
+				},
+				{
+					"name": "不屈壁垒",
+					"effect": "重甲熟练后更适合抗击退和正面对抗"
+				}
+			],
+			"armor_type": "heavy",
+			"armor_knockback_res": 0.1
+		},
+		{
+			"id": "leather_helmet",
+			"name": "Leather Cap",
+			"name_zh": "粗糙皮帽",
+			"category": "armor_light",
+			"item_tag": "armor",
+			"tags": [
+				"armor",
+				"leather",
+				"light",
+				"head",
+				"set:leather"
+			],
+			"armor_slot": "head",
+			"armor_type": "light",
+			"set_id": "leather_set",
+			"glb_path": "res://assets/meshes/armor/armor_voxel_leather_helmet.glb",
+			"icon": "res://assets/textures/icons/equipment/armor_leather_armor.png",
+			"tiers": [
+				{
+					"name": "粗糙皮帽",
+					"phys_def": 1,
+					"move_speed_mult": 1,
+					"condition": 600,
+					"material_tier": "wood",
+					"armor_knockback_res": 0,
+					"armor_fire_res": 0,
+					"armor_ice_res": 0,
+					"armor_lightning_res": 0,
+					"armor_poison_res": 0,
+					"armor_magic_res_percent": 0
+				}
+			],
+			"proficiency_perks": [
+				{
+					"name": "轻盈头护",
+					"effect": "几乎无负担的头部防护"
+				}
+			]
+		},
+		{
+			"id": "leather_bracers",
+			"name": "Leather Bracers",
+			"name_zh": "皮制护腕",
+			"category": "armor_light",
+			"item_tag": "armor",
+			"tags": [
+				"armor",
+				"leather",
+				"light",
+				"hands",
+				"set:leather"
+			],
+			"armor_slot": "hands",
+			"armor_type": "light",
+			"set_id": "leather_set",
+			"glb_path": "res://assets/meshes/armor/armor_voxel_leather_bracers.glb",
+			"icon": "res://assets/textures/icons/equipment/armor_leather_armor.png",
+			"tiers": [
+				{
+					"name": "皮制护腕",
+					"phys_def": 1,
+					"move_speed_mult": 1,
+					"condition": 560,
+					"material_tier": "wood",
+					"armor_knockback_res": 0
+				}
+			],
+			"proficiency_perks": [
+				{
+					"name": "腕部防护",
+					"effect": "保护前臂，不影响挥砍"
+				}
+			]
+		},
+		{
+			"id": "leather_boots",
+			"name": "Leather Shoes",
+			"name_zh": "皮制便鞋",
+			"category": "armor_light",
+			"item_tag": "armor",
+			"tags": [
+				"armor",
+				"leather",
+				"light",
+				"feet",
+				"set:leather"
+			],
+			"armor_slot": "feet",
+			"armor_type": "light",
+			"set_id": "leather_set",
+			"glb_path": "res://assets/meshes/armor/armor_voxel_leather_boots.glb",
+			"icon": "res://assets/textures/icons/equipment/armor_leather_armor.png",
+			"tiers": [
+				{
+					"name": "皮制便鞋",
+					"phys_def": 1,
+					"move_speed_mult": 1.05,
+					"condition": 640,
+					"material_tier": "wood",
+					"armor_knockback_res": 0
+				}
+			],
+			"proficiency_perks": [
+				{
+					"name": "轻步",
+					"effect": "轻微提升移动速度"
+				}
+			]
+		},
+		{
+			"id": "iron_helmet",
+			"name": "Iron Helmet",
+			"name_zh": "生铁头盔",
+			"category": "armor_heavy",
+			"item_tag": "armor",
+			"tags": [
+				"armor",
+				"iron",
+				"heavy",
+				"head",
+				"set:iron"
+			],
+			"armor_slot": "head",
+			"armor_type": "heavy",
+			"set_id": "iron_set",
+			"glb_path": "res://assets/meshes/armor/armor_voxel_iron_helmet.glb",
+			"icon": "res://assets/textures/icons/equipment/armor_chain_armor.png",
+			"tiers": [
+				{
+					"name": "生铁头盔",
+					"phys_def": 3,
+					"move_speed_mult": 0.98,
+					"condition": 960,
+					"material_tier": "iron",
+					"armor_knockback_res": 0.1
+				}
+			],
+			"proficiency_perks": [
+				{
+					"name": "坚固颅护",
+					"effect": "重型头部防护，略微拖慢动作"
+				}
+			]
+		},
+		{
+			"id": "iron_bracers",
+			"name": "Iron Bracers",
+			"name_zh": "铁甲护腕",
+			"category": "armor_heavy",
+			"item_tag": "armor",
+			"tags": [
+				"armor",
+				"iron",
+				"heavy",
+				"hands",
+				"set:iron"
+			],
+			"armor_slot": "hands",
+			"armor_type": "heavy",
+			"set_id": "iron_set",
+			"glb_path": "res://assets/meshes/armor/armor_voxel_iron_bracers.glb",
+			"icon": "res://assets/textures/icons/equipment/armor_chain_armor.png",
+			"tiers": [
+				{
+					"name": "铁甲护腕",
+					"phys_def": 2,
+					"move_speed_mult": 0.98,
+					"condition": 880,
+					"material_tier": "iron",
+					"armor_knockback_res": 0.1
+				}
+			],
+			"proficiency_perks": [
+				{
+					"name": "铁腕",
+					"effect": "前臂金属护板，提升格挡稳定"
+				}
+			]
+		},
+		{
+			"id": "iron_boots",
+			"name": "Iron Boots",
+			"name_zh": "铁甲靴",
+			"category": "armor_heavy",
+			"item_tag": "armor",
+			"tags": [
+				"armor",
+				"iron",
+				"heavy",
+				"feet",
+				"set:iron"
+			],
+			"armor_slot": "feet",
+			"armor_type": "heavy",
+			"set_id": "iron_set",
+			"glb_path": "res://assets/meshes/armor/armor_voxel_iron_boots.glb",
+			"icon": "res://assets/textures/icons/equipment/armor_chain_armor.png",
+			"tiers": [
+				{
+					"name": "铁甲靴",
+					"phys_def": 2,
+					"move_speed_mult": 0.95,
+					"condition": 1000,
+					"material_tier": "iron",
+					"armor_knockback_res": 0.1
+				}
+			],
+			"proficiency_perks": [
+				{
+					"name": "稳踏",
+					"effect": "重靴提供立足稳固，略降移速"
+				}
+			]
+		},
+		{
+			"id": "weight_accessory",
+			"name": "Weight Accessory",
+			"name_zh": "负重挂件",
+			"category": "accessories",
+			"icon": "res://assets/textures/icons/icon-bag.png",
+			"tiers": [
+				{
+					"name": "旧布袋",
+					"carry_bonus": 5,
+					"condition": 400
+				},
+				{
+					"name": "旅行皮包",
+					"carry_bonus": 12,
+					"condition": 720
+				},
+				{
+					"name": "冒险多功能背篓",
+					"carry_bonus": 25,
+					"condition": 1000
+				}
+			]
+		}
+	]
 }

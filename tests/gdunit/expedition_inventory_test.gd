@@ -19,6 +19,34 @@ func test_equipment_instance_preserves_rolled_affixes_for_inventory_detail() -> 
 	assert_int(stored.condition).is_equal(345)
 
 
+func test_remove_equipment_instance_preserves_armor_fields() -> void:
+	var inv = ExpeditionInventory.new()
+	var armor := WeaponData.new()
+	armor.id = "plate_armor"
+	armor.equipment_category = "armor_heavy"
+	armor.armor_slot = "body"
+	armor.armor_phys_def = 10
+	armor.armor_move_speed_mult = 0.88
+	armor.affixes = ["sturdy"]
+
+	assert_bool(inv.add_equipment_instance(armor)).is_true()
+	var removed: WeaponData = inv.remove_equipment_instance("plate_armor")
+	assert_object(removed).is_not_null()
+	assert_str(removed.equipment_category).is_equal("armor_heavy")
+	assert_str(removed.armor_slot).is_equal("body")
+	assert_int(removed.armor_phys_def).is_equal(10)
+	assert_float(removed.armor_move_speed_mult).is_equal_approx(0.88, 0.001)
+	assert_array(removed.affixes).contains("sturdy")
+	assert_bool(inv.equipment.is_empty()).is_true()
+
+
+func test_remove_equipment_instance_does_not_remove_legacy_id_only_entry() -> void:
+	var inv = ExpeditionInventory.new()
+	assert_bool(inv.add_equipment("plate_armor", 1)).is_true()
+	assert_object(inv.remove_equipment_instance("plate_armor")).is_null()
+	assert_int(int(inv.equipment.get("plate_armor", 0))).is_equal(1)
+
+
 func test_add_and_remove_material() -> void:
 	var inv = ExpeditionInventory.new()
 	inv.space_limit = 10

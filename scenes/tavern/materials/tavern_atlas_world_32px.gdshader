@@ -1,5 +1,6 @@
 shader_type spatial;
-render_mode diffuse_burley, specular_schlick_ggx;
+// 酒馆环境是非金属体素材质：保留漫反射和阴影，禁止镜面高光产生火光倒影。
+render_mode diffuse_burley, specular_disabled;
 
 uniform sampler2D atlas_texture : source_color, filter_nearest, repeat_disable;
 uniform vec4 atlas_region_tiles = vec4(0.0, 0.0, 32.0, 8.0);
@@ -95,6 +96,9 @@ void fragment() {
 	base_color *= 1.0 + (surface_noise - 0.5) * 2.0 * noise_strength;
 	vec3 decal_color = mix(vec3(1.0), decal_tint.rgb, decal_strength);
 	ALBEDO = base_color * mix(vec3(1.0), decal_color, decal_mask);
-	ROUGHNESS = clamp(material_roughness + (surface_noise - 0.5) * 2.0 * roughness_variation + decal_mask * 0.04, 0.05, 1.0);
-	METALLIC = material_metallic;
+	ROUGHNESS = clamp(max(material_roughness, 0.75) + (surface_noise - 0.5) * 2.0 * roughness_variation + decal_mask * 0.04, 0.75, 1.0);
+	// 酒馆结构不使用金属工作流；保留 uniform 仅为兼容现有资源参数。
+	METALLIC = 0.0;
+	// 与 render_mode 的 specular_disabled 形成双重保护，避免材质参数回归时重新出现台面泛光。
+	SPECULAR = 0.0;
 }

@@ -6,6 +6,8 @@ const AS := preload("res://globals/combat/action_skills.gd")
 const RD := preload("res://globals/combat/rune_data.gd")
 const DETAIL_POPUP_SCRIPT_PATH := "res://scenes/ui/equipment_detail_popup.gd"
 const PLAYER_PREVIEW_SCENE_PATH := "res://scenes/characters/player/player.tscn"
+## Compatibility alias for tools that refer to the preview scene as a model.
+const PLAYER_PREVIEW_MODEL := PLAYER_PREVIEW_SCENE_PATH
 const PLAYER_MODEL_ROUTE := preload("res://scenes/characters/player/player_visual_model.tscn")
 const COMBAT_STATS_SCRIPT_PATH := "res://scenes/ui/equipment_panel_combat_stats.gd"
 const PLAYER_FINDER_SCRIPT_PATH := "res://scenes/ui/equipment_panel_player_finder.gd"
@@ -14,6 +16,8 @@ const WEAPON_PROFICIENCY_CATALOG := preload("res://globals/combat/weapon_profici
 const SKILL_RUNTIME_SCRIPT := preload("res://globals/combat/skill_runtime.gd")
 const Service := preload("res://globals/core/service.gd")
 const BD := preload("res://globals/tavern/brewing_data.gd")
+const PanelInventory := preload("res://scenes/ui/equipment_panel_inventory.gd")
+const SlotHintIcons := preload("res://scenes/ui/equipment_slot_hint_icons.gd")
 const SLOT_ICON_SIZE := 80
 const RUNE_SLOT_ICON_SIZE := 32
 const EQUIPMENT_SLOT_SIZE := Vector2(96, 96)
@@ -58,11 +62,7 @@ const GENERATED_SLOT_BACKGROUND_TEXTURES := {
 @onready var filter_materials: Button = %FilterMaterials
 @onready var filter_runes: Button = %FilterRunes
 @onready var filter_count: Label = %FilterCount
-@onready var equip_selected_btn: Button = %EquipSelectedBtn
-@onready var item_detail_title: Label = %ItemDetailTitle
-@onready var item_detail_meta: Label = %ItemDetailMeta
-@onready var item_detail_body: Label = %ItemDetailBody
-@onready var item_detail_compare: Label = %ItemDetailCompare
+@onready var sort_inventory_btn: Button = %SortInventoryBtn
 @onready var warehouse_carried_list: ItemList = %WarehouseCarriedList
 @onready var warehouse_list: ItemList = %WarehouseList
 @onready var skill_slot_0: Button = %SkillSlot0
@@ -83,6 +83,7 @@ var selected_skill_slot: int = 0
 var selected_weapon_slot: int = 0
 var selected_armor_slot: String = "body"
 var inventory_filter: String = VIEW_MODEL.FILTER_ALL
+var inventory_sort_enabled := false
 var weapon_slot_buttons: Array[Button] = []
 var armor_slot_buttons: Dictionary = {}
 var skill_slot_buttons: Array[Button] = []
@@ -92,6 +93,8 @@ var DETAIL_POPUP_SCRIPT: GDScript
 var PLAYER_FINDER: GDScript
 var current_preview_node: Node3D = null
 var _slot_icon_cache: Dictionary = {}
+var _capture_weapon_slots: Array = []
+var _capture_weapon_icon_paths: Dictionary = {}
 var WeaponRegistry: Node:
 	get:
 		return get_tree().root.get_node_or_null("WeaponRegistry") if get_tree() != null else null
@@ -129,12 +132,13 @@ func _ready() -> void:
 	_prepare_preview_frame()
 	# Keep carried items in a square icon grid with readable names; details remain in tooltips.
 	gear_list.max_columns = INVENTORY_GRID_COLUMNS
+	DETAIL_POPUP_SCRIPT = load(DETAIL_POPUP_SCRIPT_PATH) as GDScript
 	if not _is_capture_mode():
-		DETAIL_POPUP_SCRIPT = load(DETAIL_POPUP_SCRIPT_PATH) as GDScript
 		PLAYER_FINDER = load(PLAYER_FINDER_SCRIPT_PATH) as GDScript
-		detail_popup = DETAIL_POPUP_SCRIPT.new() if DETAIL_POPUP_SCRIPT != null else null
-		if detail_popup != null:
-			add_child(detail_popup)
+	detail_popup = DETAIL_POPUP_SCRIPT.new() if DETAIL_POPUP_SCRIPT != null else null
+	if detail_popup != null:
+		detail_popup.name = "EquipmentDetailPopup"
+		add_child(detail_popup)
 	return_btn.pressed.connect(hide_panel)
 	for i in range(weapon_slot_buttons.size()):
 		weapon_slot_buttons[i].pressed.connect(func(slot_index := i): select_weapon_slot(slot_index))
@@ -150,7 +154,7 @@ func _ready() -> void:
 	filter_armor.pressed.connect(func(): set_inventory_filter(VIEW_MODEL.FILTER_ARMOR))
 	filter_materials.pressed.connect(func(): set_inventory_filter(VIEW_MODEL.FILTER_MATERIALS))
 	filter_runes.pressed.connect(func(): set_inventory_filter(VIEW_MODEL.FILTER_RUNES))
-	equip_selected_btn.pressed.connect(_on_equip_selected_pressed)
+	sort_inventory_btn.pressed.connect(_on_sort_inventory_pressed)
 	available_skills_list.item_selected.connect(_on_available_skill_selected)
 	bind_skill_btn.pressed.connect(_on_bind_skill_pressed)
 	unbind_skill_btn.pressed.connect(_on_unbind_skill_pressed)
@@ -238,9 +242,17 @@ func _apply_pixel_ui_variations() -> void:
 		button.custom_minimum_size = Vector2(44, 44)
 		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	available_skills_list.icon_mode = ItemList.ICON_MODE_LEFT
-	available_skills_list.fixed_icon_size = Vector2i(44, 44)
-	available_skills_list.add_theme_font_size_override("font_size", 20)
+	# 可用技能是可拖拽的技能选择表：固定两列、等列宽、图标置顶，
+	# 保证每个技能卡片拥有相同的网格节奏，不再退化为文字列表。
+	available_skills_list.icon_mode = ItemList.ICON_MODE_TOP
+	available_skills_list.fixed_icon_size = Vector2i(64, 64)
+	available_skills_list.max_columns = 2
+	available_skills_list.same_column_width = true
+	available_skills_list.fixed_column_width = 132
+	available_skills_list.add_theme_constant_override("h_separation", 12)
+	available_skills_list.add_theme_constant_override("v_separation", 12)
+	available_skills_list.add_theme_constant_override("icon_margin", 8)
+	available_skills_list.add_theme_font_size_override("font_size", 16)
 	rune_warehouse_list.icon_mode = ItemList.ICON_MODE_TOP
 	rune_warehouse_list.fixed_icon_size = Vector2i(72, 72)
 	rune_warehouse_list.fixed_column_width = 148
@@ -351,7 +363,7 @@ func hide_panel() -> void:
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 func _input(event: InputEvent) -> void:
-	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_TAB:
+	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_ESCAPE, KEY_TAB]:
 		get_viewport().set_input_as_handled()
 		hide_panel()
 
@@ -395,8 +407,8 @@ func _refresh_equipment_slots() -> void:
 		var data_index := two_hand_slot if two_hand_slot >= 0 and i == 0 else i
 		var icon: Texture2D = _empty_slot_icon("weapon", data_index)
 		var item_label := tr("空")
-		if eq != null:
-			var slot_data: Variant = eq.get_weapon_slot_data(data_index)
+		if eq != null or not _capture_weapon_slots.is_empty():
+			var slot_data: Variant = _weapon_slot_data_for_display(eq, data_index)
 			if slot_data != null:
 				icon = _slot_icon_for_weapon_data(slot_data)
 				item_label = _equipment_display_name(slot_data)
@@ -423,6 +435,11 @@ func _weapon_slot_occupies_both_hands(data: Variant) -> bool:
 
 
 func _two_hand_group_slot_index(eq: Node) -> int:
+	if not _capture_weapon_slots.is_empty():
+		for index in [0, 1]:
+			if _weapon_slot_occupies_both_hands(_capture_weapon_slots[index]):
+				return index
+		return -1
 	if eq == null or not eq.has_method("get_weapon_slot_data"):
 		return -1
 	for index in [0, 1]:
@@ -451,21 +468,57 @@ func _weapon_slot_data_index_for_visual(slot_index: int) -> int:
 			return two_hand_slot
 	return clamped
 
+
+func _weapon_slot_data_for_display(eq: Node, slot_index: int) -> Variant:
+	if not _capture_weapon_slots.is_empty() and slot_index >= 0 and slot_index < _capture_weapon_slots.size():
+		return _capture_weapon_slots[slot_index]
+	return eq.get_weapon_slot_data(slot_index) if eq != null and eq.has_method("get_weapon_slot_data") else null
+
+
+## Capture-only fixture hook. Production equipment continues to come from the
+## player's EquipmentComponent; this keeps visual evidence deterministic.
+func set_capture_weapon_loadout(weapon: WeaponData, icon_path: String = "") -> void:
+	_capture_weapon_slots = [weapon, null, null, null] if weapon != null else []
+	_capture_weapon_icon_paths.clear()
+	if weapon != null and not icon_path.is_empty():
+		_capture_weapon_icon_paths[weapon.id] = icon_path
+	_refresh_equipment_slots()
+
 func _refresh_items() -> void:
 	gear_list.clear()
-	_append_materials_to_list(gear_list, _get_carried_inventory(), "items", inventory_filter)
-	_append_runes_to_list(gear_list, _get_carried_rune_inventory(), "items", inventory_filter)
-	_append_equipment_to_list(gear_list, inventory_filter)
+	if inventory_sort_enabled:
+		# Sorting is visual only: the underlying inventory dictionaries are not
+		# mutated, while the grid is rebuilt from the top-left in category order.
+		_append_equipment_to_list(gear_list, inventory_filter)
+		_append_materials_to_list(gear_list, _get_carried_inventory(), "items", inventory_filter)
+		_append_runes_to_list(gear_list, _get_carried_rune_inventory(), "items", inventory_filter)
+	else:
+		_append_materials_to_list(gear_list, _get_carried_inventory(), "items", inventory_filter)
+		_append_runes_to_list(gear_list, _get_carried_rune_inventory(), "items", inventory_filter)
+		_append_equipment_to_list(gear_list, inventory_filter)
 	if gear_list.item_count == 0:
 		gear_list.add_item(tr("随身物品为空"))
 		gear_list.set_item_disabled(0, true)
+		gear_list.deselect_all()
+		var scroll_bar := gear_list.get_v_scroll_bar()
+		if scroll_bar != null:
+			scroll_bar.value = 0.0
 	filter_count.text = "%s · %d件" % [VIEW_MODEL.filter_label(inventory_filter), gear_list.item_count if gear_list.item_count > 0 and gear_list.get_item_metadata(0) != null else 0]
 	_update_inventory_filter_buttons()
-	_clear_selected_item_detail()
 
 func _append_equipment_to_list(list: ItemList, filter_id: String = "") -> void:
 	var equipment_inventory := _get_carried_equipment_inventory()
-	for raw_id in equipment_inventory.keys():
+	var equipment_ids: Array = equipment_inventory.keys()
+	if inventory_sort_enabled:
+		var sortable_entries: Array = []
+		for raw_id in equipment_ids:
+			var entry_meta: Dictionary = WeaponRegistry.get_entry_meta(String(raw_id))
+			var item_type := "armor" if _is_armor_category(String(entry_meta.get("category", ""))) else "weapon"
+			sortable_entries.append({"type": item_type, "id": String(raw_id), "display_name": WeaponRegistry.get_display_name(String(raw_id))})
+		equipment_ids = []
+		for sorted_entry in VIEW_MODEL.sort_inventory_entries(sortable_entries):
+			equipment_ids.append(String(sorted_entry.get("id", "")))
+	for raw_id in equipment_ids:
 		var equipment_id := String(raw_id)
 		var amount := int(equipment_inventory.get(equipment_id, 0))
 		if amount <= 0:
@@ -496,7 +549,8 @@ func _append_equipment_to_list(list: ItemList, filter_id: String = "") -> void:
 			var quality_display := quality_label if not quality_label.is_empty() else VIEW_MODEL.quality_label_for_tier(quality_tier)
 			if not quality_display.is_empty():
 				inventory_label += "\n" + quality_display
-		var idx: int = list.add_item("\n", _icon_for_equipment_id(equipment_id))
+		var equipment_icon: Texture2D = _icon_for_equipment_id(equipment_id)
+		var idx: int = _add_inventory_item(list, equipment_icon)
 		list.set_item_metadata(idx, {
 			"type": item_type,
 			"id": equipment_id,
@@ -506,6 +560,7 @@ func _append_equipment_to_list(list: ItemList, filter_id: String = "") -> void:
 			"quality_label": quality_label,
 			"quality_tier": quality_tier,
 			"_inventory_label": inventory_label,
+			"_inventory_icon": equipment_icon,
 		})
 		# tooltip 包含含词缀名称、品质标签和词缀效果
 		var tooltip_parts: Array[String] = []
@@ -542,19 +597,36 @@ func _refresh_skill_rune_warehouse() -> void:
 		rune_warehouse_list.set_item_disabled(0, true)
 
 func _append_materials_to_list(list: ItemList, inventory: Dictionary, source: String, filter_id: String = "") -> void:
-	for item_id in inventory.keys():
+	var item_ids: Array = inventory.keys()
+	if inventory_sort_enabled:
+		var sortable_entries: Array = []
+		for raw_id in item_ids:
+			sortable_entries.append({"type": "material", "id": String(raw_id), "display_name": _get_material_name(String(raw_id))})
+		item_ids = []
+		for sorted_entry in VIEW_MODEL.sort_inventory_entries(sortable_entries):
+			item_ids.append(String(sorted_entry.get("id", "")))
+	for item_id in item_ids:
 		var amount: int = int(inventory[item_id])
 		if amount <= 0:
 			continue
 		if not VIEW_MODEL.accepts_filter("material", filter_id):
 			continue
 		var item_name := _get_material_name(item_id)
-		var idx: int = list.add_item("\n", DETAIL_POPUP_SCRIPT.icon_for_material(item_id))
-		list.set_item_metadata(idx, {"type": "material", "id": item_id, "source": source, "amount": amount, "quality_tier": "", "_inventory_label": _format_inventory_label(item_name)})
+		var material_icon: Texture2D = DETAIL_POPUP_SCRIPT.icon_for_material(item_id)
+		var idx: int = _add_inventory_item(list, material_icon)
+		list.set_item_metadata(idx, {"type": "material", "id": item_id, "source": source, "amount": amount, "quality_tier": "", "_inventory_label": _format_inventory_label(item_name), "_inventory_icon": material_icon})
 		list.set_item_tooltip(idx, "%s x%d" % [_get_material_name(item_id), amount])
 
 func _append_runes_to_list(list: ItemList, inventory: Dictionary, source: String, filter_id: String = "") -> void:
-	for rune_id in inventory.keys():
+	var rune_ids: Array = inventory.keys()
+	if inventory_sort_enabled:
+		var sortable_entries: Array = []
+		for raw_id in rune_ids:
+			sortable_entries.append({"type": "rune", "id": String(raw_id), "display_name": RD.get_rune_name(String(raw_id))})
+		rune_ids = []
+		for sorted_entry in VIEW_MODEL.sort_inventory_entries(sortable_entries):
+			rune_ids.append(String(sorted_entry.get("id", "")))
+	for rune_id in rune_ids:
 		var amount: int = int(inventory[rune_id])
 		if amount <= 0:
 			continue
@@ -564,12 +636,20 @@ func _append_runes_to_list(list: ItemList, inventory: Dictionary, source: String
 		var rune_name := RD.get_rune_name(id)
 		var rune_icon: Texture2D = DETAIL_POPUP_SCRIPT.icon_for_rune(id)
 		var native_icon := null if list == rune_warehouse_list else rune_icon
-		var idx: int = list.add_item("\n", native_icon)
+		var idx: int = _add_inventory_item(list, native_icon)
 		var rune := RD.get_rune(id)
 		var rune_tier := VIEW_MODEL.quality_tier_for("rune", "", String(rune.get("rarity", "common")))
 		var rune_label := _format_inventory_label(rune_name) + "\n" + VIEW_MODEL.quality_label_for_tier(rune_tier)
 		list.set_item_metadata(idx, {"type": "rune", "id": id, "source": source, "amount": amount, "quality_tier": rune_tier, "_inventory_label": rune_label, "_inventory_icon": rune_icon})
 		list.set_item_tooltip(idx, "%s x%d" % [RD.get_rune_name(id), amount])
+
+func _add_inventory_item(list: ItemList, icon: Texture2D) -> int:
+	var idx: int = list.add_item("\n", icon)
+	# GearList is painted by InventoryDragList's fixed square icon layer. Remove
+	# the native icon so no second, differently-centered copy can appear.
+	if list == gear_list:
+		list.set_item_icon(idx, null)
+	return idx
 
 func _combined_owned_rune_inventory() -> Dictionary:
 	var combined: Dictionary = {}
@@ -664,6 +744,8 @@ func configure_armor_slot(slot_name: String, armor_id: String) -> bool:
 	if not _is_armor_category(category):
 		return false
 	var armor: WeaponData = WeaponRegistry.get_weapon_data(armor_id)
+	if armor == null:
+		return false
 	var eq := _get_player_equipment()
 	if eq == null:
 		return false
@@ -707,24 +789,22 @@ func _on_gear_item_activated(index: int) -> void:
 
 func _on_gear_item_selected(index: int) -> void:
 	var meta = gear_list.get_item_metadata(index)
-	_refresh_selected_item_detail(meta)
 	if typeof(meta) == TYPE_DICTIONARY and (meta.get("type", "") == "weapon" or meta.get("type", "") == "armor"):
 		_refresh_preview(String(meta.get("id", "")))
 	else:
 		_refresh_preview()
-
-func _on_equip_selected_pressed() -> void:
-	var selected := gear_list.get_selected_items()
-	if selected.is_empty():
-		return
-	var meta = gear_list.get_item_metadata(selected[0])
-	_equip_gear_metadata(meta)
 
 func set_inventory_filter(filter_id: String) -> void:
 	if filter_id not in [VIEW_MODEL.FILTER_ALL, VIEW_MODEL.FILTER_EQUIPMENT, VIEW_MODEL.FILTER_WEAPONS, VIEW_MODEL.FILTER_ARMOR, VIEW_MODEL.FILTER_MATERIALS, VIEW_MODEL.FILTER_RUNES]:
 		return
 	inventory_filter = filter_id
 	_refresh_items()
+
+
+func _on_sort_inventory_pressed() -> void:
+	inventory_sort_enabled = true
+	_refresh_items()
+	sort_inventory_btn.button_pressed = true
 
 func _update_inventory_filter_buttons() -> void:
 	var buttons := {
@@ -738,61 +818,6 @@ func _update_inventory_filter_buttons() -> void:
 	for filter_id in buttons:
 		var button: Button = buttons[filter_id]
 		button.button_pressed = filter_id == inventory_filter
-
-func _clear_selected_item_detail() -> void:
-	item_detail_title.text = "选择物品"
-	item_detail_meta.text = "物品详情"
-	item_detail_body.text = "点击物品查看属性、词缀和装备效果。"
-	item_detail_compare.text = ""
-	equip_selected_btn.text = "装备到当前槽"
-	equip_selected_btn.disabled = true
-
-func _refresh_selected_item_detail(meta: Variant) -> void:
-	if typeof(meta) != TYPE_DICTIONARY or String(meta.get("type", "")).is_empty():
-		_clear_selected_item_detail()
-		return
-	var item_type := String(meta.get("type", ""))
-	var item_id := String(meta.get("id", ""))
-	var amount := int(meta.get("amount", 1))
-	var detail: Dictionary = {}
-	match item_type:
-		"weapon", "armor":
-			detail = DETAIL_POPUP_SCRIPT.detail_for_equipment_id(item_id)
-		"material":
-			detail = DETAIL_POPUP_SCRIPT.detail_for_material_id(item_id, amount)
-		"rune":
-			detail = DETAIL_POPUP_SCRIPT.detail_for_rune_id(item_id, amount)
-	if detail.is_empty():
-		_clear_selected_item_detail()
-		return
-	item_detail_title.text = String(detail.get("title", "物品"))
-	item_detail_meta.text = String(detail.get("category", ""))
-	var detail_lines: Array[String] = []
-	for line in detail.get("lines", []):
-		detail_lines.append(String(line))
-	var description := String(detail.get("description", ""))
-	if not description.is_empty():
-		detail_lines.append(description)
-	item_detail_body.text = "\n".join(detail_lines)
-	var equippable := item_type == "weapon" or item_type == "armor"
-	item_detail_compare.text = ""
-	if equippable:
-		var candidate_data = meta.get("data", null)
-		if candidate_data == null:
-			candidate_data = WeaponRegistry.get_weapon_data(item_id)
-		var equipped_data = _selected_equipped_data(item_type, candidate_data)
-		item_detail_compare.text = VIEW_MODEL.format_comparison(VIEW_MODEL.build_equipment_comparison(candidate_data, equipped_data))
-	equip_selected_btn.text = "装备到当前槽" if equippable else "仅供查看"
-	equip_selected_btn.disabled = not equippable
-
-func _selected_equipped_data(item_type: String, candidate_data: Variant) -> Variant:
-	var eq := _get_player_equipment()
-	if eq == null:
-		return null
-	if item_type == "weapon":
-		return eq.get_weapon_slot_data(selected_weapon_slot)
-	var armor_slot := String(candidate_data.armor_slot) if candidate_data != null and "armor_slot" in candidate_data and not String(candidate_data.armor_slot).is_empty() else selected_armor_slot
-	return eq.get_armor_slot_data(armor_slot)
 
 func _equip_gear_metadata(meta: Variant) -> void:
 	if typeof(meta) != TYPE_DICTIONARY:
@@ -863,8 +888,13 @@ func _skill_icon_for(skill_id: String) -> Texture2D:
 		return null
 	var icons: Node = Engine.get_main_loop().root.get_node_or_null("SkillIcons")
 	if icons != null and icons.has_method("get_icon"):
-		return icons.get_icon(skill_id) as Texture2D
-	return null
+		var cached_icon := icons.get_icon(skill_id) as Texture2D
+		if cached_icon != null:
+			return cached_icon
+	# Capture mode can omit the SkillIcons autoload; use the deterministic
+	# project icon path as a read-only adapter so the grid still shows icons.
+	var fallback_path := "res://assets/textures/icons/skills/skill_%s.png" % skill_id.to_utf8_buffer().hex_encode()
+	return load(fallback_path) as Texture2D
 
 func _on_available_skill_selected(index: int) -> void:
 	var skill: Dictionary = available_skills_list.get_item_metadata(index)
@@ -1210,14 +1240,20 @@ func show_inventory_item_detail(source: String, item_index: int, screen_position
 			hide_detail_popup()
 
 func show_equipment_slot_detail(slot_kind: String, slot_index: int, armor_slot: String, screen_position: Vector2) -> void:
+	if detail_popup == null:
+		hide_detail_popup()
+		return
 	var eq := _get_player_equipment()
-	if eq == null:
+	if eq == null and _capture_weapon_slots.is_empty():
 		hide_detail_popup()
 		return
 	match slot_kind:
 		"weapon":
-			detail_popup.show_for_weapon_data(eq.get_weapon_slot_data(_weapon_slot_data_index_for_visual(slot_index)), screen_position)
+			detail_popup.show_for_weapon_data(_weapon_slot_data_for_display(eq, _weapon_slot_data_index_for_visual(slot_index)), screen_position)
 		"armor":
+			if eq == null:
+				hide_detail_popup()
+				return
 			detail_popup.show_for_weapon_data(eq.get_armor_slot_data(armor_slot), screen_position)
 		_:
 			hide_detail_popup()
@@ -1246,18 +1282,7 @@ func transfer_inventory_items(source: String, target: String, material_ids: Arra
 	return moved
 
 func move_items_between(source_inv: Dictionary, target_inv: Dictionary, item_ids: Array, target_is_carried: bool = false, space_per_item: int = 1) -> Dictionary:
-	var moved: Dictionary = {}
-	for raw_id in item_ids:
-		var item_id: String = String(raw_id)
-		var amount: int = int(source_inv.get(item_id, 0))
-		if amount <= 0:
-			continue
-		if target_is_carried and not _can_add_carried_stack(amount, space_per_item):
-			continue
-		target_inv[item_id] = int(target_inv.get(item_id, 0)) + amount
-		source_inv.erase(item_id)
-		moved[item_id] = amount
-	return moved
+	return PanelInventory.move_items_between(source_inv, target_inv, item_ids, target_is_carried, space_per_item)
 
 func _refresh_armor_slot_button(slot_name: String, display_name: String) -> void:
 	var button: Button = armor_slot_buttons.get(slot_name, null)
@@ -1417,71 +1442,10 @@ func _empty_slot_icon(slot_kind: String, _variant: int = 0) -> Texture2D:
 		return null
 	var image := source.get_image()
 	image.convert(Image.FORMAT_RGBA8)
-	image = _build_solid_slot_hint_image(image)
+	image = SlotHintIcons.build_solid_slot_hint_image(image, SLOT_HINT_COLOR, SLOT_FILL_NEIGHBORS)
 	var hint := ImageTexture.create_from_image(image)
 	_slot_icon_cache[key] = hint
 	return hint
-
-
-func _build_solid_slot_hint_image(source_image: Image) -> Image:
-	var image := source_image.duplicate()
-	var width: int = image.get_width()
-	var height: int = image.get_height()
-	var boundary := PackedByteArray()
-	boundary.resize(width * height)
-	for y in range(height):
-		for x in range(width):
-			boundary[y * width + x] = 1 if _slot_hint_boundary_pixel(image, x, y) else 0
-
-	# Flood-fill the matte from the canvas edge. Pixels not reached by that fill
-	# are inside the silhouette and become the solid role hint.
-	var exterior := PackedByteArray()
-	exterior.resize(width * height)
-	var queue: Array[Vector2i] = []
-	for x in range(width):
-		_queue_slot_hint_exterior(Vector2i(x, 0), width, height, boundary, exterior, queue)
-		_queue_slot_hint_exterior(Vector2i(x, height - 1), width, height, boundary, exterior, queue)
-	for y in range(height):
-		_queue_slot_hint_exterior(Vector2i(0, y), width, height, boundary, exterior, queue)
-		_queue_slot_hint_exterior(Vector2i(width - 1, y), width, height, boundary, exterior, queue)
-	var queue_index: int = 0
-	while queue_index < queue.size():
-		var point := queue[queue_index]
-		queue_index += 1
-		for offset in SLOT_FILL_NEIGHBORS:
-			_queue_slot_hint_exterior(point + offset, width, height, boundary, exterior, queue)
-
-	for y in range(height):
-		for x in range(width):
-			var index: int = y * width + x
-			if boundary[index] == 1 or exterior[index] == 0:
-				image.set_pixel(x, y, SLOT_HINT_COLOR)
-			else:
-				image.set_pixel(x, y, Color.TRANSPARENT)
-	return image
-
-
-func _slot_hint_boundary_pixel(image: Image, x: int, y: int) -> bool:
-	for offset_y in range(-1, 2):
-		for offset_x in range(-1, 2):
-			var sample_x := x + offset_x
-			var sample_y := y + offset_y
-			if sample_x < 0 or sample_x >= image.get_width() or sample_y < 0 or sample_y >= image.get_height():
-				continue
-			var pixel := image.get_pixel(sample_x, sample_y)
-			if pixel.a > 0.01 and maxf(pixel.r, maxf(pixel.g, pixel.b)) > 0.10:
-				return true
-	return false
-
-
-func _queue_slot_hint_exterior(point: Vector2i, width: int, height: int, boundary: PackedByteArray, exterior: PackedByteArray, queue: Array[Vector2i]) -> void:
-	if point.x < 0 or point.x >= width or point.y < 0 or point.y >= height:
-		return
-	var index: int = point.y * width + point.x
-	if boundary[index] == 1 or exterior[index] == 1:
-		return
-	exterior[index] = 1
-	queue.append(point)
 
 func _build_combat_stat_lines(player: Node, eq: Node, ap: Node) -> Array[String]:
 	var combat_stats_script := load(COMBAT_STATS_SCRIPT_PATH) as GDScript
@@ -1551,81 +1515,37 @@ func _list_for_source(source: String) -> ItemList:
 	return null
 
 func _inventory_for_source(source: String) -> Dictionary:
-	match source:
-		"items":
-			return _get_carried_inventory()
-		"warehouse":
-			return _get_warehouse_inventory()
-	return {}
+	return PanelInventory.materials_for_source(source)
 
 func _rune_inventory_for_source(source: String) -> Dictionary:
-	match source:
-		"items":
-			return _get_carried_rune_inventory()
-		"warehouse":
-			return _get_warehouse_rune_inventory()
-	return {}
+	return PanelInventory.runes_for_source(source)
 
 func _get_carried_inventory() -> Dictionary:
-	var gs: Node = Service.game_state()
-	if gs != null and "carried_materials" in gs:
-		return gs.carried_materials
-	return {}
+	return PanelInventory.carried_materials()
 
 func _get_carried_rune_inventory() -> Dictionary:
-	var gs: Node = Service.game_state()
-	if gs != null and "carried_runes" in gs:
-		return gs.carried_runes
-	return {}
+	return PanelInventory.carried_runes()
 
 func _get_carried_equipment_inventory() -> Dictionary:
-	var gs: Node = Service.game_state()
-	if gs != null and "carried_equipment" in gs:
-		return gs.carried_equipment
-	return {}
+	return PanelInventory.carried_equipment()
 
 func _get_warehouse_inventory() -> Dictionary:
-	var tm: Node = Service.tavern_manager()
-	if tm != null and "materials_inventory" in tm:
-		return tm.materials_inventory
-	return {}
+	return PanelInventory.warehouse_materials()
 
 func _get_warehouse_rune_inventory() -> Dictionary:
-	var tm: Node = Service.tavern_manager()
-	if tm != null and "runes_inventory" in tm:
-		return tm.runes_inventory
-	return {}
+	return PanelInventory.warehouse_runes()
 
 func _consume_rune_from_inventory(rune_id: String) -> bool:
-	for inventory in [_get_carried_rune_inventory(), _get_warehouse_rune_inventory()]:
-		var amount := int(inventory.get(rune_id, 0))
-		if amount <= 0:
-			continue
-		if amount > 1:
-			inventory[rune_id] = amount - 1
-		else:
-			inventory.erase(rune_id)
-		return true
-	return false
+	return PanelInventory.consume_rune(rune_id)
 
 func _consume_carried_equipment(equipment_id: String) -> bool:
-	var gs: Node = Service.game_state()
-	if gs == null or not gs.has_method("remove_carried_equipment"):
-		return false
-	return gs.remove_carried_equipment(equipment_id, 1)
+	return PanelInventory.consume_carried_equipment(equipment_id)
 
 func _return_carried_equipment(equipment_id: String) -> void:
-	if equipment_id.is_empty():
-		return
-	var gs: Node = Service.game_state()
-	if gs != null and gs.has_method("add_carried_equipment"):
-		gs.add_carried_equipment(equipment_id, 1)
+	PanelInventory.return_carried_equipment(equipment_id)
 
 func _can_add_carried_stack(amount: int, space_per_item: int) -> bool:
-	var gs: Node = Service.game_state()
-	if gs == null or not gs.has_method("can_add_carried_space"):
-		return false
-	return gs.can_add_carried_space(amount * space_per_item)
+	return PanelInventory.can_add_carried_stack(amount, space_per_item)
 
 func _uses_warehouse(source: String, target: String) -> bool:
 	return source == "warehouse" or target == "warehouse"
@@ -1672,6 +1592,9 @@ func _slot_icon_for_equipment_id(equipment_id: String) -> Texture2D:
 	return _scaled_slot_icon(_icon_for_equipment_id(equipment_id))
 
 func _slot_icon_for_weapon_data(data: WeaponData) -> Texture2D:
+	if data != null and _capture_weapon_icon_paths.has(data.id):
+		var capture_icon := load(String(_capture_weapon_icon_paths[data.id])) as Texture2D
+		return _scaled_slot_icon(capture_icon)
 	return _scaled_slot_icon(_icon_for_weapon_data(data))
 
 func _scaled_slot_icon(texture: Texture2D) -> Texture2D:

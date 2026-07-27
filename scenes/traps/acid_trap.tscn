@@ -57,11 +57,29 @@ billboard_keep_scale = true
 material = SubResource("StandardMaterial3D_mve47")
 size = Vector2(0.2, 0.2)
 
+[sub_resource type="CylinderMesh" id="CylinderMesh_acid_pit"]
+top_radius = 0.95
+bottom_radius = 1.05
+height = 0.12
+radial_segments = 16
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_acid_pit"]
+albedo_color = Color(0.04, 0.32, 0.025, 1)
+emission_enabled = true
+emission = Color(0.0, 0.2, 0.01, 1)
+emission_energy_multiplier = 1.4
+roughness = 0.95
+
 [node name="AcidTrap" type="Area3D" unique_id=857759605]
 collision_layer = 0
 collision_mask = 6
 monitorable = false
 script = ExtResource("1_eld0c")
+
+[node name="AcidPit" type="MeshInstance3D" parent="." unique_id=1313857114]
+position = Vector3(0.5, -0.08, 0.5)
+mesh = SubResource("CylinderMesh_acid_pit")
+material_override = SubResource("StandardMaterial3D_acid_pit")
 
 [node name="Mesh" type="MeshInstance3D" parent="." unique_id=367200440]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, -0.2, 0.5)

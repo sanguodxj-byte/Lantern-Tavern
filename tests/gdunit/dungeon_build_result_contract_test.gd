@@ -26,6 +26,7 @@ func test_build_result_terrain_transform_fields_empty_initially() -> void:
 	var result := DungeonBuildResult.new()
 	assert_bool(result.floor_transforms.is_empty()).is_true()
 	assert_bool(result.ceiling_transforms.is_empty()).is_true()
+	assert_bool(result.ceiling_transition_transforms_by_size.is_empty()).is_true()
 	assert_bool(result.wall_transforms_by_height.is_empty()).is_true()
 	assert_bool(result.wall_h_map.is_empty()).is_true()
 	assert_bool(result.batched_decor_transforms.is_empty()).is_true()
@@ -70,6 +71,7 @@ func test_dispose_nulls_all_roots_and_clears_registries() -> void:
 	assert_array(result.streamed_visual_nodes).has_size(0)
 	assert_array(result.streamed_physics_nodes).has_size(0)
 	assert_bool(result.terrain_chunks.is_empty()).is_true()
+	assert_bool(result.ceiling_transition_transforms_by_size.is_empty()).is_true()
 	# dispose 后字段已置 null，parent.free() 同步释放（queue_free 的子随 parent free 一起释放，不需等帧）
 	parent.free()
 

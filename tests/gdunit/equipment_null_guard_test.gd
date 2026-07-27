@@ -124,8 +124,8 @@ func test_equipment_component_drop_uses_placeholder_fallback_transform() -> void
 	var source: String = (script as GDScript).source_code
 	assert_bool(source.contains("func _fallback_drop_transform")) \
 		.override_failure_message("装备掉落应提供缺失挂点时的 transform 兜底").is_true()
-	assert_bool(source.contains("_fallback_drop_transform(weapon_placeholder)")) \
-		.override_failure_message("武器掉落不应直接访问 weapon_placeholder.global_transform").is_true()
+	assert_bool(source.contains("_fallback_drop_transform(mount)")) \
+		.override_failure_message("武器掉落应使用当前活动挂点的兜底 transform").is_true()
 	assert_bool(source.contains("_fallback_drop_transform(shield_placeholder)")) \
 		.override_failure_message("盾牌掉落不应直接访问 shield_placeholder.global_transform").is_true()
 

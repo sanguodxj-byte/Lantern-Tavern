@@ -4,6 +4,7 @@ extends EnemyState
 const DURATION_RAGDOLL_SIMULATION := 3.0
 const DROP_BURST_STRENGTH := 3.5
 const RD := preload("res://globals/combat/rune_data.gd")
+const PICKABLE_SCENE_PATH := "res://scenes/equipment/pickable_item.tscn"
 
 ## 死亡物理副作用是否已延迟调度（供回归测试断言“进入 DYING 不立即执行物理操作”）。
 var _death_effects_deferred := false
@@ -13,7 +14,6 @@ var _dead_signal_emitted := false
 
 func _enter_tree() -> void:
 	enemy.health.current_life = 0
-	GameEvents.impact_felt.emit(GameEvents.ImpactIntensity.MEDIUM)
 	if enemy != null and enemy.is_inside_tree():
 		FxHelper.call_deferred("create_blood_fx", _blood_transform())
 	AudioManager.play("orc-die", enemy.vocal_audio_stream_player)
@@ -107,13 +107,13 @@ func _spawn_monster_drop() -> void:
 			]
 			drop_id = monster_drops[randi() % monster_drops.size()]
 		
-	var mat_scene = load("res://scenes/equipment/pickable_item.tscn")
-	if mat_scene and enemy.get_parent() != null and enemy.get_parent().is_inside_tree():
-		var item_instance = mat_scene.instantiate()
+	var item_instance = _new_pickable_item()
+	if item_instance != null and enemy.get_parent() != null and enemy.get_parent().is_inside_tree():
 		item_instance.material_id = drop_id
 		_place_drop_before_add(item_instance, _drop_position() + Vector3(0, 0.4, 0))
 		enemy.get_parent().add_child(item_instance)
-		print("Monster defeated! Dropped material: ", drop_id)
+		if OS.is_debug_build():
+			push_warning("Monster defeated! Dropped material: " + drop_id)
 		# Barony 风格：死亡爆出，带物理冲量（向外+向上翻滚）
 		if item_instance.has_method("pop_out"):
 			item_instance.pop_out(_drop_position(), DROP_BURST_STRENGTH)
@@ -144,25 +144,28 @@ func _blood_transform() -> Transform3D:
 func _spawn_elite_bonus_drop() -> void:
 	var bonus_drops = ["troll_blood", "soul_gem", "dragon_scale", "shadow_lotus", "fire_bloom"]
 	var drop_id = bonus_drops[randi() % bonus_drops.size()]
-	var mat_scene = load("res://scenes/equipment/pickable_item.tscn")
-	if mat_scene and enemy.get_parent() != null and enemy.get_parent().is_inside_tree():
-		var item_instance = mat_scene.instantiate()
+	var item_instance = _new_pickable_item()
+	if item_instance != null and enemy.get_parent() != null and enemy.get_parent().is_inside_tree():
 		item_instance.material_id = drop_id
 		# 随机偏移避免与主掉落重叠
 		var offset := Vector3(randf_range(-0.5, 0.5), 0, randf_range(-0.5, 0.5))
 		_place_drop_before_add(item_instance, _drop_position() + Vector3(0, 0.4, 0) + offset)
 		enemy.get_parent().add_child(item_instance)
-		print("[Elite] Bonus drop: ", drop_id)
+		if OS.is_debug_build():
+			push_warning("[Elite] Bonus drop: " + drop_id)
 		if item_instance.has_method("pop_out"):
 			item_instance.pop_out(_drop_position(), DROP_BURST_STRENGTH)
 		var rune := RD.roll_rune("boss" if _is_boss_enemy() else "elite")
 		if not rune.is_empty():
-			var rune_item = mat_scene.instantiate()
+			var rune_item = _new_pickable_item()
+			if rune_item == null:
+				return
 			rune_item.rune_id = String(rune.get("id", ""))
 			var rune_offset := Vector3(randf_range(-0.5, 0.5), 0, randf_range(-0.5, 0.5))
 			_place_drop_before_add(rune_item, _drop_position() + Vector3(0, 0.4, 0) + rune_offset)
 			enemy.get_parent().add_child(rune_item)
-			print("[Elite] Rune drop: ", rune_item.rune_id)
+			if OS.is_debug_build():
+				push_warning("[Elite] Rune drop: " + rune_item.rune_id)
 			if rune_item.has_method("pop_out"):
 				rune_item.pop_out(_drop_position(), DROP_BURST_STRENGTH)
 
@@ -181,6 +184,13 @@ func _place_drop_before_add(item_instance: Node3D, world_position: Vector3) -> v
 		item_instance.position = (parent as Node3D).to_local(world_position)
 	else:
 		item_instance.position = world_position
+
+func _new_pickable_item() -> Node3D:
+	var scene := load(PICKABLE_SCENE_PATH) as PackedScene
+	if scene == null:
+		push_error("EnemyStateDying: failed to load %s" % PICKABLE_SCENE_PATH)
+		return null
+	return scene.instantiate() as Node3D
 
 func _is_elite_enemy() -> bool:
 	if enemy == null:

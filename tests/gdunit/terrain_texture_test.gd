@@ -238,8 +238,11 @@ func test_procedural_dungeon_uses_level0_dungeon_atlas_for_base_terrain() -> voi
 	var expected_tex := load(ATLAS_PATH)
 	var wall_tested := false
 	var floor_tested := false
-	for child in dungeon.get_children():
-		if child is MultiMeshInstance3D:
+	var terrain_nodes: Array[Node] = []
+	_collect_nodes(dungeon, terrain_nodes)
+	for node in terrain_nodes:
+		if node is MultiMeshInstance3D:
+			var child := node as MultiMeshInstance3D
 			var mat := child.material_override as ShaderMaterial
 			if mat == null:
 				continue
@@ -260,6 +263,12 @@ func test_procedural_dungeon_uses_level0_dungeon_atlas_for_base_terrain() -> voi
 
 	remove_child(dungeon)
 	dungeon.free()
+
+
+func _collect_nodes(node: Node, result: Array[Node]) -> void:
+	for child in node.get_children():
+		result.append(child)
+		_collect_nodes(child, result)
 
 
 func _load_meta() -> Dictionary:

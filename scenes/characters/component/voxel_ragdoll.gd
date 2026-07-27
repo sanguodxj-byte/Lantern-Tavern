@@ -11,12 +11,12 @@ extends Node3D
 ## 死亡时施加冲量让碎片翻滚坠落，模拟「尸体碎裂」表现；原角色可视网格隐藏。
 ## 与 EnemyStateDying / EnemyStateDead 协同。
 
-const MAX_FRAGMENTS := 40
+const MAX_FRAGMENTS := 24
 const FRAGMENT_LIFETIME := 8.0
 ## 当有效网格数 >= 此值时使用逐网格碎裂（独立体素盒模型）；否则使用网格分块碎裂（单蒙皮模型）。
 const MIN_MESHES_FOR_PER_PART_FRAGMENT := 2
 ## 网格分块碎裂的目标碎片数。
-const GRID_TARGET_FRAGMENTS := 14
+const GRID_TARGET_FRAGMENTS := 10
 
 var _fragments: Array[RigidBody3D] = []
 
@@ -24,6 +24,11 @@ var _fragments: Array[RigidBody3D] = []
 func activate(source: Node3D, impact_dir: Vector3, impulse_strength: float) -> void:
 	if source == null or not is_instance_valid(source):
 		return
+	# Death can be requested by more than one hit in the same frame. Remove the
+	# previous visual bodies before creating a new set so old rigid bodies cannot
+	# keep colliding after a second activation.
+	if not _fragments.is_empty():
+		clear_fragments()
 	var meshes := source.find_children("*", "MeshInstance3D", true, false)
 	var valid_meshes: Array[MeshInstance3D] = []
 	for m in meshes:
@@ -158,6 +163,13 @@ func _fragment_from_grid(meshes: Array[MeshInstance3D], parent: Node, dir: Vecto
 ## 创建一个碎片刚体：碰撞盒 + 可视网格 + 材质。
 func _create_fragment_body(mesh: Mesh, shape: Shape3D, mat: Material) -> RigidBody3D:
 	var body := RigidBody3D.new()
+	# 死亡体素碎片：仅与地面（LAYER_ENVIRONMENT）碰撞，使碎片落到地面停留；
+	# 碎片层 LAYER_DEBRIS 不在玩家/敌人/投掷物/可拾取物/投射物的 mask 中，故
+	# 不会与玩家模型或其他游戏物体互相碰撞。碎片之间也不互相碰撞（mask 不含
+	# LAYER_DEBRIS），避免堆叠 broadphase 开销。落地后 can_sleep 自动休眠退出模拟。
+	body.collision_layer = PhysicsSetup.LAYER_DEBRIS
+	body.collision_mask = PhysicsSetup.MASK_DEBRIS
+	body.can_sleep = true
 	var cs := CollisionShape3D.new()
 	cs.shape = shape
 	body.add_child(cs)
@@ -203,14 +215,18 @@ func _transform_aabb(xform: Transform3D, aabb: AABB) -> AABB:
 func freeze() -> void:
 	for b in _fragments:
 		if is_instance_valid(b):
+			b.linear_velocity = Vector3.ZERO
+			b.angular_velocity = Vector3.ZERO
+			if b.is_inside_tree():
+				PhysicsServer3D.body_set_state(b.get_rid(), PhysicsServer3D.BODY_STATE_SLEEPING, true)
 			b.freeze = true
-			PhysicsServer3D.body_set_state(b.get_rid(), PhysicsServer3D.BODY_STATE_SLEEPING, true)
+			b.sleeping = true
 
 
 func clear_fragments() -> void:
 	for b in _fragments:
 		if is_instance_valid(b):
-			b.queue_free()
+			b.free()
 	_fragments.clear()
 
 

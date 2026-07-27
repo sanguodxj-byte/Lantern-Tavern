@@ -11,7 +11,11 @@ const HITBOX_BUILDER := preload("res://globals/combat/combat_hitbox_builder.gd")
 const PHYSICAL_IMPACT := preload("res://globals/combat/physical_impact_resolver.gd")
 const VOXEL_LIGHTING := preload("res://globals/visual/voxel_lighting_adapter.gd")
 const VOXEL_RAGDOLL := preload("res://scenes/characters/component/voxel_ragdoll.gd")
+const ENEMY_TARGETING := preload("res://scenes/characters/enemies/behavior/enemy_targeting.gd")
+const ENEMY_MOVEMENT_CONTROLLER := preload("res://scenes/characters/enemies/behavior/enemy_movement_controller.gd")
 const DEFAULT_DETECTION_RANGE := 5.0
+## 满暗蚀全图追击倍率：补偿远距出生点与低速敌人的长距离追击时间。
+const DARK_EROSION_HUNT_SPEED_MULTIPLIER := 4.0
 ## 视野射线高度（米）：从角色中心质量发射，避免贴地射线漏检矮墙
 const LOS_RAY_HEIGHT := 0.85
 ## 怪物渲染优化：网格最远可见距离（米）。配合既有 24m 流式半径进一步远裁剪，避免远处怪物空耗 draw call。
@@ -38,14 +42,14 @@ static var _imposter_texture_cache: Dictionary = {}
 static var _imposter_capture_in_flight: Dictionary = {}
 
 @onready var action_audio_stream_player: AudioStreamPlayer3D = %ActionAudioStreamPlayer
-@onready var animation_player: AnimationPlayer = $character/AnimationPlayer
+@onready var animation_player: AnimationPlayer = find_child("AnimationPlayer", true, false) as AnimationPlayer
 @onready var collision_shape: CollisionShape3D = %CollisionShape
 @onready var equipment: EquipmentComponent = %EquipmentComponent
 @onready var health: HealthComponent = %HealthComponent
 @onready var nav_agent: NavigationAgent3D = %NavigationAgent3D
-@onready var skeleton_simulator: PhysicalBoneSimulator3D = %PhysicalBoneSimulator3D
-@onready var physical_bone_head: PhysicalBone3D = %"Physical Bone Head"
-@onready var physical_bone_torso: PhysicalBone3D = %"Physical Bone Torso"
+@onready var skeleton_simulator: PhysicalBoneSimulator3D = _find_physical_bone_simulator()
+@onready var physical_bone_head: PhysicalBone3D = _find_physical_bone("Physical Bone Head")
+@onready var physical_bone_torso: PhysicalBone3D = _find_physical_bone("Physical Bone Torso")
 ## 死亡碎裂（伪布娃娃）组件。所有敌人在 _ready 中均创建此组件，
 ## 死亡时优先使用体素碎裂效果（VoxelRagdoll），骨骼布娃娃（skeleton_simulator）仅作回退。
 var voxel_ragdoll: VoxelRagdoll = null
@@ -56,7 +60,14 @@ var voxel_ragdoll: VoxelRagdoll = null
 
 @export var duration_between_attacks: int
 @export var duration_stun : int
-@export var player: Player
+var _player: Player = null
+@export var player: Player:
+	get:
+		return _player
+	set(value):
+		_player = value
+		if _targeting != null:
+			_targeting.observe_external_target(value)
 @export var speed: float
 @export var is_elite: bool = false
 @export var is_boss_type: bool = false
@@ -65,6 +76,14 @@ var voxel_ragdoll: VoxelRagdoll = null
 @export var patrol_radius: float = 5.0
 ## 统一索敌距离（米）。100% 暗蚀会绕过此限制强制追击。
 @export var detection_range: float = DEFAULT_DETECTION_RANGE
+## 水平视野半角；默认 60°，即正前方 120° 视野锥。
+@export_range(1.0, 179.0, 1.0) var vision_half_angle_degrees: float = 60.0
+## 攻击模式：人形怪物使用装备武器，非人形怪物使用身体攻击。
+const ATTACK_MODE_WEAPON := "weapon"
+const ATTACK_MODE_BODY := "body"
+@export_enum("weapon", "body") var attack_mode: String = ATTACK_MODE_WEAPON
+## 非人形身体攻击的有效距离，不读取 WeaponData.reach。
+@export var body_attack_reach: float = 1.25
 ## 基础材质覆盖（已废弃：保留属性向后兼容场景文件，不再用于 material_override）。
 ## GLB 内嵌纹理由 VoxelLightingAdapter 统一适配（toon 着色 + vertex_color_use_as_albedo），
 ## 无需手动覆写。早期添加此属性是为了“修复纯白问题”，但实际原因是 GLB 材质未开启
@@ -78,6 +97,8 @@ enum State {MOVING, IMPALING, DYING, DEAD, SLASHING, HURT, BLOCKING, STUNNED, LA
 var pushback_force := Vector3.ZERO
 var state: State
 var state_node: EnemyState
+var _targeting: RefCounted = null
+var movement_controller: RefCounted = null
 var time_since_last_attack: int
 var combat_debuffs: Dictionary = {}
 var physical_impact_enabled: bool = false
@@ -99,9 +120,22 @@ var _imposter_sprite: Sprite3D = null
 var _lod_is_far := false
 ## 死亡碎裂已激活：激活后 LOD 系统不再修改原始网格可见性，避免碎裂后原模型重新显示。
 var _death_ragdoll_active := false
+var _normal_collision_mask := 0
+## Multiple hitbox/physics callbacks can request the same death in one frame.
+## Keep the transition deferred and idempotent so DYING is entered once.
+var _death_transition_queued := false
+
+func _find_physical_bone_simulator() -> PhysicalBoneSimulator3D:
+	return find_child("PhysicalBoneSimulator3D", true, false) as PhysicalBoneSimulator3D
+
+func _find_physical_bone(node_name: String) -> PhysicalBone3D:
+	return find_child(node_name, true, false) as PhysicalBone3D
 
 func _ready() -> void:
+	_targeting = ENEMY_TARGETING.new(self)
 	PhysicsSetup.setup_enemy(self)
+	_normal_collision_mask = collision_mask
+	_configure_navigation_agent()
 	VOXEL_LIGHTING.apply_to_tree(self, true)
 	add_to_group("enemies")
 	_configure_detection_range()
@@ -120,7 +154,32 @@ func _ready() -> void:
 	# VoxelRagdoll 优先用于所有敌人的死亡碎裂效果；skeleton_simulator 仅作回退。
 	voxel_ragdoll = VOXEL_RAGDOLL.new()
 	add_child(voxel_ragdoll)
+	spawn_position = global_position
+	if has_meta("spawn_pos"):
+		var configured_spawn: Variant = get_meta("spawn_pos")
+		if configured_spawn is Vector3:
+			spawn_position = configured_spawn
+			global_position = configured_spawn
 	switch_state(State.MOVING)
+
+func _configure_navigation_agent() -> void:
+	if nav_agent == null or collision_shape == null:
+		return
+	var capsule := collision_shape.shape as CapsuleShape3D
+	if capsule == null:
+		return
+	# PhysicsSetup 已按 body_size 统一了实际碰撞胶囊；导航代理必须使用同一包络，
+	# 否则代理会贴墙或钻入角落时才被物理碰撞纠正。
+	nav_agent.radius = capsule.radius + capsule.margin
+	nav_agent.height = capsule.height
+	# 烘焙导航点位于角色脚底上方约半格；若阈值恰好等于该垂直差，
+	# get_next_path_position() 会一直返回当前位置的 waypoint，造成有路径但零速。
+	nav_agent.path_desired_distance = maxf(nav_agent.path_desired_distance, 0.75)
+	# Godot 代理会反向应用此偏移：+0.5 将导航点从 y=0.5 对齐到脚底 y=0，
+	# 避免水平 waypoint 被垂直差卡住。
+	nav_agent.path_height_offset = 0.5
+	movement_controller = ENEMY_MOVEMENT_CONTROLLER.new(self, nav_agent)
+	movement_controller.configure()
 
 func _configure_detection_range() -> void:
 	if player_detection_shape == null:
@@ -134,6 +193,10 @@ func _configure_detection_range() -> void:
 
 ## 应用 DungeonSpawner 通过 meta 注入的属性倍率（hp_mult / speed_mult / dmg_mult）
 func _apply_spawner_multipliers() -> void:
+	if has_meta("player_ref"):
+		_player = get_meta("player_ref") as Player
+		if _targeting != null:
+			_targeting.observe_external_target(_player)
 	if has_meta("hp_mult"):
 		var hp_mult: float = float(get_meta("hp_mult", 1.0))
 		health.max_life = int(health.max_life * hp_mult)
@@ -141,10 +204,16 @@ func _apply_spawner_multipliers() -> void:
 	if has_meta("speed_mult"):
 		var spd_mult: float = float(get_meta("speed_mult", 1.0))
 		speed *= spd_mult
+	if movement_controller != null:
+		movement_controller.set_max_speed(speed)
 	if has_meta("is_boss_type"):
 		is_boss_type = bool(get_meta("is_boss_type", false))
 	if has_meta("body_size"):
 		body_size = String(get_meta("body_size", "medium"))
+	if has_meta("attack_mode"):
+		var configured_attack_mode := String(get_meta("attack_mode", ATTACK_MODE_WEAPON))
+		if configured_attack_mode in [ATTACK_MODE_WEAPON, ATTACK_MODE_BODY]:
+			attack_mode = configured_attack_mode
 
 ## 收集角色可视网格，供离屏剔除与远距冻结使用。
 ## 不再覆写 material_override：GLB 内嵌纹理由 VOXEL_LIGHTING.apply_to_tree 统一适配
@@ -172,7 +241,7 @@ func _update_render_optimization() -> void:
 		_set_lod_far(false)
 		return
 	var target: Node = player if has_registered_player() else GameState.current_player
-	if target == null or not is_instance_valid(target):
+	if target == null or not is_instance_valid(target) or not target is Node3D or not target.is_inside_tree():
 		_set_animation_paused(false)
 		_set_lod_far(false)
 		return
@@ -317,6 +386,8 @@ func _strip_clone_for_capture(node: Node) -> void:
 
 func _process(delta: float) -> void:
 	_tick_combat_debuffs(delta)
+	if _targeting != null:
+		_targeting.tick(delta)
 	_render_opt_timer -= delta
 	if _render_opt_timer <= 0.0:
 		_render_opt_timer = RENDER_OPT_INTERVAL
@@ -331,19 +402,29 @@ func set_attack_hitbox_active(hitbox: Area3D, active: bool) -> void:
 	HITBOX_BUILDER.set_active(hitbox, active)
 
 func _get_active_attack_hitbox_parent() -> Node3D:
-	if equipment == null or equipment.weapon_placeholder == null:
+	if not uses_weapon_attack() or equipment == null or equipment.weapon_placeholder == null:
 		return null
 	if equipment.weapon_placeholder.get_child_count() == 0:
 		return null
 	return equipment.weapon_placeholder.get_child(0) as Node3D
 
 func _get_active_attack_reach() -> float:
+	if attack_mode == ATTACK_MODE_BODY:
+		return maxf(body_attack_reach, 0.8)
 	if weapon_reach_raycast != null:
 		return maxf(absf(weapon_reach_raycast.target_position.z), 0.8)
 	var weapon := equipment.weapon_data if equipment != null and equipment.has_weapon() else null
 	return maxf(weapon.reach * CombatHitboxBuilder.REACH_SCALE, 0.8) if weapon != null else 1.2
+
+func uses_weapon_attack() -> bool:
+	return attack_mode == ATTACK_MODE_WEAPON and equipment != null and equipment.has_weapon()
+
+func get_attack_weapon() -> WeaponData:
+	return equipment.weapon_data if uses_weapon_attack() else null
 	
 func switch_state(new_state: State, data: EnemyStateData = EnemyStateData.new()) -> void:
+	if new_state != State.MOVING:
+		stop_navigation()
 	if state_node != null and is_instance_valid(state_node):
 		# The previous state is freed at the end of the frame. Disable it now so
 		# its physics loop cannot run after a re-entrant combat transition.
@@ -377,6 +458,19 @@ func switch_state(new_state: State, data: EnemyStateData = EnemyStateData.new())
 func enter_launched_state(data: EnemyStateData) -> void:
 	switch_state(State.LAUNCHED, data)
 
+
+## Queue death outside the current physics callback. Death effects add and
+## impulse visual bodies, so entering DYING synchronously is unsafe.
+func request_death(data: EnemyStateData = EnemyStateData.new(), bypass_can_die: bool = false) -> void:
+	if not is_instance_valid(self) or state_node == null or not is_instance_valid(state_node):
+		return
+	if state == State.DYING or state == State.DEAD or _death_transition_queued:
+		return
+	if not bypass_can_die and (state_node.is_queued_for_deletion() or not state_node.can_die()):
+		return
+	_death_transition_queued = true
+	call_deferred("_deferred_switch_to_dying", data, bypass_can_die)
+
 func impale(thrown_item: ThrownItem, item_basis: Basis) -> void:
 	var state_data := EnemyStateData.new().set_thrown_item(thrown_item).set_thrown_item_basis(item_basis)
 	if state_node.can_get_hurt():
@@ -394,7 +488,7 @@ func try_receive_furniture_impact(thrown_item: ThrownItem) -> void:
 		var data := EnemyStateData.new().set_impact_direction(hit_direction).set_knockback_force(2.5)
 		switch_state(State.STUNNED, data)
 	else:
-		switch_state(State.DYING)
+		request_death()
 
 func try_receive_thrown_enemy_impact(source_enemy: Enemy, source_player: Player = null) -> void:
 	if source_player != null:
@@ -415,6 +509,7 @@ func has_registered_player() -> bool:
 ## 已与玩家交战（已登记 player）、或受暗蚀强制追击、或玩家进入 AI_SIM_RADIUS_M 内的敌人返回 true；
 ## 远距未交战的替身带敌人返回 false，其 MOVING 状态将跳过寻路 AI 仅保持物理静止（P-C）。
 func is_ai_active() -> bool:
+	_sync_dark_erosion_collision_mode()
 	if bool(get_meta("dark_erosion_hunt", false)):
 		return true
 	if has_registered_player():
@@ -424,25 +519,97 @@ func is_ai_active() -> bool:
 		return global_position.distance_to(target.global_position) <= AI_SIM_RADIUS_M
 	return false
 
+func is_target_in_facing_cone(target: Node3D) -> bool:
+	if target == null or not is_instance_valid(target):
+		return false
+	var offset := target.global_position - global_position
+	offset.y = 0.0
+	if offset.length_squared() <= 0.000001:
+		return true
+	var forward := -global_basis.z
+	forward.y = 0.0
+	if forward.length_squared() <= 0.000001:
+		return false
+	return forward.normalized().dot(offset.normalized()) >= cos(deg_to_rad(vision_half_angle_degrees))
+
+func is_target_visible() -> bool:
+	return _targeting != null and _targeting.is_visible()
+
+func has_navigation_target() -> bool:
+	return _targeting != null and _targeting.has_navigation_goal()
+
+func get_navigation_target_position() -> Vector3:
+	return _targeting.navigation_target_position() if _targeting != null else global_position
+
+func submit_navigation_velocity(value: Vector3) -> void:
+	if movement_controller != null:
+		movement_controller.submit_desired_velocity(value)
+	else:
+		velocity.x = value.x
+		velocity.z = value.z
+
+func stop_navigation() -> void:
+	submit_navigation_velocity(Vector3.ZERO)
+
+func apply_navigation_safe_velocity(value: Vector3) -> void:
+	if movement_controller != null:
+		movement_controller.apply_safe_velocity(value)
+
+func refresh_navigation_avoidance() -> void:
+	if movement_controller != null:
+		movement_controller.refresh_navigation_avoidance()
+
+func set_navigation_max_speed(value: float) -> void:
+	if movement_controller != null:
+		movement_controller.set_max_speed(value)
+
+func get_local_separation_velocity() -> Vector3:
+	return movement_controller.get_local_separation_velocity() if movement_controller != null else Vector3.ZERO
+
 func should_chase_player() -> bool:
+	_sync_dark_erosion_collision_mode()
 	var forced_hunt := bool(get_meta("dark_erosion_hunt", false))
 	var target: Node = player if has_registered_player() else GameState.current_player
 	if target == null or not is_instance_valid(target):
-		player = null
+		_player = null
+		if _targeting != null:
+			_targeting.clear()
 		return false
 	if forced_hunt:
-		player = target
+		_player = target as Player
+		if _targeting != null:
+			_targeting.evaluate(_player, true)
 		return true
-	if global_position.distance_to(target.global_position) <= detection_range:
-		# 初次发现玩家（尚未登记）需通过视野检测，禁止跨墙发现
-		# 已登记的玩家允许绕墙短暂追击，由 on_player_lost 处理脱战
-		if not has_registered_player() and not has_line_of_sight_to(target):
-			return false
-		player = target
+	var candidate := target as Player
+	if _targeting == null:
+		return false
+	var should_chase: bool = bool(_targeting.evaluate(candidate))
+	if should_chase:
+		_player = candidate
 		return true
 	if target == player:
-		player = null
+		_player = null
 	return false
+
+func set_dark_erosion_hunt(active: bool) -> void:
+	set_meta("dark_erosion_hunt", active)
+	if movement_controller != null:
+		movement_controller.set_dark_erosion_hunt(active)
+	_sync_dark_erosion_collision_mode()
+
+func _sync_dark_erosion_collision_mode() -> void:
+	var forced_hunt := bool(get_meta("dark_erosion_hunt", false))
+	if forced_hunt and movement_controller != null:
+		movement_controller.set_dark_erosion_hunt(forced_hunt)
+	if _normal_collision_mask == 0:
+		return
+	if forced_hunt:
+		# NavigationAgent3D already separates neighboring enemies. Removing only
+		# the enemy bit prevents a full-erosion crowd from physically queueing at
+		# a doorway while preserving wall/player collisions.
+		collision_mask = _normal_collision_mask & ~PhysicsSetup.LAYER_ENEMY
+	else:
+		collision_mask = _normal_collision_mask
 
 ## 视野检测：从敌人中心质量到目标之间是否有墙壁/障碍物阻挡。
 ## 返回 true 表示视线畅通（可以看见目标），false 表示被遮挡（跨墙）。
@@ -474,16 +641,22 @@ func has_line_of_sight_to(target: Node3D) -> bool:
 	return _los_cache_result
 
 func is_player_within_reach() -> bool:
-	if has_registered_player() and equipment.has_weapon():
-		return weapon_reach_raycast.is_colliding()
-	return false
+	if not has_registered_player() or not is_target_visible():
+		return false
+	if attack_mode == ATTACK_MODE_BODY:
+		return global_position.distance_to(player.global_position) <= maxf(body_attack_reach, 0.8)
+	if not uses_weapon_attack() or weapon_reach_raycast == null:
+		return false
+	return weapon_reach_raycast.is_colliding()
 
 func try_receive_hit(source_player: Player, damage: int) -> void:
 	if state_node == null or not is_instance_valid(state_node) or state_node.is_queued_for_deletion():
 		return
 	if state == State.HURT or state == State.DYING or state == State.DEAD:
 		return
-	player = source_player
+	_player = source_player
+	if _targeting != null:
+		_targeting.mark_engaged_target(source_player)
 	screamed.emit()
 	var hit_direction := source_player.global_position.direction_to(global_position)
 	var data := EnemyStateData.new().set_damage(damage).set_impact_direction(hit_direction)
@@ -506,7 +679,9 @@ func try_receive_hit_result(source_player: Player, result) -> void:
 		return
 	if state == State.HURT or state == State.DYING or state == State.DEAD:
 		return
-	player = source_player
+	_player = source_player
+	if _targeting != null:
+		_targeting.mark_engaged_target(source_player)
 	screamed.emit()
 	var hit_direction := source_player.global_position.direction_to(global_position)
 	# 若 result 含向量击退冲量，优先使用其方向
@@ -547,7 +722,9 @@ func try_receive_hit_result(source_player: Player, result) -> void:
 		switch_state(State.BLOCKING, data)
 
 func try_receive_kick(source_player: Player) -> void:
-	player = source_player
+	_player = source_player
+	if _targeting != null:
+		_targeting.mark_engaged_target(source_player)
 	screamed.emit()
 	var hit_direction := source_player.global_position.direction_to(global_position)
 	var data := EnemyStateData.new().set_impact_direction(hit_direction)
@@ -637,14 +814,17 @@ func _apply_physical_impact_damage(damage: int, normal: Vector3) -> void:
 		# switch_state(DYING) → EnemyStateDying._enter_tree 中的
 		# physical_bones_start_simulation() / apply_impulse() / add_child() 等物理操作
 		# 在物理引擎步进期间执行，导致引擎死锁/卡死（踢击设置 physical_impact_enabled=true 时触发）。
-		call_deferred("_deferred_switch_to_dying", data)
+		request_death(data)
 
 ## 延迟切换到 DYING 状态：由 _apply_physical_impact_damage 通过 call_deferred 调用，
 ## 确保状态切换及 EnemyStateDying._enter_tree 中的物理操作在物理步骤之外执行。
-func _deferred_switch_to_dying(data: EnemyStateData) -> void:
+func _deferred_switch_to_dying(data: EnemyStateData, bypass_can_die: bool = false) -> void:
+	_death_transition_queued = false
 	if not is_instance_valid(self) or state_node == null or not is_instance_valid(state_node):
 		return
-	if not state_node.is_queued_for_deletion() and state_node.can_die():
+	if state == State.DYING or state == State.DEAD:
+		return
+	if not state_node.is_queued_for_deletion() and (bypass_can_die or state_node.can_die()):
 		switch_state(State.DYING, data)
 
 func apply_combat_debuff(debuff_type: String, duration_sec: float, value: Variant) -> void:
@@ -654,6 +834,8 @@ func apply_combat_debuff(debuff_type: String, duration_sec: float, value: Varian
 
 func get_combat_speed_multiplier() -> float:
 	var mult := float(get_meta("environment_activity_mult", 1.0))
+	if bool(get_meta("dark_erosion_hunt", false)):
+		mult *= DARK_EROSION_HUNT_SPEED_MULTIPLIER
 	for debuff_type in combat_debuffs.keys():
 		var value = combat_debuffs[debuff_type].get("value", 0)
 		match debuff_type:
@@ -689,19 +871,20 @@ func _tick_combat_debuffs(delta: float) -> void:
 
 func on_player_detected(body: Player) -> void:
 	if body != null and global_position.distance_to(body.global_position) <= detection_range:
-		# 视野检测：玩家在索敌范围内但被墙遮挡时不发现
-		if has_line_of_sight_to(body):
-			player = body
+		if _targeting != null and _targeting.acquire_visible_target(body):
+			_player = body
 
 func on_player_lost(body: Player) -> void:
 	if body == player and not bool(get_meta("dark_erosion_hunt", false)):
-		player = null
+		# 目标感知 Module 负责最后已知位置和短暂记忆窗口。
+		if _targeting != null and not _targeting.has_navigation_goal():
+			_player = null
 
 func take_acid_damage() -> void:
 	if state_node.can_die():
-		switch_state(State.DYING)
+		request_death()
 		
 func take_spike_damage(_spikes_trap: SpikesTrap) -> void:
 	if state_node.can_die():
 		AudioManager.play("spikes", action_audio_stream_player)
-		switch_state(State.DYING)
+		request_death()

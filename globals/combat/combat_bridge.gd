@@ -5,9 +5,47 @@ class_name CombatBridge
 
 const CE := preload("res://globals/combat/combat_engine.gd")
 const ME := preload("res://globals/combat/milestone_effects.gd")
+const SPE := preload("res://globals/combat/style_passive_effects.gd")
+const AR := preload("res://globals/combat/armor_resolver.gd")
 
 # 旧 ShieldData 或测试替身没有战斗字段时的兼容回退。
 const DEFAULT_SHIELD_BLOCK_VALUE: int = 3
+
+
+## 应用流派专精被动效果到攻方输入（doc21 §一）。
+## 从 style_context 读取运行时状态，调用 StylePassiveEffects 静态函数。
+static func _apply_style_passives_to_attack(attack: CE.AttackInput, ctx: Dictionary) -> void:
+	if ctx.is_empty():
+		return
+	# 决斗者（ONE_HAND）：锁定目标 +50% 攻击力、+50% 暴击率
+	var is_locked: bool = bool(ctx.get("is_target_locked", false))
+	var duelist := SPE.apply_duelist_buff(is_locked)
+	if float(duelist["atk_bonus"]) > 0.0:
+		attack.base_damage_bonus_percent += float(duelist["atk_bonus"])
+	if float(duelist["crit_bonus"]) > 0.0:
+		attack.crit_bonus += float(duelist["crit_bonus"])
+
+	# 交错挥砍（DUAL_WIELD）：副手必暴 / 主手无视 50% 防御
+	var combo_active: bool = bool(ctx.get("is_combo_active", false))
+	var is_offhand: bool = bool(ctx.get("is_offhand_attack", false))
+	var dual := SPE.apply_dual_cross_strike(combo_active, is_offhand)
+	if bool(dual["force_crit"]):
+		attack.force_crit = true
+	if float(dual["ignore_def_percent"]) > 0.0:
+		attack.ignore_def_percent = maxf(attack.ignore_def_percent, float(dual["ignore_def_percent"]))
+
+	# 看破弱点（RANGED）：弱点命中暴击倍率覆盖
+	var is_weakpoint: bool = bool(ctx.get("is_weakpoint_hit", false))
+	var weakpoint := SPE.apply_weakpoint_sight(is_weakpoint)
+	if bool(weakpoint["force_crit"]):
+		attack.force_crit = true
+	if float(weakpoint["crit_mult_override"]) > 0.0:
+		attack.style_crit_mult_override = float(weakpoint["crit_mult_override"])
+
+	# 蓄势（TWO_HAND）：累积伤害释放时叠加
+	var accum_bonus: float = float(ctx.get("accumulation_bonus", 0.0))
+	if accum_bonus > 0.0:
+		attack.style_accumulation_bonus = accum_bonus
 
 # ============================================================================
 # 1. 攻方输入构造
@@ -19,7 +57,14 @@ const DEFAULT_SHIELD_BLOCK_VALUE: int = 3
 ## main_hand_type / off_hand_type: 装备槽类型 id（与 CombatEngine.determine_style 输入同源）
 ## attacker_attrs: 6 属性字典 {"str","dex","mag","con","agi","per"}
 ## attacker_level: 角色等级
-static func build_player_attack(player: Node3D, weapon, main_hand_type: String, off_hand_type: String, attacker_attrs: Dictionary, attacker_level: int, is_backstab: bool = false, skill: Dictionary = {}) -> CE.AttackInput:
+## style_context: 可选的流派被动运行时状态（doc21 §一）
+##   { "is_target_locked": bool,       # 决斗者锁定
+##     "is_combo_active": bool,        # 双持交错连携
+##     "is_offhand_attack": bool,      # 当前为副手攻击
+##     "is_weakpoint_hit": bool,       # 看破弱点命中
+##     "accumulation_bonus": float,    # 蓄势累积伤害
+##     "is_full_charge": bool }        # 满蓄力释放
+static func build_player_attack(player: Node3D, weapon, main_hand_type: String, off_hand_type: String, attacker_attrs: Dictionary, attacker_level: int, is_backstab: bool = false, skill: Dictionary = {}, style_context: Dictionary = {}) -> CE.AttackInput:
 	var attack := CE.AttackInput.new()
 	attack.attacker_str = int(attacker_attrs.get("str", 10))
 	attack.attacker_dex = int(attacker_attrs.get("dex", 10))
@@ -41,6 +86,7 @@ static func build_player_attack(player: Node3D, weapon, main_hand_type: String, 
 		attack.weapon_damage_mult = 1.0
 	_apply_skill_to_attack(attack, skill)
 	_apply_milestones_to_attack(attack, main_hand_type, skill)
+	_apply_style_passives_to_attack(attack, style_context)
 	return attack
 
 ## 从敌人武器构造攻方输入（敌人属性用默认值，策划案未给敌人属性面板）
@@ -70,8 +116,9 @@ static func build_enemy_attack(enemy: Node3D, weapon, target_player: Node3D) -> 
 ## player: Player 节点
 ## defender_attrs: 6 属性字典
 ## has_shield: 是否持盾（信息字段，不再用于概率格挡）
-## armor_def: 防具防御值
-static func build_player_defender(player: Node3D, defender_attrs: Dictionary, has_shield: bool, armor_def: int = 0, shield_resource = null) -> CE.Defender:
+## armor_def: 防具防御值（无快照时的退化值）
+## armor_snap: 可选的 ArmorResolver.ArmorSnapshot（含元素抗性/魔法减伤/击退抗性）
+static func build_player_defender(player: Node3D, defender_attrs: Dictionary, has_shield: bool, armor_def: int = 0, shield_resource = null, armor_snap: Variant = null) -> CE.Defender:
 	var defender := CE.Defender.new()
 	defender.con = int(defender_attrs.get("con", 10))
 	defender.agi = int(defender_attrs.get("agi", 10))
@@ -80,6 +127,7 @@ static func build_player_defender(player: Node3D, defender_attrs: Dictionary, ha
 	if player != null and player.has_method("get_combat_defense_bonus"):
 		defender.armor_def += int(player.get_combat_defense_bonus())
 	defender.has_shield = has_shield
+	defender.armor_snapshot = armor_snap
 	if has_shield:
 		_apply_shield_to_defender(defender, shield_resource)
 	return defender
@@ -93,6 +141,11 @@ static func build_enemy_defender(enemy: Node3D, has_shield: bool, shield_resourc
 	defender.armor_def = 0
 	if enemy != null and enemy.has_method("get_combat_defense_penalty"):
 		defender.armor_def -= int(enemy.get_combat_defense_penalty())
+	# 敌人有装备组件时构建护甲快照
+	if enemy != null and enemy.has_method("get") and "equipment" in enemy:
+		var eq = enemy.get("equipment")
+		if eq != null and eq.has_method("get_equipped_armor_items"):
+			defender.armor_snapshot = AR.build_snapshot(eq)
 	defender.has_shield = has_shield
 	if has_shield:
 		_apply_shield_to_defender(defender, shield_resource)
@@ -103,15 +156,20 @@ static func build_player_defender_from_equipment(player: Node3D, defender_attrs:
 	var has_shield := fallback_has_shield
 	var shield_resource = null
 	var armor_def := 0
+	var armor_snap: Variant = null
 	if player != null and "equipment" in player and player.equipment != null:
 		var eq = player.equipment
 		if eq.has_method("has_shield"):
 			has_shield = eq.has_shield()
 		if eq.has_method("get_armor_defense"):
 			armor_def = int(eq.get_armor_defense())
+		# 构建护甲快照（含全身元素抗性/魔法减伤/击退抗性）
+		armor_snap = AR.build_snapshot(eq)
 		if has_shield:
 			shield_resource = _get_equipment_shield_resource(eq)
-	return build_player_defender(player, defender_attrs, has_shield, armor_def, shield_resource)
+	var defender := build_player_defender(player, defender_attrs, has_shield, armor_def, shield_resource, armor_snap)
+	_apply_armor_proficiency_to_defender(defender, armor_snap)
+	return defender
 
 # ============================================================================
 # 3. 结算执行（封装 resolve_attack 的朝向参数）
@@ -119,8 +177,8 @@ static func build_player_defender_from_equipment(player: Node3D, defender_attrs:
 
 ## 玩家攻击敌人结算。
 ## 返回 CE.DamageResult（含 hit/crit/final_damage/knockback_impulse/stun_duration）。
-static func resolve_player_attack(player: Node3D, enemy: Node3D, weapon, main_hand_type: String, off_hand_type: String, attacker_attrs: Dictionary, attacker_level: int, is_backstab: bool = false, skill: Dictionary = {}) -> CE.DamageResult:
-	var attack := build_player_attack(player, weapon, main_hand_type, off_hand_type, attacker_attrs, attacker_level, is_backstab, skill)
+static func resolve_player_attack(player: Node3D, enemy: Node3D, weapon, main_hand_type: String, off_hand_type: String, attacker_attrs: Dictionary, attacker_level: int, is_backstab: bool = false, skill: Dictionary = {}, style_context: Dictionary = {}) -> CE.DamageResult:
+	var attack := build_player_attack(player, weapon, main_hand_type, off_hand_type, attacker_attrs, attacker_level, is_backstab, skill, style_context)
 	var has_shield := false
 	var shield_resource = null
 	if enemy != null and enemy.has_method("get") and "equipment" in enemy:
@@ -148,8 +206,8 @@ static func resolve_enemy_attack(enemy: Node3D, player: Node3D, weapon, defender
 ## source: 发射者节点（用于构建 AttackInput，可为 Player 或任意 Node3D）
 ## attack_forward: 投射物飞行方向单位向量
 ## damage_mult_override: 可选伤害倍率覆盖（用于穿透衰减）
-static func resolve_projectile_attack(source: Node3D, enemy: Node3D, weapon, main_hand_type: String, off_hand_type: String, attacker_attrs: Dictionary, attacker_level: int, attack_forward: Vector3, is_backstab: bool = false, skill: Dictionary = {}, damage_mult_override: float = -1.0) -> CE.DamageResult:
-	var attack := build_player_attack(source, weapon, main_hand_type, off_hand_type, attacker_attrs, attacker_level, is_backstab, skill)
+static func resolve_projectile_attack(source: Node3D, enemy: Node3D, weapon, main_hand_type: String, off_hand_type: String, attacker_attrs: Dictionary, attacker_level: int, attack_forward: Vector3, is_backstab: bool = false, skill: Dictionary = {}, damage_mult_override: float = -1.0, style_context: Dictionary = {}) -> CE.DamageResult:
+	var attack := build_player_attack(source, weapon, main_hand_type, off_hand_type, attacker_attrs, attacker_level, is_backstab, skill, style_context)
 	if damage_mult_override >= 0.0:
 		attack.weapon_damage_mult = damage_mult_override
 	var has_shield := false
@@ -335,3 +393,28 @@ static func _read_float_field(source, field_name: String, fallback: float = 0.0)
 	if source != null and field_name in source:
 		return float(source.get(field_name))
 	return fallback
+
+
+## 获取 ArmorProficiency autoload（可能为 null，如在测试环境中）
+static func _get_armor_proficiency() -> Node:
+	var tree := Engine.get_main_loop()
+	if tree == null or tree.root == null:
+		return null
+	return tree.root.get_node_or_null("ArmorProficiency")
+
+## 从 ArmorProficiency autoload 读取熟练度被动，写入 Defender 的 prof_* 字段。
+## 同时更新 autoload 中当前穿着的护甲类型（供 on_hit_received 使用）。
+static func _apply_armor_proficiency_to_defender(defender: CE.Defender, snap) -> void:
+	var ap: Node = _get_armor_proficiency()
+	if ap == null or snap == null:
+		return
+	ap.update_current_armor(snap)
+	# 重甲熟练度被动
+	if ap.is_wearing_type("heavy"):
+		defender.prof_phys_def_bonus = ap.get_heavy_phys_def_bonus(snap.total_phys_def)
+		if ap.has_perk("heavy", "heavy_t3"):
+			defender.prof_knockback_immune = true
+	# 轻甲熟练度被动
+	if ap.is_wearing_type("light"):
+		defender.prof_crit_rate_reduction = ap.get_crit_rate_reduction()
+		defender.prof_flanking_reduction = ap.get_flanking_damage_reduction()

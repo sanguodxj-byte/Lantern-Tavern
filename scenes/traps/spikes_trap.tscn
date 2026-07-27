@@ -5,6 +5,24 @@
 [sub_resource type="BoxShape3D" id="BoxShape3D_3h3hk"]
 size = Vector3(0.6, 1.8, 0.2)
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_spikes"]
+albedo_color = Color(0.55, 0.08, 0.04, 1)
+emission_enabled = true
+emission = Color(0.28, 0.015, 0.005, 1)
+emission_energy_multiplier = 1.4
+roughness = 0.72
+
+[sub_resource type="BoxMesh" id="BoxMesh_spike_base"]
+size = Vector3(1.45, 0.08, 0.72)
+material = SubResource("StandardMaterial3D_spikes")
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_spike"]
+top_radius = 0.025
+bottom_radius = 0.16
+height = 0.72
+radial_segments = 4
+material = SubResource("StandardMaterial3D_spikes")
+
 [node name="SpikesTrap" type="Area3D" unique_id=1532410152]
 collision_layer = 0
 collision_mask = 6
@@ -18,6 +36,25 @@ shape = SubResource("BoxShape3D_3h3hk")
 [node name="NavigationObstacle3D" type="NavigationObstacle3D" parent="." unique_id=711186043]
 vertices = PackedVector3Array(-1.0208827, 0, -0.009554885, -1.0318699, 0, -0.9984011, -0.3067162, 0, -1.5367728, 0.40745068, 0, -1.5257856, 1.0941491, 0, -0.98741394, 1.0776684, 0, 0.01241935, 0.5777519, 0, 0.60572726, -0.46053648, 0, 0.64418226)
 affect_navigation_mesh = true
+
+[node name="SpikeVisual" type="Node3D" parent="."]
+rotation = Vector3(-1.5707963, 0, 0)
+
+[node name="Base" type="MeshInstance3D" parent="SpikeVisual"]
+position = Vector3(0, 0.04, 0)
+mesh = SubResource("BoxMesh_spike_base")
+
+[node name="SpikeLeft" type="MeshInstance3D" parent="SpikeVisual"]
+position = Vector3(-0.45, 0.36, 0)
+mesh = SubResource("CylinderMesh_spike")
+
+[node name="SpikeCenter" type="MeshInstance3D" parent="SpikeVisual"]
+position = Vector3(0, 0.36, 0)
+mesh = SubResource("CylinderMesh_spike")
+
+[node name="SpikeRight" type="MeshInstance3D" parent="SpikeVisual"]
+position = Vector3(0.45, 0.36, 0)
+mesh = SubResource("CylinderMesh_spike")
 
 [node name="SpotLight3D" type="SpotLight3D" parent="." unique_id=652356571]
 transform = Transform3D(1, 0, 0, 0, -0.50000006, 0.8660254, 0, -0.8660254, -0.50000006, 0, 2.3, -0.7)

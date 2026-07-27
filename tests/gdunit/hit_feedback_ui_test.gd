@@ -50,6 +50,52 @@ func test_ui_on_player_hurt_triggers_flash_outside_intro() -> void:
 		.override_failure_message("受击闪红不应再限制为仅 dungeon").is_false()
 
 
+func test_enemy_hit_feedback_cannot_trigger_camera_or_player_hurt_flash() -> void:
+	for path in [
+		"res://scenes/characters/enemies/state/enemy_state_hurt.gd",
+		"res://scenes/characters/enemies/state/enemy_state_blocking.gd",
+		"res://scenes/characters/enemies/state/enemy_state_dying.gd",
+		"res://scenes/characters/enemies/state/enemy_state_impaling.gd",
+	]:
+		# GDScript.source_code may be stale while the editor/import cache is warm.
+		var source := FileAccess.get_file_as_string(path)
+		assert_bool(source.contains("GameEvents.player_hurt.emit")).is_false()
+		assert_bool(source.contains("GameEvents.impact_felt.emit")) \
+			.override_failure_message("敌人命中反馈不应触发玩家相机冲击/灰屏: %s" % path).is_false()
+
+	var hurt_source := FileAccess.get_file_as_string("res://scenes/characters/enemies/state/enemy_state_hurt.gd")
+	assert_bool(hurt_source.contains("if skel != null and enemy.is_inside_tree():")).is_true()
+	assert_bool(hurt_source.contains("var part_color := Color(0.6, 0.6, 0.6)")).is_false()
+	# 旧精确匹配 is_equal_approx(Color(0.60,...)) 仅拦截回退灰，漏过 armor/metal/stone/leg 等近灰部位色；
+	# 现改为 _is_gray_flash_color 色度+明度判定，扩大拦截范围。
+	assert_bool(hurt_source.contains("part_color.is_equal_approx(Color(0.60, 0.60, 0.60, 1.0))")).is_false()
+	assert_bool(hurt_source.contains("_is_gray_flash_color")).is_true()
+	assert_bool(hurt_source.contains("func _is_gray_flash_color")).is_true()
+
+
+func test_gray_flash_color_filter_logic() -> void:
+	# 中明度近灰色 → 拦截（读作灰屏闪屏）
+	var EnemyStateHurtScript := load("res://scenes/characters/enemies/state/enemy_state_hurt.gd") as GDScript
+	# 精确回退灰
+	assert_bool(EnemyStateHurtScript.call("_is_gray_flash_color", Color(0.60, 0.60, 0.60, 1.0))).is_true()
+	# voxel_palette 近灰部位色：armor / metal / stone / UpperLeg
+	assert_bool(EnemyStateHurtScript.call("_is_gray_flash_color", Color(0.60, 0.62, 0.68))).is_true()
+	assert_bool(EnemyStateHurtScript.call("_is_gray_flash_color", Color(0.70, 0.72, 0.78))).is_true()
+	assert_bool(EnemyStateHurtScript.call("_is_gray_flash_color", Color(0.55, 0.55, 0.58))).is_true()
+	assert_bool(EnemyStateHurtScript.call("_is_gray_flash_color", Color(0.40, 0.42, 0.50))).is_true()
+	# 合法命中色 → 保留（不拦截）
+	# 骨白（高明度低色度，但明度 ≥ 0.85）
+	assert_bool(EnemyStateHurtScript.call("_is_gray_flash_color", Color(0.92, 0.90, 0.82))).is_false()
+	# 肤色 Head（高色度）
+	assert_bool(EnemyStateHurtScript.call("_is_gray_flash_color", Color(0.82, 0.66, 0.50))).is_false()
+	# 深棕 Foot（低明度，色度 0.10 但 value < 0.35）
+	assert_bool(EnemyStateHurtScript.call("_is_gray_flash_color", Color(0.30, 0.25, 0.20))).is_false()
+	# 血红（高色度）
+	assert_bool(EnemyStateHurtScript.call("_is_gray_flash_color", Color(0.70, 0.05, 0.05))).is_false()
+	# 绿皮 Torso（高色度）
+	assert_bool(EnemyStateHurtScript.call("_is_gray_flash_color", Color(0.45, 0.50, 0.32))).is_false()
+
+
 func test_ui_hurt_flash_runtime_raises_vignette_alpha() -> void:
 	var ui_scene := load("res://scenes/ui/ui.tscn") as PackedScene
 	assert_object(ui_scene).is_not_null()

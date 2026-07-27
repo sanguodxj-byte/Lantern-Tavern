@@ -4,6 +4,7 @@ extends CanvasLayer
 const DETAIL_POPUP_SCRIPT := preload("res://scenes/ui/equipment_detail_popup.gd")
 const PICKUP_HINT_SCRIPT := preload("res://scenes/ui/pickup_hint.gd")
 const INTERACT_HINT_SCRIPT := preload("res://scenes/ui/interact_hint.gd")
+const PIXEL_THEME := preload("res://scenes/ui/lantern_theme.tres")
 
 @onready var subtitle_label: Label = %SubtitleLabel
 @onready var tutorial_hint_label: Label = %TutorialHintLabel
@@ -25,6 +26,7 @@ const HURT_FLASH_IN_SEC := 0.05
 const HURT_FLASH_OUT_SEC := 0.22
 
 func _ready() -> void:
+	_apply_pixel_ui_contract()
 	item_detail_popup = DETAIL_POPUP_SCRIPT.new()
 	add_child(item_detail_popup)
 	GameEvents.player_hurt.connect(on_player_hurt)
@@ -35,6 +37,16 @@ func _ready() -> void:
 	GameEvents.tutorial_hint_changed.connect(on_tutorial_hint_changed)
 	GameEvents.interaction_hint_changed.connect(on_interaction_hint_changed)
 	_setup_interaction_hints()
+
+## CanvasLayer 本身没有 theme/texture_filter 属性，因此把共享契约下沉到
+## 所有已实例化的 Control 子节点，覆盖死亡提示、教程文本和暂停菜单实例。
+func _apply_pixel_ui_contract() -> void:
+	for node in find_children("", "Control", true, false):
+		var control := node as Control
+		if control == null:
+			continue
+		control.theme = PIXEL_THEME
+		control.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	
 func on_player_hurt(_player: Player = null) -> void:
 	# intro 过场不闪；酒馆/地牢战斗受击均闪红
@@ -110,6 +122,8 @@ func _show_hint_by_type(hint_type: String, text: String, screen_position: Vector
 			_interact_hint.show_for_object(text, screen_position)
 
 func _hide_all_hints() -> void:
+	if item_detail_popup != null and is_instance_valid(item_detail_popup):
+		item_detail_popup.hide_detail()
 	if _pickup_hint != null and is_instance_valid(_pickup_hint):
 		_pickup_hint.hide_hint()
 	if _interact_hint != null and is_instance_valid(_interact_hint):
@@ -176,6 +190,8 @@ func set_world_space(space: String) -> void:
 		hurt_vignette.modulate.a = 0.0
 	# 隐藏所有交互悬浮窗
 	_hide_all_hints()
+	if item_detail_popup != null and is_instance_valid(item_detail_popup):
+		item_detail_popup.hide_detail()
 	if is_instance_valid(subtitle_label):
 		subtitle_label.visible = false
 	if is_instance_valid(tutorial_hint_label):
@@ -190,7 +206,11 @@ var character_panel_instance: TavernEquipmentPanel = null
 func _input(event: InputEvent) -> void:
 	if world_space != "dungeon":
 		return
-	if event is InputEventKey and event.pressed and event.keycode == KEY_TAB:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_TAB:
+		# The visible equipment panel owns the closing Tab event. Do not toggle
+		# it twice while the event bubbles through the shared UI layer.
+		if character_panel_instance != null and is_instance_valid(character_panel_instance) and character_panel_instance.visible:
+			return
 		# Consume the event to prevent propagation
 		get_viewport().set_input_as_handled()
 		toggle_character_panel()

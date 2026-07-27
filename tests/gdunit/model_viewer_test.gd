@@ -18,9 +18,10 @@ func _with_zh_locale(callable: Callable) -> void:
 # ── _filename_to_display_name tests ───────────────────────────────────────
 
 func test_filename_localizes_equipment_display_names() -> void:
+	# 装备名以 weapons.json (WeaponRegistry name_zh) 为唯一数据源
 	_with_zh_locale(func():
 		var v := _make_viewer()
-		assert_str(v._filename_to_display_name("weapons_axe.glb")).is_equal("战斧")
+		assert_str(v._filename_to_display_name("weapons_axe.glb")).is_equal("双手斧")
 		assert_str(v._filename_to_display_name("weapons_shortsword.glb")).is_equal("短剑")
 		assert_str(v._filename_to_display_name("weapons_voxel_longsword.glb")).is_equal("长剑")
 		v.free()
@@ -28,9 +29,10 @@ func test_filename_localizes_equipment_display_names() -> void:
 
 
 func test_filename_localizes_armor_display_names() -> void:
+	# 装备名以 weapons.json (WeaponRegistry name_zh) 为唯一数据源
 	_with_zh_locale(func():
 		var v := _make_viewer()
-		assert_str(v._filename_to_display_name("armor_chain_armor.glb")).is_equal("锁子甲")
+		assert_str(v._filename_to_display_name("armor_chain_armor.glb")).is_equal("链甲")
 		assert_str(v._filename_to_display_name("armor_plate_armor.glb")).is_equal("板甲")
 		assert_str(v._filename_to_display_name("armor_cloth_armor.glb")).is_equal("布甲")
 		v.free()
@@ -411,10 +413,10 @@ func test_add_character_to_tier_nests_under_quality_subtag() -> void:
 		v._add_character_to_tier(db, cat, "voxel_goblin_32px_rig.glb", "哥布林", "res://assets/meshes/characters/voxel_goblin_32px_rig.glb")
 		v._add_character_to_tier(db, cat, "voxel_kobold_36px.glb", "狗头人", "res://assets/meshes/characters/voxel_kobold_36px.glb")
 		v._add_character_to_tier(db, cat, "voxel_shadow_assassin_48px_rig.glb", "暗影刺客", "res://assets/meshes/characters/voxel_shadow_assassin_48px_rig.glb")
-		assert_bool(db[cat].has("S 档")).is_true()
-		assert_bool(db[cat]["S 档"].has("哥布林")).is_true()
-		assert_bool(db[cat].has("D 档")).is_true()
-		assert_bool(db[cat]["D 档"].has("狗头人")).is_true()
+		assert_bool(db[cat].has("B 档")).is_true()
+		assert_bool(db[cat]["B 档"].has("哥布林")).is_true()
+		assert_bool(db[cat].has("C 档")).is_true()
+		assert_bool(db[cat]["C 档"].has("狗头人")).is_true()
 		assert_bool(db[cat].has("C 档")).is_true()
 		assert_bool(db[cat]["C 档"].has("暗影刺客")).is_true()
 		v.free()

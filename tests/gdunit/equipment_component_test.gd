@@ -97,7 +97,7 @@ func test_cycle_weapon_slot_skips_empty_slots() -> void:
 	assert_bool(eq.cycle_weapon_slot(1)).is_true()
 	assert_int(eq.active_weapon_slot).is_equal(2)
 	assert_str(eq.weapon_data.name).is_equal("Third")
-	assert_float(abs(eq.weapon_reach_raycast.target_position.z)).is_equal_approx(4.0, 0.01)
+	assert_float(abs(eq.weapon_reach_raycast.target_position.z)).is_equal_approx(4.0 * CombatHitboxBuilder.REACH_SCALE, 0.01)
 	assert_bool(eq.cycle_weapon_slot(1)).is_true()
 	assert_int(eq.active_weapon_slot).is_equal(0)
 
@@ -124,12 +124,45 @@ func test_shield_weapondata_uses_same_hand_slots() -> void:
 	assert_object(eq.get_active_shield_data()).is_not_null()
 
 
+func test_off_hand_weapondata_mounts_at_left_hand_placeholder() -> void:
+	var eq = auto_free(load("res://scenes/characters/component/equipment_component.tscn").instantiate())
+	_prepare_weapon_equipment(eq)
+	eq.shield_placeholder = Node3D.new()
+	eq.add_child(eq.shield_placeholder)
+	var grimoire := _make_weapon("Grimoire", 1.0)
+	grimoire.weapon_class = "grimoire"
+	grimoire.skill_school = "grimoire"
+	grimoire.hands = "off_hand"
+	assert_bool(eq.configure_weapon_slot(0, grimoire, true)).is_true()
+	assert_int(eq.weapon_placeholder.get_child_count()).is_equal(0)
+	assert_int(eq.shield_placeholder.get_child_count()).is_equal(1)
+	assert_bool(eq.has_hand_equipment()).is_true()
+	assert_bool(eq.has_weapon()).is_true()
+	assert_object(eq.get_active_weapon_placeholder()).is_not_null()
+
+
+func test_off_hand_weapon_damage_uses_left_hand_mount() -> void:
+	var eq = auto_free(load("res://scenes/characters/component/equipment_component.tscn").instantiate())
+	_prepare_weapon_equipment(eq)
+	eq.shield_placeholder = Node3D.new()
+	eq.add_child(eq.shield_placeholder)
+	var grimoire := _make_weapon("Grimoire", 1.0)
+	grimoire.weapon_class = "grimoire"
+	grimoire.skill_school = "grimoire"
+	grimoire.hands = "off_hand"
+	grimoire.condition = 10
+	assert_bool(eq.configure_weapon_slot(0, grimoire, true)).is_true()
+	eq.apply_weapon_damage(2)
+	assert_int(eq.weapon_data.condition).is_equal(8)
+
+
 func test_armor_slots_store_runtime_armor_and_sum_stats() -> void:
 	var eq = auto_free(load("res://scenes/characters/component/equipment_component.tscn").instantiate())
-	var light := _make_armor("Leather", 2, 3.0, 0.98)
-	var heavy := _make_armor("Plate", 5, -2.0, 0.88)
+	var light := _make_armor("Leather", 2, 3.0, 0.98, "body")
+	var heavy := _make_armor("Plate", 5, -2.0, 0.88, "head")
 	assert_bool(eq.configure_armor_slot("body", light)).is_true()
 	assert_bool(eq.configure_armor_slot("head", heavy)).is_true()
+	assert_bool(eq.configure_armor_slot("head", light)).is_false()
 	assert_str(eq.get_armor_slot_label("body")).is_equal("Leather")
 	assert_int(eq.get_armor_defense()).is_equal(7)
 	assert_float(eq.get_armor_move_speed_mult()).is_equal_approx(0.8624, 0.0001)
@@ -228,13 +261,13 @@ func _make_shield_weapon(label: String) -> WeaponData:
 	return data
 
 
-func _make_armor(label: String, phys_def: int, evade: float, move_speed_mult: float = 1.0) -> WeaponData:
+func _make_armor(label: String, phys_def: int, evade: float, move_speed_mult: float = 1.0, armor_slot: String = "body") -> WeaponData:
 	var data := WeaponData.new()
 	data.id = label.to_lower()
 	data.name = label
 	data.item_tag = "armor_light"
 	data.equipment_category = "armor_light"
-	data.armor_slot = "body"
+	data.armor_slot = armor_slot
 	data.armor_phys_def = phys_def
 	data.armor_move_speed_mult = move_speed_mult
 	data.condition = 10

@@ -21,7 +21,7 @@ func after() -> void:
 
 const OUTPUT_PATH := "res://reports/dungeon_topdown_generation_test.png"
 const CELL_PX := 8
-const LEGEND_WIDTH := 72
+const LEGEND_HEIGHT := 96
 const MARGIN := 2
 
 const COLOR_EMPTY := Color(0.02, 0.02, 0.025, 1.0)
@@ -40,6 +40,505 @@ const COLOR_STAIRS := Color(1.0, 1.0, 1.0, 1.0)
 const COLOR_HAZARD := Color(0.95, 0.0, 0.95, 1.0)
 const COLOR_TERRAIN_FEATURE := Color(0.55, 0.36, 0.18, 1.0)
 const COLOR_TAGGED_ITEM := Color(0.05, 0.20, 1.0, 1.0)
+const COLOR_DOOR := Color(0.10, 0.70, 1.0, 1.0)
+const LEGEND_TEXT_COLOR := Color(0.86, 0.84, 0.74, 1.0)
+const LEGEND_BORDER_COLOR := Color(0.55, 0.55, 0.52, 1.0)
+const LABEL_BITMAP_WIDTH := 12
+const LABEL_BITMAP_HEIGHT := 12
+const LABEL_BITMAP_ADVANCE := 12
+const LEGEND_ROW_HEIGHT := 16
+const LABEL_BITMAPS := {
+    "空": [
+        "............",
+        ".#########..",
+        ".#.......#..",
+        "...#...#....",
+        "...#....#...",
+        ".##.....##..",
+        "..#######...",
+        ".....#......",
+        ".....#......",
+        ".#########..",
+        "............",
+        "............"
+    ],
+    "白": [
+        "............",
+        "....##......",
+        "..#######...",
+        "..#.....#...",
+        "..#.....#...",
+        "..#.....#...",
+        "..#######...",
+        "..#.....#...",
+        "..#.....#...",
+        "..#######...",
+        "............",
+        "............"
+    ],
+    "墙": [
+        "............",
+        "..#.######..",
+        "..#..#.##...",
+        ".###...#....",
+        "..########..",
+        "..#.........",
+        "..########..",
+        ".##.#.####..",
+        "....#.#.##..",
+        "....######..",
+        "............",
+        "............"
+    ],
+    "体": [
+        "............",
+        "...#..#.....",
+        "..########..",
+        "..#...#.....",
+        ".##..###....",
+        "..#.#.#.#...",
+        "..###.#.#...",
+        "..########..",
+        "..#...#.....",
+        "..#...#.....",
+        "............",
+        "............"
+    ],
+    "地": [
+        "............",
+        "..#.#..#....",
+        "..#.#..###..",
+        ".####.####..",
+        "..####.#.#..",
+        "..#.#..#.#..",
+        "..###..###..",
+        ".##.#....#..",
+        "....#....#..",
+        ".....#####..",
+        "............",
+        "............"
+    ],
+    "面": [
+        "............",
+        ".#########..",
+        "....#.......",
+        ".#########..",
+        ".#.#...#.#..",
+        ".#.#####.#..",
+        ".#.#...#.#..",
+        ".#.#####.#..",
+        ".#.#...#.#..",
+        ".#########..",
+        "............",
+        "............"
+    ],
+    "战": [
+        "............",
+        "...#...###..",
+        "...##..#....",
+        "...#...###..",
+        "...#.###....",
+        "...#...#.#..",
+        ".####..##...",
+        ".#..#...##..",
+        ".#..#..###..",
+        ".####.#..#..",
+        "............",
+        "............"
+    ],
+    "利": [
+        "............",
+        "..####...#..",
+        "...#...#.#..",
+        "...#...#.#..",
+        ".#####.#.#..",
+        "...#...#.#..",
+        "...##..#.#..",
+        "..##.#...#..",
+        ".#.#.....#..",
+        "...#....##..",
+        "............",
+        "............"
+    ],
+    "品": [
+        "............",
+        "...######...",
+        "...#....#...",
+        "...#....#...",
+        "...######...",
+        "............",
+        ".####.####..",
+        ".#..#.#..#..",
+        ".#..#.#..#..",
+        ".####.####..",
+        "............",
+        "............"
+    ],
+    "资": [
+        "............",
+        "..##.#####..",
+        "....#..#.#..",
+        "...#..#.#...",
+        ".##.##..##..",
+        "............",
+        "..#######...",
+        "..#..#..#...",
+        "...##.##....",
+        ".###....##..",
+        "............",
+        "............"
+    ],
+    "源": [
+        "............",
+        ".#########..",
+        "...#.####...",
+        ".#.#.#..#...",
+        "..##.####...",
+        "...#.#..#...",
+        "..##.####...",
+        "..##.#.##...",
+        ".#.#.#.#.#..",
+        ".#.##.##.#..",
+        "............",
+        "............"
+    ],
+    "柱": [
+        "............",
+        "...#..##....",
+        ".###.#####..",
+        "...#...#....",
+        "...#...#....",
+        "..##...#....",
+        ".###.####...",
+        "...#...#....",
+        "...#...#....",
+        "...#######..",
+        "............",
+        "............"
+    ],
+    "子": [
+        "............",
+        "..#######...",
+        ".......#....",
+        "......#.....",
+        ".....#......",
+        ".#########..",
+        ".....#......",
+        ".....#......",
+        ".....#......",
+        "...###......",
+        "............",
+        "............"
+    ],
+    "玩": [
+        "............",
+        ".########...",
+        "..#.........",
+        "..#.........",
+        "..########..",
+        ".###.#..#...",
+        "..#..#..#...",
+        "..###...##..",
+        ".##.#...##..",
+        "...#....##..",
+        "............",
+        "............"
+    ],
+    "家": [
+        "............",
+        ".#########..",
+        ".#.......#..",
+        ".#.#######..",
+        "....##......",
+        "...#..#.#...",
+        ".########...",
+        ".##.###.#...",
+        "...#..#.##..",
+        ".##.##......",
+        "............",
+        "............"
+    ],
+    "敌": [
+        "............",
+        ".####.#.....",
+        "...#..####..",
+        "...#.#..#...",
+        ".####.#.#...",
+        "...#..#.#...",
+        ".####.#.#...",
+        ".#..#..#....",
+        ".#..#.#.#...",
+        ".#####..##..",
+        "............",
+        "............"
+    ],
+    "人": [
+        "............",
+        ".....#......",
+        ".....#......",
+        ".....#......",
+        "....#.#.....",
+        "....#.#.....",
+        "...#...#....",
+        "...#....#...",
+        "..#.....#...",
+        ".#.......#..",
+        "............",
+        "............"
+    ],
+    "装": [
+        "............",
+        ".#########..",
+        "...#...#....",
+        "...#...#....",
+        ".###.####...",
+        ".....#......",
+        ".#########..",
+        ".###...##...",
+        "...###..#...",
+        "...#....##..",
+        "............",
+        "............"
+    ],
+    "备": [
+        "............",
+        "...######...",
+        ".###...#....",
+        "....###.....",
+        "...#...##...",
+        ".##.....##..",
+        "..#######...",
+        "..#######...",
+        "..#..#..#...",
+        "..#######...",
+        "............",
+        "............"
+    ],
+    "材": [
+        "............",
+        "...#....#...",
+        ".###.#####..",
+        "...#....#...",
+        "...#....#...",
+        "..##....#...",
+        ".###..###...",
+        "...###..#...",
+        "...#....#...",
+        "...#...##...",
+        "............",
+        "............"
+    ],
+    "料": [
+        "............",
+        ".#.#..#.#...",
+        "..##...##...",
+        "...#....#...",
+        ".###.#..#...",
+        "...#..#.#...",
+        "..##...###..",
+        ".#.#.##.#...",
+        "...#....#...",
+        "...#....#...",
+        "............",
+        "............"
+    ],
+    "容": [
+        "............",
+        ".#########..",
+        ".#.#...#.#..",
+        "..##.#..#...",
+        "....#.#.....",
+        "...#...##...",
+        ".#########..",
+        "...#....#...",
+        "...#....#...",
+        "...######...",
+        "............",
+        "............"
+    ],
+    "器": [
+        "............",
+        "..###.###...",
+        "..#.#.#.#...",
+        "..###.###...",
+        ".....#.#....",
+        ".#########..",
+        ".####.####..",
+        "..#.#.#.#...",
+        "..#.#.#.#...",
+        "..###.###...",
+        "............",
+        "............"
+    ],
+    "陷": [
+        "............",
+        ".###..###...",
+        ".#.#.#..#...",
+        ".#.##...#...",
+        ".##...#.....",
+        ".#.###..##..",
+        ".#.####.##..",
+        ".####....#..",
+        ".#..#....#..",
+        ".#..######..",
+        "............",
+        "............"
+    ],
+    "阱": [
+        "............",
+        ".###..#.#...",
+        ".#.#######..",
+        ".#.#..#.#...",
+        ".##...#.#...",
+        ".#.#..#.#...",
+        ".#.#######..",
+        ".###..#.#...",
+        ".#...#..#...",
+        ".#..#...#...",
+        "............",
+        "............"
+    ],
+    "形": [
+        "............",
+        ".#########..",
+        "...#.#..#...",
+        "...#.#......",
+        "...#.#...#..",
+        ".########...",
+        "...#.#..#...",
+        "..#..#...#..",
+        "..#..#..#...",
+        ".#...#..#...",
+        "............",
+        "............"
+    ],
+    "门": [
+        "............",
+        ".#########..",
+        ".........#..",
+        ".#.......#..",
+        ".#.......#..",
+        ".#.......#..",
+        ".#.......#..",
+        ".#.......#..",
+        ".#.......#..",
+        ".#......##..",
+        "............",
+        "............"
+    ],
+    "撤": [
+        "............",
+        "..#####.#...",
+        ".####...##..",
+        "..##..#.##..",
+        "..####.#.#..",
+        "..##..#.##..",
+        ".######.##..",
+        "..#####.#...",
+        "..##..#.##..",
+        ".###.###.#..",
+        "............",
+        "............"
+    ],
+    "离": [
+        "............",
+        ".#########..",
+        "...#...#....",
+        "..#.###.#...",
+        "..##...##...",
+        "..#######...",
+        ".#########..",
+        ".#.#...#.#..",
+        ".#.####.##..",
+        ".#......##..",
+        "............",
+        "............"
+    ],
+    "点": [
+        "............",
+        ".....#####..",
+        ".....#......",
+        ".....#......",
+        "..#######...",
+        "..#.....#...",
+        "..#######...",
+        "............",
+        "..##..#.#...",
+        ".#..#..#.#..",
+        "............",
+        "............"
+    ],
+    "楼": [
+        "............",
+        "...###.###..",
+        ".#########..",
+        "...#..###...",
+        "...#.#.##...",
+        "..###..#.#..",
+        ".#########..",
+        "...#..#.#...",
+        "...#..###...",
+        "...###..##..",
+        "............",
+        "............"
+    ],
+    "梯": [
+        "............",
+        "...#.##.#...",
+        ".#########..",
+        "...#...#.#..",
+        "...#######..",
+        "..###..#....",
+        ".#########..",
+        "...#.#.#.#..",
+        "...##..###..",
+        "...#...#....",
+        "............",
+        "............"
+    ],
+    "特": [
+        "............",
+        ".#.#.####...",
+        ".###...#....",
+        ".#.#...#....",
+        "...#######..",
+        "...#....#...",
+        ".#########..",
+        "...#..#.#...",
+        "...#....#...",
+        "...#...##...",
+        "............",
+        "............"
+    ],
+    "殊": [
+        "............",
+        ".###.#.#....",
+        "..#..####...",
+        "..###..#....",
+        ".#.#...#....",
+        ".#.#######..",
+        "..##..###...",
+        "...#.#.##...",
+        "..#.#..#.#..",
+        ".#.....#....",
+        "............",
+        "............"
+    ],
+    "物": [
+        "............",
+        ".#.#.#......",
+        ".###.#####..",
+        ".#.##.#.##..",
+        "...#..#.##..",
+        "...#..#.##..",
+        ".###.#.###..",
+        "...##..#.#..",
+        "...#..#..#..",
+        "...#.#..#...",
+        "............",
+        "............"
+    ],
+}
 
 
 func test_generated_dungeon_topdown_map_includes_monsters_and_items() -> void:
@@ -50,6 +549,11 @@ func test_generated_dungeon_topdown_map_includes_monsters_and_items() -> void:
 	add_child(dungeon)
 	await await_idle_frame()
 	await await_idle_frame()
+	for _i in range(48):
+		var spawned_enemy_count := _count_markers(_collect_topdown_markers(dungeon), "enemy")
+		if spawned_enemy_count >= dungeon.layout.enemy_spawn_specs.size():
+			break
+		await await_idle_frame()
 
 	var grid: Array = dungeon.layout.grid
 	assert_bool(grid.is_empty()) \
@@ -64,9 +568,13 @@ func test_generated_dungeon_topdown_map_includes_monsters_and_items() -> void:
 	var stairs_count := _count_markers(markers, "stairs")
 	var hazard_count := _count_markers(markers, "hazard")
 	var terrain_feature_count := _count_markers(markers, "terrain_feature")
+	var door_count := _count_markers(markers, "door")
 	assert_int(enemy_count) \
-		.override_failure_message("俯视测试图需要包含生成后的怪物") \
-		.is_greater_equal(4)
+		.override_failure_message("俯视测试图敌人过少: %d，必须等待并生成完整人口" % enemy_count) \
+		.is_greater_equal(12)
+	assert_int(enemy_count) \
+		.override_failure_message("俯视测试图未捕获完整敌人计划: actual=%d planned=%d" % [enemy_count, dungeon.layout.enemy_spawn_specs.size()]) \
+		.is_greater_equal(dungeon.layout.enemy_spawn_specs.size())
 	assert_int(item_count) \
 		.override_failure_message("俯视测试图需要包含生成后的物品/容器/宝箱") \
 		.is_greater_equal(1)
@@ -78,10 +586,16 @@ func test_generated_dungeon_topdown_map_includes_monsters_and_items() -> void:
 		.is_greater_equal(1)
 	assert_int(hazard_count) \
 		.override_failure_message("俯视测试图必须包含伤害地形/陷阱") \
-		.is_greater_equal(8)
+		.is_greater_equal(4)
+	assert_int(hazard_count) \
+		.override_failure_message("俯视测试图陷阱过多: %d，应该由少量战斗锚点组成" % hazard_count) \
+		.is_less_equal(6)
 	assert_int(terrain_feature_count) \
 		.override_failure_message("大房间需要生成额外地形特征，避免空旷") \
 		.is_greater_equal(4)
+	assert_int(door_count) \
+		.override_failure_message("俯视测试图必须标出地牢门位置") \
+		.is_greater_equal(1)
 	assert_int(_unique_hazard_node_names(markers).size()) \
 		.override_failure_message("陷阱类型过少，需要至少两类陷阱") \
 		.is_greater_equal(2)
@@ -103,6 +617,7 @@ func test_generated_dungeon_topdown_map_includes_monsters_and_items() -> void:
 			.override_failure_message("未抽中撤离点的楼层不应生成 ExtractionPortal") \
 			.is_equal(0)
 	_assert_trap_placement_semantics(dungeon)
+	_assert_door_markers_are_room_boundaries(dungeon, markers)
 
 	for marker in markers:
 		var cell: Vector2i = marker["cell"]
@@ -121,12 +636,15 @@ func test_generated_dungeon_topdown_map_includes_monsters_and_items() -> void:
 			.is_greater_equal(2)
 
 	var image := _render_topdown_image(grid, dungeon.layout.heights, markers)
+	var map_pixel_height := MARGIN * 2 + dungeon.layout.height * CELL_PX
+	assert_int(image.get_height()).is_greater(map_pixel_height)
+	assert_bool(_legend_has_rendered_pixels(image, map_pixel_height)).is_true()
 	_ensure_reports_dir()
 	var err := image.save_png(OUTPUT_PATH)
 	assert_int(err) \
 		.override_failure_message("无法保存地牢俯视测试图: %s" % OUTPUT_PATH) \
 		.is_equal(OK)
-	print("[DungeonTopdown] saved=%s enemies=%d items=%d materials=%d hazards=%d terrain=%d extraction=%d stairs=%d markers=%d" % [OUTPUT_PATH, enemy_count, item_count, material_count, hazard_count, terrain_feature_count, extraction_count, stairs_count, markers.size()])
+	print("[DungeonTopdown] saved=%s enemies=%d items=%d materials=%d hazards=%d terrain=%d doors=%d extraction=%d stairs=%d markers=%d" % [OUTPUT_PATH, enemy_count, item_count, material_count, hazard_count, terrain_feature_count, door_count, extraction_count, stairs_count, markers.size()])
 
 
 func _collect_topdown_markers(dungeon: ProceduralDungeon) -> Array[Dictionary]:
@@ -136,7 +654,9 @@ func _collect_topdown_markers(dungeon: ProceduralDungeon) -> Array[Dictionary]:
 
 
 func _collect_topdown_markers_recursive(node: Node, dungeon: ProceduralDungeon, markers: Array[Dictionary]) -> void:
-	if node is Player:
+	if node is DungeonDoor:
+		_append_door_marker(markers, node as DungeonDoor)
+	elif node is Player:
 		_append_marker(markers, dungeon, node as Node3D, "player")
 	elif node is Enemy or node.has_meta("enemy_type"):
 		_append_marker(markers, dungeon, node as Node3D, "enemy")
@@ -164,6 +684,18 @@ func _collect_topdown_markers_recursive(node: Node, dungeon: ProceduralDungeon, 
 		_collect_topdown_markers_recursive(child, dungeon, markers)
 
 
+func _append_door_marker(markers: Array[Dictionary], door: DungeonDoor) -> void:
+	var inside: Vector2i = door.get_meta("inside_cell", Vector2i(-1, -1))
+	var outside: Vector2i = door.get_meta("outside_cell", Vector2i(-1, -1))
+	markers.append({
+		"kind": "door",
+		"cell": inside,
+		"outside": outside,
+		"dir": outside - inside,
+		"name": String(door.name),
+	})
+
+
 func _append_marker(markers: Array[Dictionary], dungeon: ProceduralDungeon, node: Node3D, kind: String) -> void:
 	markers.append({
 		"kind": kind,
@@ -187,8 +719,9 @@ func _world_to_grid_cell(dungeon: ProceduralDungeon, world_pos: Vector3) -> Vect
 func _render_topdown_image(grid: Array, heights: Array, markers: Array[Dictionary]) -> Image:
 	var grid_width := int(grid[0].size())
 	var grid_height := int(grid.size())
-	var image_width := MARGIN * 2 + grid_width * CELL_PX + LEGEND_WIDTH
-	var image_height := MARGIN * 2 + grid_height * CELL_PX
+	var image_width := MARGIN * 2 + grid_width * CELL_PX
+	var map_pixel_height := MARGIN * 2 + grid_height * CELL_PX
+	var image_height := map_pixel_height + LEGEND_HEIGHT
 	var image := Image.create(image_width, image_height, false, Image.FORMAT_RGBA8)
 	image.fill(COLOR_EMPTY)
 
@@ -202,9 +735,13 @@ func _render_topdown_image(grid: Array, heights: Array, markers: Array[Dictionar
 		return _marker_priority(String(a["kind"])) < _marker_priority(String(b["kind"]))
 	)
 	for marker in sorted_markers:
-		_draw_marker(image, marker["cell"], _marker_color(String(marker["kind"])))
+		var kind := String(marker["kind"])
+		if kind == "door":
+			_draw_door_marker(image, marker["cell"], marker["dir"], _marker_color(kind))
+		else:
+			_draw_marker(image, marker["cell"], _marker_color(kind))
 
-	_draw_legend(image, grid_width)
+	_draw_legend(image, map_pixel_height)
 	return image
 
 
@@ -247,6 +784,8 @@ func _marker_color(kind: String) -> Color:
 			return COLOR_HAZARD
 		"terrain_feature":
 			return COLOR_TERRAIN_FEATURE
+		"door":
+			return COLOR_DOOR
 		_:
 			return COLOR_TAGGED_ITEM
 
@@ -269,26 +808,76 @@ func _draw_marker(image: Image, cell: Vector2i, color: Color) -> void:
 				image.set_pixel(x, y, color)
 
 
-func _draw_legend(image: Image, grid_width: int) -> void:
-	var x := MARGIN + grid_width * CELL_PX + 10
-	var y := MARGIN + 8
-	var colors: Array[Color] = [
-		COLOR_WALL,
-		COLOR_FLOOR,
-		COLOR_PLAYER,
-		COLOR_ENEMY,
-		COLOR_PICKABLE,
-		COLOR_MATERIAL,
-		COLOR_CONTAINER,
-		COLOR_HAZARD,
-		COLOR_TERRAIN_FEATURE,
-		COLOR_EXTRACTION,
-		COLOR_STAIRS,
-		COLOR_TAGGED_ITEM,
+func _draw_door_marker(image: Image, cell: Vector2i, direction: Vector2i, color: Color) -> void:
+	var start := Vector2i(MARGIN + cell.x * CELL_PX, MARGIN + cell.y * CELL_PX)
+	var rect: Rect2i
+	if direction.x != 0:
+		var boundary_x := start.x + (CELL_PX if direction.x > 0 else 0)
+		rect = Rect2i(boundary_x - 1, start.y + 1, 3, CELL_PX - 2)
+	else:
+		var boundary_y := start.y + (CELL_PX if direction.y > 0 else 0)
+		rect = Rect2i(start.x + 1, boundary_y - 1, CELL_PX - 2, 3)
+	_fill_rect(image, rect, color)
+
+
+func _draw_legend(image: Image, map_pixel_height: int) -> void:
+	var entries: Array = [
+		{"label": "空白", "color": COLOR_EMPTY},
+		{"label": "墙体", "color": COLOR_WALL},
+		{"label": "地面", "color": COLOR_FLOOR},
+		{"label": "战利品", "color": COLOR_LOOT_CELL},
+		{"label": "资源", "color": COLOR_RESOURCE_CELL},
+		{"label": "柱子", "color": COLOR_PILLAR},
+		{"label": "玩家", "color": COLOR_PLAYER},
+		{"label": "敌人", "color": COLOR_ENEMY},
+		{"label": "装备", "color": COLOR_PICKABLE},
+		{"label": "材料", "color": COLOR_MATERIAL},
+		{"label": "容器", "color": COLOR_CONTAINER},
+		{"label": "陷阱", "color": COLOR_HAZARD},
+		{"label": "地形", "color": COLOR_TERRAIN_FEATURE},
+		{"label": "门", "color": COLOR_DOOR},
+		{"label": "撤离点", "color": COLOR_EXTRACTION},
+		{"label": "楼梯", "color": COLOR_STAIRS},
+		{"label": "特殊物品", "color": COLOR_TAGGED_ITEM},
 	]
-	for color in colors:
-		_fill_rect(image, Rect2i(x, y, 14, 14), color)
-		y += 20
+	var x := MARGIN
+	var y := map_pixel_height + 8
+	for entry in entries:
+		var label := String(entry["label"])
+		var entry_width := 9 + 3 + label.length() * LABEL_BITMAP_ADVANCE + 5
+		if x + entry_width > image.get_width() - MARGIN:
+			x = MARGIN
+			y += LEGEND_ROW_HEIGHT
+		_draw_legend_swatch(image, x, y + 1, entry["color"])
+		_draw_label_bitmap(image, label, x + 12, y + 2, LEGEND_TEXT_COLOR)
+		x += entry_width
+
+
+func _draw_legend_swatch(image: Image, x: int, y: int, color: Color) -> void:
+	_fill_rect(image, Rect2i(x, y, 9, 9), LEGEND_BORDER_COLOR)
+	_fill_rect(image, Rect2i(x + 1, y + 1, 7, 7), color)
+
+
+func _draw_label_bitmap(image: Image, label: String, x: int, y: int, color: Color) -> void:
+	for index in range(label.length()):
+		var character := label.substr(index, 1)
+		var bitmap: Array = LABEL_BITMAPS.get(character, [])
+		for bitmap_y in range(bitmap.size()):
+			var row := String(bitmap[bitmap_y])
+			for bitmap_x in range(row.length()):
+				if row.substr(bitmap_x, 1) == "#":
+					image.set_pixel(x + index * LABEL_BITMAP_ADVANCE + bitmap_x, y + bitmap_y, color)
+
+
+func _legend_has_rendered_pixels(image: Image, map_pixel_height: int) -> bool:
+	var non_background := 0
+	for y in range(map_pixel_height, image.get_height()):
+		for x in range(image.get_width()):
+			var pixel := image.get_pixel(x, y)
+			var difference := absf(pixel.r - COLOR_EMPTY.r) + absf(pixel.g - COLOR_EMPTY.g) + absf(pixel.b - COLOR_EMPTY.b)
+			if difference > 0.08:
+				non_background += 1
+	return non_background > 900
 
 
 func _fill_rect(image: Image, rect: Rect2i, color: Color) -> void:
@@ -334,6 +923,8 @@ func _marker_priority(kind: String) -> int:
 			return 55
 		"terrain_feature":
 			return 57
+		"door":
+			return 58
 		"player":
 			return 60
 		_:
@@ -403,6 +994,22 @@ func _large_non_start_rooms(dungeon: ProceduralDungeon) -> Array[Rect2i]:
 		if room.size.x * room.size.y >= DungeonRenderingConfig.default().large_room_area:
 			result.append(room)
 	return result
+
+
+func _assert_door_markers_are_room_boundaries(dungeon: ProceduralDungeon, markers: Array[Dictionary]) -> void:
+	for marker in markers:
+		if String(marker["kind"]) != "door":
+			continue
+		var inside: Vector2i = marker["cell"]
+		var outside: Vector2i = marker["outside"]
+		assert_int(absi(outside.x - inside.x) + absi(outside.y - inside.y)) \
+			.override_failure_message("门标记必须连接相邻格: %s -> %s" % [inside, outside]).is_equal(1)
+		assert_bool(dungeon.layout.is_floor_cell(inside)).is_true()
+		assert_bool(dungeon.layout.is_floor_cell(outside)).is_true()
+		for room in dungeon.layout.rooms:
+			assert_bool(room.has_point(outside)) \
+				.override_failure_message("门不能生成在房间内部: %s outside=%s room=%s" % [marker["name"], outside, room]) \
+				.is_false()
 
 
 func _count_markers_in_room(markers: Array[Dictionary], room: Rect2i, kinds: Array[String]) -> int:
@@ -478,9 +1085,14 @@ func _assert_trap_placement_semantics(dungeon: ProceduralDungeon) -> void:
 
 
 func _collect_hazard_nodes(node: Node, hazards: Array[Node3D]) -> void:
-	if node is SpikesTrap or node is AcidTrap or _is_hazard_node(node):
+	# 陷阱 prefab 内部也可能有 Area3D/Node3D；只记录 prefab 根，避免把
+	# 碰撞体或视觉组件误判成独立陷阱并重复断言。
+	if node is SpikesTrap or node is AcidTrap or String(node.name) == "FlameVentTrap" \
+		or node.has_meta("hazard_anchor") \
+		or (node.has_meta("topdown_kind") and String(node.get_meta("topdown_kind")) == "hazard"):
 		if node is Node3D:
 			hazards.append(node as Node3D)
+		return
 	for child in node.get_children():
 		_collect_hazard_nodes(child, hazards)
 

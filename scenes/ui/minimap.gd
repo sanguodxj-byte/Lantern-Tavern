@@ -4,7 +4,7 @@ extends Control
 ## 旋转小地图（右上角）。
 ## 棕色=墙体，淡黄色=地面，红色=敌人，玩家=箭头(永远朝上)。
 ## 小地图跟随视角(yaw)旋转，玩家箭头固定朝上。
-## 自动从 ProceduralDungeon._grid 或场景碰撞体获取地图数据。
+## 自动从 ProceduralDungeon.layout.grid 或场景碰撞体获取地图数据。
 ##
 ## 迷雾探索（Fog of War）：
 ##   - 未探索区域：完全隐藏（黑色背景）
@@ -142,10 +142,13 @@ func _cache_grid_data() -> void:
 	_has_grid = false
 	if _level == null or not is_instance_valid(_level):
 		return
-	if "is_procedural" in _level and _level.is_procedural() and "_grid" in _level:
-		_cached_grid = _level._grid
-		if "TILE_SIZE" in _level:
-			_grid_tile_size = _level.TILE_SIZE
+	# 阶段 9：ProceduralDungeon 旧字段 _grid/TILE_SIZE 已退役，地形网格统一读 layout.grid / layout.tile_size
+	if _level.has_method("is_procedural") and _level.is_procedural() and "layout" in _level and _level.layout != null:
+		var lvl_layout = _level.layout
+		if lvl_layout.grid.is_empty():
+			return
+		_cached_grid = lvl_layout.grid
+		_grid_tile_size = lvl_layout.tile_size
 		var gw: int = _cached_grid[0].size() if _cached_grid.size() > 0 else 0
 		var gh: int = _cached_grid.size()
 		var ox: float = -(float(gw) * _grid_tile_size) / 2.0

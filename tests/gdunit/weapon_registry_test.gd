@@ -74,8 +74,9 @@ func test_get_gear_list_by_category_filters_correctly() -> void:
 	assert_bool(shield_entries.size() >= 1).is_true()
 	var light_armor_entries := WeaponRegistry.get_gear_list_entries_by_category("armor_light")
 	var heavy_armor_entries := WeaponRegistry.get_gear_list_entries_by_category("armor_heavy")
-	assert_int(light_armor_entries.size()).is_equal(2)
-	assert_int(heavy_armor_entries.size()).is_equal(2)
+	# 轻甲：布甲/皮甲 + 皮盔/皮护腕/皮靴；重甲：链甲/板甲 + 铁盔/铁护腕/铁靴
+	assert_int(light_armor_entries.size()).is_equal(5)
+	assert_int(heavy_armor_entries.size()).is_equal(5)
 
 
 func test_registry_exposes_weapon_taxonomy_metadata() -> void:
@@ -110,7 +111,7 @@ func test_gear_list_entries_include_taxonomy_metadata() -> void:
 
 
 func test_registered_shortsword_data_carries_visual_profile() -> void:
-	var weapon: WeaponData = WeaponRegistry.get_weapon("shortsword") as WeaponData
+	var weapon: WeaponData = WeaponRegistry.get_weapon_data("shortsword") as WeaponData
 	assert_object(weapon).is_not_null()
 	assert_str(weapon.view_model_profile).is_equal("shortsword")
 

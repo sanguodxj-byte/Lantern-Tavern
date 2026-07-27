@@ -24,19 +24,11 @@ func _update_button_texts() -> void:
 	save_btn.text = tr("Save Game")
 	exit_btn.text = tr("Exit Game")
 
-# 轮询检测 ESC
-func _process(_delta: float) -> void:
-	if Input.is_action_just_pressed("ui_cancel"):
-		if is_paused:
-			resume()
-		else:
-			pause()
-
 # 手动拦截鼠标点击：绕过暂停后的 Button 信号系统
-func _unhandled_input(event: InputEvent) -> void:
-	if not is_paused:
-		return
+func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if not is_paused or save_load_panel.visible:
+			return
 		var pos: Vector2 = (event as InputEventMouseButton).position
 		if _is_click_on_control(resume_btn, pos):
 			_on_resume_pressed()
@@ -50,6 +42,26 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif _is_click_on_control(exit_btn, pos):
 			_on_exit_pressed()
 			_handle_input()
+		return
+
+	var is_escape: bool = event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE
+	var is_tab: bool = event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_TAB
+	var is_cancel_action: bool = event.is_action_pressed("ui_cancel")
+	if not is_escape and not is_tab and not is_cancel_action:
+		return
+	if is_tab and not is_paused:
+		return
+	if is_paused and save_load_panel.visible:
+		# The save/load child owns its own close lifecycle. Keep the pause menu
+		# open and the cursor visible when returning to it.
+		save_load_panel.visible = false
+		_handle_input()
+		return
+	if is_paused:
+		resume()
+	else:
+		pause()
+	_handle_input()
 
 func _handle_input() -> void:
 	var vp := get_viewport()
@@ -122,6 +134,7 @@ func _on_save_pressed() -> void:
 
 func _on_save_load_back() -> void:
 	save_load_panel.visible = false
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 
 func _on_slot_action_completed(_action: String, _slot_index: int) -> void:
 	save_load_panel.visible = false

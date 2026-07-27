@@ -101,7 +101,7 @@ func test_enemy_has_patrol_radius_export() -> void:
 func test_spawner_does_not_expose_unaccepted_weak_monster_prefabs() -> void:
 	var spawner: Node = Engine.get_main_loop().root.get_node("DungeonSpawner")
 	assert_object(spawner._get_enemy_prefab("rat")).is_null()
-	assert_object(spawner._get_enemy_prefab("slime")).is_null()
+	assert_object(spawner._get_enemy_prefab("slime")).is_not_null()
 
 func test_spawner_has_elite_prefix_logic() -> void:
 	var source := _source("res://globals/dungeon/dungeon_spawner.gd")

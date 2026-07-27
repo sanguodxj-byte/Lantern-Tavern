@@ -21,4 +21,5 @@ func test_desktop_renderer_is_explicitly_forward_plus() -> void:
 func test_tavern_environment_keeps_lighting_readable() -> void:
 	var scene_source := FileAccess.get_file_as_string("res://scenes/tavern/tavern.tscn")
 	assert_str(scene_source).contains("ambient_light_energy = 0.34")
+	assert_str(scene_source).contains("tonemap_white = 2.0")
 	assert_str(scene_source).contains("fog_density = 0.006")

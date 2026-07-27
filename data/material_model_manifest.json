@@ -8,11 +8,11 @@
       "name_zh": "老鼠尾巴",
       "glb_path": "res://assets/models/materials/materials_rat_tail.glb",
       "bbox": [
-        0.9297,
-        0.0984,
-        0.075
+        0.75,
+        0.1562,
+        0.1562
       ],
-      "shape_note": "segmented long thin tail",
+      "shape_note": "segmented pink-brown rat tail with joints and horn tip",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -33,18 +33,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_rat_tail.py"
     },
     {
       "id": "moldy_bread",
       "name_zh": "发霉面包",
       "glb_path": "res://assets/models/materials/materials_moldy_bread.glb",
       "bbox": [
-        0.3172,
-        0.2063,
-        0.1547
+        0.5312,
+        0.3125,
+        0.25
       ],
-      "shape_note": "wide loaf with mold patches",
+      "shape_note": "chunky torn loaf with green mold blooms and crust breaks",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -65,18 +66,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_moldy_bread.py"
     },
     {
       "id": "rusty_nail",
       "name_zh": "生锈铁钉",
       "glb_path": "res://assets/models/materials/materials_rusty_nail.glb",
       "bbox": [
-        0.1,
-        0.1,
-        0.5375
+        0.1875,
+        0.1562,
+        0.6562
       ],
-      "shape_note": "long nail, laid flat by visual rotation",
+      "shape_note": "bent iron nail with rust blooms, flat head and sharp tip",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -97,18 +99,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_rusty_nail.py"
     },
     {
       "id": "dungeon_moss",
       "name_zh": "地牢苔",
       "glb_path": "res://assets/models/materials/materials_dungeon_moss.glb",
       "bbox": [
-        0.5,
-        0.2656,
-        0.1594
+        0.4688,
+        0.4062,
+        0.4062
       ],
-      "shape_note": "rounded moss cushion with sprouts",
+      "shape_note": "clumped damp moss mound with spore stalks and wet shade pockets",
       "placement": {
         "location_preference": "near_wall",
         "align_to_wall": true,
@@ -129,18 +132,19 @@
           0
         ],
         "surface": "floor_wall_base"
-      }
+      },
+      "generated_by": "tools/generate_voxel_dungeon_moss.py"
     },
     {
       "id": "bone_shard",
       "name_zh": "碎骨片",
       "glb_path": "res://assets/models/materials/materials_bone_shard.glb",
       "bbox": [
-        0.075,
-        0.525,
-        0.0687
+        0.75,
+        0.1562,
+        0.0938
       ],
-      "shape_note": "thin bone splinter",
+      "shape_note": "jagged pale bone splinter with marrow notch and cracks",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -161,18 +165,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_bone_shard.py"
     },
     {
       "id": "stale_water",
       "name_zh": "陈腐积水",
       "glb_path": "res://assets/models/materials/materials_stale_water.glb",
       "bbox": [
-        0.3281,
-        0.3281,
-        0.0414
+        0.4062,
+        0.2812,
+        0.0938
       ],
-      "shape_note": "flat murky droplet",
+      "shape_note": "murky greenish puddle with scum film and bubble nubs",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -193,18 +198,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_stale_water.py"
     },
     {
       "id": "prison_lichen",
       "name_zh": "囚室地衣",
       "glb_path": "res://assets/models/materials/materials_prison_lichen.glb",
       "bbox": [
+        0.4062,
         0.3438,
-        0.1875,
-        0.0438
+        0.0625
       ],
-      "shape_note": "flat lichen with spore dots",
+      "shape_note": "flat crusty lichen mat with spore cups",
       "placement": {
         "location_preference": "near_wall",
         "align_to_wall": true,
@@ -225,18 +231,19 @@
           0
         ],
         "surface": "floor_wall_base"
-      }
+      },
+      "generated_by": "tools/generate_voxel_prison_lichen.py"
     },
     {
       "id": "cellar_mushroom",
       "name_zh": "地窖蘑菇",
       "glb_path": "res://assets/models/materials/materials_cellar_mushroom.glb",
       "bbox": [
-        0.2656,
-        0.2656,
-        0.2875
+        0.3438,
+        0.3125,
+        0.4375
       ],
-      "shape_note": "cap and stem mushroom",
+      "shape_note": "earthy brown cellar toadstool with thick stem and freckled cap",
       "placement": {
         "location_preference": "near_wall",
         "align_to_wall": true,
@@ -257,18 +264,19 @@
           0
         ],
         "surface": "floor_wall_base"
-      }
+      },
+      "generated_by": "tools/generate_voxel_cellar_mushroom.py"
     },
     {
       "id": "blackberry",
       "name_zh": "黑莓",
       "glb_path": "res://assets/models/materials/materials_blackberry.glb",
       "bbox": [
-        0.2203,
-        0.1609,
-        0.1781
+        0.3125,
+        0.3125,
+        0.2812
       ],
-      "shape_note": "cluster of drupelets",
+      "shape_note": "clustered dark drupelet berry with stem nub and leaf bit",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -289,18 +297,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_blackberry.py"
     },
     {
       "id": "glowshroom",
       "name_zh": "蓝光菇",
       "glb_path": "res://assets/models/materials/materials_glowshroom.glb",
       "bbox": [
-        0.2188,
-        0.2188,
-        0.2578
+        0.375,
+        0.2812,
+        0.5312
       ],
-      "shape_note": "emissive blue mushroom",
+      "shape_note": "warped emissive blue cave mushroom with vented cap",
       "placement": {
         "location_preference": "near_wall",
         "align_to_wall": true,
@@ -321,18 +330,19 @@
           0
         ],
         "surface": "floor_wall_base"
-      }
+      },
+      "generated_by": "tools/generate_voxel_glowshroom.py"
     },
     {
       "id": "moongrass",
       "name_zh": "月光草",
       "glb_path": "res://assets/models/materials/materials_moongrass.glb",
       "bbox": [
-        0.125,
-        0.125,
-        0.3125
+        0.1562,
+        0.0938,
+        0.5
       ],
-      "shape_note": "tall pale grass blades",
+      "shape_note": "tall pale grass blades with silver tips",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -353,18 +363,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_moongrass.py"
     },
     {
       "id": "pixie_dust",
       "name_zh": "妖精粉尘",
       "glb_path": "res://assets/models/materials/materials_pixie_dust.glb",
       "bbox": [
-        0.1594,
-        0.1094,
-        0.1047
+        0.3125,
+        0.1875,
+        0.1875
       ],
-      "shape_note": "sparkling dust pile",
+      "shape_note": "sparkling multicolor dust mound with bright motes",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -385,18 +396,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_pixie_dust.py"
     },
     {
       "id": "poison_berry",
       "name_zh": "剧毒藤莓",
       "glb_path": "res://assets/models/materials/materials_poison_berry.glb",
       "bbox": [
-        0.1844,
-        0.1344,
-        0.1719
+        0.2812,
+        0.2188,
+        0.2812
       ],
-      "shape_note": "dark toxic berry",
+      "shape_note": "dark toxic berry cluster with green venom freckles",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -417,18 +429,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_poison_berry.py"
     },
     {
       "id": "deeprock_moss",
       "name_zh": "深岩苔藓",
       "glb_path": "res://assets/models/materials/materials_deeprock_moss.glb",
       "bbox": [
-        0.4453,
-        0.2188,
-        0.1
+        0.5938,
+        0.4375,
+        0.1562
       ],
-      "shape_note": "wide dark moss mat",
+      "shape_note": "wide dark mineral moss mat with stone flecks",
       "placement": {
         "location_preference": "near_wall",
         "align_to_wall": true,
@@ -449,18 +462,19 @@
           0
         ],
         "surface": "floor_wall_base"
-      }
+      },
+      "generated_by": "tools/generate_voxel_deeprock_moss.py"
     },
     {
       "id": "black_rye_root",
       "name_zh": "黑麦根",
       "glb_path": "res://assets/models/materials/materials_black_rye_root.glb",
       "bbox": [
-        0.5078,
-        0.1266,
-        0.0766
+        0.6875,
+        0.1875,
+        0.1562
       ],
-      "shape_note": "long root, laid flat",
+      "shape_note": "gnarled dark root with soil clumps, laid long",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -481,18 +495,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_black_rye_root.py"
     },
     {
       "id": "stalactite_sap",
       "name_zh": "钟乳石髓",
       "glb_path": "res://assets/models/materials/materials_stalactite_sap.glb",
       "bbox": [
-        0.1063,
-        0.1,
-        0.25
+        0.1719,
+        0.1719,
+        0.375
       ],
-      "shape_note": "hanging translucent drop",
+      "shape_note": "hanging amber sap drop with crystal skin",
       "placement": {
         "location_preference": "near_wall",
         "align_to_wall": true,
@@ -513,18 +528,19 @@
           0
         ],
         "surface": "floor_wall_base"
-      }
+      },
+      "generated_by": "tools/generate_voxel_stalactite_sap.py"
     },
     {
       "id": "goblin_nail",
       "name_zh": "哥布林指甲",
       "glb_path": "res://assets/models/materials/materials_goblin_nail.glb",
       "bbox": [
-        0.0812,
-        0.0812,
-        0.4219
+        0.1562,
+        0.0938,
+        0.4375
       ],
-      "shape_note": "long claw nail",
+      "shape_note": "curved dirty claw nail with yellow keratin",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -545,18 +561,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_goblin_nail.py"
     },
     {
       "id": "mistflower",
       "name_zh": "迷雾花",
       "glb_path": "res://assets/models/materials/materials_mistflower.glb",
       "bbox": [
-        0.2188,
-        0.2188,
-        0.1781
+        0.375,
+        0.3438,
+        0.1875
       ],
-      "shape_note": "four-petal pale flower",
+      "shape_note": "four-petal pale mist flower with glowing center",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -577,18 +594,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_mistflower.py"
     },
     {
       "id": "wolfear_herb",
       "name_zh": "狼耳草",
       "glb_path": "res://assets/models/materials/materials_wolfear_herb.glb",
       "bbox": [
-        0.1844,
-        0.0781,
-        0.2688
+        0.5,
+        0.1094,
+        0.1562
       ],
-      "shape_note": "paired ear-shaped leaves",
+      "shape_note": "paired ear-shaped green leaves on short stem",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -609,18 +627,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_wolfear_herb.py"
     },
     {
       "id": "cyclops_beard",
       "name_zh": "独眼巨人的胡须",
       "glb_path": "res://assets/models/materials/materials_cyclops_beard.glb",
       "bbox": [
-        0.1234,
-        0.1047,
-        0.3359
+        0.1875,
+        0.0938,
+        0.5
       ],
-      "shape_note": "tuft of coarse hair",
+      "shape_note": "tuft of coarse gray-brown whiskers",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -641,18 +660,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_cyclops_beard.py"
     },
     {
       "id": "geothermal_ear",
       "name_zh": "地热木耳",
       "glb_path": "res://assets/models/materials/materials_geothermal_ear.glb",
       "bbox": [
-        0.25,
-        0.2125,
-        0.1453
+        0.3438,
+        0.1562,
+        0.25
       ],
-      "shape_note": "warm ear fungus",
+      "shape_note": "warm ear-shaped fungus with orange vents",
       "placement": {
         "location_preference": "near_wall",
         "align_to_wall": true,
@@ -673,18 +693,19 @@
           0
         ],
         "surface": "floor_wall_base"
-      }
+      },
+      "generated_by": "tools/generate_voxel_geothermal_ear.py"
     },
     {
       "id": "luminous_fern",
       "name_zh": "荧光蕨",
       "glb_path": "res://assets/models/materials/materials_luminous_fern.glb",
       "bbox": [
-        0.1844,
-        0.125,
-        0.2656
+        0.3438,
+        0.0625,
+        0.375
       ],
-      "shape_note": "glowing fern fronds",
+      "shape_note": "glowing fern fronds with pale stems",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -705,18 +726,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_luminous_fern.py"
     },
     {
       "id": "quartz_dust",
       "name_zh": "石英晶粉",
       "glb_path": "res://assets/models/materials/materials_quartz_dust.glb",
       "bbox": [
-        0.25,
-        0.1562,
-        0.1188
+        0.375,
+        0.1875,
+        0.2188
       ],
-      "shape_note": "crystal dust pile",
+      "shape_note": "sparkling quartz crystal dust with shard tips",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -737,18 +759,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_quartz_dust.py"
     },
     {
       "id": "blindfish_jerky",
       "name_zh": "盲鱼干",
       "glb_path": "res://assets/models/materials/materials_blindfish_jerky.glb",
       "bbox": [
-        0.5625,
-        0.1234,
-        0.05
+        0.8125,
+        0.1562,
+        0.0938
       ],
-      "shape_note": "long dried fish strip",
+      "shape_note": "long dried fish strip with salt crust",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -769,18 +792,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_blindfish_jerky.py"
     },
     {
       "id": "skeleton_dust",
       "name_zh": "白骨粉末",
       "glb_path": "res://assets/models/materials/materials_skeleton_dust.glb",
       "bbox": [
+        0.4375,
         0.25,
-        0.2188,
-        0.1
+        0.1875
       ],
-      "shape_note": "ashy bone dust pile with shards",
+      "shape_note": "ashy bone dust pile with pale shards and gray cinders",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -801,18 +825,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_skeleton_dust.py"
     },
     {
       "id": "goblin_ear",
       "name_zh": "哥布林耳尖",
       "glb_path": "res://assets/models/materials/materials_goblin_ear.glb",
       "bbox": [
-        0.1406,
-        0.1078,
-        0.2812
+        0.1875,
+        0.1094,
+        0.4062
       ],
-      "shape_note": "pointed green ear tip",
+      "shape_note": "pointed green goblin ear tip with cartilage ridge",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -833,18 +858,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_goblin_ear.py"
     },
     {
       "id": "giant_rat_tail",
       "name_zh": "巨鼠尾巴",
       "glb_path": "res://assets/models/materials/materials_giant_rat_tail.glb",
       "bbox": [
-        0.9922,
-        0.1094,
-        0.0875
+        0.7812,
+        0.1719,
+        0.1562
       ],
-      "shape_note": "thick segmented rat tail",
+      "shape_note": "thick armored giant-rat tail with heavy segments",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -865,18 +891,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_giant_rat_tail.py"
     },
     {
       "id": "slime_jelly",
       "name_zh": "史莱姆凝胶",
       "glb_path": "res://assets/models/materials/materials_slime_jelly.glb",
       "bbox": [
-        0.2266,
-        0.1953,
-        0.1859
+        0.375,
+        0.3438,
+        0.2812
       ],
-      "shape_note": "translucent green jelly blob",
+      "shape_note": "wobbly translucent green jelly blob with drip lobes",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -897,18 +924,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_slime_jelly.py"
     },
     {
       "id": "troll_blood",
       "name_zh": "巨魔之血",
       "glb_path": "res://assets/models/materials/materials_troll_blood.glb",
       "bbox": [
-        0.2969,
-        0.2656,
-        0.0531
+        0.4062,
+        0.3438,
+        0.0938
       ],
-      "shape_note": "clotted blood puddle",
+      "shape_note": "clotted dark-red blood puddle with raised scabs",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -929,18 +957,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_troll_blood.py"
     },
     {
       "id": "soul_gem",
       "name_zh": "灵魂宝石",
       "glb_path": "res://assets/models/materials/materials_soul_gem.glb",
       "bbox": [
-        0.1594,
-        0.1469,
-        0.2172
+        0.2656,
+        0.2188,
+        0.4062
       ],
-      "shape_note": "faceted glowing gem",
+      "shape_note": "faceted cyan soul crystal with dark socket and inner glow spit",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -961,18 +990,19 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_soul_gem.py"
     },
     {
       "id": "dragon_scale",
       "name_zh": "龙鳞",
       "glb_path": "res://assets/models/materials/materials_dragon_scale.glb",
       "bbox": [
-        0.25,
-        0.3141,
-        0.1016
+        0.6562,
+        0.3438,
+        0.2188
       ],
-      "shape_note": "curved ridged scale plate",
+      "shape_note": "curved ridged crimson scale plate with horn tip and underbelly",
       "placement": {
         "location_preference": "scatter",
         "align_to_wall": false,
@@ -993,7 +1023,8 @@
           0
         ],
         "surface": "floor"
-      }
+      },
+      "generated_by": "tools/generate_voxel_dragon_scale.py"
     }
   ]
 }

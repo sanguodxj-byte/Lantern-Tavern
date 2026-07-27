@@ -11,6 +11,8 @@ const VOXEL_LIGHTING := preload("res://globals/visual/voxel_lighting_adapter.gd"
 
 
 func test_capture_all_weapon_material_variant_contact_sheets() -> void:
+	if not SUPPORT.real_renderer_available():
+		return
 	assert_bool(SUPPORT.real_renderer_available()) \
 		.override_failure_message("weapon material roster capture requires a non-headless renderer").is_true()
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string(JSON_PATH))

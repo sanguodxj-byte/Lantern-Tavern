@@ -1,12 +1,15 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scenes/ui/scripted_dialogue_box.gd" id="1_dialogue"]
+[ext_resource type="Theme" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
 
 [node name="ScriptedDialogueBox" type="Control"]
 layout_mode = 3
 anchors_preset = 10
 anchor_right = 1.0
 anchor_bottom = 1.0
+theme = ExtResource("2_theme")
+texture_filter = 1
 script = ExtResource("1_dialogue")
 
 [node name="Panel" type="PanelContainer" parent="."]

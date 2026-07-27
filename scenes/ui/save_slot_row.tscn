@@ -7,6 +7,7 @@
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 theme = ExtResource("2_theme")
+texture_filter = 1
 script = ExtResource("1_srow")
 
 [node name="BG" type="ColorRect" parent="."]

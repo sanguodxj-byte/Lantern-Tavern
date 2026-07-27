@@ -208,13 +208,15 @@ func test_chest_has_zone_export() -> void:
 # ---------- procedural_dungeon 注入 zone ----------
 
 func test_procedural_dungeon_injects_zone_to_chest() -> void:
-	# 确认 _spawn_prefab 对 CHEST_PREFAB 注入 zone
-	var script: Resource = load("res://scenes/expedition/procedural_dungeon.gd")
+	# 宝箱已由 DungeonSceneBuilder 统一实例化；zone 来自 layout，避免
+	# procedural_dungeon 继续持有第二套 prefab 生成逻辑。
+	var script: Resource = load("res://scenes/expedition/dungeon_scene_builder.gd")
 	var source: String = (script as GDScript).source_code
-	assert_bool(source.find("instance.zone = dungeon_zone") != -1) \
-		.override_failure_message("procedural_dungeon 未对宝箱注入 zone").is_true()
-	assert_bool(source.find("@export var dungeon_zone") != -1) \
-		.override_failure_message("procedural_dungeon 未暴露 dungeon_zone 属性").is_true()
+	assert_bool(source.find("instance.zone = layout.zone") != -1) \
+		.override_failure_message("DungeonSceneBuilder 未对宝箱注入 layout.zone").is_true()
+	var dungeon_source: String = (load("res://scenes/expedition/procedural_dungeon.gd") as GDScript).source_code
+	assert_bool(dungeon_source.find("config.zone = dungeon_zone") != -1) \
+		.override_failure_message("procedural_dungeon 未把 dungeon_zone 传入布局").is_true()
 
 # ---------- 散落材料池（单一数据源验证） ----------
 

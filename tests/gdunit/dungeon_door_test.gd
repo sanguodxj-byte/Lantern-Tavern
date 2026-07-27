@@ -11,23 +11,45 @@ func test_standard_dungeon_door_opens_on_interact_and_disables_collision() -> vo
 	door.configure(DungeonDoor.KIND_STANDARD, Vector2i(0, 1), StandardMaterial3D.new())
 
 	var shape := door.get_node("CollisionShape3D") as CollisionShape3D
+	var link := door.get_node("NavigationLink3D") as NavigationLink3D
 	assert_str(door.interaction_name).is_equal("Door")
 	assert_int(door.max_integrity).is_equal(1)
 	assert_bool((door.collision_layer & PhysicsSetup.LAYER_SCENE_OBJECT) != 0).is_true()
 	assert_bool((door.collision_layer & PhysicsSetup.LAYER_TRIGGER) != 0).is_true()
 	assert_bool(shape.disabled).is_false()
+	assert_object(link).is_not_null()
+	assert_bool(link.enabled).is_false()
 	assert_float((shape.shape as BoxShape3D).size.z).is_equal_approx(DungeonDoor.THICKNESS, 0.001)
 
 	door.interact(null)
 
 	assert_bool(door.is_open).is_true()
 	assert_bool(shape.disabled).is_true()
+	assert_bool(link.enabled).is_true()
 	assert_float(door.get_node("LeafPivot").rotation.y).is_less(PI * 0.5)
 	await get_tree().create_timer(door.open_duration + 0.05).timeout
 	assert_float(absf(door.get_node("LeafPivot").rotation.y)).is_equal_approx(PI * 0.5, 0.01)
 
 	remove_child(door)
 	door.free()
+
+
+func test_monster_hunt_opens_door_without_pressure_action() -> void:
+	var actions: Array[String] = []
+	var door := DungeonDoor.new()
+	add_child(door)
+	door.configure(DungeonDoor.KIND_STANDARD, Vector2i(0, 1), StandardMaterial3D.new())
+	door.pressure_action.connect(func(action: String) -> void:
+		actions.append(action)
+	)
+
+	door.open_for_monster_hunt()
+
+	assert_bool(door.is_open).is_true()
+	assert_bool((door.get_node("CollisionShape3D") as CollisionShape3D).disabled).is_true()
+	assert_bool((door.get_node("NavigationLink3D") as NavigationLink3D).enabled).is_true()
+	assert_array(actions).is_empty()
+	door.queue_free()
 
 
 func test_dungeon_door_voxel_unit_is_one_pixel_not_global_four_pixels() -> void:
@@ -44,6 +66,17 @@ func test_dungeon_door_voxel_unit_is_one_pixel_not_global_four_pixels() -> void:
 
 	remove_child(door)
 	door.free()
+
+
+func test_door_widths_are_integer_and_fit_one_three_meter_grid_cell() -> void:
+	assert_float(DungeonDoor.STANDARD_SIZE.x).is_equal(1.0)
+	assert_float(DungeonDoor.BOSS_SIZE.x).is_equal(2.0)
+	assert_bool(DungeonGenerationConfig.is_integer_height(DungeonDoor.STANDARD_SIZE.x)).is_true()
+	assert_bool(DungeonGenerationConfig.is_integer_height(DungeonDoor.BOSS_SIZE.x)).is_true()
+	assert_float(3.0 - DungeonDoor.STANDARD_SIZE.x).is_equal(2.0)
+	assert_float(3.0 - DungeonDoor.BOSS_SIZE.x).is_equal(1.0)
+	assert_bool(DungeonDoor.STANDARD_SIZE.x < 3.0).is_true()
+	assert_bool(DungeonDoor.BOSS_SIZE.x < 3.0).is_true()
 
 
 func test_dungeon_door_uses_front_side_and_top_materials() -> void:
@@ -159,6 +192,19 @@ func test_dungeon_door_open_code_does_not_tween_position() -> void:
 	assert_bool(source.contains("\"rotation:y\"")) \
 		.override_failure_message("DungeonDoor 打开必须 tween rotation:y 到 90°") \
 		.is_true()
+
+func test_dungeon_door_break_enables_navigation_crossing() -> void:
+	var door := DungeonDoor.new()
+	add_child(door)
+	door.configure(DungeonDoor.KIND_STANDARD, Vector2i(1, 0), StandardMaterial3D.new())
+	var link := door.get_node("NavigationLink3D") as NavigationLink3D
+
+	door.apply_damage(1)
+
+	assert_bool(door.is_broken).is_true()
+	assert_bool(link.enabled).is_true()
+	remove_child(door)
+	door.free()
 
 
 func _find_mesh(root: Node, node_name: String) -> MeshInstance3D:

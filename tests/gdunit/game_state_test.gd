@@ -19,3 +19,16 @@ func test_register_player_ignores_equipment_preview_player() -> void:
 	preview_player.free()
 	real_player.free()
 	gs.free()
+
+func test_unregister_player_only_clears_matching_player() -> void:
+	var gs = load("res://globals/core/game_state.gd").new()
+	var player_a := Player.new()
+	var player_b := Player.new()
+	gs.current_player = player_a
+	gs.unregister_player(player_b)
+	assert_object(gs.current_player).is_equal(player_a)
+	gs.unregister_player(player_a)
+	assert_object(gs.current_player).is_null()
+	player_a.free()
+	player_b.free()
+	gs.free()

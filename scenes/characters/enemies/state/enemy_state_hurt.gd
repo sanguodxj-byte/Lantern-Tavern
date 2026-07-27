@@ -24,10 +24,9 @@ func _enter_tree() -> void:
 			enemy.enter_launched_state(launch_data)
 		else:
 			var data := EnemyStateData.new().set_impulse(state_data.impact_direction * 120.0 + Vector3.UP * 80.0)
-			transition_state(Enemy.State.DYING, data)
+			enemy.request_death(data)
 	else:
 		AudioManager.play("slash-hit", enemy.action_audio_stream_player)
-		GameEvents.impact_felt.emit(GameEvents.ImpactIntensity.LOW)
 		# physical_bone_head 仅布娃娃敌人存在；缺失时回退到 enemy.global_transform，
 		# 否则对 null 访问 global_transform 会崩溃（与 EnemyStateDying._blood_transform 一致）。
 		var blood_at := enemy.physical_bone_head.global_transform if enemy.physical_bone_head != null and enemy.physical_bone_head.is_inside_tree() else (enemy.global_transform if enemy.is_inside_tree() else enemy.transform)
@@ -40,12 +39,17 @@ func _enter_tree() -> void:
 		var skel := enemy.get_node_or_null("character/Armature/Skeleton3D")
 		if skel == null:
 			skel = enemy.find_child("Skeleton3D", true, false)
-		var part_color := Color(0.6, 0.6, 0.6)
-		if skel != null:
-			part_color = BPR.resolve_part_color(enemy.name, skel, hit_pt)
-		if enemy.is_inside_tree():
-			FxHelper.call_deferred("create_voxel_chip", hit_pt, part_color)
-	if enemy.animation_player.has_animation(hurt_animation_name):
+		# A missing skeleton has no reliable hit-part color. Do not emit the
+		# neutral-gray fallback particle: at first-person distance it reads as a
+		# one-frame gray screen flash instead of a hit effect.
+		# 扩大拦截：除精确回退灰 Color(0.60,0.60,0.60) 外，voxel_palette 中
+		# armor/metal/stone/UpperLeg/LowerLeg 等近灰色部位色同样会读作灰屏闪屏。
+		# 仅拦截中明度近灰色（保留骨白高明度与深色低明度的合法命中碎屑）。
+		if skel != null and enemy.is_inside_tree():
+			var part_color := BPR.resolve_part_color(enemy.name, skel, hit_pt)
+			if not _is_gray_flash_color(part_color):
+				FxHelper.call_deferred("create_voxel_chip", hit_pt, part_color)
+	if enemy.animation_player != null and enemy.animation_player.has_animation(hurt_animation_name):
 		enemy.animation_player.play(hurt_animation_name)
 		enemy.animation_player.animation_finished.connect(on_animation_finished)
 	else:
@@ -82,3 +86,17 @@ func can_get_hurt() -> bool:
 ## 致命击退是否延迟死亡（进入飞行态 LAUNCHED）：有击退且已死亡则延迟，否则立即死亡。
 func wants_launch(state_data: EnemyStateData) -> bool:
 	return state_data.knockback_force > 0.0 and enemy.health.is_dead()
+
+
+## 判定颜色是否会在第一人称近距离读作"灰屏闪屏"。
+## 体素碎屑粒子在贴脸命中时若为中明度近灰色，会被读作一帧灰屏而非命中反馈。
+## 判据：色度(chroma)低（去色）且明度(value)处于中段 [0.35, 0.85)。
+##   - 骨白 Color(0.92,0.90,0.82)：明度 0.92 ≥ 0.85 → 保留（合法骨屑）
+##   - 深棕 Color(0.30,0.25,0.20)：明度 0.30 < 0.35 → 保留（深色碎屑）
+##   - 回退灰/armor/metal/stone/UpperLeg 等：中明度低色度 → 拦截
+static func _is_gray_flash_color(c: Color) -> bool:
+	var max_c := maxf(maxf(c.r, c.g), c.b)
+	var min_c := minf(minf(c.r, c.g), c.b)
+	var chroma := max_c - min_c
+	var value := max_c
+	return chroma < 0.12 and value >= 0.35 and value < 0.85

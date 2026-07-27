@@ -71,5 +71,11 @@ static func _is_valid_equipment_player(player: Variant) -> bool:
 		and player.equipment != null
 
 static func _register_current_player(gs: Node, player: Player) -> void:
-	if gs != null and "current_player" in gs:
-		gs.set("current_player", player)
+	if gs == null:
+		return
+	# 走 register_player 统一注册入口，避免直写 current_player 绕过 _player_context 同步。
+	# player 已经 _is_valid_equipment_player 过滤（排除 equipment_preview），
+	# register_player 内部对预览实例会 return，此处调用是安全的。
+	# GameState 是 autoload 单例，始终提供 register_player；不再保留直写 current_player 的回退。
+	if gs.has_method("register_player"):
+		gs.register_player(player)

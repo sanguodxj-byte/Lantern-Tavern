@@ -12,6 +12,7 @@ extends Node
 # bit5=32: 交互触发器（Area3D）
 # bit6=64: 场景物体（立柱/吧台/桌子/宝箱/装饰）
 # bit7=128: 投射物（箭矢/弩箭/法术弹）
+# bit8=256: 死亡体素碎片（仅碰地面，不碰玩家/敌人/其他碎片，落地后休眠）
 
 const LAYER_ENVIRONMENT: int = 1
 const LAYER_PLAYER: int = 2
@@ -21,6 +22,7 @@ const LAYER_THROWABLE: int = 16
 const LAYER_TRIGGER: int = 32
 const LAYER_SCENE_OBJECT: int = 64
 const LAYER_PROJECTILE: int = 128
+const LAYER_DEBRIS: int = 256
 const LAYER_FURNITURE: int = LAYER_SCENE_OBJECT
 
 # ---- 角色胶囊碰撞标准 ----
@@ -54,6 +56,8 @@ const MASK_PROJECTILE: int = LAYER_ENVIRONMENT | LAYER_ENEMY | LAYER_SCENE_OBJEC
 const MASK_SELECTABLE: int = LAYER_PICKABLE | LAYER_SCENE_OBJECT
 # 视野遮挡层：地形/墙壁+场景物体（柱子/家具等），用于敌人视野检测射线
 const MASK_VISION_OBSTRUCTION: int = LAYER_ENVIRONMENT | LAYER_SCENE_OBJECT
+# 死亡体素碎片：仅碰撞地面（落地停留），不碰玩家/敌人/其他碎片，避免 broadphase 唤醒与堆叠开销
+const MASK_DEBRIS: int = LAYER_ENVIRONMENT
 
 ## 为 MeshInstance3D 自动添加 StaticBody3D + BoxShape3D 碰撞（基于 AABB）。
 ## parent: 父节点；mesh_instance: 已添加的 MeshInstance3D；layer: 碰撞层（默认环境）。
@@ -157,6 +161,7 @@ func get_layer_name(layer: int) -> String:
 		LAYER_TRIGGER: return "trigger"
 		LAYER_SCENE_OBJECT: return "scene_object"
 		LAYER_PROJECTILE: return "projectile"
+		LAYER_DEBRIS: return "debris"
 		_: return "unknown(%d)" % layer
 
 func _ensure_collision_shape(body: CollisionObject3D, fallback_shape: Shape3D) -> CollisionShape3D:

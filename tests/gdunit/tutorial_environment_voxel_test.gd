@@ -9,9 +9,13 @@ const ASSET_PATHS := [
 
 func test_tutorial_environment_assets_are_voxel_glbs() -> void:
 	for path in ASSET_PATHS:
-		var scene := load(path) as PackedScene
+		var scene: PackedScene = load(path) as PackedScene
 		assert_object(scene).is_not_null()
-		var instance := auto_free(scene.instantiate())
+		if scene == null:
+			continue
+		var instance := scene.instantiate() as Node3D
+		add_child(instance)
+		await get_tree().process_frame
 		var meshes := _collect_meshes(instance)
 		assert_int(meshes.size()).is_greater(2)
 		var boxes := _boxes_in_pixel_space(meshes)
@@ -20,6 +24,8 @@ func test_tutorial_environment_assets_are_voxel_glbs() -> void:
 		for mesh in meshes:
 			var size := mesh.get_aabb().size
 			assert_bool(_is_px_aligned(size.x) and _is_px_aligned(size.y) and _is_px_aligned(size.z)).is_true()
+		instance.queue_free()
+		await get_tree().process_frame
 
 func test_tutorial_set_dressing_uses_reusable_voxel_assets() -> void:
 	for path in [
@@ -52,9 +58,23 @@ func _is_px_aligned(value: float) -> bool:
 func _boxes_in_pixel_space(meshes: Array[MeshInstance3D]) -> Array[AABB]:
 	var boxes: Array[AABB] = []
 	for mesh in meshes:
-		var aabb := mesh.get_aabb()
-		boxes.append(AABB((mesh.global_position + aabb.position) * 32.0, aabb.size * 32.0))
+		var local_aabb := mesh.get_aabb()
+		var world_aabb := _transform_aabb(local_aabb, mesh.global_transform)
+		boxes.append(AABB(world_aabb.position * 32.0, world_aabb.size * 32.0))
 	return boxes
+
+func _transform_aabb(local_aabb: AABB, transform: Transform3D) -> AABB:
+	var local_end := local_aabb.end
+	var first := transform * local_aabb.position
+	var minimum := first
+	var maximum := first
+	for x in [local_aabb.position.x, local_end.x]:
+		for y in [local_aabb.position.y, local_end.y]:
+			for z in [local_aabb.position.z, local_end.z]:
+				var point := transform * Vector3(x, y, z)
+				minimum = minimum.min(point)
+				maximum = maximum.max(point)
+	return AABB(minimum, maximum - minimum)
 
 func _count_components(boxes: Array[AABB]) -> int:
 	var visited: Array[bool] = []

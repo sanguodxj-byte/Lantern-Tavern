@@ -50,6 +50,10 @@ class Report:
 ## `is_humanoid`：true 校验人形骨骼+动画集；false 校验非人形动画集。
 static func validate_glb(glb_path: String, is_humanoid: bool) -> Report:
 	var report := Report.new()
+	if not ResourceLoader.exists(glb_path):
+		report.ok = false
+		report.errors.append("资源文件不存在: %s" % glb_path)
+		return report
 	var packed := load(glb_path) as PackedScene
 	if packed == null:
 		report.ok = false

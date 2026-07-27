@@ -27,6 +27,8 @@ func test_authored_spec_and_envelope() -> void:
 	assert_bool(script_text.contains("AUTHORED_PART_COUNT = 38")).is_true()
 	assert_bool(script_text.contains("TARGET_ENVELOPE_PX = (21.0, 35.0, 13.0)")).is_true()
 	assert_bool(script_text.contains("MODEL_ID = \"goblin\"")).is_true()
+	assert_bool(script_text.contains("build_all_actions(armature)")).is_true()
+	assert_bool(script_text.contains("build_weapon_actions(armature)")).is_true()
 
 
 func test_preview_images_exist() -> void:

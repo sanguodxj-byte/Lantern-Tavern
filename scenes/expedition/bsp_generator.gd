@@ -1,6 +1,8 @@
 extends Node
 class_name BSP_DungeonGenerator
 
+const HEIGHT_CONFIG := preload("res://scenes/expedition/dungeon_generation_config.gd")
+
 enum TileType { EMPTY, FLOOR, WALL, LOOT, RESOURCE, PILLAR }
 
 var width: int
@@ -82,9 +84,9 @@ class Leaf:
 			if area <= 16:
 				room_ceiling_height = 3.0
 			elif area <= 36:
-				room_ceiling_height = 3.8
+				room_ceiling_height = 4.0
 			else:
-				room_ceiling_height = 4.6
+				room_ceiling_height = 5.0
 
 			# ── Use WFC_RoomGenerator to fill the interior layout ─────────────
 			var wfc := WFC_RoomGenerator.new()
@@ -200,4 +202,4 @@ func _dig(x: int, y: int) -> void:
 		# Only dig if we do not overwrite established loot, resource or pillars
 		if grid[y][x] == TileType.WALL:
 			grid[y][x] = TileType.FLOOR
-			ceiling_heights[y][x] = 2.4
+			ceiling_heights[y][x] = HEIGHT_CONFIG.MIN_CEILING_HEIGHT_METERS

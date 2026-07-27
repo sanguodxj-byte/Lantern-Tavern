@@ -18,6 +18,7 @@ extends Node
 const EXPLORATION_PRESSURE_SCRIPT := preload("res://globals/dungeon/exploration_pressure.gd")
 const LIGHTING_HELPER := preload("res://scenes/expedition/dungeon_lighting_helper.gd")
 const DungeonRenderingConfig := preload("res://scenes/expedition/dungeon_rendering_config.gd")
+const VOXEL_LIGHTING := preload("res://globals/visual/voxel_lighting_adapter.gd")
 
 # 配置（由 ProceduralDungeon._ready 注入）
 var layout: DungeonLayout = null
@@ -41,6 +42,10 @@ var _enemy_spawn_plan: Array = []
 var _enemy_spawn_root: Node = null
 var _enemy_spawn_player: Node = null
 var _enemy_spawn_index: int = 0
+var _enemy_spawn_active: bool = false
+var _enemy_spawn_generation: int = 0
+var _enemy_spawn_timer: SceneTreeTimer = null
+var _force_monster_hunt := false
 
 # Runtime 自有状态（不再写回 _level._private_field）
 var expedition_hud: ExpeditionHUD = null
@@ -137,6 +142,10 @@ func stabilize_lighting() -> void:
 	if player_node != null and is_instance_valid(player_node):
 		if player_node.has_method("_setup_player_light"):
 			player_node._setup_player_light()
+	var scene_lights: Array[Light3D] = []
+	LIGHTING_HELPER.collect_scene_lights(_level, scene_lights)
+	for light in scene_lights:
+		VOXEL_LIGHTING.disable_light_specular(light)
 	var local_lights: Array[Light3D] = []
 	LIGHTING_HELPER.collect_local_lights(_level, local_lights)
 	var base_energy: float = _rendering_cfg.player_vision_base_energy
@@ -160,12 +169,28 @@ func stabilize_lighting() -> void:
 ## 停止 runtime：handle extraction/overtime 收尾。
 func stop() -> void:
 	expedition_finished = true
+	# SceneTreeTimer 没有可靠的取消 API；generation token 使已排队的
+	# callback 失效，并清掉它可能持有的 root/player 引用。
+	_enemy_spawn_active = false
+	_enemy_spawn_generation += 1
+	_enemy_spawn_timer = null
+	_enemy_spawn_plan.clear()
+	_enemy_spawn_root = null
+	_enemy_spawn_player = null
+	_enemy_spawn_index = 0
+	_force_monster_hunt = false
+	if _streaming_controller != null and is_instance_valid(_streaming_controller) \
+			and _streaming_controller.has_method("clear"):
+		_streaming_controller.clear()
+
+func _exit_tree() -> void:
+	stop()
 
 func spawn_player() -> Node3D:
 	return null  # 仍由 level.spawn_player 提供；接口保留供契约测试
 
 func spawn_enemies(spawned_player: Node3D = null) -> void:
-	if layout == null or layout.is_empty() or build_result == null:
+	if expedition_finished or layout == null or layout.is_empty() or build_result == null:
 		return
 	var spawner: Node = Service.dungeon_spawner() if Service != null else null
 	if spawner == null:
@@ -180,10 +205,14 @@ func spawn_enemies(spawned_player: Node3D = null) -> void:
 	var spawn_root: Node = build_result.spawn_root if build_result.spawn_root != null else _level
 	# 分帧实例化：先取生成计划（不实例化），再按帧批量生成，避免进场单帧卡顿。
 	_enemy_spawn_plan = spawner.spawn_enemies_from_layout(layout, spawn_root, player_node, true)
+	_snap_enemy_spawn_plan_to_navigation()
 	_enemy_spawn_root = spawn_root
 	_enemy_spawn_player = player_node
 	_enemy_spawn_index = 0
+	_enemy_spawn_active = true
+	_enemy_spawn_generation += 1
 	if _enemy_spawn_plan.is_empty():
+		_enemy_spawn_active = false
 		return
 	# 无场景树（如纯单测 .new()）则同步实例化，保持测试可直接断言数量。
 	if get_tree() == null:
@@ -192,28 +221,85 @@ func spawn_enemies(spawned_player: Node3D = null) -> void:
 	_pump_enemy_spawns()
 
 
+## 将生成计划投影到已烘焙导航面，避免敌人出生在装饰物顶部、碰撞体内部或导航面边界外。
+## 只接受同一格附近的投影，防止导航异常时把敌人跨房间移动；没有可用导航图则保留原计划。
+func _snap_enemy_spawn_plan_to_navigation() -> void:
+	if _enemy_spawn_plan.is_empty() or _level == null or not is_instance_valid(_level):
+		return
+	var map := _get_spawn_navigation_map()
+	if not map.is_valid() or NavigationServer3D.map_get_iteration_id(map) <= 0:
+		return
+	var max_horizontal_snap := maxf(layout.tile_size * 1.5, 1.0) if layout != null else 4.5
+	for index in range(_enemy_spawn_plan.size()):
+		var descriptor: Dictionary = _enemy_spawn_plan[index]
+		var original: Variant = descriptor.get("pos", Vector3.ZERO)
+		if not original is Vector3:
+			continue
+		var requested: Vector3 = original
+		var closest := NavigationServer3D.map_get_closest_point(
+			map, Vector3(requested.x, 0.5, requested.z))
+		if not _is_finite_vector(closest):
+			continue
+		var horizontal_delta := Vector2(closest.x - requested.x, closest.z - requested.z).length()
+		if not is_finite(horizontal_delta) or horizontal_delta > max_horizontal_snap:
+			continue
+		# 导航面 y 仅用于烘焙层高度；角色根节点仍以脚底 y=0.5 生成并自然落地。
+		descriptor["pos"] = Vector3(closest.x, 0.5, closest.z)
+		_enemy_spawn_plan[index] = descriptor
+
+
+func _get_spawn_navigation_map() -> RID:
+	if _level == null or not is_instance_valid(_level):
+		return RID()
+	for node in _level.find_children("*", "NavigationRegion3D", true, false):
+		var region := node as NavigationRegion3D
+		if region == null:
+			continue
+		var map := region.get_navigation_map()
+		if map.is_valid() and NavigationServer3D.map_get_iteration_id(map) > 0:
+			return map
+	return RID()
+
+
+func _is_finite_vector(value: Vector3) -> bool:
+	return is_finite(value.x) and is_finite(value.y) and is_finite(value.z)
+
+
 ## 同步实例化最多 count 个待生成敌人，并注册到 streaming。
 func _spawn_enemy_batch(count: int) -> void:
 	var spawner: Node = Service.dungeon_spawner() if Service != null else null
-	if spawner == null or _enemy_spawn_root == null or not is_instance_valid(_enemy_spawn_root):
+	if not _enemy_spawn_active or spawner == null or _enemy_spawn_root == null \
+			or not is_instance_valid(_enemy_spawn_root):
 		return
 	var end := mini(_enemy_spawn_index + count, _enemy_spawn_plan.size())
 	for i in range(_enemy_spawn_index, end):
 		var desc: Dictionary = _enemy_spawn_plan[i]
 		var enemy: Node = spawner.instantiate_enemy_descriptor(desc, _enemy_spawn_root, _enemy_spawn_player, layout)
 		if enemy != null:
+			var runtime_enemy := enemy as Enemy
+			if _force_monster_hunt and runtime_enemy != null:
+				runtime_enemy.set_dark_erosion_hunt(true)
+				runtime_enemy.player = _enemy_spawn_player as Player
 			_register_streamed_physics(enemy)
 	_enemy_spawn_index = end
+	if _enemy_spawn_index >= _enemy_spawn_plan.size():
+		_enemy_spawn_active = false
 
 
 ## 按帧推进实例化：每帧生成一批，跨帧完成全图敌人生成。
-func _pump_enemy_spawns() -> void:
+func _pump_enemy_spawns(generation: int = -1) -> void:
+	if generation >= 0 and generation != _enemy_spawn_generation:
+		return
+	if not _enemy_spawn_active or not is_inside_tree():
+		return
 	if _enemy_spawn_index >= _enemy_spawn_plan.size():
+		_enemy_spawn_active = false
 		return
 	_spawn_enemy_batch(ENEMY_SPAWN_BATCH_PER_FRAME)
-	if _enemy_spawn_index < _enemy_spawn_plan.size():
-		if is_instance_valid(get_tree()):
-			get_tree().create_timer(0.0).timeout.connect(_pump_enemy_spawns)
+	if _enemy_spawn_active and _enemy_spawn_index < _enemy_spawn_plan.size():
+		var next_generation := _enemy_spawn_generation
+		_enemy_spawn_timer = get_tree().create_timer(0.0)
+		_enemy_spawn_timer.timeout.connect(_pump_enemy_spawns.bind(next_generation), CONNECT_ONE_SHOT)
 
 func spawn_items() -> void:
 	if layout == null or layout.is_empty() or build_result == null:
@@ -262,7 +348,7 @@ func on_extraction_requested(player: Node) -> void:
 	finish_expedition(player, true)
 
 func on_expedition_overtime(_snapshot: Dictionary) -> void:
-	var player_node: Player = GameState.current_player as Player
+	var player_node := _get_valid_current_player()
 	finish_expedition(player_node, false)
 
 func on_pressure_changed(snapshot: Dictionary) -> void:
@@ -313,16 +399,39 @@ func apply_environment_activity(multiplier: float) -> void:
 		node.set_meta("environment_activity_mult", clampf(multiplier, 1.0, 1.75))
 
 func apply_monster_hunt_pressure(force_hunt: bool) -> void:
-	var player_node: Player = GameState.current_player as Player
+	_force_monster_hunt = force_hunt
+	if force_hunt:
+		_open_doors_for_monster_hunt()
+	var player_node := _get_valid_current_player()
 	if player_node == null or not is_instance_valid(player_node):
 		return
 	for node in get_tree().get_nodes_in_group("enemies"):
 		var enemy := node as Enemy
 		if enemy == null or not is_instance_valid(enemy):
 			continue
-		enemy.set_meta("dark_erosion_hunt", force_hunt)
+		if enemy.has_method("set_dark_erosion_hunt"):
+			enemy.set_dark_erosion_hunt(force_hunt)
+		else:
+			enemy.set_meta("dark_erosion_hunt", force_hunt)
 		if force_hunt:
 			enemy.player = player_node
+	if _streaming_controller != null and is_instance_valid(_streaming_controller) \
+			and _streaming_controller.has_method("update_streaming"):
+		# 压力变化不一定伴随玩家跨 chunk；强制刷新才能立即唤醒/休眠全图敌人。
+		_streaming_controller.update_streaming(true)
+
+func _open_doors_for_monster_hunt() -> void:
+	if build_result == null or build_result.doors_root == null:
+		return
+	for node in build_result.doors_root.get_children():
+		if node != null and is_instance_valid(node) and node.has_method("open_for_monster_hunt"):
+			node.open_for_monster_hunt()
+
+func _get_valid_current_player() -> Player:
+	var candidate: Variant = GameState.current_player
+	if candidate == null or not is_instance_valid(candidate):
+		return null
+	return candidate as Player
 
 func _register_streamed_physics(node: Node) -> void:
 	if node == null or not is_instance_valid(node):

@@ -1,0 +1,93 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scenes/characters/enemies/enemy.gd" id="1_enemy"]
+[ext_resource type="PackedScene" path="res://assets/meshes/characters/voxel_kobold_42px_rig.glb" id="2_kobold_rig"]
+[ext_resource type="PackedScene" path="res://scenes/characters/component/equipment_component.tscn" id="3_equipment"]
+[ext_resource type="PackedScene" path="res://scenes/characters/component/health_component.tscn" id="4_health"]
+[ext_resource type="Resource" path="res://data/weapons/shortsword.tres" id="5_shortsword"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_kobold"]
+radius = 0.3
+height = 1.4
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_detection"]
+radius = 6.0
+
+[node name="Kobold" type="CharacterBody3D"]
+collision_layer = 4
+collision_mask = 119
+script = ExtResource("1_enemy")
+duration_between_attacks = 1500
+duration_stun = 2000
+speed = 2.2
+body_size = "small"
+detection_range = 6.0
+
+[node name="CollisionShape" type="CollisionShape3D" parent="."]
+unique_name_in_owner = true
+position = Vector3(0, 0.7, 0)
+shape = SubResource("CapsuleShape3D_kobold")
+
+[node name="character" parent="." instance=ExtResource("2_kobold_rig")]
+
+[node name="AnimationPlayer" parent="character" index="1"]
+autoplay = &"idle"
+
+[node name="WeaponBoneAttachment" type="BoneAttachment3D" parent="character/Armature/Skeleton3D"]
+bone_name = "Hand.R"
+
+[node name="WeaponPlaceholder" type="Node3D" parent="character/Armature/Skeleton3D/WeaponBoneAttachment"]
+scale = Vector3(0.4, 0.4, 0.4)
+
+[node name="EquipmentComponent" parent="." node_paths=PackedStringArray("weapon_placeholder", "weapon_reach_raycast", "weapon_spawn_position") instance=ExtResource("3_equipment")]
+unique_name_in_owner = true
+weapon_data = ExtResource("5_shortsword")
+weapon_placeholder = NodePath("../character/Armature/Skeleton3D/WeaponBoneAttachment/WeaponPlaceholder")
+weapon_reach_raycast = NodePath("../WeaponReachRaycast")
+weapon_spawn_position = NodePath("../WeaponSpawnPosition")
+
+[node name="WeaponSpawnPosition" type="Node3D" parent="."]
+position = Vector3(0.35, 0.8, -0.45)
+
+[node name="WeaponReachRaycast" type="RayCast3D" parent="."]
+unique_name_in_owner = true
+position = Vector3(0, 0.75, 0)
+target_position = Vector3(0, 0, -1.8)
+collision_mask = 2
+enabled = true
+
+[node name="HealthComponent" parent="." instance=ExtResource("4_health")]
+unique_name_in_owner = true
+max_life = 7
+current_life = 7
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+unique_name_in_owner = true
+path_desired_distance = 0.45
+target_desired_distance = 1.1
+radius = 0.42
+height = 1.4
+avoidance_enabled = true
+
+[node name="PlayerDetectionArea" type="Area3D" parent="."]
+unique_name_in_owner = true
+collision_layer = 0
+collision_mask = 2
+monitorable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PlayerDetectionArea"]
+shape = SubResource("SphereShape3D_detection")
+
+[node name="ActionAudioStreamPlayer" type="AudioStreamPlayer3D" parent="."]
+unique_name_in_owner = true
+bus = &"SFX"
+
+[node name="FootstepAudioStreamPlayer" type="AudioStreamPlayer3D" parent="."]
+unique_name_in_owner = true
+bus = &"SFX"
+
+[node name="VocalAudioStreamPlayer" type="AudioStreamPlayer3D" parent="."]
+unique_name_in_owner = true
+bus = &"SFX"
+
+[editable path="character"]

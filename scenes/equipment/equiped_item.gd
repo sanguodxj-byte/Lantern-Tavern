@@ -3,6 +3,7 @@ extends Node3D
 
 const ZCLIP_MATERIAL := preload("res://materials/zclip_material.tres")
 const VOXEL_LIGHTING := preload("res://globals/visual/voxel_lighting_adapter.gd")
+const WEAPON_MOUNT_PROFILE := preload("res://globals/visual/weapon_mount_profile.gd")
 
 @export var is_always_in_front: bool
 @export var furniture_data: FurnitureData
@@ -18,7 +19,18 @@ func _ready() -> void:
 	elif furniture_data and furniture_data.glb_mesh:
 		equiped_object = furniture_data.glb_mesh.instantiate()
 	if equiped_object != null:
-		add_child(equiped_object)
+		var weapon_class := weapon_data.weapon_class if weapon_data != null else ""
+		if weapon_class.to_lower() == "crossbow":
+			# Keep the mount frame (X-forward) separate from the raw asset frame;
+			# this gives the crossbow its own view without changing other weapons.
+			var crossbow_mount := Node3D.new()
+			crossbow_mount.name = "CrossbowMount"
+			add_child(crossbow_mount)
+			WEAPON_MOUNT_PROFILE.apply(crossbow_mount, weapon_class)
+			crossbow_mount.add_child(equiped_object)
+			WEAPON_MOUNT_PROFILE.apply_asset_orientation(equiped_object as Node3D, weapon_class)
+		else:
+			add_child(equiped_object)
 		# 武器/盾保留金属材质；家具走默认体素适配
 		if weapon_data != null or shield_data != null:
 			var material_tier := weapon_data.material_tier if weapon_data != null else ""

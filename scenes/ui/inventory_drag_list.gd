@@ -3,10 +3,20 @@ extends ItemList
 
 const INVENTORY_ICON_SIZE := 96
 const GRID_COLUMN_WIDTH := 148
-const GRID_MAX_COLUMNS := 6
+const GRID_MAX_COLUMNS := 8
 const FIXED_GRID_ROW_HEIGHT := 136.0
+const SQUARE_GRID_CELL_SIZE := 132.0
+const SQUARE_GRID_CELL_PITCH := 144.0
+const SQUARE_GRID_MIN_GAP := 12.0
 const GRID_FALLBACK_ROW_HEIGHT := 164.0
-const CELL_FRAME_INSET := 6.0
+const CELL_FRAME_INSET := 2.0
+const GRID_CELL_MASK_INSET := 0.0
+const GRID_ICON_SIZE := 72.0
+const GRID_ICON_TOP := 8.0
+const GRID_LABEL_TOP := 84.0
+const GRID_LABEL_SIDE_INSET := 12.0
+const GRID_LABEL_FONT_SIZE := 18
+const GRID_LABEL_LINE_HEIGHT := 18.0
 const GRID_OVERLAY_SCRIPT := preload("res://scenes/ui/inventory_grid_overlay.gd")
 const VIEW_MODEL := preload("res://scenes/ui/equipment_screen_view_model.gd")
 const BADGE_SIZE := Vector2(44, 22)
@@ -15,9 +25,12 @@ const PIXEL_FONT := preload("res://assets/fonts/ark-pixel-12px-proportional-zh_c
 const CELL_BORDER := Color(0.32, 0.23, 0.17, 0.88)
 const CELL_SELECTED_BORDER := Color(0.96, 0.63, 0.25, 1.0)
 const CELL_HOVER_BORDER := Color(0.68, 0.70, 0.74, 1.0)
+const GRID_CELL_MASK_COLOR := Color(0.42, 0.27, 0.08, 0.16)
 
 @export var inventory_source: String = ""
 @export var fixed_grid_cells := false
+@export var show_grid_cell_masks := false
+@export var square_grid_cells := false
 
 var _drag_selecting := false
 var _drag_start := Vector2.ZERO
@@ -41,7 +54,10 @@ func _ready() -> void:
 	var empty_style := StyleBoxEmpty.new()
 	add_theme_stylebox_override("selected", empty_style)
 	add_theme_stylebox_override("selected_focus", empty_style)
+	add_theme_stylebox_override("cursor", empty_style)
+	add_theme_stylebox_override("cursor_unfocus", empty_style)
 	add_theme_stylebox_override("focus", empty_style)
+	focus_mode = Control.FOCUS_NONE
 	add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0))
 	_grid_overlay = GRID_OVERLAY_SCRIPT.new()
 	_grid_overlay.name = "GridOverlay"
@@ -56,7 +72,7 @@ func _gui_input(event: InputEvent) -> void:
 		_drag_start = event.position
 		_drag_current = event.position
 		if event.pressed:
-			var idx: int = get_item_at_position(event.position, true)
+			var idx: int = _item_index_at_position(event.position)
 			if idx >= 0 and not is_selected(idx):
 				select(idx, false)
 			# 装备（武器/防具）通过 Godot 原生拖拽（_get_drag_data）单独拖动到装备槽，
@@ -90,8 +106,14 @@ func _draw() -> void:
 
 
 func _draw_inventory_overlay(target: CanvasItem) -> void:
+	if fixed_grid_cells and square_grid_cells:
+		# Mask the native ItemList paint first. The custom square grid is the only
+		# visual surface for the backpack, so native selection remnants cannot
+		# protrude into the uniform gaps or outside the first row.
+		target.draw_rect(Rect2(Vector2.ZERO, size), Color(0.012, 0.010, 0.008, 1.0), true)
 	if _drag_selecting:
 		target.draw_rect(_selection_rect(), Color(0.976, 0.639, 0.105, 0.18), true)
+	_draw_grid_cell_masks(target)
 	_draw_fixed_grid_icons(target)
 	for i in range(item_count):
 		var cell := _visual_cell_rect(i)
@@ -135,7 +157,6 @@ func _draw_inventory_grid(target: CanvasItem) -> void:
 			var cell := _grid_cell_rect(row, column, column_count, metrics)
 			if cell.position.x >= size.x or cell.position.y >= size.y:
 				continue
-			target.draw_rect(_cell_frame_rect(cell), CELL_BORDER, false, 2.0)
 			_draw_quality_marker(target, cell, get_item_metadata(item_index))
 	# Draw emphasis after the complete base grid so a neighbor cannot overwrite
 	# the selected cell's right or bottom edge.
@@ -150,23 +171,38 @@ func _draw_inventory_grid(target: CanvasItem) -> void:
 			if border != CELL_BORDER:
 				target.draw_rect(_cell_frame_rect(_grid_cell_rect(row, column, column_count, metrics)), border, false, 2.0)
 
+func _draw_grid_cell_masks(target: CanvasItem) -> void:
+	if not show_grid_cell_masks:
+		return
+	var column_count := _visible_column_count()
+	var metrics := _grid_metrics(column_count)
+	var row_count := _visible_row_count(metrics)
+	for row in range(row_count):
+		for column in range(column_count):
+			var cell := _grid_cell_rect(row, column, column_count, metrics)
+			if cell.position.x >= size.x or cell.position.y >= size.y or cell.end.x > size.x or cell.end.y > size.y:
+				continue
+			# The layout gap is the only grid line. Every visible filled region is
+			# exactly the computed square cell, so outer and inner gaps match.
+			target.draw_rect(cell.grow(-GRID_CELL_MASK_INSET), GRID_CELL_MASK_COLOR, true)
+
 
 func _draw_item_labels(target: CanvasItem) -> void:
 	for index in range(item_count):
-		var metadata := get_item_metadata(index)
+		var metadata: Variant = get_item_metadata(index)
 		if typeof(metadata) != TYPE_DICTIONARY:
 			continue
 		var label := String(metadata.get("_inventory_label", ""))
 		if label.is_empty():
 			continue
 		var cell := _visual_cell_rect(index)
-		var label_top := float(INVENTORY_ICON_SIZE - 6)
+		var label_top := GRID_LABEL_TOP
 		var label_rect := Rect2(
-			cell.position + Vector2(4.0, label_top),
-			Vector2(maxf(24.0, cell.size.x - 8.0), maxf(56.0, cell.size.y - label_top))
+			cell.position + Vector2(GRID_LABEL_SIDE_INSET, label_top),
+			Vector2(maxf(24.0, cell.size.x - GRID_LABEL_SIDE_INSET * 2.0), maxf(40.0, cell.size.y - label_top - 4.0))
 		)
 		# 覆盖 ItemList 默认的省略文本，再以像素字体绘制可控的双行名称。
-		target.draw_rect(label_rect, Color(0.038, 0.03, 0.039, 0.98), true)
+		# 不再绘制第二个背景矩形，避免侵占或覆盖统一色块。
 		var lines := label.split("\n", false)
 		var label_color := Color(0.96, 0.84, 0.62, 1.0)
 		var quality_tier := String(metadata.get("quality_tier", ""))
@@ -177,8 +213,8 @@ func _draw_item_labels(target: CanvasItem) -> void:
 		elif index == _hovered_index:
 			label_color = Color(0.92, 0.93, 0.96, 1.0)
 		for line_index in range(mini(2, lines.size())):
-			var baseline := label_rect.position.y + 18.0 + line_index * 20.0
-			target.draw_string(PIXEL_FONT, Vector2(label_rect.position.x, baseline), String(lines[line_index]), HORIZONTAL_ALIGNMENT_CENTER, label_rect.size.x, 19, label_color)
+			var baseline := label_rect.position.y + 17.0 + line_index * GRID_LABEL_LINE_HEIGHT
+			target.draw_string(PIXEL_FONT, Vector2(label_rect.position.x, baseline), String(lines[line_index]), HORIZONTAL_ALIGNMENT_CENTER, label_rect.size.x, GRID_LABEL_FONT_SIZE, label_color)
 
 
 func _draw_quality_marker(target: CanvasItem, cell: Rect2, metadata: Variant) -> void:
@@ -198,15 +234,15 @@ func _draw_fixed_grid_icons(target: CanvasItem) -> void:
 	if not fixed_grid_cells:
 		return
 	for index in range(item_count):
-		var metadata := get_item_metadata(index)
+		var metadata: Variant = get_item_metadata(index)
 		if typeof(metadata) != TYPE_DICTIONARY:
 			continue
 		var icon := metadata.get("_inventory_icon", null) as Texture2D
 		if icon == null:
 			continue
 		var cell := _visual_cell_rect(index)
-		var icon_size := Vector2(72.0, 72.0)
-		var icon_rect := Rect2(cell.position + Vector2((cell.size.x - icon_size.x) * 0.5, 10.0), icon_size)
+		var icon_size := Vector2(GRID_ICON_SIZE, GRID_ICON_SIZE)
+		var icon_rect := Rect2(cell.position + Vector2((cell.size.x - icon_size.x) * 0.5, GRID_ICON_TOP), icon_size)
 		target.draw_texture_rect(icon, icon_rect, false)
 
 
@@ -228,6 +264,15 @@ func _visual_cell_rect(index: int) -> Rect2:
 	var cell := _cell_rect_for_index(index)
 	if not fixed_grid_cells or item_count <= 0:
 		return cell
+	if square_grid_cells:
+		var layout := _square_grid_layout(_visible_column_count())
+		var column_count := int(layout.get("column_count", GRID_MAX_COLUMNS))
+		var column := index % column_count
+		var row := index / column_count
+		var origin: Vector2 = layout["origin"]
+		var cell_size: Vector2 = layout["cell_size"]
+		var pitch := float(layout["column_pitch"])
+		return Rect2(origin + Vector2(column * pitch, row * pitch), cell_size)
 	var first := _cell_rect_for_index(0)
 	var column := index % GRID_MAX_COLUMNS
 	var row := index / GRID_MAX_COLUMNS
@@ -235,10 +280,15 @@ func _visual_cell_rect(index: int) -> Rect2:
 
 
 func _visible_column_count() -> int:
+	if square_grid_cells:
+		var gap := SQUARE_GRID_CELL_PITCH - SQUARE_GRID_CELL_SIZE
+		return mini(GRID_MAX_COLUMNS, maxi(1, int(floor((size.x + gap) / SQUARE_GRID_CELL_PITCH))))
 	return mini(GRID_MAX_COLUMNS, maxi(1, int(floor((size.x - 12.0) / float(GRID_COLUMN_WIDTH)))))
 
 
 func _grid_metrics(column_count: int) -> Dictionary:
+	if square_grid_cells:
+		return _square_grid_layout(column_count)
 	var origin := Vector2(6.0, 6.0)
 	var cell_size := Vector2(float(GRID_COLUMN_WIDTH - 8), GRID_FALLBACK_ROW_HEIGHT - 8.0)
 	var column_pitch := float(GRID_COLUMN_WIDTH)
@@ -265,6 +315,35 @@ func _grid_metrics(column_count: int) -> Dictionary:
 	return {"origin": origin, "cell_size": cell_size, "column_pitch": column_pitch, "row_height": row_height}
 
 
+func _square_grid_layout(column_count: int) -> Dictionary:
+	var columns := maxi(1, column_count)
+	var row_count := maxi(1, int(floor((size.y + SQUARE_GRID_MIN_GAP) / (SQUARE_GRID_CELL_SIZE + SQUARE_GRID_MIN_GAP))))
+	# Divide the complete available span into n+1 equal gaps: one outer gap
+	# on each side plus one gap between every neighboring square.
+	var column_gap := maxf(0.0, (size.x - columns * SQUARE_GRID_CELL_SIZE) / float(columns + 1))
+	var row_gap := maxf(0.0, (size.y - row_count * SQUARE_GRID_CELL_SIZE) / float(row_count + 1))
+	return {
+		"origin": Vector2(column_gap, row_gap),
+		"cell_size": Vector2(SQUARE_GRID_CELL_SIZE, SQUARE_GRID_CELL_SIZE),
+		"column_pitch": SQUARE_GRID_CELL_SIZE + column_gap,
+		"row_height": SQUARE_GRID_CELL_SIZE + row_gap,
+		"column_gap": column_gap,
+		"row_gap": row_gap,
+		"column_count": columns,
+		"row_count": row_count,
+	}
+
+
+func _visible_row_count(metrics: Dictionary) -> int:
+	if square_grid_cells and metrics.has("row_count"):
+		return int(metrics["row_count"])
+	var origin_y := float(metrics.get("origin", Vector2.ZERO).y)
+	var row_pitch := float(metrics.get("row_height", GRID_FALLBACK_ROW_HEIGHT))
+	if size.y <= origin_y or row_pitch <= 0.0:
+		return 0
+	return maxi(1, int(floor((size.y - origin_y) / row_pitch)))
+
+
 func _grid_cell_rect(row: int, column: int, column_count: int, metrics: Dictionary) -> Rect2:
 	var item_index := _item_index_for_grid_cell(row, column, column_count)
 	if item_index >= 0:
@@ -289,7 +368,7 @@ func _selection_rect() -> Rect2:
 
 func _select_items_in_rect(rect: Rect2) -> void:
 	for i in range(item_count):
-		if rect.intersects(get_item_rect(i, true)):
+		if rect.intersects(_hit_rect_for_index(i)):
 			select(i, false)
 
 func _get_drag_data(_at_position: Vector2) -> Variant:
@@ -314,7 +393,7 @@ func _drop_data(_at_position: Vector2, data: Variant) -> void:
 		panel.drop_inventory_data(inventory_source, data)
 
 func _update_hovered_item(local_position: Vector2) -> void:
-	var idx := get_item_at_position(local_position, true)
+	var idx := _item_index_at_position(local_position)
 	if idx == _hovered_index:
 		return
 	_hovered_index = idx
@@ -341,3 +420,18 @@ func _get_inventory_panel() -> Node:
 			return node
 		node = node.get_parent()
 	return null
+
+
+func _hit_rect_for_index(index: int) -> Rect2:
+	if square_grid_cells:
+		return _visual_cell_rect(index)
+	return get_item_rect(index, true)
+
+
+func _item_index_at_position(local_position: Vector2) -> int:
+	if not square_grid_cells:
+		return get_item_at_position(local_position, true)
+	for index in range(item_count):
+		if _hit_rect_for_index(index).has_point(local_position):
+			return index
+	return -1

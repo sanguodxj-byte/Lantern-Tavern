@@ -1,6 +1,8 @@
 class_name PlayerStateBlocking
 extends PlayerState
 
+const PLAYER_ANIMATION_PROFILE := preload("res://globals/visual/player_animation_profile.gd")
+
 ## 动作控制版格挡状态
 ## 根据装备流派区分格挡方式：
 ##   - 持盾：持续格挡（按住右键保持），进入后 0.3s 内为「完美格挡窗口」，
@@ -30,8 +32,18 @@ var block_animation_name := "block"
 func _enter_tree() -> void:
 	block_start_msec = Time.get_ticks_msec()
 	block_mode = _determine_block_mode()
-	player.animation_player.play("block")
-	player.animation_player.animation_finished.connect(on_animation_finished)
+	block_animation_name = String(PLAYER_ANIMATION_PROFILE.defense_animation(
+		player.get_active_hand_weapon_data(),
+		player.equipment != null and player.equipment.has_shield()
+	))
+	if not block_animation_name.is_empty() and player.view_model != null and is_instance_valid(player.view_model) and player.view_model.has_method("begin_weapon_defense"):
+		player.view_model.begin_weapon_defense(StringName(block_animation_name))
+	if block_animation_name.is_empty() or (player.animation_player == null or not player.animation_player.has_animation(block_animation_name)):
+		block_animation_name = "block"
+	if player.animation_player != null:
+		player.animation_player.play(block_animation_name)
+	if player.animation_player != null:
+		player.animation_player.animation_finished.connect(on_animation_finished)
 
 func _determine_block_mode() -> int:
 	if player.equipment != null and player.equipment.has_shield():
@@ -65,6 +77,12 @@ func on_animation_finished(anim_name: String) -> void:
 		transition_state(Player.State.MOVING)
 		return
 	# 持盾：动画播完后若仍按住右键则保持，否则退出
+	if Input.is_action_pressed("block") and block_mode == BlockMode.SHIELD:
+		if player.view_model != null and is_instance_valid(player.view_model) and player.view_model.has_method("begin_weapon_defense"):
+			player.view_model.begin_weapon_defense(StringName(block_animation_name))
+		if player.animation_player != null:
+			player.animation_player.play(block_animation_name)
+		return
 	if not Input.is_action_pressed("block"):
 		transition_state(Player.State.MOVING)
 
@@ -72,6 +90,10 @@ func _exit_tree() -> void:
 	if player != null and is_instance_valid(player) and player.animation_player != null:
 		if player.animation_player.animation_finished.is_connected(on_animation_finished):
 			player.animation_player.animation_finished.disconnect(on_animation_finished)
+		if player.animation_player.has_animation("idle"):
+			player.animation_player.play("idle")
+	if player != null and is_instance_valid(player) and player.view_model != null and is_instance_valid(player.view_model) and player.view_model.has_method("finish_weapon_defense"):
+		player.view_model.finish_weapon_defense(StringName(block_animation_name))
 
 ## 是否处于完美格挡窗口（基线 0.3s，装备完美格挡·窗口延长被动→0.8s；同时作用于持盾&双手）
 func is_in_grace_window() -> bool:

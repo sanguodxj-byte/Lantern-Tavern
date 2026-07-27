@@ -10,6 +10,8 @@ const SIZE := Vector2i(1920, 1080)
 
 var capture_skills := false
 var capture_proficiency := false
+var capture_two_hand := false
+var capture_bow := false
 var output_path := "res://reports/ui_audit/after_equipment.png"
 
 func _init() -> void:
@@ -20,6 +22,12 @@ func _init() -> void:
 		elif argument == "--proficiency":
 			capture_proficiency = true
 			output_path = "res://reports/ui_audit/after_proficiency.png"
+		elif argument == "--two-hand":
+			capture_two_hand = true
+			output_path = "res://reports/ui_audit/after_equipment_two_hand.png"
+		elif argument == "--bow":
+			capture_bow = true
+			output_path = "res://reports/ui_audit/after_equipment_bow.png"
 	call_deferred("_capture")
 
 func _capture() -> void:
@@ -64,6 +72,7 @@ func _capture() -> void:
 	else:
 		tabs.current_tab = 0
 		_seed_equipment(panel)
+		_seed_capture_weapon_loadout(panel)
 	var stats_panel := panel.find_child("StatsPanel", true, false) as TabContainer
 	if capture_proficiency and stats_panel != null:
 		stats_panel.current_tab = 1
@@ -75,6 +84,10 @@ func _capture() -> void:
 		_seed_skills(panel)
 	else:
 		_seed_equipment(panel)
+		_seed_capture_weapon_loadout(panel)
+		if capture_two_hand or capture_bow:
+			panel.call("show_equipment_slot_detail", "weapon", 0, "", Vector2(650, 250))
+			await process_frame
 	if capture_proficiency and stats_panel != null:
 		stats_panel.current_tab = 1
 	var image := viewport.get_texture().get_image()
@@ -108,7 +121,9 @@ func _seed_equipment(panel: Control) -> void:
 	]
 	for fixture in fixtures:
 		var icon := load(String(fixture[1])) as Texture2D
-		var index := gear_list.add_item("\n", icon)
+		# Keep the item icon inside its own grid cell; the overlay supplies the
+		# uniform square background and never lets icons cross cell bounds.
+		var index := gear_list.add_item("\n", null)
 		var item_type := "material" if int(fixture[2]) > 1 else "weapon"
 		if String(fixture[0]).contains("甲"):
 			item_type = "armor"
@@ -118,16 +133,47 @@ func _seed_equipment(panel: Control) -> void:
 			"id": String(fixture[0]),
 			"quality_tier": _fixture_quality_tier(String(fixture[0]), item_type),
 			"_inventory_label": String(fixture[0]),
+			"_inventory_icon": icon,
 		})
 		gear_list.set_item_tooltip(index, String(fixture[0]))
 	gear_list.select(0)
 	panel.get_node("%CharacterStatsText").text = "等级 8\n力量 STR 5\n生命 78 / 100\n敏捷 DEX 5\n攻击 24–31\n体质 CON 5\n护甲 16\n智力 MAG 5\n闪避 8%\n灵巧 AGI 5\n暴击 12%\n感知 PER 5"
 	panel.get_node("%ProficiencyText").text = "剑 42\n匕首 35\n斧 28\n锤 24\n枪 31\n弓 26\n弩 22\n法杖 29\n魔导书 18\n盾牌 31"
-	panel.get_node("%ItemDetailTitle").text = "精制短剑"
-	panel.get_node("%ItemDetailMeta").text = "武器 · 优良"
-	panel.get_node("%ItemDetailBody").text = "攻击 24–31\n距离 1.2m\n耐久 720/800\n适用于主手与副手"
-	panel.get_node("%ItemDetailCompare").text = "属性对比  攻击 +6  ·  距离 +0.2  ·  耐久 +120"
 	panel.get_node("%FilterCount").text = "全部 · %d件" % fixtures.size()
+
+func _seed_capture_weapon_loadout(panel: Control) -> void:
+	if not capture_two_hand and not capture_bow:
+		return
+	var weapon_script := load("res://data/weapon_data.gd") as GDScript
+	var weapon: WeaponData = weapon_script.new() as WeaponData
+	var icon_path := ""
+	if capture_bow:
+		weapon.id = "longbow"
+		weapon.name_zh = "精制长弓"
+		weapon.name = "Longbow"
+		weapon.item_tag = "longbow"
+		weapon.equipment_category = "weapons"
+		weapon.weapon_class = "longbow"
+		weapon.attack_type = "ranged"
+		weapon.hands = "two_hand"
+		weapon.damage_min = 18
+		weapon.damage_max = 26
+		weapon.reach = 12.0
+		icon_path = "res://assets/textures/icons/equipment/weapons_longbow.png"
+	else:
+		weapon.id = "greatsword"
+		weapon.name_zh = "精制双手大剑"
+		weapon.name = "Greatsword"
+		weapon.item_tag = "greatsword"
+		weapon.equipment_category = "weapons"
+		weapon.weapon_class = "two_hand"
+		weapon.attack_type = "melee"
+		weapon.hands = "two_hand"
+		weapon.damage_min = 28
+		weapon.damage_max = 42
+		weapon.reach = 1.8
+		icon_path = "res://assets/textures/icons/equipment/weapons_greatsword.png"
+	panel.call("set_capture_weapon_loadout", weapon, icon_path)
 
 func _fixture_quality_tier(label: String, item_type: String) -> String:
 	if item_type == "material":
@@ -159,7 +205,7 @@ func _seed_skills(panel: Control) -> void:
 		["猎人直觉", "被动 · 属性技能", ""],
 	]
 	for fixture in fixtures:
-		var icon: Texture2D = icons.get_icon(String(fixture[0])) if icons != null and icons.has_method("get_icon") else null
+		var icon: Texture2D = panel.call("_skill_icon_for", String(fixture[0])) as Texture2D
 		var index := available.add_item(String(fixture[0]), icon)
 		available.set_item_metadata(index, {"id": String(fixture[0]), "name": String(fixture[0]), "type": String(fixture[1])})
 		available.set_item_tooltip(index, "拖拽到技能槽位进行装备")

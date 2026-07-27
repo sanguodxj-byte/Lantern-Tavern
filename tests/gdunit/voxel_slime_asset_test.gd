@@ -112,7 +112,7 @@ func test_slime_static_parts_have_zero_overlap_and_one_face_contact_component() 
 	var visited := {0: true}
 	var queue: Array[int] = [0]
 	while not queue.is_empty():
-		var current := queue.pop_front()
+		var current: int = queue.pop_front()
 		for neighbour in adjacency[current]:
 			if not visited.has(neighbour):
 				visited[neighbour] = true
@@ -170,7 +170,7 @@ func test_slime_is_accepted_at_a_tier_after_individual_dod() -> void:
 	assert_str(TIERS.tier_for("slime")).is_equal(TIERS.A)
 	assert_bool(TIERS.is_accepted("slime")).is_true()
 	var rig_test_source := FileAccess.get_file_as_string("res://tests/gdunit/voxel_rig_animation_test.gd")
-	assert_str(rig_test_source).contains('const CREATURE_IDS := ["dragon", "slime"]')
+	assert_str(rig_test_source).contains('const CREATURE_IDS := ["dragon", "slime", "spider"]')
 	assert_str(rig_test_source).contains('"slime": PI')
 
 

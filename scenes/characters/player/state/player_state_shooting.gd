@@ -8,15 +8,21 @@ extends PlayerState
 const WEAPON_CONDITION_WEAR := 2
 const Service := preload("res://globals/core/service.gd")
 const FP_VISUAL_STATE_MACHINE := preload("res://scenes/characters/player/first_person_weapon_visual_state_machine.gd")
+const PLAYER_ANIMATION_PROFILE := preload("res://globals/visual/player_animation_profile.gd")
 
 var has_fired: bool = false
-var shoot_animation_name := "throw_weapon"
+var shoot_animation_name := "slash"
 
 func _enter_tree() -> void:
 	# 保持瞄准缩放（不关闭 FOV），射击后由 on_animation_finished 决定是否回到瞄准
-	if not player.animation_player.has_animation(shoot_animation_name):
-		shoot_animation_name = "slash"
+	var release_animation := PLAYER_ANIMATION_PROFILE.release_animation(player.get_active_hand_weapon_data())
+	if player.animation_player.has_animation(release_animation):
+		shoot_animation_name = String(release_animation)
+	elif player.animation_player.has_animation("throw_weapon"):
+		shoot_animation_name = "throw_weapon"
 	player.animation_player.play(shoot_animation_name)
+	if player.view_model != null and is_instance_valid(player.view_model) and player.view_model.has_method("play_action"):
+		player.view_model.play_action(PLAYER_ANIMATION_PROFILE.view_model_action(release_animation))
 	player.animation_player.animation_finished.connect(on_animation_finished)
 	_fire_projectile()
 
@@ -55,11 +61,6 @@ func _fire_projectile() -> void:
 	else:
 		# 弓播放箭矢飞出的破空啸声
 		AudioManager.play("sword-fly", player.action_audio_stream_player)
-	# Local visual only; projectile spawning remains above in this state.
-	if player.view_model != null and is_instance_valid(player.view_model) and player.view_model.has_method("play_action"):
-		var visual_action: StringName = &"vm_crossbow_fire" if is_crossbow else &"vm_bow_release"
-		player.view_model.play_action(visual_action)
-
 	# 弩：发射后进入装弹，装弹完成前不允许连续发射（doc21 reload_shot）
 	if is_crossbow:
 		player.start_crossbow_reload()

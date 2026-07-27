@@ -30,3 +30,14 @@ func test_value_for_reads_new_key_and_legacy_save_fallback() -> void:
 	assert_int(WPC.value_for({"one_hand_melee": 9}, "sword")).is_equal(9)
 	assert_int(WPC.value_for({"two_hand": 7}, "axe")).is_equal(7)
 	assert_int(WPC.value_for({"light_armor": 99}, "sword")).is_equal(0)
+
+
+func test_generated_proficiency_icons_match_attribute_icon_spec() -> void:
+	for entry in WPC.entries():
+		var icon_path := String(entry["icon_path"])
+		assert_bool(FileAccess.file_exists(icon_path)).is_true()
+		var image: Image = Image.load_from_file(icon_path)
+		assert_object(image).is_not_null()
+		assert_int(image.get_width()).is_equal(64)
+		assert_int(image.get_height()).is_equal(64)
+		assert_bool(image.get_format() == Image.FORMAT_RGBA8).is_true()

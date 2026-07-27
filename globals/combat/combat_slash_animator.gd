@@ -1,5 +1,7 @@
 class_name CombatSlashAnimator
 
+const PLAYER_ANIMATION_PROFILE := preload("res://globals/visual/player_animation_profile.gd")
+
 const ANIMATION_NAME := "slash"
 const PLAYER_SPEED_SCALE := 1.12
 const ENEMY_SPEED_SCALE := 0.95
@@ -15,22 +17,8 @@ const TRAIL_NAME := "SlashTrail"
 const TRAIL_SIZE := Vector2(0.42, 1.2)
 const TRAIL_MAX_ALPHA := 0.34
 
-static func player_animation_name(weapon) -> String:
-	if weapon == null:
-		return "claw_swipe"
-	var item_tag := String(weapon.item_tag) if "item_tag" in weapon else ""
-	var weapon_class := String(weapon.weapon_class) if "weapon_class" in weapon else ""
-	var skill_school := String(weapon.skill_school) if "skill_school" in weapon else ""
-	var tags: Array = weapon.tags if "tags" in weapon else []
-	if item_tag == "shield" or weapon_class == "shield":
-		return "bash_shield"
-	if tags.has("dagger"):
-		return "slash_dagger"
-	if tags.has("spear") or skill_school == "spear":
-		return "thrust_spear"
-	if weapon_class == "two_hand":
-		return "slash_heavy"
-	return "slash_one_hand"
+static func player_animation_name(weapon, heavy_swing: bool = false) -> String:
+	return String(PLAYER_ANIMATION_PROFILE.attack_animation(weapon, heavy_swing))
 
 static func enemy_animation_name(weapon) -> String:
 	if weapon == null:

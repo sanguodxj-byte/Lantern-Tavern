@@ -3,6 +3,18 @@ extends Node
 const TRANSLATIONS_CSV := "res://scenes/ui/localization/translations.csv"
 
 func _ready() -> void:
+	# Rebuild once after project bootstrap. Imported CSV resources and the
+	# autoload can otherwise register two Translation objects for one locale.
+	call_deferred("_reload_translations_once")
+
+
+func _reload_translations_once() -> void:
+	for locale in ["en", "zh"]:
+		while TranslationServer.get_loaded_locales().has(locale):
+			var existing := TranslationServer.get_translation_object(locale)
+			if existing == null:
+				break
+			TranslationServer.remove_translation(existing)
 	_load_translations()
 
 func _load_translations() -> void:
@@ -21,10 +33,21 @@ func _load_translations() -> void:
 	
 	# Column 0 = "key", columns 1..N are locale codes
 	var locale_columns = headers.slice(1)
+	# The CSV importer may already have registered the generated Translation
+	# resources. Registering the same locale again makes translate() concatenate
+	# both values (for example "灯笼酒馆LANTERN TAVERN").
+	var loaded_locales: PackedStringArray = TranslationServer.get_loaded_locales()
+	var missing_locales: Array[String] = []
+	for locale in locale_columns:
+		if not loaded_locales.has(String(locale)):
+			missing_locales.append(String(locale))
+	if missing_locales.is_empty():
+		print("Localization: using imported translations (%s)" % ", ".join(locale_columns))
+		return
 	
 	# Create a Translation for each locale
 	var translations_by_locale = {}
-	for locale in locale_columns:
+	for locale in missing_locales:
 		var translation = Translation.new()
 		translation.locale = locale
 		translations_by_locale[locale] = translation
@@ -38,10 +61,12 @@ func _load_translations() -> void:
 		var fields = _parse_csv_line(line)
 		if fields.size() < 3:
 			continue
-			
+		
 		var msg_key = fields[0]
 		for i in range(locale_columns.size()):
-			var locale = locale_columns[i]
+			var locale := String(locale_columns[i])
+			if not translations_by_locale.has(locale):
+				continue
 			if i + 1 < fields.size() and not fields[i + 1].is_empty():
 				var translation = translations_by_locale[locale]
 				translation.add_message(msg_key, fields[i + 1])
@@ -50,7 +75,7 @@ func _load_translations() -> void:
 	for locale in translations_by_locale:
 		TranslationServer.add_translation(translations_by_locale[locale])
 
-	print("Localization: loaded %d languages (%s)" % [locale_columns.size(), ", ".join(locale_columns)])
+	print("Localization: loaded %d languages (%s)" % [translations_by_locale.size(), ", ".join(locale_columns)])
 
 func _parse_csv_line(line: String) -> PackedStringArray:
 	# Simple CSV parser that handles quoted fields

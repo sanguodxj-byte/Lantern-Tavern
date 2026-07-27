@@ -93,9 +93,8 @@ func test_all_ui_scenes_instantiate_without_error() -> void:
 
 
 func test_procedural_dungeon_mounts_hud_via_scene() -> void:
-	# 回归验证：procedural_dungeon.gd 必须使用 scene.instantiate()
-	# 而非 script.new() 来挂载 HUD
-	var script_path = "res://scenes/expedition/procedural_dungeon.gd"
+	# HUD 生命周期由 DungeonRuntime 负责；procedural_dungeon 只负责配置 runtime。
+	var script_path = "res://scenes/expedition/dungeon_runtime.gd"
 	assert_bool(ResourceLoader.exists(script_path)).is_true()
 	var script = load(script_path) as GDScript
 	assert_object(script).is_not_null()
@@ -103,7 +102,7 @@ func test_procedural_dungeon_mounts_hud_via_scene() -> void:
 	
 	# 必须使用 tscn 加载方式，不能直接用 .gd new()
 	assert_bool(source.contains("expedition_hud.tscn")) \
-		.override_failure_message("procedural_dungeon.gd 必须用 expedition_hud.tscn 实例化 HUD") \
+		.override_failure_message("DungeonRuntime 必须用 expedition_hud.tscn 实例化 HUD") \
 		.is_true()
 	
 	# 确保没有残留的 .new() 方式

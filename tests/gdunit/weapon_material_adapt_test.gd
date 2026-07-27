@@ -24,6 +24,26 @@ func test_equiped_item_uses_weapon_tree() -> void:
 func test_view_model_uses_weapon_tree() -> void:
 	var src := FileAccess.get_file_as_string("res://scenes/characters/player/view_model.gd")
 	assert_bool(src.contains("apply_weapon_tree")).is_true()
+	assert_bool(src.contains("_make_first_person_unshaded_material")).is_true()
+
+
+func test_first_person_material_copy_is_unshaded_without_losing_texture() -> void:
+	var view_model := ViewModel.new()
+	var source := StandardMaterial3D.new()
+	source.albedo_color = Color(0.42, 0.28, 0.12)
+	source.metallic = 0.8
+	source.roughness = 0.3
+	var texture := ImageTexture.create_from_image(Image.create(2, 2, false, Image.FORMAT_RGBA8))
+	source.albedo_texture = texture
+	var copy := view_model._make_first_person_unshaded_material(source) as BaseMaterial3D
+	assert_object(copy).is_not_null()
+	assert_bool(copy != source).is_true()
+	assert_int(copy.shading_mode).is_equal(BaseMaterial3D.SHADING_MODE_UNSHADED)
+	assert_bool(copy.albedo_texture == texture).is_true()
+	assert_bool(copy.albedo_color.is_equal_approx(source.albedo_color)).is_true()
+	assert_float(copy.metallic).is_equal_approx(source.metallic, 0.001)
+	assert_float(copy.roughness).is_equal_approx(source.roughness, 0.001)
+	view_model.free()
 
 
 func test_pickable_and_thrown_use_weapon_tree_for_weapons() -> void:

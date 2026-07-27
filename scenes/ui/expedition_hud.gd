@@ -20,10 +20,26 @@ func _ready() -> void:
 		$MobileHUD.visible = true
 	else:
 		$MobileHUD.visible = false
-		
+
+	# 金币/材料/时间/压力等右侧浮窗移除：tscn 中已 visible=false，
+	# 但运行时会被重新置为可见。这里再次强制隐藏，确保不会被任何
+	# 外部代码（例如 game_state 同步）意外显示。
+	# 同时把 GoldLabel / MaterialLabel / TimeLabel / PressureLabel 也隐藏，
+	# 避免它们在 _update_hud() 中通过 set_text 重新点亮。
+	$TopHUD.visible = false
+	$MiddleHUD.visible = false
+	if $TopHUD.has_node("GoldLabel"):
+		$TopHUD.get_node("GoldLabel").visible = false
+	if $TopHUD.has_node("TimeLabel"):
+		$TopHUD.get_node("TimeLabel").visible = false
+	if $MiddleHUD.has_node("MaterialLabel"):
+		$MiddleHUD.get_node("MaterialLabel").visible = false
+	if $MiddleHUD.has_node("PressureLabel"):
+		$MiddleHUD.get_node("PressureLabel").visible = false
+
 	# Connect local signals
 	interact_btn.pressed.connect(_on_mobile_interact)
-	
+
 	_update_hud()
 
 func update_player_hp(current_hp: float, max_hp: float) -> void:

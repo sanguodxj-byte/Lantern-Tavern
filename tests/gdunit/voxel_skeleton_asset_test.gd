@@ -126,7 +126,7 @@ func test_skeleton_uses_pixel_aligned_face_connected_non_overlapping_boxes() -> 
 	var visited := {0: true}
 	var queue: Array[int] = [0]
 	while not queue.is_empty():
-		var current := queue.pop_front()
+		var current: int = queue.pop_front()
 		for neighbour in adjacency[current]:
 			if not visited.has(neighbour):
 				visited[neighbour] = true

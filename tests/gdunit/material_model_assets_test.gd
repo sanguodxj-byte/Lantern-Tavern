@@ -126,9 +126,18 @@ func test_pickable_item_applies_manifest_visual_rotation_to_generated_material()
 	var item: PickableItem = load("res://scenes/equipment/pickable_item.tscn").instantiate()
 	item.material_id = "rusty_nail"
 	add_child(item)
-	var visual := item.get_child(2) as Node3D
-	assert_object(visual).is_not_null()
-	assert_bool(visual.rotation_degrees.is_equal_approx(Vector3(0, 0, 90))).is_true()
+	var mesh := item.mesh_node as Node3D
+	assert_object(mesh).is_not_null()
+	# Multi-part material GLBs apply manifest rotation on an ancestor of the first mesh.
+	var expected := Vector3(0, 0, 90)
+	var found := false
+	var cursor: Node3D = mesh
+	while cursor != null and cursor != item:
+		if cursor.rotation_degrees.is_equal_approx(expected):
+			found = true
+			break
+		cursor = cursor.get_parent() as Node3D
+	assert_bool(found).override_failure_message("rusty_nail visual rotation Vector3(0,0,90) missing on mesh ancestry").is_true()
 	var box := item.collision_shape.shape as BoxShape3D
 	assert_bool(maxf(box.size.x, box.size.z) > box.size.y * 2.5).is_true()
 	remove_child(item)
@@ -148,6 +157,28 @@ func test_manifest_materials_have_three_view_previews() -> void:
 			assert_int(size) \
 				.override_failure_message("material three-view too small: " + preview) \
 				.is_greater(1000)
+
+
+
+func test_each_material_has_independent_generator() -> void:
+	## One-model-per-workflow: every manifest material must own a dedicated generator.
+	for entry in _load_manifest()["materials"]:
+		var mid := String(entry.get("id", ""))
+		var gen := "res://tools/generate_voxel_%s.py" % mid
+		assert_bool(FileAccess.file_exists(gen)) \
+			.override_failure_message("missing independent generator: " + gen) \
+			.is_true()
+		var text := FileAccess.get_file_as_string(gen)
+		assert_bool(text.contains('MODEL_ID = "%s"' % mid)) \
+			.override_failure_message("generator does not lock MODEL_ID for " + mid) \
+			.is_true()
+		assert_bool(text.contains("reject_target_override")) \
+			.override_failure_message("generator missing reject_target_override: " + mid) \
+			.is_true()
+		# Forbid multi-target batch hooks inside a single material generator.
+		assert_bool(not text.contains("for model_id in")) \
+			.override_failure_message("generator looks batched: " + mid) \
+			.is_true()
 
 
 func _load_manifest() -> Dictionary:

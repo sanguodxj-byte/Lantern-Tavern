@@ -129,16 +129,10 @@ func _pick_random_prefix() -> String:
 		return tr(GEAR_PREFIXES_NEUTRAL[randi() % GEAR_PREFIXES_NEUTRAL.size()])
 
 func _get_weapon_registry() -> Node:
-	var tree := get_tree()
-	if tree == null:
-		return null
-	return tree.root.get_node_or_null("WeaponRegistry")
+	return Service.weapon_registry()
 
 func _get_affix_system() -> Node:
-	var tree := get_tree()
-	if tree == null:
-		return null
-	return tree.root.get_node_or_null("AffixSystem")
+	return Service.affix_system()
 
 # ============================================================================
 # 2. 顾客生成（策划案 12 §1 + §5.1）
@@ -246,8 +240,8 @@ func _settle_human(brew_flavors: Dictionary, menu_price: int, result: Settlement
 			result.tier = "摔杯拒付"
 			result.refused = true
 			return
-	# 价格偏离度评估。P_base 取酒谱标价或默认 30
-	var p_base: int = 30  # 占位：应从匹配的酒谱读取 price
+	# 价格偏离度评估。P_base 取匹配酒谱的标价，未匹配则用默认基准
+	var p_base: int = _lookup_recipe_base_price(brew_flavors)
 	var p_menu: int = menu_price
 	if p_menu <= p_base:
 		result.gold_gained = p_menu
@@ -265,6 +259,32 @@ func _settle_human(brew_flavors: Dictionary, menu_price: int, result: Settlement
 		result.reputation_delta = -15
 		result.tier = "暴利拒付"
 		result.refused = true
+
+const HUMAN_DEFAULT_BASE_PRICE: int = 30
+
+## 依据酒水口味反查匹配的经典酒谱标价（策划案 13）。
+## 口味完全等于某酒谱 expected_flavors 视为该酒谱成品；
+## 未匹配或酒谱无人类标价（price=null）时返回默认基准价。
+func _lookup_recipe_base_price(brew_flavors: Dictionary) -> int:
+	for recipe_id in BrewingData.RECIPES_DB:
+		var recipe: Dictionary = BrewingData.RECIPES_DB[recipe_id]
+		var price = recipe.get("price")
+		if price == null:
+			continue
+		var expected: Dictionary = recipe.get("expected_flavors", {})
+		if _flavors_match(brew_flavors, expected):
+			return int(price)
+	return HUMAN_DEFAULT_BASE_PRICE
+
+## 两组口味字典是否完全一致（忽略值为 0 的键）。
+func _flavors_match(a: Dictionary, b: Dictionary) -> bool:
+	for key in a:
+		if int(a[key]) != int(b.get(key, 0)):
+			return false
+	for key in b:
+		if int(b[key]) != int(a.get(key, 0)):
+			return false
+	return true
 
 # ---- 怪物分支（策划案 12 §5.2）----
 func _settle_monster(brew_flavors: Dictionary, cust: Customer, result: SettlementResult) -> void:
@@ -404,7 +424,94 @@ func _try_register_regular(cust: Customer) -> void:
 		pool.append(cust)
 
 # ============================================================================
-# 6. 工具
+# 6. 存档 / 读档（由 SaveManager 调用）
+# ============================================================================
+
+## 重置声望与常客名册到初始状态（新游戏时调用）。
+func reset_state() -> void:
+	rumor_reputation = 0
+	faction_reputation = {
+		"goblin": 0, "minotaur": 0, "cyclops": 0, "ghost": 0, "elf": 0,
+	}
+	regular_customers = {
+		"goblin": [], "minotaur": [], "cyclops": [], "ghost": [], "elf": [],
+	}
+
+func serialize() -> Dictionary:
+	var regulars: Dictionary = {}
+	for race_id in regular_customers:
+		var arr: Array = []
+		for cust in regular_customers[race_id]:
+			arr.append(_customer_to_dict(cust))
+		regulars[race_id] = arr
+	return {
+		"rumor_reputation": rumor_reputation,
+		"faction_reputation": faction_reputation.duplicate(),
+		"regular_customers": regulars,
+	}
+
+func deserialize(data: Dictionary) -> void:
+	reset_state()
+	rumor_reputation = int(data.get("rumor_reputation", 0))
+	var saved_faction: Dictionary = data.get("faction_reputation", {})
+	for race_id in faction_reputation:
+		faction_reputation[race_id] = int(saved_faction.get(race_id, 0))
+	var saved_regulars: Dictionary = data.get("regular_customers", {})
+	for race_id in regular_customers:
+		var arr: Array = saved_regulars.get(race_id, [])
+		for entry in arr:
+			if entry is Dictionary:
+				regular_customers[race_id].append(_customer_from_dict(entry))
+
+## Customer → 可 JSON 化字典。gear_item 的 weapon_data 资源不入档，
+## 读档时通过 id + tier_index 从 WeaponRegistry 重建。
+func _customer_to_dict(cust: Customer) -> Dictionary:
+	var gear: Dictionary = {}
+	for key in cust.gear_item:
+		if key != "weapon_data":
+			gear[key] = cust.gear_item[key]
+	return {
+		"race_id": cust.race_id,
+		"display_name": cust.display_name,
+		"real_name": cust.real_name,
+		"liked": cust.liked.duplicate(),
+		"hated": cust.hated.duplicate(),
+		"hated_levels": cust.hated_levels.duplicate(),
+		"carry_type": cust.carry_type,
+		"iron_amount": cust.iron_amount,
+		"gear_item": gear,
+		"individual_affinity": cust.individual_affinity,
+		"is_regular": cust.is_regular,
+	}
+
+func _customer_from_dict(data: Dictionary) -> Customer:
+	var cust := Customer.new(String(data.get("race_id", "goblin")))
+	cust.display_name = String(data.get("display_name", cust.race_id))
+	cust.real_name = String(data.get("real_name", ""))
+	var liked: Dictionary = data.get("liked", {})
+	for flavor_name in liked:
+		cust.liked[flavor_name] = int(liked[flavor_name])
+	cust.hated = (data.get("hated", []) as Array).duplicate()
+	var hated_levels: Dictionary = data.get("hated_levels", {})
+	for flavor_name in hated_levels:
+		cust.hated_levels[flavor_name] = int(hated_levels[flavor_name])
+	cust.carry_type = String(data.get("carry_type", "iron"))
+	cust.iron_amount = int(data.get("iron_amount", 0))
+	cust.gear_item = data.get("gear_item", {})
+	if not cust.gear_item.is_empty():
+		var wr: Node = _get_weapon_registry()
+		if wr != null:
+			var wd = wr.build_weapon_data_with_tier(
+				String(cust.gear_item.get("id", "")),
+				int(cust.gear_item.get("tier_index", 0)))
+			if wd != null:
+				cust.gear_item["weapon_data"] = wd
+	cust.individual_affinity = int(data.get("individual_affinity", 0))
+	cust.is_regular = bool(data.get("is_regular", false))
+	return cust
+
+# ============================================================================
+# 7. 工具
 # ============================================================================
 
 func randf_range(a: float, b: float) -> float:

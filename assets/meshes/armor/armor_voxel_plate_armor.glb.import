@@ -3,7 +3,7 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://df3mmhwv2kfx8"
+uid="uid://c3kpegugv74gd"
 path="res://.godot/imported/armor_voxel_plate_armor.glb-86e7591af11533161b71867fe0095d05.scn"
 
 [deps]
@@ -42,4 +42,4 @@ materials/extract_path=""
 _subresources={}
 gltf/naming_version=2
 gltf/embedded_image_handling=1
-gltf/texture_map_mode=0
+gltf/texture_map_mode=1

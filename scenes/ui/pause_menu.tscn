@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scenes/ui/pause_menu.gd" id="1_pmenu"]
 [ext_resource type="Theme" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
-[ext_resource type="Shader" uid="" path="res://assets/shaders/blur_overlay.gdshader" id="3_shader"]
+[ext_resource type="Shader" uid="uid://0a424uwj7eya" path="res://assets/shaders/blur_overlay.gdshader" id="3_shader"]
 [ext_resource type="Script" path="res://scenes/ui/save_load_panel.gd" id="4_slpanel"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_1"]
@@ -40,6 +40,7 @@ grow_vertical = 2
 custom_minimum_size = Vector2(280, 0)
 layout_mode = 2
 theme = ExtResource("2_theme")
+texture_filter = 1
 
 [node name="VBox" type="VBoxContainer" parent="CenterContainer/Panel"]
 layout_mode = 2
@@ -84,6 +85,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("2_theme")
+texture_filter = 1
 script = ExtResource("4_slpanel")
 
 [node name="BG" type="ColorRect" parent="SaveLoadPanel"]

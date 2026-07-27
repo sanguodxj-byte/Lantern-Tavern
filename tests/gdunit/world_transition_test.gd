@@ -41,7 +41,7 @@ func test_expedition_prompt_opens_zone_select_overlay_when_in_world() -> void:
 	assert_bool(source.contains("_find_world")).is_true()
 
 func test_dungeon_does_not_duplicate_shared_ui_under_world() -> void:
-	var script := load("res://scenes/expedition/procedural_dungeon.gd") as GDScript
+	var script := load("res://scenes/expedition/dungeon_runtime.gd") as GDScript
 	var source := script.source_code
 	assert_bool(source.contains("_is_running_under_world")).is_true()
 	assert_bool(source.contains("World.tscn owns the shared in-game UI")).is_true()

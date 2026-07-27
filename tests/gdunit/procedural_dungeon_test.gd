@@ -331,8 +331,16 @@ func test_dungeon_room_doors_use_boss_texture_only_for_boss_room_entries() -> vo
 		var visual := _find_first_mesh(door)
 		var side_visual := _find_mesh_by_suffix(door, "Side")
 		var top_visual := _find_mesh_by_suffix(door, "Top")
-		assert_bool((door.collision_layer & PhysicsSetup.LAYER_SCENE_OBJECT) != 0).is_true()
-		assert_bool((door.collision_layer & PhysicsSetup.LAYER_TRIGGER) != 0).is_true()
+		# StreamingController disables physics outside the player's active chunk.
+		# Validate the preserved contract instead of requiring every remote door to
+		# remain active in the physics world.
+		var configured_layer := int(door.get_meta("stream_collision_layer", door.collision_layer))
+		var configured_mask := int(door.get_meta("stream_collision_mask", door.collision_mask))
+		assert_bool((configured_layer & PhysicsSetup.LAYER_SCENE_OBJECT) != 0).is_true()
+		assert_bool((configured_layer & PhysicsSetup.LAYER_TRIGGER) != 0).is_true()
+		assert_int(configured_mask).is_equal(PhysicsSetup.MASK_ENVIRONMENT)
+		assert_bool(door.collision_layer == 0 or door.collision_layer == configured_layer).is_true()
+		assert_bool(door.collision_mask == 0 or door.collision_mask == configured_mask).is_true()
 		assert_bool(door.has_method("interact")).is_true()
 		assert_bool(door.has_method("try_receive_hit")).is_true()
 		assert_object(box).is_not_null()
@@ -597,8 +605,15 @@ func test_door_spec_is_dictionary_with_boss_key() -> void:
 ## 唯一自建「第二具」带敌人地牢的测试（共享地牢不刷怪）。放最后：headless 下这具满员蒙皮 rig
 ## 场景之后不应再有任何全场景重建，合计 2 次实例化稳定低于 signal 11 崩溃阈值。
 func test_dungeon_spawns_enemies() -> void:
-	# 验证地牢 _ready 后生成了怪物
+	# 验证地牢 _ready 后生成了怪物。headless 下使用 spawner mock，
+	# 仍走真实 DungeonRuntime 分帧计划/挂载路径，但不加载整批蒙皮 GLB，
+	# 避免测试把渲染器原生资源压力误报成刷怪逻辑失败。
+	var spawner: Node = Engine.get_main_loop().root.get_node_or_null("DungeonSpawner")
+	var previous_mock := bool(spawner.get("use_mock_nodes")) if spawner != null else false
+	if spawner != null:
+		spawner.set("use_mock_nodes", true)
 	var dungeon = load("res://scenes/expedition/procedural_dungeon.tscn").instantiate() as ProceduralDungeon
+	dungeon.generation_seed = SHARED_DUNGEON_SEED
 	add_child(dungeon)
 	# 等待一帧确保所有延迟初始化完成
 	await await_idle_frame()
@@ -610,13 +625,15 @@ func test_dungeon_spawns_enemies() -> void:
 		var node = stack.pop_back()
 		for c in node.get_children():
 			stack.push_back(c)
-		if node is Enemy:
+		if node is Enemy or node.has_meta("enemy_type"):
 			enemy_count += 1
 	assert_int(enemy_count) \
 		.override_failure_message("地牢应生成至少 4 只怪物，实际生成 %d 只" % enemy_count) \
 		.is_greater_equal(4)
 	remove_child(dungeon)
 	dungeon.free()
+	if spawner != null:
+		spawner.set("use_mock_nodes", previous_mock)
 
 
 ## 开关对照：共享地牢以 spawn_population_enabled=false 构建，应完全不刷怪。

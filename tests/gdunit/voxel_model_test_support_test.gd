@@ -58,6 +58,11 @@ func test_support_reports_missing_image_as_not_readable() -> void:
 	assert_bool(result["nonblank"]).is_false()
 
 
+func test_support_inspects_generated_images_without_res_path_loader_warning() -> void:
+	var source := FileAccess.get_file_as_string("res://tests/gdunit/support/voxel_model_test_support.gd")
+	assert_str(source).contains("Image.load_from_file(ProjectSettings.globalize_path(path))")
+
+
 func test_capture_ortho_size_uses_each_views_projected_bounds() -> void:
 	var bounds := AABB(Vector3.ZERO, Vector3(13.0, 73.0, 9.0) / 32.0)
 	assert_float(SUPPORT.capture_ortho_size(bounds, "front")) \

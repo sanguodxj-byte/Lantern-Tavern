@@ -1,0 +1,36 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/characters/enemies/goblin.tscn" id="1_base"]
+[ext_resource type="PackedScene" path="res://assets/meshes/characters/voxel_drow_blade_48px_rig.glb" id="2_voxel"]
+[ext_resource type="Resource" path="res://data/weapons/shortsword.tres" id="3_wpn"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_drow"]
+albedo_color = Color(0.24, 0.16, 0.3, 1)
+backlight_enabled = true
+backlight = Color(0.12, 0.04, 0.18, 1)
+texture_filter = 0
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_drow"]
+radius = 0.3
+height = 1.7
+
+[node name="DrowBlade" instance=ExtResource("1_base")]
+base_material = SubResource("StandardMaterial3D_drow")
+duration_between_attacks = 1800
+duration_stun = 2500
+speed = 2.3
+detection_range = 7.0
+
+[node name="character" parent="." index="1" instance=ExtResource("2_voxel")]
+
+[node name="CollisionShape" parent="." index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 0)
+shape = SubResource("CapsuleShape3D_drow")
+
+[node name="EquipmentComponent" parent="." index="2"]
+shield_data = null
+weapon_data = ExtResource("3_wpn")
+
+[node name="HealthComponent" parent="." index="6"]
+max_life = 12
+current_life = 12

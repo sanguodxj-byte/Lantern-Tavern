@@ -43,9 +43,10 @@ func test_affix_lifesteal_implementation() -> void:
 	var weapon := WeaponData.new()
 	weapon.id = "blood_sword"
 	var affix_system: Node = auto_free(AS.new())
-	affix_system.apply_affixes(weapon, ["bloodthirsty"])
+	var affix_ids: Array[String] = ["bloodthirsty"]
+	affix_system.apply_affixes(weapon, affix_ids)
 	
-	assert_float(weapon.lifesteal_percent).is_equal_approx(0.5)
+	assert_float(weapon.lifesteal_percent).is_equal_approx(0.5, 0.001)
 
 	var attack := CB.build_player_attack(null, weapon, "one_hand_melee", "", {}, 1)
-	assert_float(attack.lifesteal_percent).is_equal_approx(0.5)
+	assert_float(attack.lifesteal_percent).is_equal_approx(0.5, 0.001)

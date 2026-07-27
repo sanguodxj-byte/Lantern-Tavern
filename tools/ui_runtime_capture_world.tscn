@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" uid="uid://du4iytvqujxe7" path="res://scenes/world/world.tscn" id="1_world"]
+[ext_resource type="Script" path="res://tools/ui_runtime_capture_driver.gd" id="2_driver"]
+
+[node name="UiCaptureRoot" type="Node"]
+script = ExtResource("2_driver")
+
+[node name="World" parent="." instance=ExtResource("1_world")]

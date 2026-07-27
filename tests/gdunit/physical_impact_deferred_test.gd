@@ -7,7 +7,7 @@ extends GdUnitTestSuite
 
 # ---------- 代码结构验证 ----------
 
-func test_apply_physical_impact_damage_uses_call_deferred() -> void:
+func test_apply_physical_impact_damage_queues_deferred_death() -> void:
 	var script := load("res://scenes/characters/enemies/enemy.gd") as GDScript
 	var source := script.source_code
 	var func_start := source.find("func _apply_physical_impact_damage")
@@ -16,11 +16,35 @@ func test_apply_physical_impact_damage_uses_call_deferred() -> void:
 	if func_end == -1:
 		func_end = source.length()
 	var func_body := source.substr(func_start, func_end - func_start)
-	# 必须使用 call_deferred 延迟切换到 DYING，不能同步调用 switch_state
-	assert_bool(func_body.contains("call_deferred")).is_true() \
-		.override_failure_message("_apply_physical_impact_damage 应使用 call_deferred 延迟 switch_state(DYING)")
+	# 必须通过统一的延迟入口切换到 DYING，不能同步调用 switch_state
+	assert_bool(func_body.contains("request_death")).is_true() \
+		.override_failure_message("_apply_physical_impact_damage 应通过 request_death 延迟切换")
 	assert_bool(not func_body.contains('switch_state(State.DYING, data)')).is_true() \
 		.override_failure_message("_apply_physical_impact_damage 不应同步调用 switch_state(State.DYING)")
+
+func test_request_death_uses_call_deferred_and_is_idempotent() -> void:
+	var script := load("res://scenes/characters/enemies/enemy.gd") as GDScript
+	var source := script.source_code
+	var func_start := source.find("func request_death")
+	assert_int(func_start).is_greater(-1)
+	var func_end := source.find("\nfunc ", func_start + 1)
+	if func_end == -1:
+		func_end = source.length()
+	var func_body := source.substr(func_start, func_end - func_start)
+	assert_bool(func_body.contains("call_deferred")).is_true()
+	assert_bool(func_body.contains("_death_transition_queued")).is_true()
+
+func test_all_enemy_lethal_state_entries_use_deferred_request() -> void:
+	for path in [
+		"res://scenes/characters/enemies/state/enemy_state_hurt.gd",
+		"res://scenes/characters/enemies/state/enemy_state_impaling.gd",
+		"res://scenes/characters/enemies/state/enemy_state_launched.gd",
+	]:
+		var source := FileAccess.get_file_as_string(path)
+		assert_bool(source.contains("request_death")).is_true() \
+			.override_failure_message("致命入口必须统一走 Enemy.request_death: %s" % path)
+		assert_bool(not source.contains("transition_state(Enemy.State.DYING")).is_true() \
+			.override_failure_message("致命入口不应在当前物理回调同步切换 DYING: %s" % path)
 
 func test_deferred_switch_to_dying_method_exists() -> void:
 	var script := load("res://scenes/characters/enemies/enemy.gd") as GDScript

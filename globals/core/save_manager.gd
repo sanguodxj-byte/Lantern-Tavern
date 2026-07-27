@@ -9,6 +9,9 @@ extends Node
 ##   - AttrPanel       属性面板（6 主属性、等级、熟练度、技能、里程碑）
 ##   - SkillRuntime    技能运行时（槽位绑定、符文、冷却）
 ##   - FermentationSystem 发酵时序（酒桶状态机）
+##   - TavernSettlement  声望与常客名册（传闻声望、势力声望、常客）
+##   - ArmorProficiency  护甲熟练度（轻甲/重甲经验）
+##   - ZoneManager       当前选定探险区域
 ##
 ## 存档文件格式：JSON，存储于 user://saves/slot_{0..2}.json
 
@@ -187,6 +190,12 @@ func serialize_all() -> Dictionary:
 		data["fermentation_system"] = fs.serialize()
 	else:
 		data["fermentation_system"] = {}
+	var ts := _get_tavern_settlement()
+	data["tavern_settlement"] = ts.serialize() if ts != null else {}
+	var arp := _get_armor_proficiency()
+	data["armor_proficiency"] = arp.to_dict() if arp != null else {}
+	var zm := _get_zone_manager()
+	data["selected_zone"] = int(zm.selected_zone) if zm != null else 0
 	return data
 
 ## 从字典恢复全部游戏状态。
@@ -209,6 +218,15 @@ func deserialize_all(data: Dictionary) -> void:
 		sr.deserialize(data["skill_runtime"])
 	if fs != null and data.has("fermentation_system"):
 		fs.deserialize(data["fermentation_system"])
+	var ts := _get_tavern_settlement()
+	if ts != null and data.has("tavern_settlement"):
+		ts.deserialize(data["tavern_settlement"])
+	var arp := _get_armor_proficiency()
+	if arp != null and data.has("armor_proficiency"):
+		arp.from_dict(data["armor_proficiency"])
+	var zm := _get_zone_manager()
+	if zm != null and data.has("selected_zone"):
+		zm.set_zone(int(data["selected_zone"]))
 
 # ============================================================================
 # 重置 — 新游戏时清除全部子系统状态
@@ -231,6 +249,15 @@ func reset_all() -> void:
 		sr.reset()
 	if fs != null:
 		fs.reset()
+	var ts := _get_tavern_settlement()
+	if ts != null:
+		ts.reset_state()
+	var arp := _get_armor_proficiency()
+	if arp != null:
+		arp.reset()
+	var zm := _get_zone_manager()
+	if zm != null:
+		zm.set_zone(0)
 
 # ============================================================================
 # 内部辅助
@@ -262,3 +289,12 @@ func _get_skill_runtime() -> Node:
 
 func _get_fermentation_system() -> Node:
 	return Service.fermentation_system()
+
+func _get_tavern_settlement() -> Node:
+	return Service.tavern_settlement()
+
+func _get_armor_proficiency() -> Node:
+	return Service.armor_proficiency()
+
+func _get_zone_manager() -> Node:
+	return Service.zone_manager()

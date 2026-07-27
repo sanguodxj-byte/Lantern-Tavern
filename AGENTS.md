@@ -4,6 +4,13 @@ This file provides guidance to Agent (AI coding assistant) when working with thi
 
 ## Project Overview
 
+## 🚨 MANDATORY RULE: Terminology Table
+
+- At the start of every session, before making UI or domain changes, read `docs/术语表.md` completely.
+- Treat `docs/术语表.md` as the current semantic source of truth for project terminology.
+- When the user clarifies, corrects, or renames a term, update `docs/术语表.md` immediately in the same change set before proceeding with implementation.
+- Never infer a conflicting meaning from old screenshots, old code, or variable names. Follow the latest terminology-table entry and update affected comments/tests when needed.
+
 **Lantern Tavern** — a 3D dungeon-crawler tavern management game built in Godot 4.7 with **GDScript**.
 
 It is the **3D version** of the game design documented at `D:\Dungun ta\docs\` (Dungeon Tavern design docs). The design reference covers: tavern management, brewing/alchemy, exploration/extraction (WFC), turn-based combat, equipment system, employee system, reputation/relationships, and the "失序症" (Disorder Syndrome) main story.
@@ -44,6 +51,17 @@ weapons.json (JSON)  ──→  WeaponRegistry (autoload)  ──→  model_view
 
 Add a new weapon: edit `weapons.json` → restart game → appears everywhere.  
 Add a new weapon via Pipeline: write asset spec → run pipeline → `godot_import` auto-writes to `weapons.json`.
+
+## 🚨 MANDATORY RULE: Generated Image Asset Background Workflow
+
+All newly generated or regenerated raster image assets must follow this source-and-cutout workflow:
+
+- The generation source must use a perfectly flat pure green `#00FF00` background. Do not use gradients, textured green, white/black backgrounds, or any other background color.
+- The generation output must be fully opaque. Transparent-background generation is forbidden; do not accept or use an image with an alpha background as the source artifact.
+- When generating an icon sheet, use a strict `4×4` equal-cell layout unless the user explicitly specifies another layout. Unused cells must remain pure green.
+- After generation, process the opaque pure-green source through the canonical workflow in `D:\123\docs\background_removal_package\README.md`, using the 去绿底 / Chroma-key path (`remove_green_background.py` or its launcher). Do not replace project assets with an unprocessed generation output or with ad-hoc background removal.
+- Before importing the result into the project, verify the source is opaque and pure green at the background, then review the workflow's cutout, black-background, checkerboard, and report outputs for green fringe, leftover background pixels, stray fragments, and incorrect bounds.
+- The workflow's final cutout is allowed to be transparent because transparency is produced by the documented 去绿底 step; the prohibition applies to the generated source image.
 
 ## 🚨 MANDATORY RULE: Manual Tavern Scene Edits Only
 

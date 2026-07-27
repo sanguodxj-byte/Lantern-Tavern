@@ -56,6 +56,12 @@ var _loot_seq: int = 5000
 # 也不丢失玩家单人存档中既有的、未带入地牢的符文/装备（基线/结算都不含它们）。
 var _inventory_baseline: Dictionary
 
+# Per-peer Node-based state services are owned by this container. PlayerContext
+# keeps the typed references, while the container provides deterministic cleanup
+# on leave, grace expiry, and SessionRoot teardown.
+var _peer_state_root: Node
+var _peer_state_nodes: Dictionary
+
 # 玩家权威出生点：地牢生成后由 DungeonSessionController 经唯一算法
 # DungeonLayout.calc_player_spawn_pos() 写入（与敌人放置 base 同源）。
 # handle_spawn_request 据此签发玩家权威起始位置，确保与敌人处于同一地牢坐标系
@@ -95,6 +101,15 @@ var _stagger: Dictionary = {}
 func _init() -> void:
 	registry = PlayerRegistryClass.new()
 	world = WorldStateClass.new()
+	# These services are Nodes for compatibility with the session architecture;
+	# attach them so SessionRoot owns and releases their lifecycle.
+	registry.name = "PlayerRegistry"
+	world.name = "WorldState"
+	add_child(registry)
+	add_child(world)
+	_peer_state_root = Node.new()
+	_peer_state_root.name = "PeerState"
+	add_child(_peer_state_root)
 	router = CommandRouterClass.new()
 	validator = CommandValidatorClass.new()
 	interaction_auth = InteractionAuthorityClass.new()
@@ -112,6 +127,7 @@ func _init() -> void:
 	_seq_tracker = CommandValidatorClass.SequenceTracker.new()
 	_loot_seq = 5000
 	_inventory_baseline = {}
+	_peer_state_nodes = {}
 	_attack_cd_until = {}
 	_stagger = {}
 
@@ -148,6 +164,11 @@ func handle_spawn_request(peer_id: int, save_state: Dictionary = {}, player_guid
 	attrs.init_defaults()
 	var sk := SkillRuntimeClass.new()
 	sk.init_defaults()
+	attrs.name = "AttrPanel_%d" % peer_id
+	sk.name = "SkillRuntime_%d" % peer_id
+	_peer_state_root.add_child(attrs)
+	_peer_state_root.add_child(sk)
+	_peer_state_nodes[peer_id] = [attrs, sk]
 	var inv := ExpeditionInventoryClass.new()
 	var lo := EquipmentLoadoutClass.new()
 	# 只继承存档状态：把玩家单人存档摘要应用到新生成的联机上下文（服务器可信数据）。
@@ -177,11 +198,20 @@ func unregister_player(peer_id: int) -> void:
 	var ctx = registry.get_context(peer_id)
 	if ctx != null:
 		_ctx_peer.erase(ctx.get_instance_id())
+	_free_peer_state_nodes(peer_id)
 	registry.unregister_peer(peer_id)
 	_live_state.erase(peer_id)
 	_seq_tracker.reset_peer(peer_id)
 	_inventory_baseline.erase(peer_id)
 	player_unregistered.emit(peer_id)
+
+
+func _free_peer_state_nodes(peer_id: int) -> void:
+	var state_nodes: Array = _peer_state_nodes.get(peer_id, [])
+	_peer_state_nodes.erase(peer_id)
+	for node in state_nodes:
+		if node is Node and is_instance_valid(node):
+			node.free()
 
 # ---------------------------------------------------------------------------
 # 连接生命周期（§13）：断线保留 / 重连 / 心跳超时 / 主动离开
@@ -268,6 +298,9 @@ func _handle_resume(command: Dictionary, _ctx: PlayerContextClass) -> Dictionary
 func _migrate_peer_state(old_id: int, new_id: int) -> void:
 	if old_id == new_id:
 		return
+	if _peer_state_nodes.has(old_id):
+		_peer_state_nodes[new_id] = _peer_state_nodes[old_id]
+		_peer_state_nodes.erase(old_id)
 	# registry：把旧 ctx 重新登记到新 peer_id（保留 PlayerContext 全部状态，不重建）
 	var ctx = registry.get_context(old_id)
 	if ctx != null:

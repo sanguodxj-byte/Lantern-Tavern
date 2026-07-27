@@ -26,9 +26,11 @@ func test_fireplace_light_fades_late_enough_for_tavern_visibility() -> void:
 
 
 func test_interaction_hint_lights_keep_larger_fade_distance() -> void:
+	# Door/enemy gameplay scenes intentionally remain unlit; the fade budget
+	# applies to actual local emitters instead of adding presence lights.
 	for scene_path in [
-		"res://scenes/door/door.tscn",
-		"res://scenes/characters/enemies/goblin.tscn",
+		"res://scenes/props/decor/fireplace.tscn",
+		"res://scenes/props/torch/torch.tscn",
 	]:
 		_assert_scene_fade_budget(scene_path, 14.0, 8.0)
 

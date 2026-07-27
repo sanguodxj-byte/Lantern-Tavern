@@ -83,6 +83,9 @@ func _ready() -> void:
 func _ensure_session() -> void:
 	if session == null:
 		session = SessionRootClass.new()
+		# SessionRoot is a runtime-owned node. Parenting it here makes its
+		# lifecycle follow NetworkManager in both the autoload and test paths.
+		add_child(session)
 		# world_revision 闭环：SessionRoot 在权威世界状态变更时经此把 EVT_WORLD_REVISION_CHANGED 下发到所有客户端。
 		session.broadcast_event = _dispatch_world_event
 
@@ -312,13 +315,24 @@ func _server_on_peer_disconnected(peer_id: int) -> void:
 			room_ended.emit()
 
 ## 广播一个服务器事件到所有客户端（有真实 peer 时走 RPC，否则仅本地发射 signal 供单测）。
+## 性能优化：高频低重要性事件（player_snapshot / entity_snapshot）走 unreliable 通道，
+## 丢包可容忍（下一帧快照自动补上），减少 reliable 通道拥塞；关键事件保持 reliable。
 func _dispatch_event(event: Dictionary, _source_peer: int) -> void:
 	event_dispatched.emit(event)
 	var can_rpc := session != null and session.is_server and _can_rpc()
 	if can_rpc:
 		var kind: String = event.get("event", event.get("type", "?"))
 		_net_stats[kind] = int(_net_stats.get(kind, 0)) + 1
-		rpc_server_event.rpc(event)
+		if _is_high_frequency_event(kind):
+			rpc_server_event_unreliable.rpc(event)
+		else:
+			rpc_server_event.rpc(event)
+
+## 判断事件是否为高频低重要性（可走 unreliable 通道）。
+## player_snapshot：位置/朝向快照，30Hz 广播，丢一两帧不影响游戏正确性。
+## entity_snapshot：实体 HP/位置更新，战斗中频繁，丢帧后下次更新自动追平。
+func _is_high_frequency_event(kind: String) -> bool:
+	return kind == NP.EVT_PLAYER_SNAPSHOT or kind == NP.EVT_ENTITY_SNAPSHOT
 
 ## 返回累计网络下发统计（{事件类型: 次数}），供 PerfMonitor HUD / 压测观测。
 func get_net_stats() -> Dictionary:
@@ -567,6 +581,12 @@ func rpc_client_leave(peer_id: int) -> void:
 ## 服务器 → 客户端：下发事件（玩家快照/交互结果/战斗结算/地牢布局/断线快照等）。
 @rpc("authority", "call_remote", "reliable")
 func rpc_server_event(event: Dictionary) -> void:
+	_apply_event(event)
+
+## 服务器 → 客户端：下发高频低重要性事件（player_snapshot / entity_snapshot），走 unreliable 通道。
+## 丢包可容忍：位置快照下一帧自动补上，实体 HP 更新下次追平。减少 reliable 通道拥塞。
+@rpc("authority", "call_remote", "unreliable")
+func rpc_server_event_unreliable(event: Dictionary) -> void:
 	_apply_event(event)
 
 ## 服务器 → 客户端：玩家生成确认 + 重连令牌（客户端据此缓存 token 供后续重连）。

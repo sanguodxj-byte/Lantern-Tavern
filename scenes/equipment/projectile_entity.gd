@@ -62,6 +62,14 @@ var _is_destroyed: bool = false
 ## 存活计时器
 var _lifetime_timer: SceneTreeTimer = null
 
+## 视觉延迟显示剩余时间（秒）。
+## 投射物从第一人称枪口生成时，箭尾（箭羽）距相机极近（~0.08m），
+## 首帧会铺满屏幕形成灰色闪屏。延迟显示视觉，等投射物飞离枪口后再渲染。
+## 使用 _process 追踪时间而非 create_timer，避免 SceneTreeTimer 在测试环境中
+## 因帧间 delta 过大而提前触发。
+var _visual_delay_remaining: float = 0.0
+const VISUAL_SPAWN_DELAY := 0.05  # ~3帧@60fps；箭矢飞出 ~1.1m，充分远离相机视野
+
 ## 共享材质缓存——按 projectile_data 的资源路径索引，避免每次生成创建新 StandardMaterial3D
 static var _shared_spell_materials: Dictionary = {}  # { resource_path: StandardMaterial3D }
 static var _shared_arrow_shaft_materials: Dictionary = {}
@@ -86,6 +94,8 @@ func _ready() -> void:
 	# 视觉外观（先清理旧视觉，再构建新视觉）
 	_clear_visual()
 	_build_visual()
+	# 延迟显示视觉：避免箭尾在枪口贴脸时铺满屏幕形成灰屏闪屏
+	_defer_visual_visibility()
 	# 飞行方向 = -Z（spawn_transform 的前方）
 	_flight_direction = -global_transform.basis.z.normalized()
 	# 设置初速度
@@ -139,6 +149,29 @@ func _build_visual() -> void:
 			_build_default_spell_visual()
 		_:
 			_build_default_arrow_visual()
+
+
+## 延迟显示投射物视觉
+## 投射物从第一人称枪口生成时，箭尾（箭羽）距相机仅 ~0.08m，首帧会铺满屏幕形成灰色闪屏。
+## 隐藏视觉 VISUAL_SPAWN_DELAY 秒后恢复显示，此时投射物已飞离枪口 ~0.66m。
+## 使用 _process 追踪延迟而非 create_timer，避免 SceneTreeTimer 在帧间 delta 过大时提前触发。
+func _defer_visual_visibility() -> void:
+	if visual_root == null or not is_instance_valid(visual_root):
+		return
+	visual_root.visible = false
+	_visual_delay_remaining = VISUAL_SPAWN_DELAY
+	set_process(true)
+
+
+## 每帧递减延迟计数器，归零后恢复视觉显示
+func _process(delta: float) -> void:
+	if _visual_delay_remaining > 0.0:
+		_visual_delay_remaining -= delta
+		if _visual_delay_remaining <= 0.0:
+			_visual_delay_remaining = 0.0
+			if not _is_destroyed and visual_root != null and is_instance_valid(visual_root):
+				visual_root.visible = true
+			set_process(false)
 
 
 ## 默认法术弹外观：发光球体
@@ -281,10 +314,11 @@ func _resolve_scene_object_hit(body: Node) -> void:
 func _resolve_single_hit(enemy: Enemy) -> void:
 	if source_player == null or not is_instance_valid(source_player):
 		return
+	var style_ctx: Dictionary = source_player.get_style_context() if source_player.has_method("get_style_context") else {}
 	var result = CB.resolve_projectile_attack(
 		source_player, enemy, weapon_data, main_hand_type, off_hand_type,
 		attacker_attrs, attacker_level, _flight_direction, is_backstab,
-		skill_data, _current_damage_mult
+		skill_data, _current_damage_mult, style_ctx
 	)
 	if result.hit:
 		enemy.try_receive_hit_result(source_player, result)
@@ -307,10 +341,11 @@ func _resolve_aoe_impact(trigger_enemy: Enemy) -> void:
 		if _hit_targets.has(enemy):
 			continue
 		_hit_targets.append(enemy)
+		var style_ctx: Dictionary = source_player.get_style_context() if source_player.has_method("get_style_context") else {}
 		var result = CB.resolve_projectile_attack(
 			source_player, enemy, weapon_data, main_hand_type, off_hand_type,
 			attacker_attrs, attacker_level, _flight_direction, is_backstab,
-			skill_data, _current_damage_mult
+			skill_data, _current_damage_mult, style_ctx
 		)
 		if result.hit:
 			enemy.try_receive_hit_result(source_player, result)

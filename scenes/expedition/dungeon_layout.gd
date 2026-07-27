@@ -18,11 +18,13 @@ var tile_size: float = 3.0
 var width: int = 0
 var height: int = 0
 var algorithm: String = "isaac"  # 产出此布局的算法名，用于追溯
+var generation_attempt: int = 1
+var quality_report: Dictionary = {}
 
 # ── 网格与地形 ──────────────────────────────────────────────
 # grid: Array<Array<int>>，value 为 BSP_DungeonGenerator.TileType 枚举值
 var grid: Array = []
-# heights: Array<Array<float>>，每格天花板高度（米），与 grid 同形
+# heights: Array<Array<float>>，每格天花板高度（米），以 float 存储但严格为整数米层，与 grid 同形
 var heights: Array = []
 # rooms: Array[Rect2i]，所有房间矩形
 var rooms: Array[Rect2i] = []
@@ -181,6 +183,8 @@ func duplicate_layout() -> DungeonLayout:
 	copy.width = width
 	copy.height = height
 	copy.algorithm = algorithm
+	copy.generation_attempt = generation_attempt
+	copy.quality_report = quality_report.duplicate(true)
 	copy.grid = grid.duplicate(true)
 	copy.heights = heights.duplicate(true)
 	copy.rooms = rooms.duplicate()
@@ -222,6 +226,12 @@ func validate() -> Dictionary:
 	if heights.size() != height or (not heights.is_empty() and heights[0].size() != width):
 		report["valid"] = false
 		errors.append("heights shape mismatch grid")
+	elif heights.size() == height and (heights.is_empty() or heights[0].size() == width):
+		for y in range(heights.size()):
+			for x in range(heights[y].size()):
+				if not DungeonGenerationConfig.is_integer_height(float(heights[y][x])):
+					report["valid"] = false
+					errors.append("height at (%d,%d) is not an integer meter layer: %s" % [x, y, heights[y][x]])
 	# 关键点要么 (-1,-1) 未命中，要么必须落在网格内且为地板
 	for label in ["player_spawn_cell", "extraction_cell", "boss_cell", "stairs_cell", "reward_cell"]:
 		var cell: Vector2i = get(label)

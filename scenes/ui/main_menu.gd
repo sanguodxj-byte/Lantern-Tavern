@@ -217,6 +217,13 @@ func _on_skip_tutorial_pressed() -> void:
 func _on_back_from_tutorial_pressed() -> void:
 	_set_tutorial_choice_visible(false)
 
+
+func _on_cancel_input() -> void:
+	# ESC/TAB exits the tutorial-choice overlay; the root main menu has no
+	# parent UI to return to, so it remains open.
+	if tutorial_choice_panel.visible:
+		_on_back_from_tutorial_pressed()
+
 func _on_continue_pressed() -> void:
 	if TavernManager:
 		TavernManager.continue_in_tavern()

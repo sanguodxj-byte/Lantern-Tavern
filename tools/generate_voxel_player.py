@@ -18,7 +18,7 @@ import bpy
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
-from voxel_character_rig import build_all_actions, build_weapon_actions, export_glb as export_rig_glb
+from voxel_character_rig import build_all_actions, build_weapon_actions, export_glb as export_rig_glb, make_action
 from voxel_humanoid_rig import create_voxel_humanoid_armature, parent_parts_by_bone
 from voxel_model_primitives import (
     bounds_center_scale,
@@ -174,15 +174,15 @@ def build_player() -> tuple[bpy.types.Object, list[bpy.types.Object], dict[str, 
     # Rolled sleeves and robust hands leave clean equipment sockets.
     add("rolled_sleeve_left", (-10.5, 0.0, 37.0), (3.0, 7.0, 6.0), linen_mid, "UpperArm.L")
     add("sleeve_cuff_left", (-10.5, 0.0, 32.5), (3.0, 7.0, 3.0), linen_high, "LowerArm.L")
-    add("forearm_left", (-10.25, 0.5, 28.0), (3.5, 6.0, 6.0), skin_mid, "LowerArm.L")
-    add("wrist_left", (-10.25, 0.5, 24.0), (3.5, 6.0, 2.0), skin_shadow, "Hand.L")
+    add("forearm_left", (-10.0, 0.5, 28.0), (4.0, 6.0, 6.0), skin_mid, "LowerArm.L")
+    add("wrist_left", (-10.0, 0.5, 24.0), (4.0, 6.0, 2.0), skin_shadow, "Hand.L")
     add("hand_left", (-10.0, 0.0, 21.0), (4.0, 6.0, 4.0), skin_mid, "Hand.L")
     add("thumb_left", (-9.0, -3.5, 21.0), (1.0, 1.0, 2.0), skin_high, "Hand.L")
 
     add("rolled_sleeve_right", (10.5, 0.0, 37.0), (3.0, 7.0, 6.0), linen_mid, "UpperArm.R")
     add("sleeve_cuff_right", (10.5, 0.0, 32.5), (3.0, 7.0, 3.0), linen_high, "LowerArm.R")
-    add("forearm_right", (10.25, 0.5, 28.0), (3.5, 6.0, 6.0), skin_mid, "LowerArm.R")
-    add("wrist_right", (10.25, 0.5, 24.0), (3.5, 6.0, 2.0), skin_shadow, "Hand.R")
+    add("forearm_right", (10.0, 0.5, 28.0), (4.0, 6.0, 6.0), skin_mid, "LowerArm.R")
+    add("wrist_right", (10.0, 0.5, 24.0), (4.0, 6.0, 2.0), skin_shadow, "Hand.R")
     add("hand_right", (10.0, 0.0, 21.0), (4.0, 6.0, 4.0), skin_mid, "Hand.R")
     add("thumb_right", (9.0, -3.5, 21.0), (1.0, 1.0, 2.0), skin_high, "Hand.R")
 
@@ -227,6 +227,332 @@ def _assert_authored_envelope(parts: list[bpy.types.Object]) -> None:
         raise RuntimeError(f"player envelope is {size_px}px, expected {TARGET_ENVELOPE_PX}px")
 
 
+def build_player_crossbow_actions(armature) -> None:
+    """Author the player's FPS-like crossbow flow on the shared character rig.
+
+    These clips are deliberately player-only.  Crossbow handling is a held
+    forward aim pose, a short shoulder recoil, and a full two-hand reload;
+    it must never reuse the one-hand throw animation.  The weapon stays on
+    Hand.R, so first- and third-person cameras observe the same pose.
+    """
+    # Right mouse aim: both hands close around a forward-facing crossbow.
+    # This is a stable pose, not a charge animation; the crossbow is ready
+    # immediately and the camera owns the FOV transition.
+    aim_pose = {
+        "UpperArm.R": {"rot": (-30, 0, 25)},
+        "LowerArm.R": {"rot": (-40, 0, 0)},
+        # Keep the rear grip aligned with the generic held-weapon socket. The
+        # arm is raised for first person, but the hand itself must not roll the
+        # crossbow into a diagonal silhouette.
+        "Hand.R": {"rot": (0, -20, 20)},
+        "UpperArm.L": {"rot": (-48, 8, -20)},
+        "LowerArm.L": {"rot": (-58, 0, 0)},
+        "Hand.L": {"rot": (0, 12, -10)},
+        "Torso": {"rot": (-4, 0, 0)},
+    }
+    make_action(armature, "crossbow_aim", 1, [(1, aim_pose)])
+
+    # Left click fire: keep the aim silhouette, kick both shoulders and the
+    # torso for a few frames, then settle back.  There is no release/throw
+    # pose and no large arm arc, matching a compact FPS crossbow.
+    fire_recoil = {
+        # The right hand is the weapon socket. Keep it locked to the aim grip;
+        # recoil is carried by the shoulder and torso so the crossbow does not
+        # orbit out of the FPS frame.
+        "UpperArm.R": {"rot": (-30, 0, 25)},
+        "LowerArm.R": {"rot": (-40, 0, 0)},
+        "Hand.R": {"rot": (0, -20, 20)},
+        "UpperArm.L": {"rot": (-40, 8, -18)},
+        "LowerArm.L": {"rot": (-50, 0, 0)},
+        "Hand.L": {"rot": (0, 12, -10)},
+        "Torso": {"rot": (-6, 0, 0)},
+    }
+    make_action(armature, "crossbow_fire", 8,
+        [(1, aim_pose),
+         (2, {**aim_pose, "Torso": {"rot": (-6, 0, 0)}}),
+         (3, fire_recoil),
+         (4, fire_recoil),
+         (6, {**aim_pose, "Torso": {"rot": (-5, 0, 0)}}),
+         (8, aim_pose)]
+    )
+
+    # Reload: lower the crossbow toward the chest, let the left hand work the
+    # string/bolt, then return to the same aim pose.  The gameplay timer is
+    # authoritative; Player only changes playback speed to fit reload_time.
+    reload_low = {
+        # Keep the firing hand and torso planted. The left hand performs the
+        # visible reload work around the receiver instead of dragging the
+        # weapon socket through the camera.
+        "UpperArm.R": {"rot": (-30, 0, 25)},
+        "LowerArm.R": {"rot": (-40, 0, 0)},
+        "Hand.R": {"rot": (0, -20, 20)},
+        "UpperArm.L": {"rot": (-20, 10, -14)},
+        "LowerArm.L": {"rot": (-25, 0, 0)},
+        "Hand.L": {"rot": (0, 10, -6)},
+        "Torso": {"rot": (-4, 0, 0)},
+    }
+    reload_work = {
+        "UpperArm.R": {"rot": (-30, 0, 25)},
+        "LowerArm.R": {"rot": (-40, 0, 0)},
+        "Hand.R": {"rot": (0, -20, 20)},
+        "UpperArm.L": {"rot": (8, 14, -22)},
+        "LowerArm.L": {"rot": (-12, 0, 0)},
+        "Hand.L": {"rot": (0, 22, -12)},
+        "Torso": {"rot": (-4, 0, 0)},
+    }
+    make_action(armature, "crossbow_reload", 29,
+        [(1, aim_pose),
+         (4, reload_low),
+         (10, reload_work),
+         (16, reload_work),
+         (22, reload_low),
+         (29, aim_pose)]
+    )
+
+
+def build_player_style_actions(armature) -> None:
+    """Author the player-only hold/guard/attack clips for every equipment style.
+
+    The generic humanoid action set remains shared with enemies.  These clips
+    belong only to the player rig because the player weapon schools have
+    distinct grips, defensive silhouettes, and attack mechanics.
+    """
+    style_specs = {
+        "unarmed": {
+            "hold": ("unarmed_hold", 1, {
+                "UpperArm.R": {"rot": (-18, 0, 24)}, "LowerArm.R": {"rot": (-28, 0, 0)},
+                "UpperArm.L": {"rot": (-18, 0, -24)}, "LowerArm.L": {"rot": (-28, 0, 0)},
+            }),
+            "guard": ("unarmed_guard", 8, {
+                "UpperArm.R": {"rot": (-48, -22, 38)}, "LowerArm.R": {"rot": (-58, 18, 0)},
+                "Hand.R": {"rot": (0, -18, 18)},
+                "UpperArm.L": {"rot": (-48, 22, -38)}, "LowerArm.L": {"rot": (-58, -18, 0)},
+                "Hand.L": {"rot": (0, 18, -18)}, "Torso": {"rot": (0, 0, -6)},
+            }),
+        },
+        "shortsword": {
+            "hold": ("shortsword_hold", 1, {
+                "UpperArm.R": {"rot": (-28, 0, 28)}, "LowerArm.R": {"rot": (-42, 0, 0)},
+                "Hand.R": {"rot": (0, -18, 18)},
+            }),
+            "guard": ("shortsword_guard", 8, {
+                "UpperArm.R": {"rot": (-38, -25, 35)}, "LowerArm.R": {"rot": (-64, 12, 0)},
+                "Hand.R": {"rot": (0, -28, 28)}, "Torso": {"rot": (0, 0, -4)},
+            }),
+            "attack": ("shortsword_attack", 9, {
+                "UpperArm.R": {"rot": (-76, -90, 36)}, "LowerArm.R": {"rot": (118, 142, -86)},
+                "Hand.R": {"rot": (142, 0, -24)}, "Torso": {"rot": (0, 10, 8)},
+            }),
+        },
+        "sword": {
+            "hold": ("sword_hold", 1, {
+                "UpperArm.R": {"rot": (-32, 0, 22)}, "LowerArm.R": {"rot": (-46, 0, 0)},
+                "Hand.R": {"rot": (0, -22, 22)},
+            }),
+            "guard": ("sword_guard", 8, {
+                "UpperArm.R": {"rot": (-42, -18, 30)}, "LowerArm.R": {"rot": (-68, 8, 0)},
+                "Hand.R": {"rot": (0, -22, 32)}, "Torso": {"rot": (0, 0, -7)},
+            }),
+            "attack": ("sword_attack", 11, {
+                "UpperArm.R": {"rot": (-92, -20, -42)}, "LowerArm.R": {"rot": (138, 78, 112)},
+                "Hand.R": {"rot": (-150, 0, 34)}, "Torso": {"rot": (0, -12, -12)},
+            }),
+        },
+        "dagger": {
+            "hold": ("dagger_hold", 1, {
+                "UpperArm.R": {"rot": (-18, 8, 42)}, "LowerArm.R": {"rot": (-24, 0, 0)},
+                "Hand.R": {"rot": (0, -42, 8)}, "UpperArm.L": {"rot": (-12, 0, -18)},
+            }),
+            "guard": ("dagger_guard", 7, {
+                "UpperArm.R": {"rot": (-26, 18, 52)}, "LowerArm.R": {"rot": (-32, 0, 0)},
+                "Hand.R": {"rot": (0, -56, 10)}, "Torso": {"rot": (0, 0, 6)},
+            }),
+            "attack": ("dagger_attack", 7, {
+                "UpperArm.R": {"rot": (18, 12, -22)}, "LowerArm.R": {"rot": (10, 0, 0)},
+                "Hand.R": {"rot": (-10, 0, -36)}, "UpperArm.L": {"rot": (-52, -8, -32)},
+                "LowerArm.L": {"rot": (-42, 0, 0)}, "Torso": {"rot": (0, 14, 0)},
+            }),
+        },
+        "greatsword": {
+            "hold": ("greatsword_hold", 1, {
+                "UpperArm.R": {"rot": (-52, 0, 32)}, "LowerArm.R": {"rot": (-34, 0, 0)},
+                "UpperArm.L": {"rot": (-52, 0, -32)}, "LowerArm.L": {"rot": (-34, 0, 0)},
+            }),
+            "guard": ("greatsword_guard", 10, {
+                "UpperArm.R": {"rot": (-78, -8, 38)}, "LowerArm.R": {"rot": (-48, 0, 0)},
+                "UpperArm.L": {"rot": (-78, 8, -38)}, "LowerArm.L": {"rot": (-48, 0, 0)},
+                "Torso": {"rot": (-8, 0, -8)},
+            }),
+            "attack": ("greatsword_attack", 14, {
+                "UpperArm.R": {"rot": (28, 0, -22)}, "LowerArm.R": {"rot": (22, 0, 0)},
+                "UpperArm.L": {"rot": (28, 0, 22)}, "LowerArm.L": {"rot": (22, 0, 0)},
+                "Torso": {"rot": (16, 0, 10)},
+            }),
+            "heavy": ("greatsword_heavy_swing", 18, {
+                "UpperArm.R": {"rot": (-112, -22, 56)}, "LowerArm.R": {"rot": (-66, 0, 0)},
+                "UpperArm.L": {"rot": (-106, 22, -56)}, "LowerArm.L": {"rot": (-64, 0, 0)},
+                "Hand.R": {"rot": (148, 0, -28)}, "Hand.L": {"rot": (148, 0, 28)},
+                "Torso": {"rot": (-22, 4, -14)},
+            }),
+        },
+        "axe": {
+            "hold": ("axe_hold", 1, {
+                "UpperArm.R": {"rot": (-58, -12, 42)}, "LowerArm.R": {"rot": (-28, 0, 0)},
+                "UpperArm.L": {"rot": (-44, 10, -34)}, "LowerArm.L": {"rot": (-36, 0, 0)},
+            }),
+            "guard": ("axe_guard", 10, {
+                "UpperArm.R": {"rot": (-86, -18, 52)}, "LowerArm.R": {"rot": (-42, 0, 0)},
+                "UpperArm.L": {"rot": (-64, 18, -48)}, "LowerArm.L": {"rot": (-50, 0, 0)},
+                "Torso": {"rot": (-10, 0, 12)},
+            }),
+            "attack": ("axe_attack", 13, {
+                "UpperArm.R": {"rot": (42, -12, -34)}, "LowerArm.R": {"rot": (34, 0, 0)},
+                "UpperArm.L": {"rot": (42, 12, 34)}, "LowerArm.L": {"rot": (34, 0, 0)},
+                "Torso": {"rot": (18, -8, -14)},
+            }),
+            "heavy": ("axe_heavy_swing", 17, {
+                "UpperArm.R": {"rot": (-108, -38, 70)}, "LowerArm.R": {"rot": (-52, 0, 0)},
+                "UpperArm.L": {"rot": (-94, 28, -58)}, "LowerArm.L": {"rot": (-62, 0, 0)},
+                "Hand.R": {"rot": (132, -18, -34)}, "Hand.L": {"rot": (132, 18, 34)},
+                "Torso": {"rot": (-24, -16, 20)},
+            }),
+        },
+        "warhammer": {
+            "hold": ("warhammer_hold", 1, {
+                "UpperArm.R": {"rot": (-62, 8, 28)}, "LowerArm.R": {"rot": (-26, 0, 0)},
+                "UpperArm.L": {"rot": (-48, -10, -26)}, "LowerArm.L": {"rot": (-38, 0, 0)},
+            }),
+            "guard": ("warhammer_guard", 11, {
+                "UpperArm.R": {"rot": (-96, 4, 44)}, "LowerArm.R": {"rot": (-34, 0, 0)},
+                "UpperArm.L": {"rot": (-72, -4, -42)}, "LowerArm.L": {"rot": (-52, 0, 0)},
+                "Torso": {"rot": (-14, 0, -4)},
+            }),
+            "attack": ("warhammer_attack", 15, {
+                "UpperArm.R": {"rot": (54, 8, -28)}, "LowerArm.R": {"rot": (42, 0, 0)},
+                "UpperArm.L": {"rot": (54, -8, 28)}, "LowerArm.L": {"rot": (42, 0, 0)},
+                "Torso": {"rot": (22, 6, 18)},
+            }),
+            "heavy": ("warhammer_heavy_swing", 19, {
+                "UpperArm.R": {"rot": (-126, 22, 56)}, "LowerArm.R": {"rot": (-60, 0, 0)},
+                "UpperArm.L": {"rot": (-118, -18, -52)}, "LowerArm.L": {"rot": (-70, 0, 0)},
+                "Hand.R": {"rot": (154, 18, -26)}, "Hand.L": {"rot": (154, -18, 26)},
+                "Torso": {"rot": (-26, 10, 24)},
+            }),
+        },
+        "spear": {
+            "hold": ("spear_hold", 1, {
+                "UpperArm.R": {"rot": (-34, -16, 20)}, "LowerArm.R": {"rot": (-64, 0, 0)},
+                "UpperArm.L": {"rot": (-22, 12, -18)}, "LowerArm.L": {"rot": (-42, 0, 0)},
+            }),
+            "guard": ("spear_guard", 9, {
+                "UpperArm.R": {"rot": (-46, -26, 18)}, "LowerArm.R": {"rot": (-78, 0, 0)},
+                "UpperArm.L": {"rot": (-34, 20, -16)}, "LowerArm.L": {"rot": (-54, 0, 0)},
+                "Torso": {"rot": (0, 12, 0)},
+            }),
+            "attack": ("spear_attack", 10, {
+                "UpperArm.R": {"rot": (-10, -4, 8)}, "LowerArm.R": {"rot": (-8, 0, 0)},
+                "UpperArm.L": {"rot": (12, 6, -8)}, "LowerArm.L": {"rot": (-12, 0, 0)},
+                "Torso": {"rot": (-8, 18, 0)},
+            }),
+            "heavy": ("spear_heavy_swing", 16, {
+                "UpperArm.R": {"rot": (-64, -34, 14)}, "LowerArm.R": {"rot": (-96, 0, 0)},
+                "UpperArm.L": {"rot": (-52, 24, -14)}, "LowerArm.L": {"rot": (-76, 0, 0)},
+                "Hand.R": {"rot": (12, -18, 10)}, "Hand.L": {"rot": (8, 18, -10)},
+                "Torso": {"rot": (-12, 24, 0)},
+            }),
+        },
+        "bow": {
+            "hold": ("bow_hold", 1, {
+                "UpperArm.R": {"rot": (-38, 14, 24)}, "LowerArm.R": {"rot": (-50, 0, 0)},
+                "UpperArm.L": {"rot": (-44, -8, -32)}, "LowerArm.L": {"rot": (-54, 0, 0)},
+                "Torso": {"rot": (-4, 0, 4)},
+            }),
+            "guard": ("bow_aim", 1, {
+                "UpperArm.R": {"rot": (-42, 18, 22)}, "LowerArm.R": {"rot": (-58, 0, 0)},
+                "UpperArm.L": {"rot": (-54, -10, -34)}, "LowerArm.L": {"rot": (-68, 0, 0)},
+                "Torso": {"rot": (-8, 0, 6)},
+            }),
+            "attack": ("bow_release", 8, {
+                "UpperArm.R": {"rot": (-18, 28, 12)}, "LowerArm.R": {"rot": (-36, 0, 0)},
+                "UpperArm.L": {"rot": (-30, -24, -18)}, "LowerArm.L": {"rot": (-42, 0, 0)},
+                "Torso": {"rot": (4, 0, -8)},
+            }),
+        },
+        "crossbow": {
+            "hold": ("crossbow_hold", 1, {
+                "UpperArm.R": {"rot": (-26, 0, 20)}, "LowerArm.R": {"rot": (-38, 0, 0)},
+                "UpperArm.L": {"rot": (-34, 8, -16)}, "LowerArm.L": {"rot": (-44, 0, 0)},
+                "Torso": {"rot": (-2, 0, 0)},
+            }),
+        },
+        "staff": {
+            "hold": ("staff_hold", 1, {
+                "UpperArm.R": {"rot": (-44, 0, 34)}, "LowerArm.R": {"rot": (-54, 0, 0)},
+                "UpperArm.L": {"rot": (-28, 0, -24)}, "LowerArm.L": {"rot": (-46, 0, 0)},
+            }),
+            "guard": ("staff_guard", 9, {
+                "UpperArm.R": {"rot": (-62, 0, 42)}, "LowerArm.R": {"rot": (-72, 0, 0)},
+                "UpperArm.L": {"rot": (-18, -4, -20)}, "LowerArm.L": {"rot": (-30, 0, 0)},
+                "Torso": {"rot": (-6, -10, 6)},
+            }),
+            "attack": ("staff_attack", 12, {
+                "UpperArm.R": {"rot": (-8, -34, 22)}, "LowerArm.R": {"rot": (-18, 0, 0)},
+                "UpperArm.L": {"rot": (-10, 30, -18)}, "LowerArm.L": {"rot": (-20, 0, 0)},
+                "Hand.R": {"rot": (0, -20, 50)}, "Torso": {"rot": (0, 20, 10)},
+            }),
+        },
+        "grimoire": {
+            "hold": ("grimoire_hold", 1, {
+                "UpperArm.R": {"rot": (-18, -10, 18)}, "LowerArm.R": {"rot": (-30, 0, 0)},
+                "UpperArm.L": {"rot": (-38, 16, -32)}, "LowerArm.L": {"rot": (-42, 0, 0)},
+                "Hand.L": {"rot": (0, 20, -12)},
+            }),
+            "guard": ("grimoire_guard", 9, {
+                "UpperArm.R": {"rot": (-20, -18, 22)}, "LowerArm.R": {"rot": (-34, 0, 0)},
+                "UpperArm.L": {"rot": (-52, 22, -46)}, "LowerArm.L": {"rot": (-58, 0, 0)},
+                "Hand.L": {"rot": (0, 30, -20)}, "Torso": {"rot": (0, -14, 8)},
+            }),
+            "attack": ("grimoire_attack", 12, {
+                "UpperArm.R": {"rot": (-2, -28, 30)}, "LowerArm.R": {"rot": (-12, 0, 0)},
+                "UpperArm.L": {"rot": (16, 34, -36)}, "LowerArm.L": {"rot": (8, 0, 0)},
+                "Hand.L": {"rot": (0, 38, -30)}, "Torso": {"rot": (0, -20, -8)},
+            }),
+        },
+        "shield": {
+            "hold": ("shield_hold", 1, {
+                "UpperArm.R": {"rot": (-28, 0, 24)}, "LowerArm.R": {"rot": (-42, 0, 0)},
+                "UpperArm.L": {"rot": (-36, 0, -48)}, "LowerArm.L": {"rot": (-64, 0, 0)},
+            }),
+            "guard": ("shield_block", 8, {
+                "UpperArm.L": {"rot": (-62, 0, -72)}, "LowerArm.L": {"rot": (-88, 0, 0)},
+                "UpperArm.R": {"rot": (-30, 0, 22)}, "LowerArm.R": {"rot": (-44, 0, 0)},
+                "Torso": {"rot": (0, 0, -12)},
+            }),
+        },
+    }
+    for spec in style_specs.values():
+        hold_name, hold_length, hold_pose = spec["hold"]
+        make_action(armature, hold_name, hold_length, [(1, hold_pose)])
+        if "guard" in spec:
+            guard_name, guard_length, guard_pose = spec["guard"]
+            make_action(armature, guard_name, guard_length,
+                [(1, guard_pose), (max(2, guard_length // 2), guard_pose), (guard_length, {})]
+            )
+        if "attack" in spec:
+            attack_name, attack_length, attack_pose = spec["attack"]
+            make_action(armature, attack_name, attack_length,
+                [(1, hold_pose), (max(2, attack_length // 3), attack_pose),
+                 (max(3, (attack_length * 2) // 3), attack_pose), (attack_length, {})]
+            )
+        if "heavy" in spec:
+            heavy_name, heavy_length, heavy_pose = spec["heavy"]
+            make_action(armature, heavy_name, heavy_length,
+                [(1, hold_pose), (max(2, heavy_length // 4), heavy_pose),
+                 (max(3, heavy_length // 2), heavy_pose),
+                 (max(4, (heavy_length * 3) // 4), heavy_pose), (heavy_length, {})]
+            )
+
+
 def main() -> None:
     reject_target_override(MODEL_ID)
     reset_scene()
@@ -245,6 +571,8 @@ def main() -> None:
     parent_parts_by_bone(parts_by_bone, armature)
     build_all_actions(armature)
     build_weapon_actions(armature)
+    build_player_style_actions(armature)
+    build_player_crossbow_actions(armature)
     # The runtime contract mounts equipment at character/Armature/Skeleton3D.
     # Remove the static-only empty before rig export so Godot does not import
     # an extra voxel_player_54px wrapper between the route root and Armature.

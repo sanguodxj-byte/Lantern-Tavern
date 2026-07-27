@@ -1,8 +1,7 @@
 [gd_scene format=3 uid="uid://cylmpirnbgosr"]
 
 [ext_resource type="PackedScene" uid="uid://cty2xvbejnvbg" path="res://scenes/characters/enemies/goblin.tscn" id="1_drag"]
-[ext_resource type="PackedScene" uid="uid://bdxls380ccmt3" path="res://assets/meshes/characters/voxel_dragon_256px_rig.glb" id="2_voxel"]
-[ext_resource type="Resource" uid="uid://b85xdn0cdw6p1" path="res://data/weapons/axe.tres" id="3_axe"]
+[ext_resource type="PackedScene" uid="uid://ch2yw5t77w61r" path="res://assets/meshes/characters/voxel_dragon_256px_rig.glb" id="2_voxel"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_drag"]
 albedo_color = Color(0.6, 0.15, 0.1, 1)
@@ -21,6 +20,8 @@ duration_stun = 4000
 speed = 0.8
 is_elite = true
 body_size = "huge"
+attack_mode = "body"
+body_attack_reach = 2.5
 
 [node name="character" parent="." index="1" instance=ExtResource("2_voxel")]
 
@@ -30,7 +31,7 @@ shape = SubResource("CapsuleShape3D_drag")
 
 [node name="EquipmentComponent" parent="." index="2"]
 shield_data = null
-weapon_data = ExtResource("3_axe")
+weapon_data = null
 
 [node name="HealthComponent" parent="." index="6"]
 max_life = 40
