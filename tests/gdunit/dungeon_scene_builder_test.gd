@@ -502,6 +502,28 @@ func test_batched_decor_template_cache_reuses_bounds_and_mesh_parts() -> void:
 	# builder 实例隔离缓存，避免跨地牢持有旧资源。
 	assert_int(builder._batched_decor_cache.size()).is_equal(0)
 
+func test_room_focus_visuals_have_no_player_collision() -> void:
+	var builder := DungeonSceneBuilder.new()
+	var layout := _make_3x3_floor_layout()
+	layout.room_focus_specs.append({
+		"focus_kind": "boss_altar",
+		"cell": Vector2i(1, 1),
+		"room_index": 0,
+	})
+	var result := DungeonBuildResult.new()
+	result.decor_root = Node3D.new()
+	_parent.add_child(result.decor_root)
+	builder._build_room_focuses(layout, result)
+
+	assert_int(result.decor_root.get_child_count()).is_equal(1)
+	var focus := result.decor_root.get_child(0) as Node3D
+	assert_bool(bool(focus.get_meta("room_focus", false))).is_true()
+	assert_str(String(focus.get_meta("focus_kind", ""))).is_equal("boss_altar")
+	assert_int(result.streamed_visual_nodes.size()).is_equal(1)
+	assert_int(result.streamed_physics_nodes.size()).is_equal(0)
+	assert_bool(focus.find_children("*", "PhysicsBody3D", true, false).is_empty()).is_true()
+	result.dispose()
+
 
 # ── helpers ──────────────────────────────────────────────────
 func _make_3x3_floor_layout() -> DungeonLayout:

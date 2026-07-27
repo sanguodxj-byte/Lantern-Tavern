@@ -75,6 +75,7 @@ func _build_isaac_layout(config: DungeonGenerationConfig, generation_seed: int) 
 	layout.grid = grid
 	layout.heights = DungeonGenerationConfig.normalize_height_grid(gen.ceiling_heights)
 	layout.rooms = (gen.rooms).duplicate()
+	layout.room_metadata = gen.room_metadata.duplicate(true)
 	layout.room_roles = {}
 	for k in gen.room_roles.keys():
 		layout.room_roles[k] = gen.room_roles[k]  # Rect2i 值类型直接赋

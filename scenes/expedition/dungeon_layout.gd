@@ -28,6 +28,7 @@ var grid: Array = []
 var heights: Array = []
 # rooms: Array[Rect2i]，所有房间矩形
 var rooms: Array[Rect2i] = []
+var room_metadata: Array[Dictionary] = []
 # room_roles: Dictionary<String, Rect2i>，特殊房间矩形，key ∈ {start,boss,extraction,stairs,reward}
 var room_roles: Dictionary = {}
 
@@ -47,6 +48,7 @@ var hazard_anchors: Array[Dictionary] = []
 var kick_lanes: Array[Dictionary] = []
 # terrain_features: Array<Dictionary>，大型房间地形特征（pillar_hall/great_hall 等）
 var terrain_features: Array[Dictionary] = []
+var room_focus_specs: Array[Dictionary] = []
 
 # ── 生规划产物（阶段 6 填充）────────────────────────────────
 # enemy_spawn_specs: Array<Dictionary>，每项 {enemy_type:String, cell:Vector2i, room_index:int, is_elite:bool, zone:int}
@@ -188,6 +190,7 @@ func duplicate_layout() -> DungeonLayout:
 	copy.grid = grid.duplicate(true)
 	copy.heights = heights.duplicate(true)
 	copy.rooms = rooms.duplicate()
+	copy.room_metadata = room_metadata.duplicate(true)
 	copy.room_roles = {}
 	for k in room_roles.keys():
 		copy.room_roles[k] = room_roles[k]  # Rect2i 值类型直接赋值
@@ -200,6 +203,7 @@ func duplicate_layout() -> DungeonLayout:
 	copy.hazard_anchors = hazard_anchors.duplicate(true)
 	copy.kick_lanes = kick_lanes.duplicate(true)
 	copy.terrain_features = terrain_features.duplicate(true)
+	copy.room_focus_specs = room_focus_specs.duplicate(true)
 	copy.enemy_spawn_specs = enemy_spawn_specs.duplicate(true)
 	copy.item_spawn_specs = item_spawn_specs.duplicate(true)
 	copy.chest_spawn_specs = chest_spawn_specs.duplicate(true)

@@ -77,6 +77,7 @@ func build(layout: DungeonLayout, parent: Node3D) -> DungeonBuildResult:
 	_build_hazards(layout, result)
 	_build_chests(layout, result)
 	_build_extraction_portal(layout, result)
+	_build_room_focuses(layout, result)
 	_build_decor_and_torches(layout, result, parent)
 	_build_batched_decor_multi_meshes(layout, result, parent)
 	_build_navigation_mesh(layout, result, parent)
@@ -854,6 +855,117 @@ func _chest_prefab_for(chest_type: String) -> PackedScene:
 			return CHEST_PREFAB
 		_:
 			return null
+
+func _build_room_focuses(layout: DungeonLayout, result: DungeonBuildResult) -> void:
+	if result == null or result.decor_root == null:
+		return
+	for index in range(layout.room_focus_specs.size()):
+		var spec: Dictionary = layout.room_focus_specs[index]
+		var cell: Vector2i = spec.get("cell", Vector2i(-1, -1))
+		if not layout.is_floor_cell(cell):
+			continue
+		var focus_kind := String(spec.get("focus_kind", "waystone"))
+		var root := Node3D.new()
+		root.name = "RoomFocus_%03d_%s" % [index, focus_kind]
+		root.position = _cell_to_world(cell, layout)
+		root.set_meta("topdown_kind", "terrain_feature")
+		root.set_meta("room_focus", true)
+		root.set_meta("focus_kind", focus_kind)
+		root.set_meta("focus_cell", cell)
+		result.decor_root.add_child(root)
+		_build_focus_geometry(root, focus_kind)
+		result.streamed_visual_nodes.append(root)
+
+func _build_focus_geometry(root: Node3D, focus_kind: String) -> void:
+	var accent := Color(0.78, 0.31, 0.16)
+	var secondary := Color(0.33, 0.42, 0.48)
+	match focus_kind:
+		"boss_altar":
+			accent = Color(0.90, 0.18, 0.08)
+			secondary = Color(0.36, 0.12, 0.10)
+			_add_focus_cylinder(root, "BossAltar", 0.95, 0.24, 0.12, _focus_material(secondary))
+			_add_focus_cylinder(root, "BossCore", 0.34, 0.42, 0.22, _focus_material(accent, true))
+			_add_focus_light(root, accent, 0.8, 5.5)
+			for offset in [Vector3(-0.70, 0.08, -0.70), Vector3(0.70, 0.08, -0.70), Vector3(-0.70, 0.08, 0.70), Vector3(0.70, 0.08, 0.70)]:
+				_add_focus_box(root, "BossRune", Vector3(0.28, 0.08, 0.28), offset, _focus_material(accent, true))
+		"stairs_shrine":
+			accent = Color(0.12, 0.72, 0.78)
+			_add_focus_cylinder(root, "StairsShrine", 0.88, 0.16, 0.08, _focus_material(secondary))
+			for offset in [Vector3(-0.72, 0.10, 0.0), Vector3(0.72, 0.10, 0.0), Vector3(0.0, 0.10, -0.72), Vector3(0.0, 0.10, 0.72)]:
+				_add_focus_box(root, "StairsRune", Vector3(0.30, 0.10, 0.30), offset, _focus_material(accent, true))
+			_add_focus_light(root, accent, 0.45, 4.0)
+		"ritual_circle":
+			accent = Color(0.68, 0.20, 0.76)
+			_add_focus_cylinder(root, "RitualCenter", 0.30, 0.18, 0.09, _focus_material(accent, true))
+			for offset in [Vector3(-0.82, 0.06, 0.0), Vector3(0.82, 0.06, 0.0), Vector3(0.0, 0.06, -0.82), Vector3(0.0, 0.06, 0.82)]:
+				_add_focus_box(root, "RitualMark", Vector3(0.24, 0.06, 0.52), offset, _focus_material(accent, true))
+			_add_focus_light(root, accent, 0.32, 3.5)
+		"resource_cluster":
+			accent = Color(0.28, 0.78, 0.40)
+			for item in [[-0.48, 0.18, -0.20, 0.24], [0.0, 0.24, 0.12, 0.32], [0.48, 0.15, -0.08, 0.20]]:
+				_add_focus_cylinder(root, "ResourceShard", 0.20, float(item[1]), float(item[0]), _focus_material(accent, true), Vector3(float(item[2]), 0.0, float(item[3])))
+		"guard_post":
+			accent = Color(0.72, 0.46, 0.18)
+			_add_focus_box(root, "GuardCrossbar", Vector3(1.45, 0.18, 0.22), Vector3(0.0, 0.10, 0.0), _focus_material(secondary))
+			_add_focus_cylinder(root, "GuardPost", 0.20, 0.70, 0.16, _focus_material(accent), Vector3(-0.58, 0.35, 0.0))
+			_add_focus_cylinder(root, "GuardPost", 0.20, 0.70, 0.16, _focus_material(accent), Vector3(0.58, 0.35, 0.0))
+		"battle_cross":
+			accent = Color(0.72, 0.24, 0.12)
+			for offset in [Vector3(-0.55, 0.10, -0.55), Vector3(0.55, 0.10, 0.55)]:
+				_add_focus_box(root, "BattleMarker", Vector3(0.72, 0.18, 0.24), offset, _focus_material(accent, true))
+		"treasure_niche":
+			accent = Color(0.88, 0.62, 0.18)
+			_add_focus_cylinder(root, "TreasureStand", 0.52, 0.16, 0.08, _focus_material(secondary))
+			_add_focus_box(root, "TreasureMark", Vector3(0.42, 0.12, 0.42), Vector3(0.0, 0.14, 0.0), _focus_material(accent, true))
+		"waystone":
+			accent = Color(0.36, 0.56, 0.68)
+			_add_focus_cylinder(root, "Waystone", 0.28, 0.55, 0.18, _focus_material(accent, true))
+
+func _focus_material(color: Color, emissive: bool = false) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.metallic = 0.0
+	material.roughness = 0.82
+	material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+	if emissive:
+		material.emission_enabled = true
+		material.emission = color
+		material.emission_energy_multiplier = 1.4
+	return material
+
+func _add_focus_box(root: Node3D, name: String, size: Vector3, offset: Vector3, material: Material) -> void:
+	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.name = name
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	mesh_instance.mesh = mesh
+	mesh_instance.position = offset
+	mesh_instance.material_override = material
+	root.add_child(mesh_instance)
+
+func _add_focus_cylinder(root: Node3D, name: String, radius: float, height: float, yaw: float, material: Material, offset: Vector3 = Vector3.ZERO) -> void:
+	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.name = name
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = radius
+	mesh.bottom_radius = radius * 0.86
+	mesh.height = height
+	mesh.radial_segments = 8
+	mesh_instance.mesh = mesh
+	mesh_instance.position = offset
+	mesh_instance.rotation.y = yaw
+	mesh_instance.material_override = material
+	root.add_child(mesh_instance)
+
+func _add_focus_light(root: Node3D, color: Color, energy: float, range_value: float) -> void:
+	var light := OmniLight3D.new()
+	light.name = "FocusLight"
+	light.light_color = color
+	light.light_energy = energy
+	light.omni_range = range_value
+	light.shadow_enabled = false
+	light.position.y = 0.8
+	root.add_child(light)
 
 # ── extraction portal prefab 映射 ───────────────────────────────
 ## 撤离传送门 instantiate。信号接线（extraction_requested.connect）属 runtime 阶段 9 聃畴，

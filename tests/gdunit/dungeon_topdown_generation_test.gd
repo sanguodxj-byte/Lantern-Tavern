@@ -21,7 +21,7 @@ func after() -> void:
 
 const OUTPUT_PATH := "res://reports/dungeon_topdown_generation_test.png"
 const CELL_PX := 8
-const LEGEND_HEIGHT := 96
+const LEGEND_HEIGHT := 112
 const MARGIN := 2
 
 const COLOR_EMPTY := Color(0.02, 0.02, 0.025, 1.0)
@@ -39,6 +39,7 @@ const COLOR_EXTRACTION := Color(0.0, 0.95, 0.85, 1.0)
 const COLOR_STAIRS := Color(1.0, 1.0, 1.0, 1.0)
 const COLOR_HAZARD := Color(0.95, 0.0, 0.95, 1.0)
 const COLOR_TERRAIN_FEATURE := Color(0.55, 0.36, 0.18, 1.0)
+const COLOR_ROOM_FOCUS := Color(1.0, 0.55, 0.08, 1.0)
 const COLOR_TAGGED_ITEM := Color(0.05, 0.20, 1.0, 1.0)
 const COLOR_DOOR := Color(0.10, 0.70, 1.0, 1.0)
 const LEGEND_TEXT_COLOR := Color(0.86, 0.84, 0.74, 1.0)
@@ -538,6 +539,48 @@ const LABEL_BITMAPS := {
         "............",
         "............"
     ],
+    "焦": [
+        "............",
+        "..######....",
+        "..#.........",
+        "..#####.....",
+        "....#.......",
+        "....#.......",
+        "....#.......",
+        "....#.......",
+        "....#.......",
+        "..########..",
+        "............",
+        "............"
+    ],
+    "建": [
+        "............",
+        "....#.......",
+        "...###......",
+        "..#####.....",
+        "....#.......",
+        "..#######...",
+        "....#.......",
+        "...###......",
+        "..#####.....",
+        "............",
+        "............",
+        "............"
+    ],
+    "筑": [
+        "............",
+        "..######....",
+        "....#.......",
+        ".#########..",
+        "..#...#.....",
+        "..#...#.....",
+        "..#######...",
+        ".....#......",
+        "....###.....",
+        "...#####....",
+        "............",
+        "............"
+    ],
 }
 
 
@@ -568,6 +611,7 @@ func test_generated_dungeon_topdown_map_includes_monsters_and_items() -> void:
 	var stairs_count := _count_markers(markers, "stairs")
 	var hazard_count := _count_markers(markers, "hazard")
 	var terrain_feature_count := _count_markers(markers, "terrain_feature")
+	var room_focus_count := _count_markers(markers, "room_focus")
 	var door_count := _count_markers(markers, "door")
 	assert_int(enemy_count) \
 		.override_failure_message("俯视测试图敌人过少: %d，必须等待并生成完整人口" % enemy_count) \
@@ -593,6 +637,9 @@ func test_generated_dungeon_topdown_map_includes_monsters_and_items() -> void:
 	assert_int(terrain_feature_count) \
 		.override_failure_message("大房间需要生成额外地形特征，避免空旷") \
 		.is_greater_equal(4)
+	assert_int(room_focus_count) \
+		.override_failure_message("主题房间必须生成可识别的焦点建筑") \
+		.is_greater_equal(6)
 	assert_int(door_count) \
 		.override_failure_message("俯视测试图必须标出地牢门位置") \
 		.is_greater_equal(1)
@@ -630,7 +677,7 @@ func test_generated_dungeon_topdown_map_includes_monsters_and_items() -> void:
 				.is_false()
 
 	for room in _large_non_start_rooms(dungeon):
-		var room_density := _count_markers_in_room(markers, room, ["hazard", "terrain_feature"])
+		var room_density := _count_markers_in_room(markers, room, ["hazard", "terrain_feature", "room_focus"])
 		assert_int(room_density) \
 			.override_failure_message("大房间仍然过于空旷，需要至少 2 个地形/陷阱锚点: %s count=%d" % [room, room_density]) \
 			.is_greater_equal(2)
@@ -644,7 +691,7 @@ func test_generated_dungeon_topdown_map_includes_monsters_and_items() -> void:
 	assert_int(err) \
 		.override_failure_message("无法保存地牢俯视测试图: %s" % OUTPUT_PATH) \
 		.is_equal(OK)
-	print("[DungeonTopdown] saved=%s enemies=%d items=%d materials=%d hazards=%d terrain=%d doors=%d extraction=%d stairs=%d markers=%d" % [OUTPUT_PATH, enemy_count, item_count, material_count, hazard_count, terrain_feature_count, door_count, extraction_count, stairs_count, markers.size()])
+	print("[DungeonTopdown] saved=%s enemies=%d items=%d materials=%d hazards=%d terrain=%d focus=%d doors=%d extraction=%d stairs=%d markers=%d" % [OUTPUT_PATH, enemy_count, item_count, material_count, hazard_count, terrain_feature_count, room_focus_count, door_count, extraction_count, stairs_count, markers.size()])
 
 
 func _collect_topdown_markers(dungeon: ProceduralDungeon) -> Array[Dictionary]:
@@ -678,6 +725,8 @@ func _collect_topdown_markers_recursive(node: Node, dungeon: ProceduralDungeon, 
 		_append_marker(markers, dungeon, node as Node3D, "extraction")
 	elif _is_stairs_node(node):
 		_append_marker(markers, dungeon, node as Node3D, "stairs")
+	elif _is_room_focus_node(node):
+		_append_marker(markers, dungeon, node as Node3D, "room_focus")
 	elif _is_terrain_feature_node(node):
 		_append_marker(markers, dungeon, node as Node3D, "terrain_feature")
 	for child in node.get_children():
@@ -784,6 +833,8 @@ func _marker_color(kind: String) -> Color:
 			return COLOR_HAZARD
 		"terrain_feature":
 			return COLOR_TERRAIN_FEATURE
+		"room_focus":
+			return COLOR_ROOM_FOCUS
 		"door":
 			return COLOR_DOOR
 		_:
@@ -835,6 +886,7 @@ func _draw_legend(image: Image, map_pixel_height: int) -> void:
 		{"label": "容器", "color": COLOR_CONTAINER},
 		{"label": "陷阱", "color": COLOR_HAZARD},
 		{"label": "地形", "color": COLOR_TERRAIN_FEATURE},
+		{"label": "焦点建筑", "color": COLOR_ROOM_FOCUS},
 		{"label": "门", "color": COLOR_DOOR},
 		{"label": "撤离点", "color": COLOR_EXTRACTION},
 		{"label": "楼梯", "color": COLOR_STAIRS},
@@ -923,6 +975,8 @@ func _marker_priority(kind: String) -> int:
 			return 55
 		"terrain_feature":
 			return 57
+		"room_focus":
+			return 56
 		"door":
 			return 58
 		"player":
@@ -949,6 +1003,10 @@ func _is_hazard_node(node: Node) -> bool:
 
 func _is_terrain_feature_node(node: Node) -> bool:
 	return node is Node3D and node.has_meta("topdown_kind") and String(node.get_meta("topdown_kind")) == "terrain_feature"
+
+
+func _is_room_focus_node(node: Node) -> bool:
+	return node is Node3D and node.has_meta("room_focus") and bool(node.get_meta("room_focus"))
 
 
 func _is_stairs_node(node: Node) -> bool:

@@ -9,6 +9,7 @@ const DungeonGenerationConfig := preload("res://scenes/expedition/dungeon_genera
 const DungeonConnectivityValidator := preload("res://scenes/expedition/dungeon_connectivity_validator.gd")
 const DungeonHazardPlanner := preload("res://scenes/expedition/dungeon_hazard_planner.gd")
 const DungeonSpawnPlanner := preload("res://scenes/expedition/dungeon_spawn_planner.gd")
+const DungeonRoomFocusPlanner := preload("res://scenes/expedition/dungeon_room_focus_planner.gd")
 const DungeonSceneBuilder := preload("res://scenes/expedition/dungeon_scene_builder.gd")
 const DungeonBuildResult := preload("res://scenes/expedition/dungeon_build_result.gd")
 const DungeonStreamingController := preload("res://scenes/expedition/dungeon_streaming_controller.gd")
@@ -130,6 +131,8 @@ func _ready() -> void:
 		spawn_planner.plan_enemy_spawns(layout)
 		spawn_planner.plan_item_spawns(layout)
 		spawn_planner.plan_chest_spawns(layout)
+
+	DungeonRoomFocusPlanner.new().plan(layout)
 
 	# build_result 集中实例化 hazard/chest/extraction portal（唯一路径，旧 _generate_visuals 调用已注释）
 	build_result = DungeonSceneBuilder.new().build(layout, self)
