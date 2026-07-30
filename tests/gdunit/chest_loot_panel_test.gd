@@ -866,6 +866,29 @@ func test_panel_can_drop_to_chest_from_backpack() -> void:
 	panel.queue_free()
 
 
+func test_panel_can_drop_to_chest_from_equipment() -> void:
+	# 装备栏可直接拖入宝箱（卸下即入箱，绕开背包中间态）
+	var panel: Node = load("res://scenes/ui/chest_loot_panel.tscn").instantiate()
+	add_child(panel)
+	var result: bool = panel.can_drop_to_zone("chest", {"source": "equipment", "type": "equipment"})
+	assert_bool(result).is_true()
+	panel.queue_free()
+
+
+func test_panel_drop_to_chest_from_equipment_calls_unequip_to_chest() -> void:
+	# drop_to_zone 的 chest 分支在 source==equipment 时应调 _unequip_slot_to_chest
+	var source := (load("res://scenes/ui/chest_loot_panel.gd") as GDScript).source_code
+	var fn_start := source.find("func drop_to_zone")
+	var fn_end := source.find("\nfunc ", fn_start + 1)
+	if fn_end < 0:
+		fn_end = source.length()
+	var fn_block := source.substr(fn_start, fn_end - fn_start)
+	assert_bool(fn_block.contains('elif source == "equipment"')) \
+		.override_failure_message("chest 分支应处理 source==equipment").is_true()
+	assert_bool(fn_block.contains("_unequip_slot_to_chest(")) \
+		.override_failure_message("从装备栏拖入宝箱应调 _unequip_slot_to_chest").is_true()
+
+
 # ============================================================================
 # 14. 集成测试：从背包装备护甲到玩家
 # ============================================================================

@@ -970,8 +970,8 @@ func can_drop_to_zone(zone_id: String, data: Dictionary) -> bool:
 			# 接收来自宝箱（取物）或装备槽（卸下）的拖放
 			return source == "chest" or source == "equipment"
 		"chest":
-			# 接收来自背包的拖放（放回宝箱）
-			return source == "backpack"
+			# 接收来自背包（放回宝箱）或装备槽（卸下直接入箱）的拖放
+			return source == "backpack" or source == "equipment"
 	return false
 
 
@@ -997,6 +997,9 @@ func drop_to_zone(zone_id: String, data: Dictionary) -> void:
 			if source == "backpack":
 				var item_id := String(data.get("id", ""))
 				_return_equipment_to_chest_by_id(item_id)
+			elif source == "equipment":
+				var slot_key := String(data.get("slot_key", ""))
+				_unequip_slot_to_chest(slot_key)
 	_load_backpack()
 	_refresh_display()
 
@@ -1016,6 +1019,62 @@ func _unequip_slot_to_backpack(slot_key: String) -> void:
 	if slot_data == null:
 		return
 	_on_equip_slot_pressed(slot_key, slot_data)
+
+
+## 卸下指定槽位装备直接放入宝箱（拖放路径）。
+## 装备当前在玩家身上（不在背包内），因此直接写入宝箱 loot_data 并清空槽位，
+## 不经由 GameState 的携带库存（该物品装备时已从携带库存取出）。
+func _unequip_slot_to_chest(slot_key: String) -> void:
+	if slot_key.is_empty():
+		return
+	if _player == null or not is_instance_valid(_player):
+		return
+	# 从 _equipment_slots 缓存中找到对应数据
+	var slot_data = null
+	for slot in _equipment_slots:
+		if String(slot.get("key", "")) == slot_key:
+			slot_data = slot.get("data", null)
+			break
+	if slot_data == null:
+		return
+	var weapon_data: WeaponData = slot_data as WeaponData
+	if weapon_data == null:
+		return
+	var equip: Node = _player.get("equipment") as Node
+	if equip == null:
+		return
+	# 查找槽位定义以获取 kind 和 index
+	var slot_def := _find_slot_def(slot_key)
+	if slot_def.is_empty():
+		return
+	var kind: String = String(slot_def.get("kind", ""))
+	# 写入宝箱 loot_data（保留 affix/tier/durability 实例）
+	_loot_weapons.append(weapon_data.duplicate() as WeaponData)
+	if _loot_weapon == null:
+		_loot_weapon = weapon_data
+	if _chest != null and is_instance_valid(_chest):
+		_chest.loot_data["weapons"] = _loot_weapons.duplicate()
+		_chest.loot_data["weapon"] = _loot_weapon
+	# 从装备组件中清除对应槽位
+	match kind:
+		"armor":
+			if equip.has_method("configure_armor_slot"):
+				equip.configure_armor_slot(slot_key, null)
+		"weapon":
+			var idx: int = int(slot_def.get("index", -1))
+			if idx >= 0 and equip.has_method("configure_weapon_slot"):
+				# 不自动激活空槽，避免意外切换武器
+				equip.configure_weapon_slot(idx, null, false)
+	# 持久化装备变更到 GameState（与酒馆面板同源，避免场景重载后丢失）
+	var gs: Node = get_tree().root.get_node_or_null("GameState") if get_tree() != null else null
+	if gs != null and gs.has_method("save_equipment_from_player"):
+		gs.save_equipment_from_player(_player)
+	var audio_mgr = get_tree().root.get_node_or_null("AudioManager") if get_tree() != null else null
+	if audio_mgr:
+		audio_mgr.play("sword-pickup", null)
+	_load_equipment()
+	_load_backpack()
+	_refresh_display()
 
 
 ## 通过 item_id 将背包装备放回宝箱（拖放路径）
