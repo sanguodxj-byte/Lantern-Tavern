@@ -75,20 +75,21 @@ func test_material_detail_localizes_monster_drop_name() -> void:
 	TranslationServer.set_locale(prev)
 
 
-func test_rune_detail_uses_runic_name_and_pixel_icon_path() -> void:
+func test_rune_detail_uses_sanskrit_name_and_pixel_icon_path() -> void:
+	# 符文显示名已从古弗萨克如尼文字改为梵语（天城文）
 	var detail: Dictionary = DETAIL_POPUP.detail_for_rune_id("ember", 2)
-	assert_str(detail.get("title", "")).is_equal("ᛖᛗᛒᛖᚱ")
+	assert_str(detail.get("title", "")).is_equal("अग्नि")
 	assert_str(detail.get("category", "")).is_equal("Rune")
 	assert_array(detail.get("lines", [])).contains("Qty x2")
 	assert_str(detail.get("icon_path", "")).is_equal("res://assets/textures/icons/runes/ember.png")
 
 
-func test_rune_icon_loads_pixel_png_within_128px() -> void:
+func test_rune_icon_is_procedural_128px() -> void:
+	# 符文图标现已由 data/rune_glyphs.gd 在运行时程序化生成（不再依赖 PNG 位图）。
 	var tex: Texture2D = DETAIL_POPUP.icon_for_rune("ember")
 	assert_object(tex).is_not_null()
-	assert_bool(tex.get_width() <= 128 and tex.get_height() <= 128).is_true()
-	var path: String = DETAIL_POPUP.rune_icon_path(String("ember"))
-	assert_bool(FileAccess.file_exists(ProjectSettings.globalize_path(path))).is_true()
+	assert_int(tex.get_width()).is_equal(128)
+	assert_int(tex.get_height()).is_equal(128)
 
 
 func test_soul_gem_ui_icon_has_no_purple_pixels() -> void:
@@ -104,17 +105,22 @@ func test_soul_gem_ui_icon_has_no_purple_pixels() -> void:
 	assert_int(purple_pixels).is_equal(0)
 
 
-func test_all_rune_pixel_png_assets_exist_and_fit_128px() -> void:
+func test_all_rune_icons_procedurally_generated() -> void:
 	for rune_id in RD.get_all_rune_ids():
-		var path: String = DETAIL_POPUP.rune_icon_path(String(rune_id))
-		assert_bool(FileAccess.file_exists(ProjectSettings.globalize_path(path))) \
-			.override_failure_message("缺少符文像素图标: %s" % path) \
-			.is_true()
-		var image := Image.new()
-		assert_int(image.load(path)).is_equal(OK)
-		assert_bool(image.get_width() <= 128 and image.get_height() <= 128) \
-			.override_failure_message("%s 超过 128px" % path) \
-			.is_true()
+		var tex: Texture2D = DETAIL_POPUP.icon_for_rune(String(rune_id))
+		assert_object(tex).override_failure_message("符文程序化图标为空: %s" % rune_id).is_not_null()
+		assert_bool(tex.get_width() == 128 and tex.get_height() == 128) \
+			.override_failure_message("%s 图标非 128px" % rune_id).is_true()
+		var img := tex.get_image()
+		var drawn := false
+		for y in range(0, img.get_height(), 4):
+			for x in range(0, img.get_width(), 4):
+				if img.get_pixel(x, y).a > 0.5:
+					drawn = true
+					break
+			if drawn:
+				break
+		assert_bool(drawn).override_failure_message("%s 程序化图标无可见像素" % rune_id).is_true()
 
 
 func test_armor_detail_shows_move_speed_penalty() -> void:

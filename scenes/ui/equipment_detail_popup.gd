@@ -4,6 +4,7 @@ extends PanelContainer
 const DEFAULT_WEAPON_ICON := "res://assets/textures/icons/icon-weapon.png"
 const DEFAULT_SHIELD_ICON := "res://assets/textures/icons/icon-shield.png"
 const RUNE_ICON_DIR := "res://assets/textures/icons/runes"
+const RUNE_GLYPHS := preload("res://data/rune_glyphs.gd")
 const MATERIAL_ICON_DIR := "res://assets/textures/icons/materials"
 const PIXEL_THEME := preload("res://scenes/ui/lantern_theme.tres")
 const RD := preload("res://globals/combat/rune_data.gd")
@@ -334,7 +335,10 @@ static func material_icon_path(material_id: String) -> String:
 	return "%s/%s.png" % [MATERIAL_ICON_DIR, material_id]
 
 static func icon_for_rune(rune_id: String) -> Texture2D:
-	return _load_icon_static(rune_icon_path(rune_id), "")
+	# 程序化生成符文图标（见 data/rune_glyphs.gd），不再依赖 assets/textures/icons/runes/*.png。
+	if rune_id.is_empty():
+		return null
+	return RUNE_GLYPHS.get_texture(rune_id) as Texture2D
 
 static func rune_icon_path(rune_id: String) -> String:
 	if rune_id.is_empty():
