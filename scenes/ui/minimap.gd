@@ -11,6 +11,10 @@ extends Control
 ##   - 已探索但当前不可见：半透明（迷雾覆盖）
 ##   - 当前可见：完整颜色
 ##
+## 探索进度同步（与大地图一致）：
+##   小地图以"已探索区域包围盒"为基准自动缩放，展示完整探索进度，
+##   而非仅玩家周围 world_radius 的局部窗口（探索区域较大时自动缩小）。
+##
 ## 性能策略：
 ##   - 绘制每帧执行（读取玩家位置/朝向，轻量）
 const Service := preload("res://globals/core/service.gd")
@@ -51,6 +55,19 @@ const _collision_cell_size: float = 3.0
 var _visible_cells: Dictionary = {}
 # 雾帧计时器：避免每帧都做探索标记（节流到每 ~0.1s）
 var _fog_timer: float = 0.0
+
+# ── 视图变换（与大地图一致的“探索进度”视图）──
+# 小地图以“已探索区域包围盒”为基准做自动缩放，展示完整探索进度
+# （而非仅玩家周围 world_radius 的局部窗口），与大地图保持一致。
+var _view_center: Vector3 = Vector3.ZERO   # 当前绘制中心（世界坐标，y=0）
+var _view_scale: float = 1.0               # 当前绘制缩放（像素/米）
+var _view_cgx: int = 0                     # 网格遍历中心 X
+var _view_cgy: int = 0                     # 网格遍历中心 Y
+var _view_cell_r: int = 0                  # 网格遍历半径（格）
+# 非程序化场景（碰撞体）视图参数
+var _view_ccx: int = 0
+var _view_ccz: int = 0
+var _view_cell_rc: int = 0
 
 # 颜色常量
 const COL_BG := Color(0.02, 0.021, 0.024, 0.88)
@@ -287,6 +304,9 @@ func _draw() -> void:
 	var yaw: float = _player.rotation.y
 	var ppos: Vector3 = _player.global_position
 
+	# 计算当前视图变换（以已探索区域为基准，展示完整探索进度）
+	_update_view(ppos)
+
 	# 背景：像素风圆形（用方块逐格绘制）
 	_draw_pixel_circle_bg(center, map_size / 2.0)
 
@@ -295,11 +315,11 @@ func _draw() -> void:
 	else:
 		_draw_collision_map(center, ppos, yaw)
 
-	# 敌人
+	# 敌人（仅当前视野范围内显示）
 	_draw_enemies(center, ppos, yaw)
 
-	# 玩家箭头（永远朝上）
-	_draw_player_arrow(center)
+	# 玩家箭头（永远朝上，绘制在相对视图中心的位置）
+	_draw_player_arrow_at(center, ppos, yaw)
 
 	# 未探索区域遮罩：在已绘制内容上覆盖深色迷雾
 	_draw_fog_overlay(center, ppos, yaw)
@@ -341,20 +361,18 @@ func _draw_grid_map(center: Vector2, ppos: Vector3, yaw: float) -> void:
 	if gw == 0 or gh == 0:
 		return
 
-	# 玩家所在格子
-	var pgx: float = (ppos.x - _grid_offset.x) / _grid_tile_size
-	var pgy: float = (ppos.z - _grid_offset.z) / _grid_tile_size
-	# 可见格子半径（使用 world_radius 确保圆内所有格子都覆盖）
-	var cell_radius: int = int(ceil(world_radius / _grid_tile_size)) + 1
+	# 遍历中心与半径由 _update_view() 统一计算：
+	# 已探索区域较大时自动缩小以展示完整探索进度（与大地图一致），
+	# 否则退化为玩家中心局部视图。
 	var cos_y := cos(yaw)
 	var sin_y := sin(yaw)
 	var half_map := map_size / 2.0
 	var half_tile: float = _grid_tile_size * 0.5
 
-	for dy in range(-cell_radius, cell_radius + 1):
-		for dx in range(-cell_radius, cell_radius + 1):
-			var gx: int = int(pgx) + dx
-			var gy: int = int(pgy) + dy
+	for dy in range(-_view_cell_r, _view_cell_r + 1):
+		for dx in range(-_view_cell_r, _view_cell_r + 1):
+			var gx: int = _view_cgx + dx
+			var gy: int = _view_cgy + dy
 			if gx < 0 or gx >= gw or gy < 0 or gy >= gh:
 				continue
 			var cell_type: int = int(_cached_grid[gy][gx])
@@ -368,18 +386,18 @@ func _draw_grid_map(center: Vector2, ppos: Vector3, yaw: float) -> void:
 
 			var visible := _is_cell_visible(gx, gy)
 
-			# 格子四角的世界偏移（相对玩家）
+			# 格子四角的世界偏移（相对当前视图中心）
 			var corner_wx: Array[float] = [
-				(gx) * _grid_tile_size + _grid_offset.x - ppos.x - half_tile,
-				(gx + 1) * _grid_tile_size + _grid_offset.x - ppos.x - half_tile,
-				(gx + 1) * _grid_tile_size + _grid_offset.x - ppos.x - half_tile,
-				(gx) * _grid_tile_size + _grid_offset.x - ppos.x - half_tile,
+				(gx) * _grid_tile_size + _grid_offset.x - _view_center.x - half_tile,
+				(gx + 1) * _grid_tile_size + _grid_offset.x - _view_center.x - half_tile,
+				(gx + 1) * _grid_tile_size + _grid_offset.x - _view_center.x - half_tile,
+				(gx) * _grid_tile_size + _grid_offset.x - _view_center.x - half_tile,
 			]
 			var corner_wz: Array[float] = [
-				(gy) * _grid_tile_size + _grid_offset.z - ppos.z - half_tile,
-				(gy) * _grid_tile_size + _grid_offset.z - ppos.z - half_tile,
-				(gy + 1) * _grid_tile_size + _grid_offset.z - ppos.z - half_tile,
-				(gy + 1) * _grid_tile_size + _grid_offset.z - ppos.z - half_tile,
+				(gy) * _grid_tile_size + _grid_offset.z - _view_center.z - half_tile,
+				(gy) * _grid_tile_size + _grid_offset.z - _view_center.z - half_tile,
+				(gy + 1) * _grid_tile_size + _grid_offset.z - _view_center.z - half_tile,
+				(gy + 1) * _grid_tile_size + _grid_offset.z - _view_center.z - half_tile,
 			]
 
 			# 旋转并转屏幕坐标
@@ -388,13 +406,13 @@ func _draw_grid_map(center: Vector2, ppos: Vector3, yaw: float) -> void:
 			for i in range(4):
 				var rx: float = corner_wx[i] * cos_y - corner_wz[i] * sin_y
 				var rz: float = corner_wx[i] * sin_y + corner_wz[i] * cos_y
-				var sx: float = center.x + rx * _scale
-				var sy: float = center.y + rz * _scale
+				var sx: float = center.x + rx * _view_scale
+				var sy: float = center.y + rz * _view_scale
 				screen_pts.append(Vector2(sx, sy))
 				# 粗略裁剪检测
 				var ddx: float = sx - center.x
 				var ddy: float = sy - center.y
-				if ddx * ddx + ddy * ddy <= (half_map + _grid_tile_size * _scale) * (half_map + _grid_tile_size * _scale):
+				if ddx * ddx + ddy * ddy <= (half_map + _grid_tile_size * _view_scale) * (half_map + _grid_tile_size * _view_scale):
 					all_outside = false
 
 			if all_outside:
@@ -419,27 +437,49 @@ func _draw_collision_map(center: Vector2, ppos: Vector3, yaw: float) -> void:
 		return
 	var cos_y := cos(yaw)
 	var sin_y := sin(yaw)
+	var half_map := map_size / 2.0
+	var half_map_sq := (half_map - 2.0) * (half_map - 2.0)
 	for world_aabb in _cached_colliders:
-		# 检查是否在可见范围内
 		var center_pos := world_aabb.get_center()
-		var dist_to_player := Vector2(center_pos.x - ppos.x, center_pos.z - ppos.z).length()
-		if dist_to_player > world_radius + world_aabb.size.length():
-			continue
-
-		# 迷雾：检查碰撞体中心是否在已探索区域
+		# 迷雾：碰撞体中心所在虚拟格子是否已探索
 		var cx: int = int(round(center_pos.x / _collision_cell_size))
 		var cz: int = int(round(center_pos.z / _collision_cell_size))
 		if not _is_collision_cell_explored(cx, cz):
 			continue
 
-		# 判断当前是否可见
+		# 判断当前是否可见（仅视野范围内高亮为墙色）
 		var wx: float = center_pos.x - ppos.x
 		var wz: float = center_pos.z - ppos.z
 		var visible := _is_collision_cell_visible(ppos, wx, wz)
 
+		# 计算 AABB 底面四角在屏幕上的位置（相对 _view_center 旋转缩放）
+		var corners := [
+			Vector3(world_aabb.position.x, 0, world_aabb.position.z),
+			Vector3(world_aabb.end.x, 0, world_aabb.position.z),
+			Vector3(world_aabb.end.x, 0, world_aabb.end.z),
+			Vector3(world_aabb.position.x, 0, world_aabb.end.z),
+		]
+		var screen_pts: PackedVector2Array = []
+		var all_outside := true
+		for c in corners:
+			var rxw: float = c.x - _view_center.x
+			var rzw: float = c.z - _view_center.z
+			var rx: float = rxw * cos_y - rzw * sin_y
+			var rz: float = rxw * sin_y + rzw * cos_y
+			var sx: float = center.x + rx * _view_scale
+			var sy: float = center.y + rz * _view_scale
+			screen_pts.append(Vector2(sx, sy))
+			var ddx: float = sx - center.x
+			var ddy: float = sy - center.y
+			if ddx * ddx + ddy * ddy <= half_map_sq:
+				all_outside = false
+		if all_outside:
+			continue
+
 		# 根据可见/迷雾选择颜色
 		var color: Color = COL_WALL if visible else COL_FOG_WALL
-		_draw_aabb_on_map(center, world_aabb, ppos, cos_y, sin_y, color)
+		if screen_pts.size() >= 3:
+			draw_colored_polygon(screen_pts, color)
 
 
 func _shape_aabb(cs: CollisionShape3D) -> AABB:
@@ -507,16 +547,18 @@ func _draw_enemies(center: Vector2, ppos: Vector3, yaw: float) -> void:
 		if not is_instance_valid(enemy):
 			continue
 		var epos := enemy.global_position
-		var wx: float = epos.x - ppos.x
-		var wz: float = epos.z - ppos.z
-		# 超出可见半径跳过（用平方距离）
-		var dist_sq := wx * wx + wz * wz
-		if dist_sq > fog_vision_radius * fog_vision_radius:
-			continue  # 敌人仅在当前视野范围内显示（迷雾中不显示敌人）
+		# 敌人仅在当前视野范围内显示（迷雾中不显示敌人）
+		var vdx: float = epos.x - ppos.x
+		var vdz: float = epos.z - ppos.z
+		if vdx * vdx + vdz * vdz > fog_vision_radius * fog_vision_radius:
+			continue
+		# 地图坐标（相对当前视图中心）
+		var wx: float = epos.x - _view_center.x
+		var wz: float = epos.z - _view_center.z
 		var rx: float = wx * cos_y - wz * sin_y
 		var rz: float = wx * sin_y + wz * cos_y
-		var sx: float = center.x + rx * _scale
-		var sy: float = center.y + rz * _scale
+		var sx: float = center.x + rx * _view_scale
+		var sy: float = center.y + rz * _view_scale
 		# 裁剪圆外（用平方距离）
 		var ddx: float = sx - center.x
 		var ddy: float = sy - center.y
@@ -531,6 +573,109 @@ func _draw_enemies(center: Vector2, ppos: Vector3, yaw: float) -> void:
 		draw_rect(Rect2(sx - psz * 0.5, sy - psz * 0.5, psz, psz), COL_ENEMY, true)
 
 
+# ── 视图变换计算 ──────────────────────────────────────────
+## 根据已探索区域计算当前绘制中心(_view_center)与缩放(_view_scale)，
+## 以及遍历窗口(_view_cgx/_view_cgy/_view_cell_r 或碰撞体等价参数)。
+## 目标：展示完整探索进度（与大地图一致），而非仅玩家周围的局部窗口。
+## 当已探索区域足够大（自适应缩放 < 局部缩放）时，以已探索区域包围盒为
+## 基准自动缩小；否则退化为玩家中心、world_radius 半径的局部视图（旧行为）。
+func _update_view(ppos: Vector3) -> void:
+	if _has_grid and not _cached_grid.is_empty():
+		var keys: Array = _explored_cells.keys()
+		if keys.size() > 0:
+			var min_gx := 100000000
+			var max_gx := -100000000
+			var min_gy := 100000000
+			var max_gy := -100000000
+			for k in keys:
+				var v: Vector2i = k
+				if v.x < min_gx: min_gx = v.x
+				if v.x > max_gx: max_gx = v.x
+				if v.y < min_gy: min_gy = v.y
+				if v.y > max_gy: max_gy = v.y
+			var bcx: float = (float(min_gx) + float(max_gx) + 1.0) * 0.5 * _grid_tile_size + _grid_offset.x
+			var bcz: float = (float(min_gy) + float(max_gy) + 1.0) * 0.5 * _grid_tile_size + _grid_offset.z
+			var bw: float = float(max_gx - min_gx + 1) * _grid_tile_size
+			var bh: float = float(max_gy - min_gy + 1) * _grid_tile_size
+			var fit: float = (map_size * 0.9) / maxf(maxf(bw, bh), 0.001)
+			if fit < _scale:
+				_view_center = Vector3(bcx, 0.0, bcz)
+				_view_scale = fit
+				_view_cgx = int((bcx - _grid_offset.x) / _grid_tile_size)
+				_view_cgy = int((bcz - _grid_offset.z) / _grid_tile_size)
+				var half_gx: int = int(ceil(float(max_gx - min_gx) * 0.5)) + 2
+				var half_gy: int = int(ceil(float(max_gy - min_gy) * 0.5)) + 2
+				_view_cell_r = maxi(half_gx, half_gy)
+			else:
+				_view_center = ppos
+				_view_scale = _scale
+				_view_cgx = int((ppos.x - _grid_offset.x) / _grid_tile_size)
+				_view_cgy = int((ppos.z - _grid_offset.z) / _grid_tile_size)
+				_view_cell_r = int(ceil(world_radius / _grid_tile_size)) + 1
+		else:
+			_view_center = ppos
+			_view_scale = _scale
+			_view_cgx = int((ppos.x - _grid_offset.x) / _grid_tile_size)
+			_view_cgy = int((ppos.z - _grid_offset.z) / _grid_tile_size)
+			_view_cell_r = int(ceil(world_radius / _grid_tile_size)) + 1
+	else:
+		# 非程序化场景：基于已探索碰撞体格子包围盒
+		var ckeys: Array = _explored_collision_cells.keys()
+		if ckeys.size() > 0:
+			var min_x := 100000000.0
+			var max_x := -100000000.0
+			var min_z := 100000000.0
+			var max_z := -100000000.0
+			for k in ckeys:
+				var parts: PackedStringArray = String(k).split(",")
+				if parts.size() < 2:
+					continue
+				var cx: int = int(parts[0])
+				var cz: int = int(parts[1])
+				var wx: float = cx * _collision_cell_size
+				var wz: float = cz * _collision_cell_size
+				if wx < min_x: min_x = wx
+				if wx > max_x: max_x = wx
+				if wz < min_z: min_z = wz
+				if wz > max_z: max_z = wz
+			var bcx: float = (min_x + max_x) * 0.5
+			var bcz: float = (min_z + max_z) * 0.5
+			var bw: float = (max_x - min_x) + _collision_cell_size
+			var bh: float = (max_z - min_z) + _collision_cell_size
+			var fit: float = (map_size * 0.9) / maxf(maxf(bw, bh), 0.001)
+			if fit < _scale:
+				_view_center = Vector3(bcx, 0.0, bcz)
+				_view_scale = fit
+				_view_ccx = int(round(bcx / _collision_cell_size))
+				_view_ccz = int(round(bcz / _collision_cell_size))
+				var half_x: int = int(ceil((max_x - min_x) * 0.5 / _collision_cell_size)) + 2
+				var half_z: int = int(ceil((max_z - min_z) * 0.5 / _collision_cell_size)) + 2
+				_view_cell_rc = maxi(half_x, half_z)
+			else:
+				_view_center = ppos
+				_view_scale = _scale
+				_view_ccx = int(round(ppos.x / _collision_cell_size))
+				_view_ccz = int(round(ppos.z / _collision_cell_size))
+				_view_cell_rc = int(ceil(world_radius / _collision_cell_size)) + 1
+		else:
+			_view_center = ppos
+			_view_scale = _scale
+			_view_ccx = int(round(ppos.x / _collision_cell_size))
+			_view_ccz = int(round(ppos.z / _collision_cell_size))
+			_view_cell_rc = int(ceil(world_radius / _collision_cell_size)) + 1
+
+
+## 该格子是否应被绘制（在遍历窗口内且已探索）。供测试验证“探索进度可见性”。
+func _cell_in_draw_window(gx: int, gy: int) -> bool:
+	if not _is_cell_explored(gx, gy):
+		return false
+	if gx < _view_cgx - _view_cell_r or gx > _view_cgx + _view_cell_r:
+		return false
+	if gy < _view_cgy - _view_cell_r or gy > _view_cgy + _view_cell_r:
+		return false
+	return true
+
+
 # ── 玩家箭头（永远朝上）──────────────────────────────────
 func _draw_player_arrow(center: Vector2) -> void:
 	# 向上指的三角箭头，像素风
@@ -542,6 +687,30 @@ func _draw_player_arrow(center: Vector2) -> void:
 	])
 	draw_colored_polygon(pts, COL_PLAYER)
 	# 外框描边
+	for i in range(3):
+		var a := pts[i]
+		var b := pts[(i + 1) % 3]
+		draw_line(a, b, Color.BLACK, 1)
+
+
+## 玩家箭头绘制在相对视图中心的真实位置（探索进度视图下玩家未必在屏幕中心）。
+## 箭头永远朝上（小地图风格）。
+func _draw_player_arrow_at(screen_center: Vector2, ppos: Vector3, yaw: float) -> void:
+	var cos_y := cos(yaw)
+	var sin_y := sin(yaw)
+	var wx: float = ppos.x - _view_center.x
+	var wz: float = ppos.z - _view_center.z
+	var rx: float = wx * cos_y - wz * sin_y
+	var rz: float = wx * sin_y + wz * cos_y
+	var sx: float = screen_center.x + rx * _view_scale
+	var sy: float = screen_center.y + rz * _view_scale
+	var s: float = 5.0
+	var pts: PackedVector2Array = PackedVector2Array([
+		Vector2(sx, sy - s),       # 顶点
+		Vector2(sx - s, sy + s),   # 左下
+		Vector2(sx + s, sy + s),   # 右下
+	])
+	draw_colored_polygon(pts, COL_PLAYER)
 	for i in range(3):
 		var a := pts[i]
 		var b := pts[(i + 1) % 3]
@@ -576,3 +745,36 @@ func get_explored_count() -> int:
 ## 手动标记格子为已探索（供测试用）
 func mark_cell_explored(gx: int, gy: int) -> void:
 	_explored_cells[Vector2i(gx, gy)] = true
+
+
+# ── 大地图数据共享接口 ────────────────────────────────────
+
+## 返回网格数据字典（供 LargeMap 读取，避免重复缓存）
+func get_grid_data() -> Dictionary:
+	return {
+		"grid": _cached_grid,
+		"offset": _grid_offset,
+		"tile_size": _grid_tile_size,
+		"has_grid": _has_grid,
+		"colliders": _cached_colliders,
+	}
+
+
+## 返回已探索格子集合（grid 坐标 Vector2i → true）
+func get_explored_cells() -> Dictionary:
+	return _explored_cells
+
+
+## 返回已探索碰撞体格子集合（"x,y" → true，非程序化场景用）
+func get_explored_collision_cells() -> Dictionary:
+	return _explored_collision_cells
+
+
+## 返回节流刷新的敌人缓存
+func get_cached_enemies() -> Array[Enemy]:
+	return _cached_enemies
+
+
+## 返回玩家引用
+func get_player() -> Node:
+	return _player
