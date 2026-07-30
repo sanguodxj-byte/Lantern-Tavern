@@ -783,6 +783,16 @@ func test_panel_backpack_double_click_equips_not_returns() -> void:
 		.override_failure_message("双击背包装备应调 _equip_from_backpack 装备到玩家").is_true()
 
 
+func test_panel_backpack_right_click_equips_equipment() -> void:
+	var source := (load("res://scenes/ui/chest_loot_panel.gd") as GDScript).source_code
+	var fn_start := source.find("func _on_list_gui_input")
+	var fn_end := source.find("func _start_list_drag")
+	var fn_block := source.substr(fn_start, fn_end - fn_start)
+	assert_bool(fn_block.contains("MOUSE_BUTTON_RIGHT")).is_true()
+	assert_bool(fn_block.contains("list != backpack_list")).is_true()
+	assert_bool(fn_block.contains("_equip_from_backpack(String(meta.get(\"id\", \"\")))")).is_true()
+
+
 # ============================================================================
 # 13. 拖放支持验证
 # ============================================================================
@@ -823,11 +833,12 @@ func test_panel_can_drop_to_equipment_from_backpack() -> void:
 	panel.queue_free()
 
 
-func test_panel_cannot_drop_to_equipment_from_chest() -> void:
+func test_panel_can_drop_to_equipment_from_chest() -> void:
+	# 宝箱栏可直接拖到装备栏装备（取出即装备，绕开背包中间态）
 	var panel: Node = load("res://scenes/ui/chest_loot_panel.tscn").instantiate()
 	add_child(panel)
 	var result: bool = panel.can_drop_to_zone("equipment", {"source": "chest", "type": "equipment"})
-	assert_bool(result).is_false()
+	assert_bool(result).is_true()
 	panel.queue_free()
 
 
@@ -1033,6 +1044,10 @@ func test_panel_drop_to_backpack_unequips_from_equipment() -> void:
 func test_panel_drop_to_chest_returns_from_backpack() -> void:
 	var source := (load("res://scenes/ui/chest_loot_panel.gd") as GDScript).source_code
 	var fn_start := source.find("func drop_to_zone")
-	var fn_block := source.substr(fn_start, 600)
+	# 抓取整个 drop_to_zone 函数体（直到下一个顶层 func），避免固定窗口因函数变长而截断
+	var fn_end := source.find("\nfunc ", fn_start + 1)
+	if fn_end < 0:
+		fn_end = source.length()
+	var fn_block := source.substr(fn_start, fn_end - fn_start)
 	assert_bool(fn_block.contains("_return_equipment_to_chest_by_id")) \
 		.override_failure_message("从背包拖放到宝箱应调 _return_equipment_to_chest_by_id").is_true()

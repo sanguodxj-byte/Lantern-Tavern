@@ -287,8 +287,13 @@ func _refresh_equipment_grid() -> void:
 			btn.gui_input.connect(_on_equip_slot_gui_input.bind(btn, slot_key, data))
 		else:
 			btn.text = "[%s]\n%s" % [localized_label, tr("[Empty]")]
-			btn.disabled = true
+			# 空槽也需作为拖放目标接收武器/护甲。disabled 的按钮在部分引擎版本下
+			# 不会收到 drop 事件，因此保持 enabled，仅不绑定卸下回调（点击空槽无副作用）。
+			btn.disabled = false
 			btn.tooltip_text = tr("Empty slot")
+		# 让每个装备槽按钮本身也成为拖放目标。否则按钮会盖住 GridContainer 的
+		# drop zone，导致把武器拖到槽位上却无法装备（drop 落在按钮上被默认拒绝）。
+		_setup_drop_zone(btn, "equipment")
 		equip_grid.add_child(btn)
 
 ## 装备槽点击:卸下装备 → 背包
@@ -789,6 +794,44 @@ func _equip_from_backpack(item_id: String) -> bool:
 	return true
 
 
+## 从宝箱栏直接把装备拖到玩家身上（取出即装备，绕开背包中间态）。
+## 先配置到玩家槽位（旧装备按惯例放回背包），再从宝箱战利品移除并持久化。
+func _equip_chest_item_to_player(loot_idx: int) -> bool:
+	if loot_idx < 0 or loot_idx >= _loot_weapons.size():
+		return false
+	var data: WeaponData = _loot_weapons[loot_idx]
+	if data == null:
+		return false
+	if _player == null or not is_instance_valid(_player):
+		return false
+	var equip: Node = _player.get("equipment") as Node
+	if equip == null:
+		return false
+	var equipped := false
+	if equip.has_method("is_armor_equipment") and equip.is_armor_equipment(data):
+		equipped = _configure_armor_from_backpack(equip, data)
+	elif equip.has_method("configure_weapon_slot"):
+		equipped = _configure_weapon_from_backpack(equip, data)
+	if not equipped:
+		return false
+	# 从宝箱战利品中移除已装备的物品
+	_loot_weapons.remove_at(loot_idx)
+	if _loot_weapon == data:
+		_loot_weapon = null
+	if _chest != null and is_instance_valid(_chest):
+		_chest.loot_data["weapons"] = _loot_weapons.duplicate()
+		_chest.loot_data["weapon"] = _loot_weapon
+	# 持久化装备变更到 GameState（与酒馆面板同源，避免场景重载后丢失）
+	var gs: Node = get_tree().root.get_node_or_null("GameState") if get_tree() != null else null
+	if gs != null and gs.has_method("save_equipment_from_player"):
+		gs.save_equipment_from_player(_player)
+	var audio_mgr = get_tree().root.get_node_or_null("AudioManager") if get_tree() != null else null
+	if audio_mgr:
+		audio_mgr.play("sword-pickup", null)
+	_load_equipment()
+	return true
+
+
 ## 从背包装备护甲到玩家身上（使用 configure_armor_slot 直接配置）。
 ## 旧护甲先放回背包，避免 equip_armor 生成的物理掉落物。
 func _configure_armor_from_backpack(equip: Node, data: WeaponData) -> bool:
@@ -842,6 +885,21 @@ func _configure_weapon_from_backpack(equip: Node, data: WeaponData) -> bool:
 
 ## ItemList gui_input:检测鼠标拖动手势并发起 force_drag
 func _on_list_gui_input(event: InputEvent, list: ItemList) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+		if list != backpack_list:
+			return
+		var index := list.get_item_at_position(event.position, true)
+		if index < 0 or index >= list.item_count:
+			return
+		var meta = list.get_item_metadata(index)
+		if typeof(meta) != TYPE_DICTIONARY or meta.get("type", "") != "equipment":
+			return
+		list.select(index)
+		_equip_from_backpack(String(meta.get("id", "")))
+		_load_backpack()
+		_refresh_display()
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			_drag_start_pos = event.position
@@ -905,8 +963,9 @@ func can_drop_to_zone(zone_id: String, data: Dictionary) -> bool:
 	var item_type := String(data.get("type", ""))
 	match zone_id:
 		"equipment":
-			# 仅接收来自背包的装备拖放（装备到玩家）
-			return source == "backpack" and item_type == "equipment"
+			# 接收来自背包或宝箱的装备拖放，直接装备到玩家身上。
+			# 宝箱栏直接拖到装备栏：取出即装备，绕开背包中间态，符合直觉。
+			return item_type == "equipment" and (source == "backpack" or source == "chest")
 		"backpack":
 			# 接收来自宝箱（取物）或装备槽（卸下）的拖放
 			return source == "chest" or source == "equipment"
@@ -924,6 +983,9 @@ func drop_to_zone(zone_id: String, data: Dictionary) -> void:
 			if source == "backpack":
 				var item_id := String(data.get("id", ""))
 				_equip_from_backpack(item_id)
+			elif source == "chest":
+				var loot_idx := int(data.get("index", -1))
+				_equip_chest_item_to_player(loot_idx)
 		"backpack":
 			if source == "chest":
 				var idx := int(data.get("index", -1))
