@@ -295,6 +295,36 @@ func send_drop(item_id: String, amount: int = 1) -> void:
 		"throw": false,
 	})
 
+## P0（2331 审查）：把服务器权威战斗状态应用到本机 Player 组件（只读镜像）。
+## health → 生命；mana → 法力；shield → damage_absorb buff（HUD 护盾条读取）；
+## buffs → spell_power buff（法术倍率表现）。
+func _apply_combat_state(current_life: int, max_life: int, shield: int, buffs: Dictionary, mana: int) -> void:
+	if player == null or not is_instance_valid(player):
+		return
+	if "health" in player and player.health != null:
+		var h = player.health
+		if h.has_method("set_max_life"):
+			h.set_max_life(max_life)
+		if h.has_method("set_current_life"):
+			h.set_current_life(current_life)
+		elif "current_life" in h:
+			h.current_life = current_life
+	if "mana" in player and player.mana != null and "current_mana" in player.mana:
+		player.mana.current_mana = mana
+	if "buffs" in player and player.buffs != null and player.buffs.has_method("add"):
+		# shield → damage_absorb 表现（吸收百分比由 HUD 显示）。
+		var existing_absorb := false
+		for buff_id in buffs.keys():
+			if buff_id == "spell_power" and player.buffs.has_method("add"):
+				player.buffs.add("spell_power", 6.0, {"percent": 20.0})
+			if buff_id == "shield":
+				existing_absorb = true
+		if shield > 0:
+			var pct := clampf(float(shield) / float(maxi(max_life, 1)) * 100.0, 0.0, 100.0)
+			player.buffs.add("damage_absorb", 5.0, {"percent": pct})
+		elif existing_absorb and player.buffs.has_method("remove"):
+			player.buffs.remove("damage_absorb")
+
 func _server_world_revision(nm: Node) -> int:
 	if nm != null and nm.is_host:
 		# 房主共享权威 WorldState，直接读实时值（始终最新，无需事件缓存）。
@@ -319,6 +349,28 @@ func _on_event(event: Dictionary) -> void:
 		var snap = event.get("snapshot", {})
 		if snap is Dictionary and snap.has("world_revision"):
 			_known_server_rev = int(snap["world_revision"])
+		# P0（2331 审查）：重连快照落地本机战斗状态（players 数组含 spell_state.combat_state）。
+		if snap is Dictionary and snap.has("players"):
+			var nm0: Node = get_node_or_null("/root/NetworkManager")
+			var me := int(nm0.local_peer_id) if nm0 != null else 0
+			for pd in snap["players"]:
+				if pd is Dictionary and int(pd.get("peer_id", 0)) == me and pd.has("spell_state"):
+					var cs: Dictionary = Dictionary(Dictionary(pd["spell_state"]).get("combat_state", {}))
+					if not cs.is_empty():
+						_apply_combat_state(int(cs.get("current_life", 100)), int(cs.get("max_life", 100)),
+							int(cs.get("shield", 0)), Dictionary(cs.get("buffs", {})),
+							int(Dictionary(pd["spell_state"]).get("spell_mana", 100)))
+		return
+	if kind == NP.EVT_PLAYER_COMBAT_STATE:
+		# P0（2331 审查）：权威战斗状态事件——只应用本机玩家，只读镜像（不反向写服务器）。
+		var nm: Node = get_node_or_null("/root/NetworkManager")
+		if nm == null:
+			return
+		if int(event.get("peer_id", 0)) != int(nm.local_peer_id):
+			return
+		_apply_combat_state(int(event.get("current_life", 100)), int(event.get("max_life", 100)),
+			int(event.get("shield", 0)), Dictionary(event.get("buffs", {})),
+			int(event.get("spell_mana", 100)))
 		return
 	if kind != NP.EVT_PLAYER_SNAPSHOT:
 		return

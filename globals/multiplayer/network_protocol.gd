@@ -58,6 +58,8 @@ const EVT_WORLD_REVISION_CHANGED := "world_revision_changed"
 const EVT_COMMAND_REJECTED := "command_rejected"
 const EVT_SERVER_MESSAGE := "server_message"
 const EVT_EXTRACTION_RESULT := "extraction_result"
+## P0（2331 审查）：玩家权威战斗状态事件（生命/盾/buff/法力，reliable）。
+const EVT_PLAYER_COMBAT_STATE := "player_combat_state"
 const EVT_PROGRESSION_CHANGED := "progression_changed"
 const EVT_PROGRESSION_RUNE_CANDIDATES := "progression_rune_candidates"
 
@@ -101,7 +103,7 @@ static func is_valid_event(evt: String) -> bool:
 		EVT_INTERACTION_RESULT, EVT_COMBAT_RESOLVED, EVT_INVENTORY_CHANGED, EVT_EQUIPMENT_CHANGED,
 		EVT_SKILL_STATE_CHANGED, EVT_SPELL_RESOLVED,
 		EVT_SPACE_SNAPSHOT, EVT_SESSION_SNAPSHOT, EVT_DUNGEON_LAYOUT, EVT_WORLD_REVISION_CHANGED, EVT_COMMAND_REJECTED, EVT_SERVER_MESSAGE, EVT_EXTRACTION_RESULT,
-		EVT_PROGRESSION_CHANGED, EVT_PROGRESSION_RUNE_CANDIDATES]
+		EVT_PROGRESSION_CHANGED, EVT_PROGRESSION_RUNE_CANDIDATES, EVT_PLAYER_COMBAT_STATE]
 
 ## 构造协议头（§12.1）
 static func make_header(protocol_version: int, world_revision: int, client_tick: int, sequence: int) -> Dictionary:

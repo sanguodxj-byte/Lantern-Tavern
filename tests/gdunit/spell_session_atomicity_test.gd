@@ -228,14 +228,101 @@ func test_remote_avatar_buff_succeeds_and_expires() -> void:
 	ctx.buffs["spell_power"] = Time.get_ticks_msec() + 60000
 	assert_float(ctx.spell_power_mult()).is_equal_approx(1.2, 1e-4)
 
-func test_plain_caster_heal_without_port_records_success_summary() -> void:
-	# 纯逻辑单测环境（无 self_effect_port 注入）→ heal 仍成功并带摘要（无副作用目标）。
+func test_plain_caster_heal_succeeds_via_session_port() -> void:
+	# 纯逻辑环境：SessionRoot 施法路径总是注入 self_effect_port → heal 成功。
 	var s: SR = auto_free(_make_server())
 	_spawn_caster(s, 1, [["ayu", "", ""], ["", "", ""], ["", "", ""], ["", "", ""], ["", "", ""]])
 	_bind_plain_caster(s)
 	var r: Dictionary = s.on_command(1, _cast_command(s, 0, 1))
 	assert_bool(r["success"]).is_true()
 	assert_int(int(r["event"]["effects"]["healed"])).is_greater(0)
+
+## P1（2331 审查）：SpellAuthority 无端口且无目标组件 → 必须失败（不得「无副作用成功」）。
+func test_authority_heal_without_port_and_component_fails() -> void:
+	var caster := Node3D.new()
+	add_child(caster)
+	var auth = load("res://globals/combat/spell_authority.gd").new()
+	var result: Dictionary = auth.execute(caster, {"ok": true, "spell_id": "h",
+		"effect_plan": {"type": "heal", "heal": 28}, "visual_event": {}}, null, 1)
+	assert_bool(bool(result.get("ok", true))) \
+		.override_failure_message("无端口且无 health 组件时 heal 必须失败（reason=%s）" % str(result.get("reason", ""))).is_false()
+	assert_str(String(result.get("reason", ""))).is_equal("self_effect_target_unavailable")
+	caster.free()
+
+# ---------------------------------------------------------------------------
+# P0（2331 审查）：服务器敌人攻击模拟 → 玩家受击 → 战斗状态事件
+# ---------------------------------------------------------------------------
+
+func test_enemy_combat_tick_damages_player_and_broadcasts_state() -> void:
+	var s: SR = auto_free(_make_server())
+	s.init_server()
+	var ctx = s.handle_spawn_request(1, {}, "enemy_target_1")
+	s.set_player_position(1, Vector3.ZERO)
+	# 敌人贴近玩家（近战范围 1.8 内）。
+	s.set_entity(1001, {"kind": "enemy", "current_life": 10, "max_life": 10, "position": Vector3(1.0, 0.0, 0.0)})
+	var events: Array = []
+	s.session_event.connect(func(evt):
+		if evt.get("event", "") == NP.EVT_PLAYER_COMBAT_STATE:
+			events.append(evt))
+	var life_before: int = ctx.current_life
+	# 第一次 tick：敌人攻击 → 玩家扣血 + 广播战斗状态。
+	var attacks: int = s.tick_enemy_combat(1.0)
+	assert_int(attacks).is_equal(1)
+	assert_int(ctx.current_life).is_less(life_before)
+	assert_int(events.size()).is_equal(1)
+	assert_int(int(events[0]["current_life"])).is_equal(ctx.current_life)
+	assert_int(int(events[0]["revision"])).is_equal(1)
+	# 冷却内不重复攻击。
+	assert_int(s.tick_enemy_combat(2.0)).is_equal(0)
+	# 冷却结束再次攻击。
+	assert_int(s.tick_enemy_combat(2.6)).is_equal(1)
+
+func test_enemy_combat_shield_absorbs_before_life() -> void:
+	var s: SR = auto_free(_make_server())
+	s.init_server()
+	var ctx = s.handle_spawn_request(1, {}, "shield_target_1")
+	ctx.record_spell_effect("barrier", 30, 5.0)
+	s.set_player_position(1, Vector3.ZERO)
+	s.set_entity(1001, {"kind": "enemy", "current_life": 10, "max_life": 10, "position": Vector3(0.5, 0.0, 0.0)})
+	var life_before: int = ctx.current_life
+	var shield_before: int = ctx.shield
+	s.tick_enemy_combat(1.0)
+	# 敌人伤害 8：盾 30 全抵 → 命不减，盾减 8。
+	assert_int(ctx.current_life).is_equal(life_before)
+	assert_int(ctx.shield).is_equal(shield_before - 8)
+
+func test_enemy_combat_kills_player_and_marks_dead() -> void:
+	var s: SR = auto_free(_make_server())
+	s.init_server()
+	var ctx = s.handle_spawn_request(1, {}, "kill_target_1")
+	ctx.apply_damage(95)  # 100 -> 5
+	s.set_player_position(1, Vector3.ZERO)
+	s.set_entity(1001, {"kind": "enemy", "current_life": 10, "max_life": 10, "position": Vector3(0.5, 0.0, 0.0)})
+	var killed_evt := {"hit": false}
+	s.session_event.connect(func(evt):
+		if evt.get("event", "") == NP.EVT_PLAYER_COMBAT_STATE and int(evt.get("current_life", 100)) <= 0:
+			killed_evt["hit"] = true)
+	s.tick_enemy_combat(1.0)
+	assert_bool(killed_evt["hit"]).is_true()
+	assert_bool(not ctx.is_alive()).is_true()
+	assert_bool(not bool(s._live_state[1]["is_alive"])).is_true()
+
+func test_self_effect_publishes_combat_state_event() -> void:
+	# 自目标法术（heal）后必须广播战斗状态（客户端 HUD 镜像）。
+	var s: SR = auto_free(_make_server())
+	_spawn_caster(s, 1, [["ayu", "", ""], ["", "", ""], ["", "", ""], ["", "", ""], ["", "", ""]])
+	_bind_plain_caster(s)
+	var ctx = s.registry.get_context(1)
+	ctx.apply_damage(30)
+	var events: Array = []
+	s.session_event.connect(func(evt):
+		if evt.get("event", "") == NP.EVT_PLAYER_COMBAT_STATE:
+			events.append(evt))
+	s.on_command(1, _cast_command(s, 0, 1))
+	assert_bool(not events.is_empty()) \
+		.override_failure_message("自目标 heal 后必须广播玩家战斗状态事件").is_true()
+	assert_int(int(events[0]["current_life"])).is_equal(ctx.current_life)
+	assert_int(int(events[0]["max_life"])).is_equal(100)
 
 # ---------------------------------------------------------------------------
 # P0（2218 审查）：权威战斗状态序列化往返（重连/存档不丢生命/盾/buff）

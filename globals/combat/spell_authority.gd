@@ -64,9 +64,8 @@ func execute(caster: Node3D, result: Dictionary, world: Node = null, caster_peer
 			elif "health" in caster and caster.health != null and caster.health.has_method("heal"):
 				caster.health.heal(heal_amount)
 			else:
-				# 无端口且无组件（纯逻辑单测环境）→ 仍记录成功（heal 摘要），
-				# 但无副作用目标：调用方按 ok=true 提交（联机权威由端口承担）。
-				pass
+				# P1（2331 审查）：无端口且无目标组件 → 必须失败，不得「无副作用成功」。
+				return {"ok": false, "reason": "self_effect_target_unavailable"}
 			execution["healed"] = heal_amount
 		"barrier":
 			var absorb := int(plan.get("absorb", 30))
@@ -76,6 +75,8 @@ func execute(caster: Node3D, result: Dictionary, world: Node = null, caster_peer
 				var max_life := int(caster.health.max_life) if "health" in caster and caster.health != null else 100
 				var absorb_pct := float(absorb) / float(maxi(max_life, 1)) * 100.0
 				caster.buffs.add("damage_absorb", float(plan.get("duration", 5.0)), {"percent": absorb_pct})
+			else:
+				return {"ok": false, "reason": "self_effect_target_unavailable"}
 			execution["absorb"] = absorb
 		"movement":
 			var direction := Vector3(result.get("direction", Vector3.FORWARD))
@@ -87,6 +88,8 @@ func execute(caster: Node3D, result: Dictionary, world: Node = null, caster_peer
 				self_effect_port.call(caster_peer, "buff", 0, duration)
 			elif "buffs" in caster and caster.buffs != null and caster.buffs.has_method("add"):
 				caster.buffs.add("spell_power", duration, {"percent": 20.0})
+			else:
+				return {"ok": false, "reason": "self_effect_target_unavailable"}
 			execution["duration"] = duration
 		"projectile":
 			var projectile_service := caster.get_node_or_null("/root/ProjectileService")

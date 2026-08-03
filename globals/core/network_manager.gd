@@ -430,6 +430,9 @@ func tick(delta: float) -> void:
 	# P0（2218 审查）：推进玩家 buff 过期。
 	if session.has_method("tick_player_buffs"):
 		session.tick_player_buffs()
+	# P0（2331 审查）：服务器权威敌人攻击模拟——enemy 实体对近战范围内玩家周期性伤害。
+	if session.has_method("tick_enemy_combat"):
+		session.tick_enemy_combat(session.current_time)
 	_flush_snapshots(delta)
 	for pid in session.connection_auth.online_peer_ids():
 		if session.connection_auth.check_timeout(pid, session.current_time):

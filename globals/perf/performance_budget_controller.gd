@@ -34,10 +34,24 @@ var _visual_coordinator: VisualQualityCoordinator = null
 
 func _ready() -> void:
 	_apply_quality_tier(quality_tier, true)
+	# P1（2331 审查）：场景切换后以【当前档位】重应用环境预算——新加载场景的环境雾/
+	# 主光阴影不会因「档位未再变化」而保留高档成本。SceneTree 无 current_scene_changed
+	# 信号，改在 _process 每帧对比当前场景引用（变化即重应用）。
+	_last_known_scene = get_tree().current_scene if get_tree() != null else null
+
+var _last_known_scene: Node = null
 
 func _process(delta: float) -> void:
 	if not adaptive_enabled or delta <= 0.0:
 		return
+	# P1（2331 审查）：场景切换检测——引用变化时用当前档位重应用环境预算。
+	var tree := get_tree()
+	var scene: Node = tree.current_scene if tree != null else null
+	if scene != null and scene != _last_known_scene:
+		_last_known_scene = scene
+		if _visual_coordinator == null:
+			_visual_coordinator = VisualQualityCoordinator.new()
+		_visual_coordinator.apply_to_scene(scene, quality_tier)
 	_tier_hold_elapsed += delta
 	_sample_elapsed += delta
 	_sample_frame_total_ms += delta * 1000.0

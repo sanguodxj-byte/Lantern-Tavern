@@ -121,6 +121,12 @@ var server_save_repo: ServerSaveRepositoryClass = null
 # P1（2124 审查）：会话拥有的法术投射物清单——会话销毁时统一回收，
 # 避免全局对象池/场景切换残留跨会话的端口与节点。
 var _session_projectiles: Array = []
+# P0（2331 审查）：玩家战斗状态事件 revision（peer_id -> int，递增去重/顺序）。
+var _combat_state_revision: Dictionary = {}
+# P0（2331 审查）：权威敌人攻击模拟参数——服务器敌人每 1.5s 攻击近战范围内玩家，伤害 8。
+const ENEMY_ATTACK_INTERVAL := 1.5
+const ENEMY_ATTACK_RANGE := 1.8
+const ENEMY_ATTACK_DAMAGE := 8
 
 func _init() -> void:
 	registry = PlayerRegistryClass.new()
@@ -884,6 +890,8 @@ func _apply_self_effect(peer_id: int, effect_type: String, amount: int, duration
 		return
 	var life_before: int = ctx.current_life
 	ctx.record_spell_effect(effect_type, amount, duration)
+	# P0（2331 审查）：自目标法术改变战斗状态 → 立即广播（客户端 HUD/角色镜像）。
+	broadcast_player_combat_state(peer_id)
 	var node: Node = ctx.player_node
 	if node == null or not is_instance_valid(node):
 		return
@@ -918,7 +926,66 @@ func apply_damage_to_player(peer_id: int, damage: int) -> Dictionary:
 			and "health" in node and node.health != null and node.health.has_method("take_damage"):
 		node.health.take_damage(life_lost)
 	var killed: bool = not ctx.is_alive()
+	# P0（2331 审查）：受伤/死亡即发布战斗状态事件（客户端 HUD/角色镜像）。
+	broadcast_player_combat_state(peer_id)
 	return {"life_lost": life_lost, "shield_used": shield_used, "killed": killed}
+
+## P0（2331 审查）：广播某玩家的权威战斗状态事件（reliable）。
+## 含 current_life/max_life/shield/buffs/spell_mana 与递增 revision——客户端据此镜像
+## 本地 Player/HUD（只读应用，不允许反向写服务器）。
+func broadcast_player_combat_state(peer_id: int) -> void:
+	var ctx: PlayerContextClass = registry.get_context(peer_id)
+	if ctx == null:
+		return
+	_combat_state_revision[peer_id] = int(_combat_state_revision.get(peer_id, 0)) + 1
+	var evt := {
+		"event": NP.EVT_PLAYER_COMBAT_STATE,
+		"peer_id": peer_id,
+		"revision": int(_combat_state_revision[peer_id]),
+		"current_life": ctx.current_life,
+		"max_life": ctx.max_life,
+		"shield": ctx.shield,
+		"buffs": ctx.buffs.duplicate(),
+		"spell_mana": ctx.spell_mana,
+		"spell_max_mana": ctx.spell_max_mana,
+	}
+	session_event.emit(evt)
+
+## P0（2331 审查）：服务器权威敌人攻击模拟——遍历存活 enemy 实体，对近战范围内的
+## 在线玩家周期性造成伤害（经 apply_damage_to_player 权威链）。由 NetworkManager.tick 调用。
+## 每敌人维护 next_attack_at（实体 data 字段，服务器时间秒）。返回攻击事件数。
+func tick_enemy_combat(now: float = -1.0) -> int:
+	if now < 0.0:
+		now = current_time
+	var attacks := 0
+	for eid in _entities.keys():
+		var data: Dictionary = _entities[eid]
+		if String(data.get("kind", "")) != "enemy":
+			continue
+		if int(data.get("current_life", 0)) <= 0:
+			continue
+		if float(data.get("next_attack_at", 0.0)) > now:
+			continue
+		var epos: Vector3 = data.get("position", Vector3.ZERO)
+		var target_peer := 0
+		var best := ENEMY_ATTACK_RANGE
+		for pid in _live_state.keys():
+			var ls: Dictionary = _live_state.get(pid, {})
+			if not bool(ls.get("is_alive", false)):
+				continue
+			var ppos: Vector3 = ls.get("position", Vector3.ZERO)
+			var d := epos.distance_to(ppos)
+			if d <= best:
+				best = d
+				target_peer = int(pid)
+		if target_peer == 0:
+			continue
+		_entities[eid]["next_attack_at"] = now + ENEMY_ATTACK_INTERVAL
+		var res: Dictionary = apply_damage_to_player(target_peer, ENEMY_ATTACK_DAMAGE)
+		if res.get("killed", false):
+			set_player_alive(target_peer, false)
+		attacks += 1
+	return attacks
 
 ## P0（2218 审查）：推进所有在线玩家 buff 过期（服务器 tick 调用）。
 func tick_player_buffs(now_ms: int = -1) -> void:
