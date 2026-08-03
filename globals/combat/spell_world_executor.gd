@@ -16,6 +16,11 @@ const FIELD_TICK_SEC := 0.35
 ## SessionRoot 注入后，field/summon/ray 的命中伤害写回服务器实体仓并产出复制事件。
 var damage_entity_port: Callable = Callable()
 
+## P0（2218 审查）：会话权威目标查询端口——func(origin:Vector3, range:float) -> Array[Dictionary]，
+## 每项 {entity_id:int, position:Vector3}。SessionRoot 注入（查 _entities kind=enemy）；
+## 召唤物不再依赖表现层 "enemies" 场景组（生产联机敌人不入组）。
+var query_targets_port: Callable = Callable()
+
 ## P0-1-C：异步实体事件 outbox（field/summon tick 产生的 entity_snapshot/despawn/spawn）。
 ## 由 SessionRoot.poll_spell_world_events() 定期排空并经 NetworkManager 广播。
 var _pending_events: Array = []
@@ -77,6 +82,7 @@ func _spawn_summon(caster: Node3D, request: Dictionary, world: Node, caster_peer
 	summon.configure(caster, request)
 	summon.caster_peer = caster_peer
 	summon.damage_port = _port_with_outbox
+	summon.query_targets_port = query_targets_port
 	(caster.get_parent() if world == null else world).add_child(summon)
 	_summons.append(summon)
 	return {"ok": true, "type": "summon", "entity": summon, "duration": summon.duration_sec}
@@ -205,6 +211,7 @@ class SpellSummon:
 	var caster: Node3D
 	var caster_peer: int = 0
 	var damage_port: Callable = Callable()
+	var query_targets_port: Callable = Callable()
 	var request: Dictionary
 	func configure(owner: Node3D, data: Dictionary) -> void:
 		caster = owner
@@ -221,15 +228,33 @@ class SpellSummon:
 		if attack_accum < ATTACK_INTERVAL:
 			return
 		attack_accum = 0.0
-		var target := _nearest_enemy()
-		if target == null:
-			return
 		var damage := int(Dictionary(request.get("params", {})).get("damage", 6))
-		if target.has_meta("entity_id") and damage_port.is_valid():
-			damage_port.call(int(target.get_meta("entity_id")), damage, caster_peer)
-		elif target.has_method("try_receive_hit"):
-			target.try_receive_hit(caster, damage)
-	func _nearest_enemy() -> Node3D:
+		if query_targets_port.is_valid():
+			# 会话权威路径：查实体仓 → damage_port 写回（生产联机敌人）。
+			var target_id := _nearest_enemy_entity_id()
+			if target_id != 0 and damage_port.is_valid():
+				damage_port.call(target_id, damage, caster_peer)
+			return
+		# 单机路径：表现层 "enemies" 组 → 节点直伤。
+		var target := _nearest_enemy_node()
+		if target != null:
+			if target.has_method("try_receive_hit"):
+				target.try_receive_hit(caster, damage)
+	## P0（2218 审查）：会话权威最近目标实体 id（经 query_targets_port 查实体仓）。
+	func _nearest_enemy_entity_id() -> int:
+		var targets: Array = query_targets_port.call(global_position, ATTACK_RANGE)
+		var nearest_ent := 0
+		var nearest_dist := ATTACK_RANGE
+		for entry in targets:
+			if not (entry is Dictionary):
+				continue
+			var d := global_position.distance_to(entry.get("position", Vector3.ZERO))
+			if d < nearest_dist:
+				nearest_dist = d
+				nearest_ent = int(entry.get("entity_id", 0))
+		return nearest_ent
+	## 单机回退：表现层 "enemies" 场景组最近节点（无权威端口时）。
+	func _nearest_enemy_node() -> Node3D:
 		var nearest: Node3D = null
 		var nearest_dist := ATTACK_RANGE
 		for node in get_tree().get_nodes_in_group("enemies"):

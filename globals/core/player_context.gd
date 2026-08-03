@@ -36,35 +36,89 @@ var spell_runtime: SpellRuntimeClass = SpellRuntimeClass.new()
 var spell_mana: int = 100
 var spell_max_mana: int = 100
 var player_guid: String = ""               ## 稳定身份（§14.2，不随 peer_id 变化），用于重连锚定
-## P0（2124 审查）：per-peer 自目标法术效果权威状态（heal/barrier/buff）。
-## 远端 avatar 没有 health/buffs 组件，权威效果写这里（而非表现组件）；
+## P0（2218 审查）：per-peer 权威战斗状态（PlayerCombatState）——
+## 远端 avatar 无 health/buffs 组件时，生命/护盾/buff 的权威真值写这里；
 ## 房主真实 Player 有组件时经 SessionRoot 端口同步到节点（表现层一致）。
-## 结构：{"healed_total": int, "absorb": int, "buff_duration": float, "last_effects": Dictionary}
+## 字段：current_life/max_life、shield（吸收后续伤害）、buffs{id:expiry_ms}。
+var current_life: int = 100
+var max_life: int = 100
+var shield: int = 0
+## buff_id -> 过期时刻（毫秒，用 Time.get_ticks_msec 绝对值）。0 表示未过期由外部推进。
+var buffs: Dictionary = {}
+## 治疗统计（保留兼容键：healed_total 累计治疗量）。
 var spell_effect_state: Dictionary = {}
 
-## 记录一次自目标法术效果（权威状态端口，2124 审查）。
+## P0（2218 审查）：应用一次自目标法术效果（真实战斗语义）：
+##   heal → 提升当前生命（封顶 max_life）；barrier → 累加吸收盾；buff → 登记带过期时间的增益。
 func record_spell_effect(effect_type: String, amount: int, duration: float) -> void:
 	match effect_type:
 		"heal":
+			current_life = mini(max_life, current_life + amount)
 			spell_effect_state["healed_total"] = int(spell_effect_state.get("healed_total", 0)) + amount
 			spell_effect_state["last_effects"] = {"type": "heal", "amount": amount}
 		"barrier":
-			spell_effect_state["absorb"] = amount
-			spell_effect_state["buff_duration"] = duration
+			shield += maxi(amount, 0)
 			spell_effect_state["last_effects"] = {"type": "barrier", "absorb": amount, "duration": duration}
 		"buff":
-			spell_effect_state["buff_duration"] = maxf(float(spell_effect_state.get("buff_duration", 0.0)), duration)
+			var expiry: int = Time.get_ticks_msec() + roundi(duration * 1000.0)
+			var existing: int = int(buffs.get("spell_power", 0))
+			buffs["spell_power"] = maxi(existing, expiry)
 			spell_effect_state["last_effects"] = {"type": "buff", "duration": duration}
 	spell_effect_state["updated_at"] = Time.get_ticks_msec()
 
+## P0（2218 审查）：对玩家施加权威伤害——先扣吸收盾再扣生命。返回实际损失生命。
+## 供敌方/环境伤害接入（阶段 B 敌人 AI 完成后调用）；法术 buff 倍率读取同一状态。
+func apply_damage(damage: int) -> int:
+	if damage <= 0:
+		return 0
+	var remaining := damage
+	var shield_used := mini(shield, remaining)
+	shield -= shield_used
+	remaining -= shield_used
+	var life_lost := mini(current_life, remaining)
+	current_life -= life_lost
+	return life_lost
+
+## 当前是否存活。
+func is_alive() -> bool:
+	return current_life > 0
+
+## 推进 buff 过期（联机会话 tick 调用）。返回被清除的 buff id 列表。
+func expire_buffs(now_ms: int) -> Array:
+	var expired: Array = []
+	for buff_id in buffs.keys():
+		var expiry: int = int(buffs[buff_id])
+		if expiry > 0 and now_ms >= expiry:
+			buffs.erase(buff_id)
+			expired.append(buff_id)
+	return expired
+
+## 查询法术伤害倍率（spell_power buff：+20%/层，可叠加）。联机权威法术结算读取。
+func spell_power_mult() -> float:
+	if buffs.has("spell_power"):
+		return 1.0 + 0.2
+	return 1.0
+
 func serialize_spell_state() -> Dictionary:
-	return {"spell_loadout": spell_loadout.serialize(), "spell_mana": spell_mana, "spell_max_mana": spell_max_mana, "spell_runtime": spell_runtime.serialize()}
+	return {
+		"spell_loadout": spell_loadout.serialize(), "spell_mana": spell_mana, "spell_max_mana": spell_max_mana,
+		"spell_runtime": spell_runtime.serialize(),
+		# P0（2218 审查）：权威战斗状态随快照/存档序列化——重连/结算不丢生命/护盾/buff。
+		"combat_state": {"current_life": current_life, "max_life": max_life, "shield": shield, "buffs": buffs.duplicate()},
+	}
 
 func deserialize_spell_state(data: Dictionary) -> void:
 	spell_max_mana = maxi(1, int(data.get("spell_max_mana", spell_max_mana)))
 	spell_mana = clampi(int(data.get("spell_mana", spell_max_mana)), 0, spell_max_mana)
 	if data.has("spell_loadout"): spell_loadout.deserialize(Dictionary(data.spell_loadout))
 	if data.has("spell_runtime"): spell_runtime.deserialize(Dictionary(data.spell_runtime))
+	if data.has("combat_state") and data["combat_state"] is Dictionary:
+		var cs: Dictionary = data["combat_state"]
+		max_life = maxi(1, int(cs.get("max_life", max_life)))
+		current_life = clampi(int(cs.get("current_life", current_life)), 0, max_life)
+		shield = maxi(0, int(cs.get("shield", 0)))
+		if cs.has("buffs") and cs["buffs"] is Dictionary:
+			buffs = (cs["buffs"] as Dictionary).duplicate()
 
 func _init(attrs: AttrPanelClass, sk: SkillRuntimeClass, inv: ExpeditionInventoryClass, lo: EquipmentLoadoutClass, player: Node3D = null, guid: String = "") -> void:
 	attributes = attrs

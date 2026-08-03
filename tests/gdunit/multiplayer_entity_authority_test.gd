@@ -3,6 +3,8 @@ extends GdUnitTestSuite
 ## P0（2124 审查）：服务器权威实体物理节点映射——可受击实体必须有碰撞体 + entity_id
 ## meta，ray intersect_ray / projectile body_entered 才能命中并写回实体仓。
 ## 覆盖：桥接层服务器侧装配、祖先 entity_id 查找、非 enemy 不装配。
+## P1（2218 审查）：夹具必须入测试场景树 + 等待一帧（避免 "节点不在活动场景树" ERROR
+## 与 global_position 写入错误）；生产 _ready() 由引擎在入树后调用。
 
 const Bridge := preload("res://globals/multiplayer/multiplayer_scene_bridge.gd")
 const WorldExecutor := preload("res://globals/combat/spell_world_executor.gd")
@@ -13,7 +15,9 @@ func _make_bridge(is_server: bool) -> Node:
 	ra.name = "RemoteAvatars"
 	b.add_child(ra)
 	b.set("server_mode_override", 1 if is_server else 0)
-	b._ready()
+	# 入测试场景树并等待一帧：生产 _ready() 由引擎调用（@onready/容器/信号就绪），
+	# 实体容器入树后 global_position/物理查询合法（不再产生 Godot ERROR）。
+	add_child(b)
 	return b
 
 ## 生产装配路径测试：以服务器角色生成 enemy 实体 → 节点带 StaticBody3D + entity_id meta。
@@ -22,9 +26,7 @@ func test_server_spawn_enemy_attaches_authoritative_collision_body() -> void:
 	b._spawn_entity_local(1001, {"kind": "enemy", "current_life": 10, "max_life": 10})
 	var ent: Node3D = b.get_entity_node(1001)
 	assert_object(ent).is_not_null()
-	print("DBG is_server=", b._is_server(), " ent=", ent != null)
 	var body: Node = ent.get_node_or_null("AuthoritativeBody")
-	print("DBG body=", body)
 	assert_object(body) \
 		.override_failure_message("服务器侧 enemy 实体必须装配权威碰撞体").is_not_null()
 	# entity_id meta 设在碰撞体节点（ray/projectile 命中的 collider 直接携带身份）。

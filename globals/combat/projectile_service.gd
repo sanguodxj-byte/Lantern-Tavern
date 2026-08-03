@@ -257,13 +257,15 @@ func get_projectile_id_for_skill(skill: Dictionary, weapon) -> String:
 ## source_player: 发射者 Player 节点
 ## weapon: 武器数据（WeaponData，可空）
 ## skill: 技能定义字典（可空）
-func spawn(projectile_id: String, spawn_transform: Transform3D, source_player: Node3D, weapon = null, skill: Dictionary = {}) -> Node:
+## parent: 显式生成父节点（P1-2218 会话化：联机会话传入自己的容器，投射物归属会话；
+##         null 时回退全局关卡/场景父节点——单机路径行为不变）。
+func spawn(projectile_id: String, spawn_transform: Transform3D, source_player: Node3D, weapon = null, skill: Dictionary = {}, parent: Node = null) -> Node:
 	var data: Resource = get_data(projectile_id)
 	if data == null:
 		push_warning("ProjectileService: 投射物 id '%s' 未注册" % projectile_id)
 		return null
-	var parent: Node = _get_spawn_parent()
-	if parent == null:
+	var spawn_parent: Node = parent if (parent != null and is_instance_valid(parent)) else _get_spawn_parent()
+	if spawn_parent == null:
 		push_warning("ProjectileService: 无法获取生成父节点")
 		return null
 	# 从对象池获取或实例化新投射物
@@ -294,7 +296,7 @@ func spawn(projectile_id: String, spawn_transform: Transform3D, source_player: N
 	if projectile.get_parent() == null and projectile.is_inside_tree() == false:
 		projectile.request_ready()
 	# 添加到场景树（触发 _ready，此时所有属性已就绪）
-	parent.add_child(projectile)
+	spawn_parent.add_child(projectile)
 	# 确保全局变换正确（父节点非原点时需要）
 	projectile.global_transform = spawn_transform
 	return projectile

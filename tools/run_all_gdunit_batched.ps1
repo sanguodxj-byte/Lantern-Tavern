@@ -107,6 +107,9 @@ foreach ($t in $tests) {
 	$hasCrash = $clean -match "CrashHandlerException|signal 11"
 	$hasFailedCase = $clean -match ">\s*test_\S+\s+FAILED"
 	$hasFailStats = $clean -match "\|\s*[1-9]\d*\s+failures" -or $clean -match "\|\s*[1-9]\d*\s+errors"
+	# P1（2218 审查）：运行期 Godot ERROR（SCRIPT ERROR / Parse Error / 引擎 ERROR:）
+	# 即使断言全绿也判 FAIL——不能只信任断言数与退出码。
+	$hasEngineError = $clean -match "SCRIPT ERROR" -or $clean -match "Parse Error" -or $clean -match "ERROR:"
 	$hasPassStats = $clean -match "Statistics:.*0 errors \| 0 failures"
 	$hasOverallPass = $clean -match "Overall Summary:.*0 errors \| 0 failures"
 
@@ -117,7 +120,7 @@ foreach ($t in $tests) {
 	} elseif ($hasCrash -or $code -eq 3221225477 -or ($code -lt 0 -and -not $hasPassStats)) {
 		$status = "CRASH"
 		$crash++
-	} elseif ($hasFailedCase -or $hasFailStats -or $code -eq 100 -or $code -eq 105) {
+	} elseif ($hasFailedCase -or $hasFailStats -or $hasEngineError -or $code -eq 100 -or $code -eq 105) {
 		$status = "FAIL"
 		$fail++
 	} elseif ($code -eq 101 -or ($hasPassStats -and $clean -match "[1-9]\d*\s+orphans")) {

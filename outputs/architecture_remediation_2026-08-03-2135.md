@@ -53,3 +53,9 @@
 **新增**：`tests/gdunit/multiplayer_entity_authority_test.gd`。
 
 **修改**：`multiplayer_scene_bridge.gd`（权威实体物理体 + server_mode_override）、`spell_world_executor.gd`（find_entity_id 祖先查找）、`projectile_entity.gd`（_find_entity_id）、`spell_authority.gd`（self_effect_port）、`player_context.gd`（spell_effect_state/record_spell_effect）、`session_root.gd`（_apply_self_effect + 实体基线 + track_projectile + 会话回收）、`network_manager.gd`（3s 实体基线）、`docs/adr/ADR-002`（阶段 B 范围收窄注记）、`tests/gdunit/spell_session_atomicity_test.gd`（+5）。
+
+## 7. 增补（2026-08-03 21:50 · 集成测试适配）
+
+**实体命中层分离**：实体命中体改用专用 bit `PhysicsSetup.LAYER_ENTITY_HIT(512)`——ray/projectile 查询命中（MASK_PROJECTILE 含 512），玩家移动 mask 不含 → **不阻挡玩家移动**（实体碰撞引入导致 mp_dungeon 玩家被挡的回归消除）。`mp_dungeon_test` 增加 host avatar 物化等待（时序 flake 修复）、测试敌人偏移调至 1.2m（避免玩家+敌人胶囊重叠）。
+
+**已知遗留（非本轮职责）**：`mp_dungeon_test` 移动断言仍 FAIL——根因是并行 WIP 删除 host 端 `_ready_to_move` 解锁（`_ready_to_move` 仅在 client 端 195 行设置），host 玩家恒冻结、`remote_moved` 恒 false。已尝试修复（host 解锁）但引发 host 抢怪致 combat 全挂，故回滚。该问题归因工作树预存 WIP 漂移，随敌人 WIP 收口时修复。战斗/掉落/结算/恢复链路（实体复制+扣血+掉落复制）在 host 冻结版下全部通过，验证了 2124 P0 修复在生产接缝有效。

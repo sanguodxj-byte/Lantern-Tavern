@@ -25,9 +25,18 @@ func test_spell_authority_executes_heal_barrier_and_movement() -> void:
 
 func test_world_effects_produce_structured_requests_not_fake_damage() -> void:
 	var player := FakePlayer.new(); add_child(player); var auth := Authority.new()
-	for kind in ["projectile","ray","area","ground","summon"]:
-		var result := auth.execute(player,{"ok":true,"spell_id":"x","origin":Vector3.ZERO,"direction":Vector3.FORWARD,"effect_plan":{"type":kind},"visual_event":{}})
-		assert_str(String(result.world_request.type)).is_equal(kind)
+	# projectile 用已注册 id（未注册 id 会 spawn 失败 → ok=false，属 P0 正确行为）。
+	var plans := {
+		"projectile": {"type": "projectile", "projectile_id": "elemental_bolt"},
+		"ray": {"type": "ray"},
+		"area": {"type": "area"},
+		"ground": {"type": "ground"},
+		"summon": {"type": "summon"},
+	}
+	for kind in plans.keys():
+		var result := auth.execute(player, {"ok": true, "spell_id": "x", "origin": Vector3.ZERO,
+			"direction": Vector3.FORWARD, "effect_plan": plans[kind], "visual_event": {}})
+		assert_str(String(result.get("world_request", {}).get("type", ""))).is_equal(kind)
 		assert_bool(not result.has("damage_applied")).is_true()
 	player.queue_free()
 

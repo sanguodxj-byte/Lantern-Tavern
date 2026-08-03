@@ -160,31 +160,36 @@ func test_duplicate_sequence_rejected_for_cast() -> void:
 
 ## 生成只绑定 Node3D（模拟远端 avatar：无 health/buffs 组件）的施法者。
 func _bind_plain_caster(s: SR, peer_id: int = 1) -> Node3D:
-	var caster := Node3D.new()
+	var caster: Node3D = auto_free(Node3D.new())
 	caster.name = "PlainCaster%d" % peer_id
 	add_child(caster)
 	s.bind_player_entity(peer_id, caster)
 	return caster
 
 func test_remote_avatar_heal_succeeds_via_self_effect_port() -> void:
-	# 远端 avatar（无 health 组件）heal 不再失败——权威效果写入 PlayerContext.spell_effect_state。
+	# 远端 avatar（无 health 组件）heal 不再失败——权威效果写入 PlayerContext 真实战斗状态。
 	var s: SR = auto_free(_make_server())
 	_spawn_caster(s, 1, [["ayu", "", ""], ["", "", ""], ["", "", ""], ["", "", ""], ["", "", ""]])
 	_bind_plain_caster(s)
 	var ctx = s.registry.get_context(1)
+	# 先受 40 点伤害（盾 0 → 全扣命），再 heal 验证真实恢复。
+	var lost: int = ctx.apply_damage(40)
+	assert_int(lost).is_equal(40)
+	var life_before: int = ctx.current_life
 	var mana_before: int = ctx.spell_mana
 	var r: Dictionary = s.on_command(1, _cast_command(s, 0, 1))
 	assert_bool(r["success"]) \
 		.override_failure_message("远端 avatar heal 必须成功（经 per-peer 效果端口，而非组件）").is_true()
 	assert_str(r["event"]["event"]).is_equal(NP.EVT_SPELL_RESOLVED)
 	assert_int(int(r["event"]["effects"]["healed"])).is_greater(0)
-	assert_int(int(ctx.spell_effect_state.get("healed_total", 0))) \
-		.override_failure_message("heal 必须写入 PlayerContext 权威效果状态").is_greater(0)
+	# P0（2218 审查）：heal 必须真实提升权威当前生命（不再只是累计摘要）。
+	assert_int(ctx.current_life) \
+		.override_failure_message("heal 必须提升权威 current_life").is_greater(life_before)
 	assert_int(ctx.spell_mana).is_less(mana_before)  # 资源正常提交
 
 func test_remote_avatar_barrier_and_buff_succeed_via_self_effect_port() -> void:
 	var s: SR = auto_free(_make_server())
-	# barrier 配方：hima > force > guardian；buff 用 barrier 的 duration 语义覆盖。
+	# barrier 配方：hima > force > guardian。
 	_spawn_caster(s, 1, [["hima", "force", "guardian"], ["", "", ""], ["", "", ""], ["", "", ""], ["", "", ""]])
 	_bind_plain_caster(s)
 	var ctx = s.registry.get_context(1)
@@ -192,9 +197,36 @@ func test_remote_avatar_barrier_and_buff_succeed_via_self_effect_port() -> void:
 	assert_bool(rb["success"]) \
 		.override_failure_message("远端 avatar barrier 必须成功").is_true()
 	assert_int(int(rb["event"]["effects"]["absorb"])).is_greater(0)
-	assert_int(int(ctx.spell_effect_state.get("absorb", 0))).is_greater(0)
-	# buff：以 barrier 摘要验证 spell_effect_state.buff_duration 记录。
-	assert_float(float(ctx.spell_effect_state.get("buff_duration", 0.0))).is_greater(0.0)
+	# P0（2218 审查）：barrier 进入权威 shield（可抵扣后续伤害）。
+	assert_int(ctx.shield) \
+		.override_failure_message("barrier 必须进入权威 shield").is_greater(0)
+	# 抵扣验证：60 伤害 → 盾 30 全抵 + 命 30。
+	var life_before: int = ctx.current_life
+	var shield_before: int = ctx.shield
+	var life_lost: int = ctx.apply_damage(60)
+	assert_int(life_lost).is_equal(30)  # 60 - 盾 30
+	assert_int(ctx.shield).is_equal(0)  # 盾被完全抵扣
+	assert_int(ctx.current_life).is_equal(life_before - 30)
+	# 盾 0 后再受 10 伤害 → 全扣命。
+	ctx.apply_damage(10)
+	assert_int(ctx.current_life).is_equal(life_before - 40)
+
+func test_remote_avatar_buff_succeeds_and_expires() -> void:
+	# buff 语义直接验证（当前无独立 buff 配方；record_spell_effect 是唯一权威入口）。
+	var s: SR = auto_free(_make_server())
+	var ctx = s.handle_spawn_request(7, {}, "buff_test_7")
+	ctx.record_spell_effect("buff", 0, 6.0)
+	assert_bool(ctx.buffs.has("spell_power")) \
+		.override_failure_message("buff 必须登记进权威 buffs 字典").is_true()
+	# 过期推进：把 buff 过期时间拨到过去 → 清除。
+	ctx.buffs["spell_power"] = 1  # 过期时刻已过
+	var expired: Array = ctx.expire_buffs(Time.get_ticks_msec())
+	assert_bool("spell_power" in expired).is_true()
+	assert_bool(not ctx.buffs.has("spell_power")).is_true()
+	# 无 buff 时倍率 1.0；有 buff 时 1.2。
+	assert_float(ctx.spell_power_mult()).is_equal_approx(1.0, 1e-4)
+	ctx.buffs["spell_power"] = Time.get_ticks_msec() + 60000
+	assert_float(ctx.spell_power_mult()).is_equal_approx(1.2, 1e-4)
 
 func test_plain_caster_heal_without_port_records_success_summary() -> void:
 	# 纯逻辑单测环境（无 self_effect_port 注入）→ heal 仍成功并带摘要（无副作用目标）。
@@ -204,6 +236,74 @@ func test_plain_caster_heal_without_port_records_success_summary() -> void:
 	var r: Dictionary = s.on_command(1, _cast_command(s, 0, 1))
 	assert_bool(r["success"]).is_true()
 	assert_int(int(r["event"]["effects"]["healed"])).is_greater(0)
+
+# ---------------------------------------------------------------------------
+# P0（2218 审查）：权威战斗状态序列化往返（重连/存档不丢生命/盾/buff）
+# ---------------------------------------------------------------------------
+
+func test_combat_state_serialize_roundtrip() -> void:
+	var s: SR = auto_free(_make_server())
+	_spawn_caster(s, 1, [["ayu", "", ""], ["", "", ""], ["", "", ""], ["", "", ""], ["", "", ""]])
+	_bind_plain_caster(s)
+	var ctx = s.registry.get_context(1)
+	ctx.apply_damage(25)  # 100 -> 75
+	ctx.record_spell_effect("barrier", 30, 5.0)
+	ctx.record_spell_effect("buff", 0, 6.0)
+	var serialized: Dictionary = ctx.serialize_spell_state()
+	assert_bool(serialized.has("combat_state")).is_true()
+	assert_int(int(serialized["combat_state"]["current_life"])).is_equal(75)
+	assert_int(int(serialized["combat_state"]["shield"])).is_equal(30)
+	# 反序列化恢复（新 ctx 等价重连恢复）。
+	var s2: SR = auto_free(_make_server())
+	var c2 = s2.handle_spawn_request(2, {"spell_state": serialized}, "caster_2")
+	assert_int(c2.current_life).is_equal(75)
+	assert_int(c2.shield).is_equal(30)
+	assert_bool(c2.buffs.has("spell_power")).is_true()
+
+# ---------------------------------------------------------------------------
+# P0（2218 审查）：召唤物经会话权威目标查询发现生产联机敌人
+# ---------------------------------------------------------------------------
+
+func test_summon_query_targets_finds_authoritative_enemies() -> void:
+	var s: SR = auto_free(_make_server())
+	s._ensure_spell_world_executor()
+	# 生产联机敌人（实体仓 kind=enemy，未加入 "enemies" 场景组）。
+	s.set_entity(1001, {"kind": "enemy", "current_life": 10, "max_life": 10, "position": Vector3(2.0, 0.0, 0.0)})
+	s.set_entity(1002, {"kind": "enemy", "current_life": 0, "max_life": 10, "position": Vector3(1.0, 0.0, 0.0)})  # 已死
+	var ex: Node = s.spell_auth.get_world_executor()
+	var targets: Array = ex.query_targets_port.call(Vector3.ZERO, 5.0)
+	# 只返回存活 enemy（1001）；已死 1002 排除。
+	assert_int(targets.size()).is_equal(1)
+	assert_int(int(targets[0]["entity_id"])).is_equal(1001)
+	# 范围外不返回。
+	var far: Array = ex.query_targets_port.call(Vector3(100, 0, 0), 5.0)
+	assert_array(far).is_empty()
+
+func test_summon_process_attacks_nearest_authoritative_entity() -> void:
+	# 生产接缝：召唤物自动寻敌 → damage_port 写回 → 实体扣血/死亡事件（不依赖表现组）。
+	var s: SR = auto_free(_make_server())
+	s._ensure_spell_world_executor()
+	s.set_entity(1001, {"kind": "enemy", "current_life": 8, "max_life": 8, "position": Vector3(2.0, 0.0, 0.0)})
+	var ex: Node = s.spell_auth.get_world_executor()
+	# 构造召唤物并直接触发其攻击循环（等效 _process 一个 tick）。
+	var caster := Node3D.new()
+	add_child(caster)
+	var world := Node3D.new()
+	add_child(world)
+	var req := {"type": "summon", "origin": Vector3.ZERO, "direction": Vector3.FORWARD, "params": {"duration": 12.0, "damage": 6}}
+	ex.execute(caster, req, world, 1)
+	var summon: Node = ex.get("_summons")[0]
+	assert_object(summon).is_not_null()
+	# 召唤物与最近权威敌人距离在 ATTACK_RANGE 内 → 攻击写回实体仓。
+	var target_id: int = summon._nearest_enemy_entity_id()
+	assert_int(target_id) \
+		.override_failure_message("召唤物必须经权威目标端口发现生产联机敌人").is_equal(1001)
+	# 触发一次攻击（直接调用 _process 一次攻击节拍）。
+	summon.attack_accum = 999.0
+	summon._process(0.0)
+	assert_int(int(s._entities[1001]["current_life"])).is_less(8)
+	caster.free()
+	world.free()
 
 # ---------------------------------------------------------------------------
 # P1（2124 审查）：周期权威实体基线 + 会话投射物跟踪

@@ -160,11 +160,12 @@ func _init() -> void:
 	_session_projectiles = []
 
 func _notification(what: int) -> void:
-	# P1（2124 审查）：会话销毁时回收会话拥有的法术投射物（含未飞完的），
-	# 防止跨会话残留端口/节点。
+	# P1（2124/2218 审查）：会话销毁时回收会话拥有的法术投射物。
+	# 只回收仍有效且仍在场景树（active、未被全局池回收复用）的节点——
+	# 避免「旧会话引用被池复用到新会话的节点」时错误释放。
 	if what == NOTIFICATION_EXIT_TREE:
 		for proj in _session_projectiles:
-			if proj is Node and is_instance_valid(proj):
+			if proj is Node and is_instance_valid(proj) and proj.is_inside_tree():
 				proj.queue_free()
 		_session_projectiles.clear()
 
@@ -854,23 +855,44 @@ func _ensure_spell_world_executor() -> void:
 		ex = executor
 	if "damage_entity_port" in ex:
 		ex.damage_entity_port = _spell_damage_entity
+	# P0（2218 审查）：会话权威目标查询端口（召唤物自动寻敌——查实体仓而非表现组）。
+	if "query_targets_port" in ex:
+		ex.query_targets_port = _query_spell_targets
 	spell_auth.set_self_effect_port(_apply_self_effect)
 
+## P0（2218 审查）：会话权威法术目标查询——返回范围内可受击敌人（kind=enemy 且存活）。
+## 供召唤物/范围法术选择目标；位置来自服务器权威实体仓（不依赖表现层 group）。
+func _query_spell_targets(origin: Vector3, range: float) -> Array:
+	var out: Array = []
+	for eid in _entities.keys():
+		var data: Dictionary = _entities[eid]
+		if String(data.get("kind", "")) != "enemy":
+			continue
+		if int(data.get("current_life", 0)) <= 0:
+			continue
+		var pos: Vector3 = data.get("position", Vector3.ZERO)
+		if origin.distance_to(pos) <= range:
+			out.append({"entity_id": int(eid), "position": pos})
+	return out
+
 ## P0（2124 审查）：per-peer 自目标法术效果端口——
-## 写 PlayerContext.spell_effect_state（权威记录），并对绑定节点的真实组件做表现同步
+## 写 PlayerContext 权威战斗状态（真实生命/护盾/buff），并对绑定节点的真实组件做表现同步
 ## （房主真实 Player 有 health/buffs；远端 avatar 无组件则只记权威状态，施法成功）。
 func _apply_self_effect(peer_id: int, effect_type: String, amount: int, duration: float) -> void:
 	var ctx: PlayerContextClass = registry.get_context(peer_id)
 	if ctx == null:
 		return
+	var life_before: int = ctx.current_life
 	ctx.record_spell_effect(effect_type, amount, duration)
 	var node: Node = ctx.player_node
 	if node == null or not is_instance_valid(node):
 		return
 	match effect_type:
 		"heal":
-			if "health" in node and node.health != null and node.health.has_method("heal"):
-				node.health.heal(amount)
+			# 表现同步：按【真实生命变化量】heal 节点组件（房主真实 Player）。
+			var healed: int = ctx.current_life - life_before
+			if healed > 0 and "health" in node and node.health != null and node.health.has_method("heal"):
+				node.health.heal(healed)
 		"barrier":
 			if "buffs" in node and node.buffs != null and node.buffs.has_method("add"):
 				var max_life := int(node.health.max_life) if "health" in node and node.health != null else 100
@@ -880,12 +902,46 @@ func _apply_self_effect(peer_id: int, effect_type: String, amount: int, duration
 			if "buffs" in node and node.buffs != null and node.buffs.has_method("add"):
 				node.buffs.add("spell_power", duration, {"percent": 20.0})
 
+## P0（2218 审查）：对某 peer 玩家施加权威伤害（敌方/环境伤害入口，阶段 B 敌人 AI 完成后调用）。
+## 经 PlayerContext.apply_damage（先扣盾再扣命）；死亡广播 player_despawned 语义由调用方决定。
+## 返回 {"life_lost": int, "shield_used": int, "killed": bool}。
+func apply_damage_to_player(peer_id: int, damage: int) -> Dictionary:
+	var ctx: PlayerContextClass = registry.get_context(peer_id)
+	if ctx == null or damage <= 0:
+		return {"life_lost": 0, "shield_used": 0, "killed": false}
+	var shield_before: int = ctx.shield
+	var life_lost: int = ctx.apply_damage(damage)
+	var shield_used: int = shield_before - ctx.shield
+	# 表现同步：房主真实 Player 受击节点。
+	var node: Node = ctx.player_node
+	if node != null and is_instance_valid(node) and life_lost > 0 \
+			and "health" in node and node.health != null and node.health.has_method("take_damage"):
+		node.health.take_damage(life_lost)
+	var killed: bool = not ctx.is_alive()
+	return {"life_lost": life_lost, "shield_used": shield_used, "killed": killed}
+
+## P0（2218 审查）：推进所有在线玩家 buff 过期（服务器 tick 调用）。
+func tick_player_buffs(now_ms: int = -1) -> void:
+	if now_ms < 0:
+		now_ms = Time.get_ticks_msec()
+	for pid in registry.peer_ids():
+		var ctx: PlayerContextClass = registry.get_context(pid)
+		if ctx != null:
+			ctx.expire_buffs(now_ms)
+
 ## P0-3：法术世界伤害写回权威实体仓（与普通攻击同路径）：
 ##   扣血 → 死亡（掉落 + despawn） / 存活（entity_snapshot）。
 ## 返回 {ok, killed, events}（events 为复制事件，供发布端广播）。
 func _spell_damage_entity(entity_id: int, damage: int, caster_peer: int) -> Dictionary:
 	var out := {"ok": false, "killed": false, "events": []}
 	if damage <= 0 or not _entities.has(entity_id):
+		return out
+	# P0（2218 审查）：施法者权威 buff（spell_power）影响法术结算——乘算伤害。
+	# 远端 PlayerContext 的 buff 是权威真值；无 buff 时倍率 1.0。
+	var ctx: PlayerContextClass = registry.get_context(caster_peer)
+	if ctx != null:
+		damage = int(round(float(damage) * ctx.spell_power_mult()))
+	if damage <= 0:
 		return out
 	var data: Dictionary = _entities[entity_id]
 	var new_life: int = int(data.get("current_life", 0)) - damage

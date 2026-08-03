@@ -103,7 +103,9 @@ func execute(caster: Node3D, result: Dictionary, world: Node = null, caster_peer
 			var executor: Node = get_world_executor()
 			if executor != null and is_instance_valid(executor) and executor.has_method("make_outbox_port"):
 				skill_data["damage_port"] = executor.make_outbox_port()
-			var spawned = projectile_service.spawn(projectile_id, spawn_transform, caster, null, skill_data)
+			# P1（2218 审查）：投射物挂到会话世界容器（world 参数，随会话释放）——
+			# 不再落入全局关卡/场景父节点，避免跨会话共享与错误回收。
+			var spawned = projectile_service.spawn(projectile_id, spawn_transform, caster, null, skill_data, world)
 			if spawned == null:
 				return {"ok": false, "reason": "projectile_spawn_failed"}
 			execution["projectile"] = spawned

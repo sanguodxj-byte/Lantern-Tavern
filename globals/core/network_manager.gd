@@ -372,6 +372,16 @@ func _dispatch_event(event: Dictionary, _source_peer: int) -> void:
 func _is_high_frequency_event(kind: String) -> bool:
 	return kind == NP.EVT_PLAYER_SNAPSHOT or kind == NP.EVT_ENTITY_SNAPSHOT
 
+## P1（2218 审查）：显式可靠出口——绕过 _is_high_frequency_event 分类，强制走可靠 RPC。
+## 周期权威实体基线必须可靠（unreliable 快照丢包的确定性收敛），不能与高频增量共用 unreliable。
+func _dispatch_event_reliable(event: Dictionary, _source_peer: int) -> void:
+	event_dispatched.emit(event)
+	var can_rpc := session != null and session.is_server and _can_rpc()
+	if can_rpc:
+		var kind: String = event.get("event", event.get("type", "?"))
+		_net_stats[kind] = int(_net_stats.get(kind, 0)) + 1
+		rpc_server_event.rpc(event)
+
 ## 返回累计网络下发统计（{事件类型: 次数}），供 PerfMonitor HUD / 压测观测。
 func get_net_stats() -> Dictionary:
 	return _net_stats.duplicate()
@@ -416,7 +426,10 @@ func tick(delta: float) -> void:
 		_entity_baseline_accum = 0.0
 		if session.has_method("build_entity_baseline_events"):
 			for ev in session.build_entity_baseline_events():
-				_dispatch_event(ev, 0)  # reliable 通道（基线不可丢）
+				_dispatch_event_reliable(ev, 0)  # 可靠基线（P0-2218：显式可靠出口，不走 unreliable 分类）
+	# P0（2218 审查）：推进玩家 buff 过期。
+	if session.has_method("tick_player_buffs"):
+		session.tick_player_buffs()
 	_flush_snapshots(delta)
 	for pid in session.connection_auth.online_peer_ids():
 		if session.connection_auth.check_timeout(pid, session.current_time):
