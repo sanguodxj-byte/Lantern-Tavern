@@ -71,6 +71,21 @@ func test_body_lunge_distinguishes_lunging_vs_standing_attacks() -> void:
 	assert_float(float(PROFILE.body_profile("spider").get("lunge", 0.0))).is_equal(0.0)
 	assert_float(float(PROFILE.body_profile("rock_golem").get("lunge", 0.0))).is_equal(0.0)
 
+func test_dragon_uses_procedural_sweep_for_weak_rig_clip() -> void:
+	# 巨龙 rig 的 slash 动画近乎静止，必须由程序化横扫（sweep>0）补偿，
+	# 其余身体招式不启用横扫
+	assert_float(float(PROFILE.body_profile("dragon").get("sweep", 0.0))).is_greater(0.3)
+	assert_float(float(PROFILE.body_profile("slime").get("sweep", 0.0))).is_equal(0.0)
+	assert_float(float(PROFILE.body_profile("spider").get("sweep", 0.0))).is_equal(0.0)
+	assert_float(float(PROFILE.body_profile("rock_golem").get("sweep", 0.0))).is_equal(0.0)
+
+func test_slashing_state_implements_body_sweep_and_restore() -> void:
+	var source := FileAccess.get_file_as_string("res://scenes/characters/enemies/state/enemy_state_slashing.gd")
+	assert_bool(source.contains("_apply_body_sweep")).is_true()
+	assert_bool(source.contains("body_sweep_rad")).is_true()
+	assert_bool(source.contains("_restore_body_pivot")).is_true()
+	assert_bool(source.contains("_body_pivot.rotation.y = yaw")).is_true()
+
 func test_normalize_type_strips_elite_prefix() -> void:
 	assert_str(PROFILE.normalize_type("elite_rock_golem")).is_equal("rock_golem")
 	assert_str(PROFILE.normalize_type("boss_dragon")).is_equal("dragon")
