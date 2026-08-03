@@ -31,12 +31,16 @@ func test_torch_visual_hides_with_light_budget() -> void:
 	add_child(torch)
 	var light := torch.get_node("TorchVisual/OmniLight3D") as Light3D
 	assert_object(light).is_not_null()
-	light.visible = false
+	light.hide()
+	# Headless mode does not dispatch Light3D.visibility_changed for a local
+	# visibility toggle; invoke the same callback used by the runtime signal.
+	(torch.get_node("TorchVisual") as VoxelProp)._on_torch_light_visibility_changed(light)
 	assert_bool(torch.get_node("FlameParticles").visible).is_false()
 	for child in torch.get_node("TorchVisual").get_children():
 		if child is MeshInstance3D:
 			assert_bool(child.visible).is_false()
-	light.visible = true
+	light.show()
+	(torch.get_node("TorchVisual") as VoxelProp)._on_torch_light_visibility_changed(light)
 	assert_bool(torch.get_node("FlameParticles").visible).is_true()
 	for child in torch.get_node("TorchVisual").get_children():
 		if child is MeshInstance3D:
@@ -94,6 +98,13 @@ func test_dungeon_applies_torch_distance_culling() -> void:
 	assert_bool(src.contains("_apply_distance_culling(torch, TORCH_VISIBILITY_RANGE_END)")) \
 		.override_failure_message("_spawn_torch_on_wall 必须对火把应用距离剔除") \
 		.is_true()
+	assert_bool(src.contains("const TORCH_ROOM_ANCHOR_COUNT := 2")) \
+		.override_failure_message("非起始房间必须拥有两侧墙面火把锚点") \
+		.is_true()
+	assert_bool(src.contains("_spawn_room_torch_anchors(layout, result, parent, torch_cells)")) \
+		.override_failure_message("地牢构建必须执行房间火把锚点布置") \
+		.is_true()
+
 func test_voxel_prop_hides_flame_on_light_off() -> void:
 	# P1: _build_torch 必须连接 light.visibility_changed 并隐藏 FlameParticles
 	var src := _read_source(VOXEL_PROP_PATH)

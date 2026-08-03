@@ -18,13 +18,13 @@ func test_layer_constants_correct() -> void:
 
 func test_mask_combinations() -> void:
 	var ps: Node = Engine.get_main_loop().root.get_node("PhysicsSetup")
-	# 玩家掩码应含环境+敌人+可拾取+门/触发层+家具
-	assert_int(ps.MASK_PLAYER).is_equal(1 | 4 | 8 | 32 | 64)
+	# 玩家实体碰撞环境+敌人+门/触发层+家具；拾取物只由选择射线命中，避免推挤抖动
+	assert_int(ps.MASK_PLAYER).is_equal(1 | 4 | 32 | 64)
 	assert_int(ps.MASK_SELECTABLE).is_equal(8 | 64)
 	# 敌人掩码应含环境+玩家+敌人+可投掷+门/触发层+家具
 	assert_int(ps.MASK_ENEMY).is_equal(1 | 2 | 4 | 16 | 32 | 64)
-	# 动态物体应彼此碰撞，避免掉落物/可投掷物互相穿过
-	assert_int(ps.MASK_PICKABLE).is_equal(1 | 8 | 16 | 64)
+	# 可拾取物不与同类互撞，避免堆叠掉落物持续唤醒；仍可被投掷物推动
+	assert_bool((ps.MASK_PICKABLE & ps.LAYER_PICKABLE) == 0).is_true()
 	assert_int(ps.MASK_THROWABLE).is_equal(1 | 2 | 4 | 8 | 16 | 32 | 64)
 	# 环境掩码为 0（被动碰撞）
 	assert_int(ps.MASK_ENVIRONMENT).is_equal(0)
@@ -78,14 +78,14 @@ func test_setup_rigidbody_as_pickable_uses_pickable_mask() -> void:
 	add_child(body)
 	ps.setup_rigidbody(body, ps.LAYER_PICKABLE)
 	assert_int(body.collision_layer).is_equal(8)
-	assert_int(body.collision_mask).is_equal(1 | 8 | 16 | 64)
+	assert_int(body.collision_mask).is_equal(1 | 16 | 64)
 	assert_object(body.get_node("CollisionShape3D").shape).is_instanceof(BoxShape3D)
 	body.queue_free()
 
-func test_dynamic_object_masks_collide_with_each_other() -> void:
+func test_dynamic_object_masks_avoid_pickable_stack_wakeups() -> void:
 	var ps: Node = Engine.get_main_loop().root.get_node("PhysicsSetup")
-	assert_bool((ps.MASK_PICKABLE & ps.LAYER_PICKABLE) != 0) \
-		.override_failure_message("可拾取物之间必须能互相碰撞，避免同层物体穿模") \
+	assert_bool((ps.MASK_PICKABLE & ps.LAYER_PICKABLE) == 0) \
+		.override_failure_message("可拾取物之间不应互相碰撞，避免堆叠物品持续唤醒") \
 		.is_true()
 	assert_bool((ps.MASK_PICKABLE & ps.LAYER_THROWABLE) != 0) \
 		.override_failure_message("可拾取物必须能被可投掷物推开/挡住") \
@@ -103,7 +103,7 @@ func test_setup_character_body_adds_capsule_collision() -> void:
 	add_child(body)
 	ps.setup_player(body)
 	assert_int(body.collision_layer).is_equal(2)
-	assert_int(body.collision_mask).is_equal(1 | 4 | 8 | 32 | 64)
+	assert_int(body.collision_mask).is_equal(1 | 4 | 32 | 64)
 	assert_object(body.get_node("CollisionShape3D").shape).is_instanceof(CapsuleShape3D)
 	var capsule := body.get_node("CollisionShape3D").shape as CapsuleShape3D
 	assert_float(capsule.height).is_equal_approx(1.7, 0.001)
@@ -145,9 +145,15 @@ func test_setup_pickable_adds_box_collision() -> void:
 	add_child(body)
 	ps.setup_pickable(body)
 	assert_int(body.collision_layer).is_equal(8)
-	assert_int(body.collision_mask).is_equal(1 | 8 | 16 | 64)
+	assert_int(body.collision_mask).is_equal(1 | 16 | 64)
 	assert_object(body.get_node("CollisionShape3D").shape).is_instanceof(BoxShape3D)
 	body.queue_free()
+
+func test_pickable_scene_declares_pickable_mask() -> void:
+	var scene := load("res://scenes/equipment/pickable_item.tscn") as PackedScene
+	var item := scene.instantiate() as RigidBody3D
+	assert_int(item.collision_mask).is_equal(PhysicsSetup.MASK_PICKABLE)
+	item.free()
 
 func test_setup_trigger_targets_player_layer() -> void:
 	var ps: Node = Engine.get_main_loop().root.get_node("PhysicsSetup")

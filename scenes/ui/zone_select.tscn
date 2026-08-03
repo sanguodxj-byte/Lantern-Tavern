@@ -1,83 +1,329 @@
-[gd_scene load_steps=3 format=3 uid="uid://bpjcxjslusvnk"]
+[gd_scene load_steps=8 format=3 uid="uid://bpjcxjslusvnk"]
 
-[ext_resource type="Script" path="res://scenes/ui/zone_select.gd" id="1_zs"]
+[ext_resource type="Script" path="res://scenes/ui/zone_select.gd" id="1_zone_select"]
 [ext_resource type="Theme" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
+[ext_resource type="Texture2D" path="res://assets/textures/ui/expedition_zone_map.png" id="3_zone_map"]
+
+[sub_resource type="StyleBoxFlat" id="Frame"]
+content_margin_left = 24.0
+content_margin_top = 20.0
+content_margin_right = 24.0
+content_margin_bottom = 20.0
+bg_color = Color(0.045, 0.032, 0.038, 0.985)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.025, 0.018, 0.022, 1)
+corner_detail = 1
+shadow_color = Color(0, 0, 0, 0.92)
+shadow_size = 12
+shadow_offset = Vector2(0, 6)
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="MapFrame"]
+bg_color = Color(0.025, 0.034, 0.041, 0.98)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.55, 0.36, 0.19, 0.98)
+corner_detail = 1
+shadow_color = Color(0, 0, 0, 0.75)
+shadow_size = 5
+shadow_offset = Vector2(0, 3)
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="DetailsFrame"]
+content_margin_left = 22.0
+content_margin_top = 20.0
+content_margin_right = 22.0
+content_margin_bottom = 20.0
+bg_color = Color(0.065, 0.043, 0.052, 0.98)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.34, 0.24, 0.17, 0.95)
+corner_detail = 1
+shadow_color = Color(0, 0, 0, 0.78)
+shadow_size = 5
+shadow_offset = Vector2(0, 3)
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="ActionFrame"]
+content_margin_left = 18.0
+content_margin_top = 10.0
+content_margin_right = 18.0
+content_margin_bottom = 10.0
+bg_color = Color(0.075, 0.052, 0.058, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.55, 0.36, 0.19, 0.92)
+corner_detail = 1
+anti_aliasing = false
+
+[sub_resource type="StyleBoxFlat" id="MapInset"]
+bg_color = Color(0.012, 0.019, 0.024, 0.86)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.22, 0.17, 0.14, 0.95)
+corner_detail = 1
+anti_aliasing = false
 
 [node name="ZoneSelect" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 theme = ExtResource("2_theme")
 texture_filter = 1
-script = ExtResource("1_zs")
+script = ExtResource("1_zone_select")
 
-[node name="ColorRect" type="ColorRect" parent="."]
+[node name="Backdrop" type="ColorRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0.08, 0.06, 0.04, 0.95)
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.012, 0.008, 0.012, 0.94)
+mouse_filter = 2
 
-[node name="Panel" type="Panel" parent="."]
+[node name="ExpeditionFrame" type="Panel" parent="."]
 layout_mode = 1
 anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 100.0
-offset_top = 50.0
-offset_right = -100.0
-offset_bottom = -50.0
-
-[node name="Title" type="Label" parent="Panel"]
-layout_mode = 1
-anchors_preset = 5
 anchor_left = 0.5
+anchor_top = 0.5
 anchor_right = 0.5
-offset_left = -300.0
-offset_top = 20.0
-offset_right = 300.0
-offset_bottom = 60.0
-horizontal_alignment = 1
-text = "Select Expedition Zone"
+anchor_bottom = 0.5
+offset_left = -880.0
+offset_top = -500.0
+offset_right = 880.0
+offset_bottom = 500.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("Frame")
 
-[node name="ScrollContainer" type="ScrollContainer" parent="Panel"]
+[node name="Title" type="Label" parent="ExpeditionFrame"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 32.0
+offset_top = 20.0
+offset_right = -32.0
+offset_bottom = 64.0
+grow_horizontal = 2
+theme_type_variation = &"ScreenTitle"
+text = "Select Expedition Zone"
+horizontal_alignment = 1
+
+[node name="HeaderRule" type="HSeparator" parent="ExpeditionFrame"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 32.0
+offset_top = 72.0
+offset_right = -32.0
+offset_bottom = 76.0
+grow_horizontal = 2
+
+[node name="MapFrame" type="Panel" parent="ExpeditionFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.51
+anchor_bottom = 1.0
+offset_left = 28.0
+offset_top = 96.0
+offset_right = -10.0
+offset_bottom = -102.0
+grow_vertical = 2
+theme_override_styles/panel = SubResource("MapFrame")
+
+[node name="MapInset" type="Panel" parent="ExpeditionFrame/MapFrame"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = 80.0
-offset_right = -20.0
-offset_bottom = -100.0
+offset_left = 14.0
+offset_top = 14.0
+offset_right = -14.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("MapInset")
 
-[node name="ZoneList" type="VBoxContainer" parent="Panel/ScrollContainer"]
+[node name="MapAspect" type="AspectRatioContainer" parent="ExpeditionFrame/MapFrame/MapInset"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+ratio = 1.0
+stretch_mode = 0
+alignment_horizontal = 1
+alignment_vertical = 1
+
+[node name="MapSurface" type="Control" parent="ExpeditionFrame/MapFrame/MapInset/MapAspect"]
 layout_mode = 2
-size_flags_horizontal = 3
+mouse_filter = 1
+texture_filter = 1
+
+[node name="ZoneMapTexture" type="TextureRect" parent="ExpeditionFrame/MapFrame/MapInset/MapAspect/MapSurface"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture_filter = 1
+texture = ExtResource("3_zone_map")
+expand_mode = 1
+stretch_mode = 5
+mouse_filter = 2
+
+[node name="ZoneHotspots" type="Control" parent="ExpeditionFrame/MapFrame/MapInset/MapAspect/MapSurface"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+texture_filter = 1
+
+[node name="ZoneDetails" type="PanelContainer" parent="ExpeditionFrame"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_left = 0.53
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 96.0
+offset_right = -28.0
+offset_bottom = -102.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("DetailsFrame")
+
+[node name="DetailsBox" type="VBoxContainer" parent="ExpeditionFrame/ZoneDetails"]
+layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="StartBtn" type="Button" parent="Panel"]
+[node name="DetailsEyebrow" type="Label" parent="ExpeditionFrame/ZoneDetails/DetailsBox"]
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "当前区域"
+
+[node name="ZoneAccent" type="ColorRect" parent="ExpeditionFrame/ZoneDetails/DetailsBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+color = Color(0.3, 0.25, 0.2, 1)
+mouse_filter = 2
+
+[node name="ZoneName" type="Label" parent="ExpeditionFrame/ZoneDetails/DetailsBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "幽暗地牢"
+vertical_alignment = 1
+
+[node name="DifficultyTitle" type="Label" parent="ExpeditionFrame/ZoneDetails/DetailsBox"]
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "危险等级"
+
+[node name="DifficultyLabel" type="Label" parent="ExpeditionFrame/ZoneDetails/DetailsBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+theme_override_font_sizes/font_size = 25
+text = "◆◇◇◇◇◇   1/6"
+
+[node name="DescriptionTitle" type="Label" parent="ExpeditionFrame/ZoneDetails/DetailsBox"]
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "区域情报"
+
+[node name="ZoneDescription" type="Label" parent="ExpeditionFrame/ZoneDetails/DetailsBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 21
+text = "初始区域。潮湿的石砌地牢，老鼠横行，适合新手熟悉战斗与采集。"
+autowrap_mode = 3
+vertical_alignment = 0
+
+[node name="DetailsRule" type="HSeparator" parent="ExpeditionFrame/ZoneDetails/DetailsBox"]
+layout_mode = 2
+
+[node name="DetailsHint" type="Label" parent="ExpeditionFrame/ZoneDetails/DetailsBox"]
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "点击地图上的区域标记预览目的地。"
+autowrap_mode = 3
+
+[node name="ActionBar" type="PanelContainer" parent="ExpeditionFrame"]
 layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_right = 0.5
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -100.0
-offset_top = -80.0
-offset_right = 100.0
-offset_bottom = -30.0
+offset_left = 28.0
+offset_top = -90.0
+offset_right = -28.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("ActionFrame")
+
+[node name="ActionRow" type="HBoxContainer" parent="ExpeditionFrame/ActionBar"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="SelectedCaption" type="Label" parent="ExpeditionFrame/ActionBar/ActionRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"MutedLabel"
+text = "当前候选"
+vertical_alignment = 1
+
+[node name="SelectedStatus" type="Label" parent="ExpeditionFrame/ActionBar/ActionRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "选择一个区域"
+vertical_alignment = 1
+
+[node name="BackBtn" type="Button" parent="ExpeditionFrame/ActionBar/ActionRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(148, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 21
+text = "Back"
+
+[node name="StartBtn" type="Button" parent="ExpeditionFrame/ActionBar/ActionRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(230, 52)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+theme_override_font_sizes/font_size = 23
 text = "Start Expedition"
 disabled = true
-
-[node name="BackBtn" type="Button" parent="Panel"]
-layout_mode = 1
-anchors_preset = 3
-anchor_left = 0.0
-anchor_top = 1.0
-anchor_right = 0.0
-anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = -80.0
-offset_right = 120.0
-offset_bottom = -30.0
-text = "Back"

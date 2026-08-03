@@ -4,7 +4,7 @@ extends GdUnitTestSuite
 ##
 ## 验证修复：
 ## 1. 所有敌人均创建 voxel_ragdoll（无论 skeleton_simulator 是否为 null）
-## 2. 死亡状态（DYING）优先走 voxel_ragdoll 碎裂路径，skeleton_simulator 仅作回退
+## 2. 死亡状态（DYING）只走 voxel_ragdoll 碎裂路径，不保留 skeleton_simulator 回退
 ## 3. 死亡完成状态（DEAD）优先走 voxel_ragdoll.freeze()
 ## 4. _death_ragdoll_active 标志阻止 LOD 系统在碎裂后重新显示原始网格
 ##
@@ -17,16 +17,12 @@ const EnemyStateDead := preload("res://scenes/characters/enemies/state/enemy_sta
 
 # ── 源码断言：死亡状态优先使用 voxel_ragdoll ─────────────────────────
 
-func test_dying_state_prefers_voxel_ragdoll_over_skeleton() -> void:
+func test_dying_state_uses_only_voxel_ragdoll() -> void:
 	var script := load("res://scenes/characters/enemies/state/enemy_state_dying.gd") as GDScript
 	var source := script.source_code
-	# voxel_ragdoll 分支应在 skeleton_simulator 分支之前（if/elif 顺序）
-	var voxel_pos := source.find("enemy.voxel_ragdoll != null")
-	var skel_pos := source.find("enemy.skeleton_simulator != null")
-	assert_int(voxel_pos).is_greater(-1)
-	assert_int(skel_pos).is_greater(-1)
-	# voxel_ragdoll 应在 skeleton_simulator 之前出现
-	assert_int(voxel_pos).is_less(skel_pos)
+	assert_bool(source.contains("enemy.voxel_ragdoll != null")).is_true()
+	assert_bool(source.contains("physical_bones_start_simulation")) \
+		.override_failure_message("敌人死亡不得重新创建或启动已废弃的骨骼刚体").is_false()
 
 
 func test_dying_state_sets_death_ragdoll_active() -> void:
@@ -43,25 +39,22 @@ func test_dying_state_calls_voxel_ragdoll_activate() -> void:
 		.override_failure_message("死亡状态应调用 voxel_ragdoll.activate()").is_true()
 
 
-func test_dying_state_still_has_skeleton_fallback() -> void:
-	var script := load("res://scenes/characters/enemies/state/enemy_state_dying.gd") as GDScript
-	var source := script.source_code
-	# skeleton_simulator 作为回退分支仍应存在
-	assert_bool(source.contains("physical_bones_start_simulation")) \
-		.override_failure_message("skeleton_simulator 回退分支仍应保留").is_true()
+func test_enemy_removes_unused_physical_bones_after_ready() -> void:
+	var source := (load("res://scenes/characters/enemies/enemy.gd") as GDScript).source_code
+	assert_bool(source.contains("_remove_unused_physical_bones()" )).is_true()
+	assert_bool(source.contains("obsolete_simulator.free()")) \
+		.override_failure_message("禁用不足以释放 Body/Joint RID，必须直接释放遗留模拟器树").is_true()
+	assert_bool(source.contains("skeleton_simulator = null")).is_true()
 
 
 # ── 源码断言：DEAD 状态优先使用 voxel_ragdoll.freeze() ────────────────
 
-func test_dead_state_prefers_voxel_ragdoll_freeze() -> void:
+func test_dead_state_freezes_only_voxel_ragdoll() -> void:
 	var script := load("res://scenes/characters/enemies/state/enemy_state_dead.gd") as GDScript
 	var source := script.source_code
-	var voxel_pos := source.find("enemy.voxel_ragdoll != null")
-	var skel_pos := source.find("enemy.skeleton_simulator != null")
-	assert_int(voxel_pos).is_greater(-1)
-	assert_int(skel_pos).is_greater(-1)
-	# voxel_ragdoll 应在 skeleton_simulator 之前
-	assert_int(voxel_pos).is_less(skel_pos)
+	assert_bool(source.contains("enemy.voxel_ragdoll.freeze()" )).is_true()
+	assert_bool(source.contains("PhysicsServer3D.body_set_state")) \
+		.override_failure_message("DEAD 状态不应再访问已释放的 PhysicalBone RID").is_false()
 
 
 # ── 源码断言：enemy.gd 始终创建 voxel_ragdoll ─────────────────────────

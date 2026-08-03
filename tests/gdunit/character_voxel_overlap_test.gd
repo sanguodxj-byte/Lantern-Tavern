@@ -9,14 +9,14 @@ const OUTPUT_CONSTANTS := ["STATIC_OUTPUT", "RIG_OUTPUT"]
 
 ## These original S assets remain visual references despite pre-guard topology.
 ## Never add a rebuilt A-D model here: newly accepted models must be overlap-free.
-const LEGACY_S_GEOMETRY_DEBT := ["orc_raider", "rock_golem"]
+const LEGACY_S_GEOMETRY_DEBT := ["rock_golem"]
 
 
 func test_legacy_geometry_debt_is_fixed_to_existing_accepted_s_models() -> void:
-	assert_array(LEGACY_S_GEOMETRY_DEBT).contains_exactly(["orc_raider", "rock_golem"])
+	assert_array(LEGACY_S_GEOMETRY_DEBT).contains_exactly(["rock_golem"])
 	for model_id in LEGACY_S_GEOMETRY_DEBT:
 		assert_bool(TIERS.is_accepted(model_id)).is_true()
-		assert_str(TIERS.tier_for(model_id)).is_equal(TIERS.A if model_id == "orc_raider" else TIERS.S)
+		assert_str(TIERS.tier_for(model_id)).is_equal(TIERS.S)
 
 
 func test_accepted_models_have_individual_generators_static_and_rig_outputs() -> void:

@@ -47,9 +47,8 @@ func _process_network_intents() -> void:
 		_network_primary_attack_held = true
 	elif _network_primary_attack_held and not player.is_weapon_action_held("action"):
 		if drv.has_method("send_attack"):
-			var atk_type := "ranged" if player.is_active_weapon_ranged() else "melee"
-			# target_hint=0：服务器依玩家朝向/射线重新判定目标（Phase 3 补全距离/视线校验）
-			drv.send_attack(0, atk_type)
+			# P0-2：客户端只提交意图（主手/满蓄力），攻击类型由服务器从权威 loadout 派生。
+			drv.send_attack(0)
 		_network_primary_attack_held = false
 	elif Input.is_action_just_pressed("block") and player.get_secondary_weapon_action_state() != -1:
 		if drv.has_method("send_block"):

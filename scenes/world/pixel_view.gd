@@ -6,6 +6,8 @@ extends SubViewportContainer
 
 const SHRINK := 4  # 1920/4 = 480，整数倍缩放避免像素抖动
 
+@export var filter_enabled: bool = false
+
 var _viewport: SubViewport
 var _camera: Camera3D
 var _main_3d_disabled := false
@@ -18,6 +20,10 @@ func _ready() -> void:
 	stretch_shrink = SHRINK
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if not filter_enabled:
+		visible = false
+		set_process(false)
+		return
 	_viewport = SubViewport.new()
 	_viewport.own_world_3d = false
 	_viewport.handle_input_locally = false

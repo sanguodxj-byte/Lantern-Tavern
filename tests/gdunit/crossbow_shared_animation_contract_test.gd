@@ -42,10 +42,11 @@ func test_crossbow_uses_distinct_first_and_third_person_clips() -> void:
 	assert_bool(view_model.animation_player.has_animation(&"vm_crossbow_reload")).is_true()
 	assert_str(source).contains("PLAYER_ANIMATION_PROFILE")
 	assert_str(source).contains('view_model_action(action)')
-	assert_str(source).contains('first_person_arm_animator.play_action(action)')
+	assert_str(source).contains('equipment_motion.add_recoil')
+	assert_str(source).not_contains('first_person_arm_animator')
 	assert_str(source).contains('_weapon_subviewport.own_world_3d = true')
 	assert_str(source).not_contains('_weapon_subviewport.world_3d = get_viewport().world_3d')
-	assert_str(source).contains('SHADING_MODE_UNSHADED')
+	assert_str(source).contains('SHADING_MODE_PER_PIXEL')
 
 
 func test_shooting_state_selects_crossbow_fire_instead_of_throw_weapon() -> void:

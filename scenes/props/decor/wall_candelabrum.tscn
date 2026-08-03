@@ -1,13 +1,7 @@
 [gd_scene load_steps=16 format=3]
 
-[sub_resource type="StandardMaterial3D" id="IronMat"]
-albedo_color = Color(0.055, 0.055, 0.052, 1)
-roughness = 0.82
-metallic = 0.7
-
-[sub_resource type="StandardMaterial3D" id="WaxMat"]
-albedo_color = Color(0.68, 0.58, 0.39, 1)
-roughness = 0.92
+[ext_resource type="Material" path="res://scenes/props/decor/dungeon_iron_atlas_mat.tres" id="1_iron"]
+[ext_resource type="Material" path="res://scenes/props/decor/dungeon_wax_atlas_mat.tres" id="2_wax"]
 
 [sub_resource type="Curve" id="Curve_flame_alpha"]
 _data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.18, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
@@ -79,22 +73,22 @@ metadata/voxel_px_per_meter = 32
 [node name="BackPlate" type="MeshInstance3D" parent="."]
 position = Vector3(0, 0.46875, 0.046875)
 mesh = SubResource("PlateMesh")
-surface_material_override/0 = SubResource("IronMat")
+surface_material_override/0 = ExtResource("1_iron")
 
 [node name="WallArm" type="MeshInstance3D" parent="."]
 position = Vector3(0, 0.40625, -0.203125)
 mesh = SubResource("ArmMesh")
-surface_material_override/0 = SubResource("IronMat")
+surface_material_override/0 = ExtResource("1_iron")
 
 [node name="CandleCup" type="MeshInstance3D" parent="."]
 position = Vector3(0, 0.53125, -0.4375)
 mesh = SubResource("CupMesh")
-surface_material_override/0 = SubResource("IronMat")
+surface_material_override/0 = ExtResource("1_iron")
 
 [node name="Candle" type="MeshInstance3D" parent="."]
 position = Vector3(0, 0.671875, -0.4375)
 mesh = SubResource("CandleMesh")
-surface_material_override/0 = SubResource("WaxMat")
+surface_material_override/0 = ExtResource("2_wax")
 
 [node name="FlameParticles" type="GPUParticles3D" parent="."]
 position = Vector3(0, 0.859375, -0.4375)

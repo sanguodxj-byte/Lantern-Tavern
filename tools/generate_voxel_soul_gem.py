@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,13 +34,49 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "faceted cyan soul crystal with dark socket and inner glow spit"
 
+# Pixel-art palette: deep cobalt fractures, pale ice highlights, white-hot core
+# specks. Each material picks its own seed/pattern; no shared identity table.
+_DEEP_BLUE = (0.10, 0.30, 0.62, 1.0)
+_ICE = (0.62, 0.86, 1.0, 1.0)
+_WHITE_HOT = (0.92, 0.98, 1.0, 1.0)
+
 def build_model():
-    core = make_material("sg_core", (0.35, 0.85, 1.0, 1.0), roughness=0.22, emission=1.8)
-    facet = make_material("sg_facet", (0.18, 0.55, 0.92, 1.0), roughness=0.28, emission=0.9)
-    deep = make_material("sg_deep", (0.08, 0.22, 0.55, 1.0), roughness=0.35, emission=0.35)
-    socket = make_material("sg_socket", (0.12, 0.10, 0.18, 1.0), roughness=0.75, metallic=0.15)
-    spit = make_material("sg_spit", (0.75, 0.95, 1.0, 1.0), roughness=0.18, emission=3.2)
-    edge = make_material("sg_edge", (0.45, 0.70, 1.0, 1.0), roughness=0.25, emission=1.4)
+    core = make_pixel_material(
+        "sg_core", (0.25, 0.62, 0.90, 1.0),
+        roughness=0.22, palette=(_DEEP_BLUE, _ICE, _WHITE_HOT),
+        pixel_size=48, variation=0.40, seed=11, pattern="cracks",
+        normal_strength=1.3, edge_darken=0.25, highlight=0.50, detail_noise=0.15,
+    )
+    facet = make_pixel_material(
+        "sg_facet", (0.16, 0.48, 0.85, 1.0),
+        roughness=0.25, palette=(_DEEP_BLUE, _ICE),
+        pixel_size=48, variation=0.38, seed=23, pattern="crystal",
+        normal_strength=1.2, edge_darken=0.22, highlight=0.45, detail_noise=0.15,
+    )
+    deep = make_pixel_material(
+        "sg_deep", (0.06, 0.18, 0.48, 1.0),
+        roughness=0.32, palette=(_DEEP_BLUE, _ICE),
+        pixel_size=48, variation=0.40, seed=37, pattern="cracks",
+        normal_strength=1.2, edge_darken=0.30, highlight=0.30, detail_noise=0.18,
+    )
+    socket = make_pixel_material(
+        "sg_socket", (0.10, 0.08, 0.15, 1.0),
+        roughness=0.65, metallic=0.30, palette=((0.04, 0.04, 0.06, 1.0), (0.18, 0.16, 0.22, 1.0), (0.35, 0.30, 0.40, 1.0)),
+        pixel_size=48, variation=0.36, seed=51, pattern="cracks",
+        normal_strength=1.5, edge_darken=0.45, highlight=0.20, detail_noise=0.18,
+    )
+    spit = make_pixel_material(
+        "sg_spit", (0.75, 0.95, 1.0, 1.0),
+        roughness=0.15, palette=(_WHITE_HOT, _ICE),
+        pixel_size=48, variation=0.38, seed=67, pattern="speckle",
+        normal_strength=0.9, edge_darken=0.15, highlight=0.80, detail_noise=0.10,
+    )
+    edge = make_pixel_material(
+        "sg_edge", (0.38, 0.62, 0.95, 1.0),
+        roughness=0.22, palette=(_ICE, _WHITE_HOT),
+        pixel_size=48, variation=0.38, seed=83, pattern="crystal",
+        normal_strength=1.2, edge_darken=0.20, highlight=0.55, detail_noise=0.15,
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
     def add(name, center, size, material):

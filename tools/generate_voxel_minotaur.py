@@ -19,7 +19,7 @@ import bpy
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
-from voxel_character_rig import build_all_actions, build_weapon_actions, export_glb as export_rig_glb
+from voxel_character_rig import HumanoidMotionProfile, build_all_actions, build_weapon_actions, export_glb as export_rig_glb
 from voxel_humanoid_rig import create_voxel_humanoid_armature, parent_parts_by_bone
 from voxel_model_primitives import (
     bounds_center_scale,
@@ -47,6 +47,19 @@ MIN_SOLID_ENVELOPE_RATIO = 0.14
 STATIC_OUTPUT = ROOT / "assets" / "meshes" / "characters" / "voxel_minotaur_72px.glb"
 RIG_OUTPUT = ROOT / "assets" / "meshes" / "characters" / "voxel_minotaur_72px_rig.glb"
 PREVIEW_DIR = ROOT / "reports" / "characters_preview"
+MOTION_PROFILE = HumanoidMotionProfile(
+    stride_scale=0.48,
+    arm_swing_scale=0.76,
+    weight_scale=1.28,
+    agility_scale=0.84,
+    torso_scale=0.80,
+    swing_lift_scale=2.30,
+    swing_foot_pitch_scale=0.0,
+    contact_lead_knee_scale=0.0,
+    contact_height_offset_m=0.024,
+    passing_height_offset_m=0.007,
+    death_height_offset_m=0.075,
+)
 
 
 @dataclass(frozen=True)
@@ -204,8 +217,8 @@ def _build_materials() -> dict[str, bpy.types.Material]:
         "moss_mid": make_material("Minotaur_Rockmoss_Mid", (0.125, 0.220, 0.115, 1.0)),
         "moss_high": make_material("Minotaur_Rockmoss_High", (0.260, 0.380, 0.170, 1.0)),
         "eye_deep": make_material("Minotaur_Eye_Deep", (0.040, 0.018, 0.012, 1.0)),
-        "eye_mid": make_material("Minotaur_Eye_Mid", (0.560, 0.105, 0.035, 1.0), emission=0.35),
-        "eye_high": make_material("Minotaur_Eye_High", (1.000, 0.580, 0.120, 1.0), emission=1.8),
+        "eye_mid": make_material("Minotaur_Eye_Mid", (0.560, 0.105, 0.035, 1.0)),
+        "eye_high": make_material("Minotaur_Eye_High", (1.000, 0.580, 0.120, 1.0)),
         "strap_deep_brown": make_material("Minotaur_Strapping_Deep", (0.075, 0.040, 0.028, 1.0)),
         "strap_mid_brown": make_material("Minotaur_Strapping_Mid", (0.185, 0.095, 0.055, 1.0)),
     }
@@ -331,8 +344,8 @@ def main() -> None:
     bpy.context.view_layer.update()
     armature = create_voxel_humanoid_armature(height_px=72.0, name="Armature")
     parent_parts_by_bone(parts_by_bone, armature)
-    build_all_actions(armature)
-    build_weapon_actions(armature)
+    build_all_actions(armature, MOTION_PROFILE)
+    build_weapon_actions(armature, MOTION_PROFILE)
     # The rig GLB must expose Armature as its sole top-level authored object.
     # Every mesh has already moved to a bone, so remove the static-only empty.
     bpy.data.objects.remove(root, do_unlink=True)

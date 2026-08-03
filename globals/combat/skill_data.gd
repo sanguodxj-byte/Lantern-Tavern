@@ -76,6 +76,20 @@ const SCHOOL_WEAPON_MEDIUM: Dictionary = {
 	School.UNARMED: "",  # 徒手：双手空置
 }
 
+# 武器熟练度按文档规定的武器类别共享，不按单双手/施法媒介拆分。
+const SCHOOL_PROFICIENCY_KEY: Dictionary = {
+	School.ONE_HAND_SWORD: "sword",
+	School.TWO_HAND_SWORD: "sword",
+	School.TWO_HAND_AXE: "axe",
+	School.WAR_HAMMER: "hammer",
+	School.SPEAR: "spear",
+	School.LONGBOW: "bow",
+	School.LIGHT_CROSSBOW: "crossbow",
+	School.ENCHANT_WAND: "staff",
+	School.GRIMOIRE: "grimoire",
+	School.UNARMED: "unarmed",
+}
+
 # 33 技能定义（ARPG 化字段）
 # 字段说明：
 #   id          技能 id（中文键，对齐策划案）

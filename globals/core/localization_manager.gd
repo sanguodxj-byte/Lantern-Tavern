@@ -94,6 +94,11 @@ func _parse_csv_line(line: String) -> PackedStringArray:
 		elif c == ',' and not in_quotes:
 			result.append(current.strip_edges())
 			current = ""
+		elif c == '\\' and i + 1 < line.length() and line[i + 1] == 'n':
+			# CSV stores multi-line keys/values as literal "\n"; code calls
+			# tr("...\n...") with a real newline, so unescape here.
+			current += "\n"
+			i += 1
 		else:
 			current += c
 		i += 1

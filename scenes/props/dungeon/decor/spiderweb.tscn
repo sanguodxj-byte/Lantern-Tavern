@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[node name="Spiderweb" type="Node3D"]
+metadata/dungeon_only = true
+
+[node name="Sprite3D" type="Sprite3D" parent="."]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 4.371139e-08, 1, -0.99999994)
+modulate = Color(0.78431374, 0.78431374, 0.78431374, 0.5176471)
+pixel_size = 0.064
+texture_filter = 0

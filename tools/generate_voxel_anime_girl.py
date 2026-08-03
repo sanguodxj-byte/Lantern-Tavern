@@ -107,7 +107,7 @@ def build_anime_girl() -> tuple[
     eye_wht   = make_material("eye_wht",   (0.97, 0.97, 1.00, 1.0), roughness=0.30)
     eye_iris  = make_material("eye_iris",  (0.18, 0.48, 0.96, 1.0), roughness=0.22)
     eye_pupil = make_material("eye_pupil", (0.05, 0.10, 0.35, 1.0), roughness=0.32)
-    eye_spark = make_material("eye_spark", (1.00, 1.00, 1.00, 1.0), emission=2.8, roughness=0.12)
+    eye_spark = make_material("eye_spark", (1.00, 1.00, 1.00, 1.0), roughness=0.12)
 
     # 水手服 5 级 (海军蓝)
     uni_xhi   = make_material("uni_xhi",   (0.30, 0.42, 0.64, 1.0), roughness=0.70)

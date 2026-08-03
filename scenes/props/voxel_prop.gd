@@ -9,6 +9,10 @@ const PROP_SHADER := preload("res://assets/shaders/dungeon_terrain.gdshader")
 const VOXEL_LIGHTING := preload("res://globals/visual/voxel_lighting_adapter.gd")
 const Service := preload("res://globals/core/service.gd")
 const PROP_ATLAS_GRID := Vector2(8, 4)
+const DUNGEON_TORCH_ENERGY := 1.15
+const DUNGEON_TORCH_RANGE := 6.0
+const DUNGEON_TORCH_ATTENUATION := 1.35
+const DUNGEON_TORCH_COLOR := Color(1.0, 0.82, 0.64, 1.0)
 const PROP_TILE_LAYOUT := {
 	"wood_mid": Vector2(0, 0),
 	"wood_dark": Vector2(1, 0),
@@ -43,6 +47,7 @@ const PROP_TILE_LAYOUT := {
 			rebuild()
 
 var _iron_mat: ShaderMaterial
+var _cauldron_iron_mat: ShaderMaterial
 var _wood_mat: ShaderMaterial
 var _wood_dark_mat: ShaderMaterial
 var _wax_mat: ShaderMaterial
@@ -108,9 +113,14 @@ func rebuild() -> void:
 					copy.set_meta("voxel_generated", true)
 					add_child(copy)
 				inst.free()
-			# 烘焙资产中的火把光源是地牢默认值（energy=3.4/range=11.0）。
+			# 烘焙资产中的火把光源使用地牢局部光池参数。
 			# 若本道具处于酒馆场景中，需在此收束为酒馆值，使实机与编辑器一致。
 			_apply_context_lighting_to_children()
+			# 烘焙 .tscn 内嵌的 ShaderMaterial 引用 dungeon_terrain.gdshader，
+			# 其 pixel_lighting_enabled 默认值为 1.0（toon 光照）。
+			# 若不调用 apply_to_tree，这些材质永远不会被同步为 0.0，
+			# 导致全局像素着色开关关闭后烘焙道具仍显示 toon 光照。
+			VOXEL_LIGHTING.apply_to_tree(self, true)
 			return # 成功载入资产，直接跳过全套代码拼合计算！
 
 	_ensure_materials()
@@ -151,6 +161,8 @@ func rebuild() -> void:
 			_build_crate(Vector3i(35, 34, 35))
 		"barrel":
 			_build_barrel()
+		"brew_cauldron":
+			_build_brew_cauldron()
 		"chest":
 			_build_chest()
 		"large_chest", "boss_chest":
@@ -167,6 +179,14 @@ func rebuild() -> void:
 			_build_plank()
 		"ruble", "rubble":
 			_build_rubble()
+		"stalagmite_cluster":
+			_build_stalagmite_cluster()
+		"sarcophagus":
+			_build_sarcophagus()
+		"wall_chain":
+			_build_wall_chain()
+		"fungus_patch":
+			_build_fungus_patch()
 		"weapon_rack":
 			_build_weapon_rack()
 		_:
@@ -189,6 +209,9 @@ func _ensure_materials() -> void:
 	_wood_mat = _make_prop_mat("wood_mid", 0.82, 0.15)
 	_wood_dark_mat = _make_prop_mat("wood_dark", 0.88, 0.1)
 	_iron_mat = _make_prop_mat("black_iron", 0.76, 0.35)
+	# 炼药锅专用铁材质：降低粗糙度、提高镜面，让圆肚锅体在暖光下呈现
+	# 明确的高光/中间调色阶（视觉质检 P0：与 barrel 木面色阶对齐）
+	_cauldron_iron_mat = _make_prop_mat("black_iron", 0.45, 0.65)
 	_wax_mat = _make_prop_mat("wax", 0.92, 0.08)
 	_bone_mat = _make_prop_mat("bone", 0.9, 0.08)
 	_stone_mat = _make_prop_mat("cut_stone", 0.95, 0.12)
@@ -221,6 +244,9 @@ func _make_prop_mat(tile_name: String, roughness: float, specular: float) -> Sha
 	mat.set_shader_parameter("tile_repeat", Vector2(1, 1))
 	mat.set_shader_parameter("roughness", roughness)
 	mat.set_shader_parameter("specular", specular)
+	mat.set_shader_parameter("world_aligned_uv_enabled", 1.0)
+	mat.set_shader_parameter("meters_per_tile", 0.5)
+	mat.set_shader_parameter("voxel_base_fill", 0.12)
 	VOXEL_LIGHTING.apply_shader_profile(mat, VOXEL_LIGHTING.PROP_SHADER_PROFILE)
 	return mat
 
@@ -355,6 +381,8 @@ func collect_box_bounds() -> Array[Dictionary]:
 			_build_crate(Vector3i(35, 34, 35))
 		"barrel":
 			_build_barrel()
+		"brew_cauldron":
+			_build_brew_cauldron()
 		"chest":
 			_build_chest()
 		"large_chest", "boss_chest":
@@ -371,6 +399,14 @@ func collect_box_bounds() -> Array[Dictionary]:
 			_build_plank()
 		"ruble", "rubble":
 			_build_rubble()
+		"stalagmite_cluster":
+			_build_stalagmite_cluster()
+		"sarcophagus":
+			_build_sarcophagus()
+		"wall_chain":
+			_build_wall_chain()
+		"fungus_patch":
+			_build_fungus_patch()
 		"weapon_rack":
 			_build_weapon_rack()
 		_:
@@ -398,7 +434,7 @@ func _light(name: String, center_px: Vector3, energy: float, radius_m: float) ->
 	var light := OmniLight3D.new()
 	light.name = name
 	light.position = center_px * VOXEL_UNIT
-	light.light_color = Color(1.0, 0.58, 0.25)
+	light.light_color = DUNGEON_TORCH_COLOR
 	light.light_energy = energy
 	VOXEL_LIGHTING.disable_light_specular(light)
 	light.light_size = 0.08
@@ -634,6 +670,54 @@ func _barrel_slice(name: String, x_range: Vector2i, y_range: Vector2i, depth_px:
 	_box(name, size_px, center_px, material)
 
 
+## 中世纪炼药锅（prop_kind="brew_cauldron"）：三足空心圆肚铁锅 + 铁箍束腹，锅口敞开。
+## 像素尺寸表（1px = 1/32m，壁厚 T=3）：
+##   石垫 ×3    6×2×6     y[0,2]    (±9,5) / (0,-9)
+##   三足 ×3    4×11×4    y[2,13]   (±9,5) / (0,-9)
+##   锅底(实心) 24×3×18   y[13,16]  x[-12,12]  z[-9,9]
+##   下腹圈     30×4×22   y[16,20]  前/后 30 宽、左/右 22 深
+##   铁箍下圈   30×3×22   y[20,23]
+##   中腹圈     36×5×28   y[23,28]  ← 最宽圆肚
+##   铁箍上圈   34×3×26   y[28,31]
+##   上腹圈     30×4×24   y[31,35]  ← 上收
+##   锅沿圈     32×3×26   y[35,38]  空心锅口
+##   耳环 ×2    3×4×8     y[31,35]  x=±[15,18] z[-4,4]
+## 每层为 前/后(全宽×T) + 左/右(T×全深) 四面墙的开口方框，层间 Y 面接触；
+## 无正体积重叠；火焰/蒸汽为运行时动态粒子。
+func _build_brew_cauldron() -> void:
+	# 三块小石垫（低矮开放式支撑，中央留空给火焰）
+	_box("CauldronStonePadFrontLeft", Vector3i(6, 2, 6), Vector3(-9, 1, 5), _stone_mat)
+	_box("CauldronStonePadFrontRight", Vector3i(6, 2, 6), Vector3(9, 1, 5), _stone_mat)
+	_box("CauldronStonePadBack", Vector3i(6, 2, 6), Vector3(0, 1, -9), _stone_mat)
+	# 三足鼎立：细铁足立于石垫上
+	_box("CauldronLegFrontLeft", Vector3i(4, 11, 4), Vector3(-9, 7.5, 5), _iron_mat)
+	_box("CauldronLegFrontRight", Vector3i(4, 11, 4), Vector3(9, 7.5, 5), _iron_mat)
+	_box("CauldronLegBack", Vector3i(4, 11, 4), Vector3(0, 7.5, -9), _iron_mat)
+	# 实心锅底（锅腔地板）
+	_box("CauldronBodyBottom", Vector3i(24, 3, 18), Vector3(0, 14.5, 0), _cauldron_iron_mat)
+	# 空心圆肚：每层四面墙开口方框（下窄→中鼓→上收→锅沿），铁箍层用深色铁
+	_cauldron_frame("CauldronLowerBelly", 30, 22, 4, 18.0, _cauldron_iron_mat)
+	_cauldron_frame("CauldronBandLow", 30, 22, 3, 21.5, _iron_mat)
+	_cauldron_frame("CauldronMidBelly", 36, 28, 5, 25.5, _cauldron_iron_mat)
+	_cauldron_frame("CauldronBandMid", 34, 26, 3, 29.5, _iron_mat)
+	_cauldron_frame("CauldronUpperBelly", 30, 24, 4, 33.0, _cauldron_iron_mat)
+	_cauldron_frame("CauldronRim", 32, 26, 3, 36.5, _cauldron_iron_mat)
+	# 侧耳环：贴锅沿下方外侧（外贴公式：host_half + plate_half）
+	_box("CauldronEarLeft", Vector3i(3, 4, 8), Vector3(16.5, 33, 0), _cauldron_iron_mat)
+	_box("CauldronEarRight", Vector3i(3, 4, 8), Vector3(-16.5, 33, 0), _cauldron_iron_mat)
+
+
+## 空心方框层：前/后墙（宽-2T，T=5，嵌于左右墙之间）与左/右墙（T × 全深）。
+## 相邻层侧墙在 X 向正重叠（跨层连接），层间 Y 面接触；同层四面角部面接触。
+func _cauldron_frame(prefix: String, width: int, depth: int, height: int, center_y: float, material: Material) -> void:
+	var half_w := float(width) * 0.5
+	var half_d := float(depth) * 0.5
+	_box("%sFront" % prefix, Vector3i(width - 10, height, 3), Vector3(0, center_y, half_d - 1.5), material)
+	_box("%sBack" % prefix, Vector3i(width - 10, height, 3), Vector3(0, center_y, -half_d + 1.5), material)
+	_box("%sLeft" % prefix, Vector3i(5, height, depth), Vector3(-half_w + 2.5, center_y, 0), material)
+	_box("%sRight" % prefix, Vector3i(5, height, depth), Vector3(half_w - 2.5, center_y, 0), material)
+
+
 func _build_chest() -> void:
 	_box("ChestBase", Vector3i(33, 17, 23), Vector3(0, 8.5, 0), _wood_mat)
 	_box("ChestLid", Vector3i(35, 9, 25), Vector3(0, 21.5, 0), _wood_dark_mat)
@@ -698,15 +782,15 @@ func _build_torch() -> void:
 		_box("IronHandleBandRight_%d" % y, Vector3i(1, 1, 3), Vector3(2, y, -8), _iron_mat)
 	_box("CupBase", Vector3i(5, 1, 3), Vector3(0, 38.5, -8), _iron_mat)
 	_box("CupLip", Vector3i(7, 1, 5), Vector3(0, 39.5, -8), _iron_mat)
-	var light := _light("OmniLight3D", Vector3(0, 41, -8), 3.4, 11.0)
+	var light := _light("OmniLight3D", Vector3(0, 41, -8), DUNGEON_TORCH_ENERGY, DUNGEON_TORCH_RANGE)
 	if light == null:
 		return
-	light.omni_attenuation = 0.65
+	light.omni_attenuation = DUNGEON_TORCH_ATTENUATION
 	light.distance_fade_enabled = true
 	light.distance_fade_begin = 24.0
 	light.distance_fade_length = 10.0
 	# 标记为由 LightingController 管理的火光（闪烁 + 酒馆档案收束范围）。
-	# 范围/亮度仍保持地牢可见性约束（range>=10 / energy>=3.2），不做全局改动。
+	# 地牢火把只形成局部光池，基础可见性由冷中性环境光与玩家短距补光共同承担。
 	light.add_to_group("flicker_light")
 	light.set_meta("light_role", "torch")
 	# 实时阴影：地牢/酒馆点光源此前 shadow_enabled=false，光以球状影响范围无视墙体几何，
@@ -749,7 +833,7 @@ func _sync_torch_visual_to_light(light: Light3D) -> void:
 
 
 # ── 场景上下文光照（WYSIWYG：编辑器预览 = 运行时实机） ──────────
-# 问题：baked_torch.tscn 和 _build_torch() 都用地牢默认值（energy=3.4/range=11.0），
+# 问题：baked_torch.tscn 和 _build_torch() 使用地牢局部光池参数，
 #   而 LightingController.apply_tavern_profile 只在运行时覆盖为酒馆值，
 #   导致编辑器看到的亮度远大于实机。
 # 解决：在光源创建/加载时即根据所在场景上下文应用正确值——
@@ -849,6 +933,52 @@ func _build_rubble() -> void:
 	_box("StoneA", Vector3i(9, 5, 7), Vector3(-7, 3.5, 4), _bone_mat)
 	_box("StoneB", Vector3i(7, 4, 9), Vector3(4, 3, -3), _bone_mat)
 	_box("StoneC", Vector3i(5, 3, 5), Vector3(11, 2.5, 7), _bone_mat)
+
+
+func _build_stalagmite_cluster() -> void:
+	# 不规则石笋群：底座与每根石笋只做 Y 面接触，避免交叉穿插。
+	_box("StalagmiteBase", Vector3i(47, 3, 39), Vector3(0, 1.5, 0), _stone_mat)
+	_box("StalagmiteA", Vector3i(13, 14, 13), Vector3(-10, 10, 0), _stone_mat)
+	_box("StalagmiteACrown", Vector3i(7, 7, 7), Vector3(-10, 20.5, 0), _bone_mat)
+	_box("StalagmiteATip", Vector3i(5, 5, 5), Vector3(-10, 26.5, 0), _bone_mat)
+	_box("StalagmiteB", Vector3i(11, 9, 11), Vector3(4, 7.5, -5), _stone_mat)
+	_box("StalagmiteBCrown", Vector3i(5, 5, 5), Vector3(4, 14.5, -5), _bone_mat)
+	_box("StalagmiteC", Vector3i(7, 5, 7), Vector3(11, 5.5, 7), _bone_mat)
+
+
+func _build_sarcophagus() -> void:
+	# 石棺采用底座 → 棺身 → 棺盖的面接触堆叠；铁饰全部贴在外表面。
+	_box("SarcophagusPlinth", Vector3i(55, 5, 37), Vector3(0, 2.5, 0), _stone_mat)
+	_box("SarcophagusBody", Vector3i(49, 18, 31), Vector3(0, 14, 0), _stone_mat)
+	_box("SarcophagusLid", Vector3i(53, 4, 35), Vector3(0, 25, 0), _stone_mat)
+	_box("SarcophagusCrown", Vector3i(39, 3, 27), Vector3(0, 28.5, 0), _bone_mat)
+	_box("SarcophagusIronLeft", Vector3i(3, 18, 27), Vector3(-26, 14, 0), _iron_mat)
+	_box("SarcophagusIronRight", Vector3i(3, 18, 27), Vector3(26, 14, 0), _iron_mat)
+	_box("SarcophagusIronFront", Vector3i(43, 3, 3), Vector3(0, 13.5, 17), _iron_mat)
+	_box("SarcophagusIronBack", Vector3i(43, 3, 3), Vector3(0, 13.5, -17), _iron_mat)
+	# 封印贴在棺身前表面，不穿入石材。
+	_box("SarcophagusSeal", Vector3i(7, 5, 1), Vector3(0, 18.5, 16), _cloth_mat)
+
+
+func _build_wall_chain() -> void:
+	# 墙挂铁链的根部在 +Z 侧；摆放器会按墙向旋转整个场景。
+	_box("ChainWallPlate", Vector3i(17, 23, 3), Vector3(0, 14.5, 1.5), _iron_mat)
+	_box("ChainPlateCap", Vector3i(21, 3, 3), Vector3(0, 27.5, 1.5), _iron_mat)
+	_box("ChainUpper", Vector3i(3, 7, 3), Vector3(0, 22.5, -1.5), _iron_mat)
+	_box("ChainMiddle", Vector3i(3, 7, 3), Vector3(0, 15.5, -1.5), _iron_mat)
+	_box("ChainLower", Vector3i(3, 7, 3), Vector3(0, 8.5, -1.5), _iron_mat)
+	_box("ChainHook", Vector3i(7, 3, 3), Vector3(0, 3.5, -1.5), _iron_mat)
+
+
+func _build_fungus_patch() -> void:
+	# 菌簇是贴地的非阻挡装饰；菌柄/菌盖均从石质底座面接触生长。
+	_box("FungusBase", Vector3i(25, 1, 19), Vector3(0, 0.5, 0), _stone_mat)
+	_box("FungusStemA", Vector3i(3, 7, 3), Vector3(-7, 4.5, 0), _bone_mat)
+	_box("FungusCapA", Vector3i(7, 2, 7), Vector3(-7, 9.0, 0), _cloth_mat)
+	_box("FungusStemB", Vector3i(3, 5, 3), Vector3(0, 3.5, -5), _bone_mat)
+	_box("FungusCapB", Vector3i(7, 2, 7), Vector3(0, 7.5, -5), _cloth_mat)
+	_box("FungusStemC", Vector3i(3, 9, 3), Vector3(7, 5.5, 5), _bone_mat)
+	_box("FungusCapC", Vector3i(7, 2, 7), Vector3(7, 11.5, 5), _cloth_mat)
 
 
 func _build_crate_like() -> void:
@@ -1023,8 +1153,11 @@ func _spawn_weapons_on_rack() -> void:
 		_fix_weapon_materials(inst)
 
 ## 交互触发：像宝箱一样打开存取面板
+func can_interact() -> bool:
+	return prop_kind == "weapon_rack"
+
 func interact(_source_player: Node = null) -> void:
-	if prop_kind != "weapon_rack":
+	if not can_interact():
 		return
 	# 确保已就绪并初始化
 	var tree := Engine.get_main_loop() as SceneTree

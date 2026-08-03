@@ -110,7 +110,6 @@ def build_staff() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
             "l": (0.48, 1.00, 0.88, 1.0),
         },
         roughness=0.22,
-        emission=1.8,
     )
     crystal_high = make_pixel_material(
         "staff_magic_crown_facets",
@@ -131,7 +130,6 @@ def build_staff() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
             "l": (0.70, 1.00, 0.92, 1.0),
         },
         roughness=0.18,
-        emission=2.4,
     )
 
     root = make_root("weapons_voxel_staff")

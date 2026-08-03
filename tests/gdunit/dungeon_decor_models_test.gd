@@ -1,11 +1,16 @@
 extends GdUnitTestSuite
 
 const DECOR_SCENES := [
-	"res://scenes/props/decor/floor_candelabrum.tscn",
-	"res://scenes/props/decor/wall_candelabrum.tscn",
-	"res://scenes/props/decor/iron_bar_grate.tscn",
+	"res://scenes/props/dungeon/decor/floor_candelabrum.tscn",
+	"res://scenes/props/dungeon/decor/wall_candelabrum.tscn",
+	"res://scenes/props/dungeon/decor/iron_bar_grate.tscn",
+	"res://scenes/props/dungeon/decor/stalagmite_cluster.tscn",
+	"res://scenes/props/dungeon/decor/sarcophagus.tscn",
+	"res://scenes/props/dungeon/decor/wall_chain.tscn",
+	"res://scenes/props/dungeon/decor/fungus_patch.tscn",
 ]
 const CONFIG_PATH := "res://data/item_placement_config.json"
+const MATERIAL_CAPTURE_SCENE := "res://tools/dungeon_decor_material_capture.tscn"
 
 
 func test_new_dungeon_decor_scenes_are_modeled_scene_objects() -> void:
@@ -15,8 +20,16 @@ func test_new_dungeon_decor_scenes_are_modeled_scene_objects() -> void:
 			.override_failure_message("缺少地牢装饰场景: %s" % scene_path) \
 			.is_not_null()
 		var inst := packed.instantiate()
+		add_child(inst)
+		await await_idle_frame()
+		if inst.has_method("rebuild"):
+			inst.rebuild()
 		assert_bool(inst is Node3D).is_true()
-		assert_int(_count_nodes_of_type(inst, "MeshInstance3D")) \
+		var modeled_count := _count_nodes_of_type(inst, "MeshInstance3D")
+		if inst.has_method("collect_box_bounds"):
+			modeled_count = inst.collect_box_bounds().size()
+			inst.rebuild()
+		assert_int(modeled_count) \
 			.override_failure_message("%s 必须由多个体素 mesh 组成，而不是空节点" % scene_path) \
 			.is_greater_equal(4)
 		assert_int(int(inst.get_meta("voxel_unit_px", 0))) \
@@ -36,27 +49,110 @@ func test_new_dungeon_decor_scenes_are_modeled_scene_objects() -> void:
 			.is_equal("terrain_feature")
 		inst.free()
 
+func test_dungeon_decor_meshes_use_textured_atlas_materials() -> void:
+	for scene_path in DECOR_SCENES:
+		var inst := (load(scene_path) as PackedScene).instantiate()
+		add_child(inst)
+		await await_idle_frame()
+		if inst.has_method("rebuild"):
+			inst.rebuild()
+		for mesh_instance in _collect_meshes(inst):
+			var material := mesh_instance.material_override as ShaderMaterial
+			if material == null:
+				material = mesh_instance.get_surface_override_material(0) as ShaderMaterial
+			assert_object(material) \
+				.override_failure_message("%s/%s 不能使用纯色实体材质" % [scene_path, mesh_instance.name]) \
+				.is_not_null()
+			assert_object(material.get_shader_parameter("atlas")) \
+				.override_failure_message("%s/%s 必须绑定像素图集" % [scene_path, mesh_instance.name]) \
+				.is_not_null()
+			assert_float(material.get_shader_parameter("world_aligned_uv_enabled")) \
+				.override_failure_message("%s/%s 必须按世界米制采样，避免细柱纹理拉伸" % [scene_path, mesh_instance.name]) \
+				.is_equal(1.0)
+		inst.free()
+
+func test_dungeon_decor_material_resources_are_shader_backed() -> void:
+	for path in [
+		"res://scenes/props/dungeon/decor/dungeon_iron_atlas_mat.tres",
+		"res://scenes/props/dungeon/decor/dungeon_wax_atlas_mat.tres",
+	]:
+		var material := load(path) as ShaderMaterial
+		assert_object(material).is_not_null()
+		assert_object(material.get_shader_parameter("atlas")).is_not_null()
+		assert_float(material.get_shader_parameter("specular")).is_equal_approx(0.0, 0.001)
+
+func test_voxel_prop_material_factory_uses_world_aligned_atlas_sampling() -> void:
+	var prop := VoxelProp.new()
+	var material := prop._make_prop_mat("wood_mid", 0.9, 0.0)
+	assert_object(material.get_shader_parameter("atlas")).is_not_null()
+	assert_float(material.get_shader_parameter("world_aligned_uv_enabled")).is_equal(1.0)
+	assert_float(material.get_shader_parameter("meters_per_tile")).is_equal_approx(0.5, 0.001)
+	prop.free()
+
+func test_decor_material_capture_uses_the_three_production_scenes() -> void:
+	assert_object(load(MATERIAL_CAPTURE_SCENE) as PackedScene).is_not_null()
+	var source := FileAccess.get_file_as_string("res://tools/dungeon_decor_material_capture.gd")
+	for scene_path in DECOR_SCENES:
+		assert_str(source).contains(scene_path)
+	assert_str(source).contains("make_terrain_mat(\"BARONY_FLOOR\"")
+
+func test_three_view_capture_allowlists_each_changed_decor_asset() -> void:
+	var source := FileAccess.get_file_as_string("res://tools/voxel_prop_three_view_capture.gd")
+	for asset_id in ["floor_candelabrum", "wall_candelabrum", "iron_bar_grate", "stalagmite_cluster", "sarcophagus", "wall_chain", "fungus_patch"]:
+		assert_str(source).contains("\"%s\"" % asset_id)
+
+
+func test_three_view_capture_uses_source_voxel_boxes_before_merged_mesh_aabb() -> void:
+	var source := FileAccess.get_file_as_string("res://tools/voxel_prop_three_view_capture.gd")
+	assert_str(source).contains("collect_box_bounds")
+	assert_str(source).contains("source_boxes")
+
 
 func test_new_dungeon_decor_uses_one_pixel_voxel_boxes() -> void:
 	for scene_path in DECOR_SCENES:
 		var inst := (load(scene_path) as PackedScene).instantiate()
-		for mesh_instance in _collect_meshes(inst):
-			var box := mesh_instance.mesh as BoxMesh
-			assert_object(box) \
-				.override_failure_message("%s/%s 必须使用 BoxMesh 体素块，不能再用圆柱/球体自由几何" % [scene_path, mesh_instance.name]) \
-				.is_not_null()
-			assert_bool(_is_voxel_size(box.size.x)).is_true()
-			assert_bool(_is_voxel_size(box.size.y)).is_true()
-			assert_bool(_is_voxel_size(box.size.z)).is_true()
-			assert_bool(_is_half_voxel_position(mesh_instance.position.x)).is_true()
-			assert_bool(_is_half_voxel_position(mesh_instance.position.y)).is_true()
-			assert_bool(_is_half_voxel_position(mesh_instance.position.z)).is_true()
+		add_child(inst)
+		await await_idle_frame()
+		if inst.has_method("collect_box_bounds"):
+			# VoxelProp 合并后运行时网格是 ArrayMesh；用源体素盒验证尺寸，
+			# 避免把按材质合并的 AABB 误当成单个自由几何体。
+			var bounds: Array = inst.collect_box_bounds()
+			assert_int(bounds.size()).is_greater_equal(4)
+			for source_box in bounds:
+				var min_v: Vector3 = source_box["min"]
+				var max_v: Vector3 = source_box["max"]
+				var size := max_v - min_v
+				var center := (min_v + max_v) * 0.5
+				assert_bool(_is_voxel_size(size.x)).is_true()
+				assert_bool(_is_voxel_size(size.y)).is_true()
+				assert_bool(_is_voxel_size(size.z)).is_true()
+				assert_bool(_is_half_voxel_position(center.x)).is_true()
+				assert_bool(_is_half_voxel_position(center.y)).is_true()
+				assert_bool(_is_half_voxel_position(center.z)).is_true()
+			if inst.has_method("rebuild"):
+				inst.rebuild()
+		else:
+			for mesh_instance in _collect_meshes(inst):
+				var box := mesh_instance.mesh as BoxMesh
+				assert_object(box) \
+					.override_failure_message("%s/%s 必须使用 BoxMesh 体素块，不能再用圆柱/球体自由几何" % [scene_path, mesh_instance.name]) \
+					.is_not_null()
+				assert_bool(_is_voxel_size(box.size.x)).is_true()
+				assert_bool(_is_voxel_size(box.size.y)).is_true()
+				assert_bool(_is_voxel_size(box.size.z)).is_true()
+				assert_bool(_is_half_voxel_position(mesh_instance.position.x)).is_true()
+				assert_bool(_is_half_voxel_position(mesh_instance.position.y)).is_true()
+				assert_bool(_is_half_voxel_position(mesh_instance.position.z)).is_true()
 		inst.free()
 
 
 func test_small_voxel_decor_details_use_odd_widths_for_center_lines() -> void:
 	for scene_path in DECOR_SCENES:
 		var inst := (load(scene_path) as PackedScene).instantiate()
+		add_child(inst)
+		await await_idle_frame()
+		if inst.has_method("rebuild"):
+			inst.rebuild()
 		for mesh_instance in _collect_meshes(inst):
 			var node_name := String(mesh_instance.name)
 			if not _is_small_centered_detail(node_name):
@@ -74,8 +170,8 @@ func test_small_voxel_decor_details_use_odd_widths_for_center_lines() -> void:
 
 func test_candelabrum_decor_has_warm_light_and_dynamic_flame_particles() -> void:
 	for scene_path in [
-		"res://scenes/props/decor/floor_candelabrum.tscn",
-		"res://scenes/props/decor/wall_candelabrum.tscn",
+		"res://scenes/props/dungeon/decor/floor_candelabrum.tscn",
+		"res://scenes/props/dungeon/decor/wall_candelabrum.tscn",
 	]:
 		var inst := (load(scene_path) as PackedScene).instantiate()
 		assert_int(_count_nodes_of_type(inst, "OmniLight3D")) \
@@ -92,7 +188,7 @@ func test_candelabrum_decor_has_warm_light_and_dynamic_flame_particles() -> void
 
 
 func test_iron_bar_grate_reads_as_barred_iron_not_solid_wall() -> void:
-	var inst := (load("res://scenes/props/decor/iron_bar_grate.tscn") as PackedScene).instantiate()
+	var inst := (load("res://scenes/props/dungeon/decor/iron_bar_grate.tscn") as PackedScene).instantiate()
 	var vertical_bars := 0
 	var crossbars := 0
 	for node in _collect_meshes(inst):
@@ -169,7 +265,7 @@ func _voxel_count(value: float) -> int:
 
 
 func _is_small_centered_detail(node_name: String) -> bool:
-	for marker in ["Bar", "Stem", "Arm", "Candle", "Flame"]:
+	for marker in ["Bar", "Stem", "Arm", "Candle", "Flame", "Stalagmite", "Sarcophagus", "Chain", "Fungus", "Cap", "Seal"]:
 		if node_name.contains(marker):
 			return true
 	return false

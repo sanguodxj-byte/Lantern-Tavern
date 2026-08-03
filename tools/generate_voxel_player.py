@@ -228,12 +228,13 @@ def _assert_authored_envelope(parts: list[bpy.types.Object]) -> None:
 
 
 def build_player_crossbow_actions(armature) -> None:
-    """Author the player's FPS-like crossbow flow on the shared character rig.
+    """Author the player's third-person crossbow flow on the character rig.
 
-    These clips are deliberately player-only.  Crossbow handling is a held
+    These clips are deliberately player-only third-person actions. Crossbow handling is a held
     forward aim pose, a short shoulder recoil, and a full two-hand reload;
-    it must never reuse the one-hand throw animation.  The weapon stays on
-    Hand.R, so first- and third-person cameras observe the same pose.
+    it must never reuse the one-hand throw animation. The weapon stays on
+    Hand.R for the world-model socket. The local first-person ViewModel is a
+    separate weapon-only visual and does not consume these character bones.
     """
     # Right mouse aim: both hands close around a forward-facing crossbow.
     # This is a stable pose, not a charge animation; the crossbow is ready
@@ -242,8 +243,8 @@ def build_player_crossbow_actions(armature) -> None:
         "UpperArm.R": {"rot": (-30, 0, 25)},
         "LowerArm.R": {"rot": (-40, 0, 0)},
         # Keep the rear grip aligned with the generic held-weapon socket. The
-        # arm is raised for first person, but the hand itself must not roll the
-        # crossbow into a diagonal silhouette.
+        # arm is raised for the third-person silhouette, but the hand itself
+        # must not roll the crossbow into a diagonal silhouette.
         "Hand.R": {"rot": (0, -20, 20)},
         "UpperArm.L": {"rot": (-48, 8, -20)},
         "LowerArm.L": {"rot": (-58, 0, 0)},
@@ -254,11 +255,11 @@ def build_player_crossbow_actions(armature) -> None:
 
     # Left click fire: keep the aim silhouette, kick both shoulders and the
     # torso for a few frames, then settle back.  There is no release/throw
-    # pose and no large arm arc, matching a compact FPS crossbow.
+    # pose and no large arm arc, preserving a compact third-person silhouette.
     fire_recoil = {
         # The right hand is the weapon socket. Keep it locked to the aim grip;
         # recoil is carried by the shoulder and torso so the crossbow does not
-        # orbit out of the FPS frame.
+        # orbit out of its stable world-model silhouette.
         "UpperArm.R": {"rot": (-30, 0, 25)},
         "LowerArm.R": {"rot": (-40, 0, 0)},
         "Hand.R": {"rot": (0, -20, 20)},
@@ -282,7 +283,7 @@ def build_player_crossbow_actions(armature) -> None:
     reload_low = {
         # Keep the firing hand and torso planted. The left hand performs the
         # visible reload work around the receiver instead of dragging the
-        # weapon socket through the camera.
+        # weapon socket through the body silhouette.
         "UpperArm.R": {"rot": (-30, 0, 25)},
         "LowerArm.R": {"rot": (-40, 0, 0)},
         "Hand.R": {"rot": (0, -20, 20)},

@@ -58,3 +58,12 @@ reports/
 .sandbox_appdata/
 .sandbox_home/
 Godot/
+
+# Agent runtime caches / temp artifacts
+.omo/
+.tmp_*
+
+.ittest_*verdict.txt
+_test_result.txt
+armor_test_result.txt
+

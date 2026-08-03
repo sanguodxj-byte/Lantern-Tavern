@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,11 +34,41 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "curved dirty claw nail with yellow keratin"
 
+# Goblin nail pixel palette: dirty yellows, keratin creams, dark grime.
+# Each material owns its own seed/pattern; no shared identity table.
+_DIRTY_YELLOW = (0.72, 0.62, 0.28, 1.0)
+_DARK_KERATIN = (0.42, 0.32, 0.14, 1.0)
+_KERATIN_CREAM = (0.88, 0.82, 0.55, 1.0)
+_DARK_GRIME = (0.28, 0.22, 0.12, 1.0)
+_PLUM_SHADOW = (0.25, 0.15, 0.30, 1.0)  # plum shadow accent
+_RUST_RED = (0.52, 0.22, 0.14, 1.0)  # warm rust accent
+
+
 def build_model():
-    nail = make_material("gn_nail", (0.72, 0.62, 0.28, 1.0), roughness=0.70)
-    dark = make_material("gn_dark", (0.42, 0.32, 0.14, 1.0), roughness=0.78)
-    tip = make_material("gn_tip", (0.88, 0.82, 0.55, 1.0), roughness=0.55)
-    grime = make_material("gn_grime", (0.28, 0.22, 0.12, 1.0), roughness=0.90)
+    nail = make_pixel_material(
+        "gn_nail", (0.72, 0.62, 0.28, 1.0),
+        roughness=0.70, palette=(_DIRTY_YELLOW, _KERATIN_CREAM, _DARK_KERATIN, _PLUM_SHADOW),
+        pixel_size=48, variation=0.38, seed=2301, pattern="cracks", normal_strength=0.9,
+        edge_darken=0.35, highlight=0.35, detail_noise=0.15,
+    )
+    dark = make_pixel_material(
+        "gn_dark", (0.42, 0.32, 0.14, 1.0),
+        roughness=0.78, palette=(_DARK_KERATIN, _DIRTY_YELLOW, _DARK_GRIME, _RUST_RED),
+        pixel_size=48, variation=0.40, seed=2313, pattern="cracks", normal_strength=1.0,
+        edge_darken=0.44, highlight=0.30, detail_noise=0.15,
+    )
+    tip = make_pixel_material(
+        "gn_tip", (0.88, 0.82, 0.55, 1.0),
+        roughness=0.55, palette=(_KERATIN_CREAM, _DIRTY_YELLOW, _PLUM_SHADOW),
+        pixel_size=48, variation=0.40, seed=2325, pattern="cracks", normal_strength=1.1,
+        edge_darken=0.32, highlight=0.40, detail_noise=0.15,
+    )
+    grime = make_pixel_material(
+        "gn_grime", (0.28, 0.22, 0.12, 1.0),
+        roughness=0.90, palette=(_DARK_GRIME, _DARK_KERATIN, _RUST_RED),
+        pixel_size=48, variation=0.42, seed=2337, pattern="banded", normal_strength=1.2,
+        edge_darken=0.50, highlight=0.30, detail_noise=0.15,
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
     def add(name, center, size, material):

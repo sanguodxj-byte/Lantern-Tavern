@@ -18,6 +18,10 @@ func test_enemy_detection_area_radius_is_configured_from_detection_range() -> vo
 	assert_object(shape).is_not_null()
 	assert_float(shape.radius) \
 		.override_failure_message("PlayerDetectionArea 的 Sphere 半径应由 detection_range 配置为 5m").is_equal_approx(5.0, 0.001)
+	var detection_area := enemy.get_node("PlayerDetectionArea") as Area3D
+	assert_bool(detection_area.monitoring) \
+		.override_failure_message("索敌节点仅保留结构兼容，不应参与 PhysicsServer broadphase").is_false()
+	assert_int(detection_area.collision_mask).is_equal(0)
 	enemy.queue_free()
 
 func test_should_chase_player_only_within_detection_range() -> void:
@@ -64,13 +68,13 @@ func test_dark_erosion_hunt_ignores_detection_range() -> void:
 	player.queue_free()
 	enemy.queue_free()
 
-func test_enemy_detection_area_disconnects_lost_player() -> void:
+func test_enemy_detection_area_is_removed_from_broadphase() -> void:
 	var script := load("res://scenes/characters/enemies/enemy.gd") as GDScript
 	var source := script.source_code
+	assert_bool(source.contains("player_detection_area.monitoring = false")) \
+		.override_failure_message("主动距离/视野/LOS 感知启用后，索敌 Area 不应常驻 broadphase").is_true()
 	assert_bool(source.contains("body_exited.connect(on_player_lost)")) \
-		.override_failure_message("玩家离开索敌 Area 时应清空目标").is_true()
-	assert_bool(source.contains("func on_player_lost")) \
-		.override_failure_message("敌人应实现离开索敌范围回调").is_true()
+		.override_failure_message("不得继续连接已停用的 Area3D 离开回调").is_false()
 
 # ==================== 视野检测（禁止跨墙发现） ====================
 

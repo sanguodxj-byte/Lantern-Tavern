@@ -9,8 +9,9 @@ const ALL_PROP_KINDS := [
 	"table", "chair", "bench", "bucket", "candles", "lit_candles",
 	"tankard", "goblet", "bottle_set", "wall_notice", "chandelier",
 	"wall_lantern", "grate", "jail", "fireplace", "small_crate",
-	"large_crate", "barrel", "chest", "large_chest", "boss_chest",
+	"large_crate", "barrel", "brew_cauldron", "chest", "large_chest", "boss_chest",
 	"torch", "pillar", "banner", "bones", "plank", "rubble",
+	"stalagmite_cluster", "sarcophagus", "wall_chain", "fungus_patch",
 ]
 
 const VOXEL_WEAPON_GLBS := {
@@ -26,6 +27,12 @@ const VOXEL_WEAPON_GLBS := {
 	"grimoire": "res://assets/meshes/weapons/weapons_voxel_grimoire.glb",
 	"shield": "res://assets/meshes/weapons/weapons_voxel_shield.glb",
 	"sword": "res://assets/meshes/weapons/weapons_voxel_sword.glb",
+}
+
+const VOXEL_TRAP_GLBS := {
+	"spikes_trap": "res://assets/meshes/traps/traps_spikes_trap.glb",
+	"acid_trap": "res://assets/meshes/traps/traps_acid_trap.glb",
+	"flame_vent": "res://assets/meshes/traps/traps_flame_vent.glb",
 }
 
 
@@ -99,6 +106,30 @@ func test_voxel_weapon_glbs_have_no_positive_overlap_and_are_face_connected() ->
 					.is_false()
 		assert_bool(_boxes_are_single_face_connected_component(boxes)) \
 			.override_failure_message("[%s] weapon has detached or corner-only boxes" % weapon_id) \
+			.is_true()
+		instance.free()
+
+
+func test_voxel_trap_glbs_have_no_positive_overlap_and_are_face_connected() -> void:
+	for trap_id in VOXEL_TRAP_GLBS:
+		var path: String = VOXEL_TRAP_GLBS[trap_id]
+		var packed := load(path) as PackedScene
+		assert_object(packed).override_failure_message("failed trap load: %s" % path).is_not_null()
+		var instance := packed.instantiate() as Node3D
+		assert_object(instance).is_not_null()
+		add_child(instance)
+		var boxes: Array[Dictionary] = []
+		_collect_mesh_boxes(instance, boxes)
+		assert_int(boxes.size()).is_greater(0)
+		for i in range(boxes.size()):
+			for j in range(i + 1, boxes.size()):
+				assert_bool(_boxes_overlap_positive_volume(boxes[i], boxes[j])) \
+					.override_failure_message(
+						"[%s] trap positive overlap %s vs %s" % [trap_id, boxes[i]["name"], boxes[j]["name"]]
+					) \
+					.is_false()
+		assert_bool(_boxes_are_single_face_connected_component(boxes)) \
+			.override_failure_message("[%s] trap has detached or corner-only boxes" % trap_id) \
 			.is_true()
 		instance.free()
 

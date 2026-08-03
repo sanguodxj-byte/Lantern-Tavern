@@ -51,6 +51,26 @@ func build_authority_only(seed_value: int) -> void:
 	_compute_player_spawn_pos()
 	dungeon_ready.emit(_seed, layout_fingerprint())
 
+## 专用服务器带碰撞版本（架构审查 P0-2）：与 build_authority_only 相同的布局管线，
+## 但额外生成【仅静态碰撞】的轻量地牢表示（floor/wall/ceiling colliders，无任何可见几何）。
+## 服务器移动马达（ServerCharacterMotor.move_and_slide）据此做真实墙体裁决——
+## 客户端持续输入也无法穿墙/速度作弊（纯积分回退只在无碰撞世界残留）。
+func build_authority_collision_only(seed_value: int) -> void:
+	_seed = seed_value
+	var config := DungeonGenerationConfigClass.new()
+	config.zone = 0
+	config.seed = _seed
+	_layout = DungeonGeneratorClass.new().generate(config)
+	if _layout.is_empty():
+		push_warning("[DungeonSession] authority-collision generator returned empty layout for seed=%d" % _seed)
+		return
+	dungeon_root = Node3D.new()
+	dungeon_root.name = "AuthorityCollision_%d" % _seed
+	add_child(dungeon_root)
+	DungeonSceneBuilderClass.new().build_collision_only(_layout, dungeon_root)
+	_compute_player_spawn_pos()
+	dungeon_ready.emit(_seed, layout_fingerprint())
+
 ## 真实地牢生成：复用与 procedural_dungeon 相同的生成管线，产出真实几何。
 func _build_real_dungeon() -> void:
 	var config := DungeonGenerationConfigClass.new()
@@ -105,6 +125,12 @@ func _spawn_local_player() -> void:
 	driver.name = "ClientCommandDriver"
 	driver.player = local_player
 	local_player.add_child(driver)
+	# P0-4：把本地真实 Player 绑定到服务器权威 PlayerContext（房主 caster 节点）。
+	# 未绑定时服务器会在任何资源 commit 前拒绝施法（PLAYER_NOT_READY），杜绝
+	# 「扣法力+提交冷却但无世界效果」的事务断裂。
+	var nm: Node = get_node_or_null("/root/NetworkManager")
+	if nm != null and "is_host" in nm and bool(nm.is_host) and nm.session != null:
+		nm.session.bind_player_entity(int(nm.local_peer_id), local_player)
 
 ## 服务器权威：在地牢中放置若干敌人实体（经 NetworkManager 广播 → 两端桥接层生成可见节点）。
 ## 仅房主执行；客户端不生成权威实体（它们经复制事件在本地出现）。
@@ -115,12 +141,14 @@ func spawn_server_entities() -> Array:
 	if nm == null or not ("is_host" in nm) or not bool(nm.is_host):
 		return ids
 	# 出生点确定性偏移放置：敌人围绕玩家出生点，保证两端一致（服务器权威位置）。
+	# P0-1：服务器移动已接入真实碰撞，敌人生成必须位于【可通行】的玩家出生单元内
+	# （沿单元内小偏移），否则墙体阻挡路径，近战永远无法进入射程（旧的跨墙放置作废）。
 	var base: Vector3 = _player_spawn_pos
 	var specs: Array = [
-		{"id": 1001, "kind": "enemy", "label": "Rat", "hp": 12, "off": Vector3(3.0, 0.0, 0.0),
+		{"id": 1001, "kind": "enemy", "label": "Rat", "hp": 12, "off": Vector3(0.8, 0.0, 0.0),
 		 # 掉落表（Phase ⑤ 验证用）：高权重材料，确保击杀必掉落，便于测试断言复制+拾取。
 		 "loot_table": {"goblin_tooth": {"kind": "material", "weight": 10, "min": 1, "max": 2}}},
-		{"id": 1002, "kind": "enemy", "label": "Skeleton", "hp": 20, "off": Vector3(0.0, 0.0, 3.0)},
+		{"id": 1002, "kind": "enemy", "label": "Skeleton", "hp": 20, "off": Vector3(0.0, 0.0, 0.8)},
 	]
 	for s in specs:
 		var eid: int = int(s["id"])

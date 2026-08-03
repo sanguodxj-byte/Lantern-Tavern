@@ -58,7 +58,7 @@ func test_replayed_sequence_rejected() -> void:
 	var s: SR = auto_free(_make_server())
 	_spawn_alive(s, 1, Vector3.ZERO)
 	s.set_entity(4312, {"con": 10, "armor_def": 0, "current_life": 100, "max_life": 100, "position": Vector3.ZERO})
-	var cmd := {"type": NP.CMD_ATTACK, "attack_type": "melee", "target_hint": 4312,
+	var cmd := {"type": NP.CMD_ATTACK, "hand": "primary", "target_hint": 4312,
 		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 7}
 	var r1: Dictionary = s.on_command(1, cmd)
 	assert_bool(r1["success"]).is_true()
@@ -101,7 +101,7 @@ func test_out_of_range_attack_rejected() -> void:
 	_spawn_alive(s, 1, Vector3.ZERO)
 	s.set_entity(4312, {"con": 10, "armor_def": 0, "current_life": 100, "max_life": 100,
 		"position": Vector3(100, 0, 0)})  # 远在 100m 外
-	var r: Dictionary = s.on_command(1, {"type": NP.CMD_ATTACK, "attack_type": "melee", "target_hint": 4312,
+	var r: Dictionary = s.on_command(1, {"type": NP.CMD_ATTACK, "hand": "primary", "target_hint": 4312,
 		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
 	assert_bool(r["success"]).is_false()
 	assert_str(r["error_code"]).is_equal(NP.ERR_OUT_OF_RANGE)

@@ -65,3 +65,49 @@ func test_expedition_hud_gold_and_material_panels_hidden() -> void:
 	assert_bool(material_label.get_parent().visible).is_false()
 
 	hud.queue_free()
+
+
+func test_extraction_guidance_panel_has_stable_pixel_hud_layout() -> void:
+	var hud: ExpeditionHUD = load("res://scenes/ui/expedition_hud.tscn").instantiate()
+	add_child(hud)
+	await await_idle_frame()
+
+	var panel := hud.get_node("ExtractionPanel") as Panel
+	var bar := hud.get_node("ExtractionPanel/ExtractionBar") as ProgressBar
+	var skill_bar := hud.get_node("SkillBarInstance") as Control
+	assert_object(panel).is_not_null()
+	assert_object(bar).is_not_null()
+	assert_float(panel.size.x).is_equal(360.0)
+	assert_float(bar.max_value).is_equal(1.0)
+	assert_int(hud.texture_filter).is_equal(CanvasItem.TEXTURE_FILTER_NEAREST)
+	assert_bool(panel.position.y + panel.size.y <= skill_bar.position.y - 12.0) \
+		.override_failure_message("撤离引导面板必须稳定显示在技能栏上方且不重叠").is_true()
+
+	hud.begin_extraction(1.5)
+	hud.update_extraction_progress(0.5, 0.75)
+	assert_bool(panel.visible).is_true()
+	assert_float(bar.value).is_equal_approx(0.5, 0.001)
+	hud.queue_free()
+
+func test_expedition_hud_displays_floor_indicator_and_arrival_banner() -> void:
+	var hud: ExpeditionHUD = load("res://scenes/ui/expedition_hud.tscn").instantiate()
+	add_child(hud)
+	await await_idle_frame()
+
+	hud.set_floor_label("L2")
+	hud.show_floor_arrival("深邃洞窟", "L2")
+
+	assert_str(hud.floor_indicator.text).is_equal("L2")
+	assert_str(hud.floor_arrival_label.text).is_equal("深邃洞窟 · L2")
+	assert_bool(hud.floor_arrival_label.visible).is_true()
+	assert_float(hud.floor_arrival_label.modulate.a).is_equal_approx(0.0, 0.001)
+	var source := (load("res://scenes/ui/expedition_hud.gd") as GDScript).source_code
+	assert_bool(source.contains("const FLOOR_HOLD_DURATION := 1.0")).is_true()
+	assert_bool(source.contains("tween_interval(FLOOR_HOLD_DURATION)")).is_true()
+	hud.queue_free()
+
+func test_expedition_hud_scene_keeps_floor_controls_separate_from_hidden_resource_panels() -> void:
+	var scene_source := FileAccess.get_file_as_string("res://scenes/ui/expedition_hud.tscn")
+	assert_str(scene_source).contains("FloorIndicator")
+	assert_str(scene_source).contains("FloorArrivalLabel")
+	assert_str(scene_source).contains("theme_override_font_sizes/font_size = 46")

@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,12 +34,56 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "sparkling multicolor dust mound with bright motes"
 
+# Pixie dust pixel palette: magical lilac dust, amethyst shadow, bright motes.
+# Each material owns its own seed/pattern; no shared identity table.
+_LILAC_DUST = (0.72, 0.55, 0.85, 1.0)
+_DEEP_AMETHYST = (0.42, 0.28, 0.55, 1.0)
+_SPARK_GOLD = (0.95, 0.78, 0.35, 1.0)
+_SPARK_TEAL = (0.35, 0.90, 0.95, 1.0)
+_SPARK_PINK = (0.95, 0.45, 0.75, 1.0)
+_MOTE_WHITE = (0.92, 0.88, 1.0, 1.0)
+_PEACH_GLOW = (1.0, 0.85, 0.55, 1.0)
+# Accent swatches: deep violet shadow and warm coral on lilac dust.
+_DEEP_VIOLET_SHADOW = (0.20, 0.08, 0.40, 1.0)
+_WARM_CORAL = (0.95, 0.40, 0.35, 1.0)
+
+
 def build_model():
-    dust = make_material("pd_dust", (0.72, 0.55, 0.85, 1.0), roughness=0.70, emission=0.4)
-    dust_dark = make_material("pd_dark", (0.42, 0.28, 0.55, 1.0), roughness=0.75, emission=0.15)
-    gold = make_material("pd_gold", (0.95, 0.78, 0.35, 1.0), roughness=0.35, emission=1.5)
-    cyan = make_material("pd_cyan", (0.35, 0.90, 0.95, 1.0), roughness=0.30, emission=1.8)
-    pink = make_material("pd_pink", (0.95, 0.45, 0.75, 1.0), roughness=0.32, emission=1.4)
+    dust = make_pixel_material(
+        "pd_dust", (0.72, 0.55, 0.85, 1.0),
+        roughness=0.70,
+        palette=(_LILAC_DUST, _DEEP_AMETHYST, _MOTE_WHITE, _DEEP_VIOLET_SHADOW, _WARM_CORAL),
+        pixel_size=48, variation=0.40, seed=301, pattern="speckle", normal_strength=1.0,
+        edge_darken=0.30, highlight=0.55, detail_noise=0.15,
+    )
+    dust_dark = make_pixel_material(
+        "pd_dark", (0.42, 0.28, 0.55, 1.0),
+        roughness=0.75,
+        palette=(_DEEP_AMETHYST, _LILAC_DUST, _SPARK_PINK, _DEEP_VIOLET_SHADOW, _WARM_CORAL),
+        pixel_size=48, variation=0.41, seed=313, pattern="cracks", normal_strength=1.1,
+        edge_darken=0.35, highlight=0.40, detail_noise=0.15,
+    )
+    gold = make_pixel_material(
+        "pd_gold", (0.95, 0.78, 0.35, 1.0),
+        roughness=0.35,
+        palette=(_SPARK_GOLD, _PEACH_GLOW, _MOTE_WHITE, _DEEP_VIOLET_SHADOW, _WARM_CORAL),
+        pixel_size=48, variation=0.40, seed=327, pattern="speckle", normal_strength=0.9,
+        edge_darken=0.30, highlight=0.70, detail_noise=0.15,
+    )
+    cyan = make_pixel_material(
+        "pd_cyan", (0.35, 0.90, 0.95, 1.0),
+        roughness=0.30,
+        palette=(_SPARK_TEAL, _MOTE_WHITE, _LILAC_DUST, _DEEP_VIOLET_SHADOW, _WARM_CORAL),
+        pixel_size=48, variation=0.41, seed=331, pattern="speckle", normal_strength=0.9,
+        edge_darken=0.30, highlight=0.70, detail_noise=0.15,
+    )
+    pink = make_pixel_material(
+        "pd_pink", (0.95, 0.45, 0.75, 1.0),
+        roughness=0.32,
+        palette=(_SPARK_PINK, _MOTE_WHITE, _PEACH_GLOW, _DEEP_VIOLET_SHADOW, _WARM_CORAL),
+        pixel_size=48, variation=0.40, seed=337, pattern="speckle", normal_strength=0.9,
+        edge_darken=0.30, highlight=0.65, detail_noise=0.15,
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
     def add(name, center, size, material):

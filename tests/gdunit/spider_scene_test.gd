@@ -6,7 +6,10 @@ const CLAW_PATH := "res://data/weapons/claw.tres"
 
 const EXPECTED_BONES := [
 	"Root", "Thorax", "Head", "Abdomen", "Venom", "Mandible.L", "Mandible.R",
-	"Leg1.L", "Leg1.R", "Leg2.L", "Leg2.R", "Leg3.L", "Leg3.R", "Leg4.L", "Leg4.R",
+	"Leg1.L", "Leg1Lower.L", "Leg1Foot.L", "Leg1.R", "Leg1Lower.R", "Leg1Foot.R",
+	"Leg2.L", "Leg2Lower.L", "Leg2Foot.L", "Leg2.R", "Leg2Lower.R", "Leg2Foot.R",
+	"Leg3.L", "Leg3Lower.L", "Leg3Foot.L", "Leg3.R", "Leg3Lower.R", "Leg3Foot.R",
+	"Leg4.L", "Leg4Lower.L", "Leg4Foot.L", "Leg4.R", "Leg4Lower.R", "Leg4Foot.R",
 ]
 
 const EXPECTED_ANIMATIONS := [

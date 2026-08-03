@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,11 +34,43 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "warm ear-shaped fungus with orange vents"
 
+# Geothermal ear pixel palette: warm oranges, ear browns, vent reds.
+# Each material owns its own seed/pattern; no shared identity table.
+_FLESH_WARM = (0.72, 0.42, 0.22, 1.0)
+_DARK_BROWN = (0.42, 0.18, 0.10, 1.0)
+_VENT_RED = (0.95, 0.45, 0.12, 1.0)
+_VENT_DEEP = (0.62, 0.18, 0.06, 1.0)
+_RIM_TAN = (0.85, 0.62, 0.35, 1.0)
+_EAR_SHADOW = (0.30, 0.12, 0.08, 1.0)
+_COOL_BLUE = (0.22, 0.30, 0.45, 1.0)  # cool blue accent on warm
+_DEEP_PURPLE = (0.24, 0.10, 0.22, 1.0)  # deep purple shadow accent
+
+
 def build_model():
-    flesh = make_material("gte_flesh", (0.72, 0.42, 0.22, 1.0), roughness=0.78)
-    dark = make_material("gte_dark", (0.42, 0.18, 0.10, 1.0), roughness=0.82)
-    vent = make_material("gte_vent", (0.95, 0.45, 0.12, 1.0), roughness=0.40, emission=0.9)
-    rim = make_material("gte_rim", (0.85, 0.62, 0.35, 1.0), roughness=0.70)
+    flesh = make_pixel_material(
+        "gte_flesh", (0.72, 0.42, 0.22, 1.0),
+        roughness=0.78, palette=(_FLESH_WARM, _RIM_TAN, _DARK_BROWN, _COOL_BLUE),
+        pixel_size=48, variation=0.38, seed=2601, pattern="vein", normal_strength=0.9,
+        edge_darken=0.38, highlight=0.30, detail_noise=0.15,
+    )
+    dark = make_pixel_material(
+        "gte_dark", (0.42, 0.18, 0.10, 1.0),
+        roughness=0.82, palette=(_DARK_BROWN, _EAR_SHADOW, _FLESH_WARM, _DEEP_PURPLE),
+        pixel_size=48, variation=0.42, seed=2607, pattern="vein", normal_strength=1.1,
+        edge_darken=0.46, highlight=0.30, detail_noise=0.15,
+    )
+    vent = make_pixel_material(
+        "gte_vent", (0.95, 0.45, 0.12, 1.0),
+        roughness=0.40, palette=(_VENT_RED, _VENT_DEEP, _RIM_TAN, _DEEP_PURPLE),
+        pixel_size=48, variation=0.40, seed=2613, pattern="speckle", normal_strength=1.0,
+        edge_darken=0.35, highlight=0.40, detail_noise=0.15,
+    )
+    rim = make_pixel_material(
+        "gte_rim", (0.85, 0.62, 0.35, 1.0),
+        roughness=0.70, palette=(_RIM_TAN, _FLESH_WARM, _DARK_BROWN, _COOL_BLUE),
+        pixel_size=48, variation=0.40, seed=2619, pattern="vein", normal_strength=1.0,
+        edge_darken=0.35, highlight=0.35, detail_noise=0.15,
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
     def add(name, center, size, material):

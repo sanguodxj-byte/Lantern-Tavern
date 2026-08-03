@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,12 +34,51 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "dark toxic berry cluster with green venom freckles"
 
+# Poison berry pixel palette: dark toxic berry - dark purple, toxic green,
+# sickly yellow.
+# Each material owns its own seed/pattern; no shared identity table.
+_BERRY_DARK = (0.22, 0.05, 0.28, 1.0)
+_BERRY_LIT = (0.40, 0.12, 0.45, 1.0)
+_BERRY_DEEP = (0.10, 0.02, 0.14, 1.0)
+_VENOM_GREEN = (0.35, 0.75, 0.18, 1.0)
+_SICKLY_YELLOW = (0.55, 0.62, 0.12, 1.0)
+_STEM_GREEN = (0.25, 0.38, 0.12, 1.0)
+# Accent swatches: deep indigo and warm amber on toxic purple berry.
+_DEEP_INDIGO = (0.08, 0.05, 0.30, 1.0)
+_WARM_AMBER = (0.85, 0.55, 0.20, 1.0)
+
+
 def build_model():
-    berry = make_material("pb_berry", (0.22, 0.05, 0.28, 1.0), roughness=0.50)
-    berry_lit = make_material("pb_lit", (0.40, 0.12, 0.45, 1.0), roughness=0.45)
-    venom = make_material("pb_venom", (0.35, 0.75, 0.18, 1.0), roughness=0.40, emission=0.6)
-    stem = make_material("pb_stem", (0.25, 0.38, 0.12, 1.0), roughness=0.82)
-    deep = make_material("pb_deep", (0.10, 0.02, 0.14, 1.0), roughness=0.55)
+    berry = make_pixel_material(
+        "pb_berry", (0.22, 0.05, 0.28, 1.0),
+        roughness=0.50, palette=(_BERRY_DARK, _VENOM_GREEN, _SICKLY_YELLOW, _DEEP_INDIGO, _WARM_AMBER),
+        pixel_size=48, variation=0.40, seed=1201, pattern="speckle", normal_strength=0.9,
+        edge_darken=0.30, highlight=0.55, detail_noise=0.15,
+    )
+    berry_lit = make_pixel_material(
+        "pb_lit", (0.40, 0.12, 0.45, 1.0),
+        roughness=0.45, palette=(_BERRY_LIT, _BERRY_DARK, _VENOM_GREEN, _DEEP_INDIGO, _WARM_AMBER),
+        pixel_size=48, variation=0.41, seed=1207, pattern="speckle", normal_strength=1.0,
+        edge_darken=0.30, highlight=0.60, detail_noise=0.15,
+    )
+    venom = make_pixel_material(
+        "pb_venom", (0.35, 0.75, 0.18, 1.0),
+        roughness=0.40, palette=(_VENOM_GREEN, _SICKLY_YELLOW, _DEEP_INDIGO, _WARM_AMBER),
+        pixel_size=48, variation=0.40, seed=1219, pattern="speckle", normal_strength=1.1,
+        edge_darken=0.30, highlight=0.70, detail_noise=0.15,
+    )
+    stem = make_pixel_material(
+        "pb_stem", (0.25, 0.38, 0.12, 1.0),
+        roughness=0.82, palette=(_STEM_GREEN, _SICKLY_YELLOW, _DEEP_INDIGO, _WARM_AMBER),
+        pixel_size=48, variation=0.40, seed=1223, pattern="wood", normal_strength=1.0,
+        edge_darken=0.35, highlight=0.30, detail_noise=0.15,
+    )
+    deep = make_pixel_material(
+        "pb_deep", (0.10, 0.02, 0.14, 1.0),
+        roughness=0.55, palette=(_BERRY_DEEP, _BERRY_DARK, _VENOM_GREEN, _DEEP_INDIGO, _WARM_AMBER),
+        pixel_size=48, variation=0.40, seed=1213, pattern="speckle", normal_strength=1.2,
+        edge_darken=0.35, highlight=0.45, detail_noise=0.18,
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
     def add(name, center, size, material):

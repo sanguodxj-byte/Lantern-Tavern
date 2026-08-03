@@ -43,7 +43,8 @@ func test_fps_overlay_hidden_until_enabled() -> void:
 	overlay._refresh()
 	assert_str(overlay.get_node("Label").text).contains("FPS")
 	Settings.set_show_fps(false)
-	overlay.queue_free()
+	remove_child(overlay)
+	overlay.free()
 
 func test_settings_menu_has_fps_toggle() -> void:
 	# 设置菜单场景含 ShowFpsCheck 节点，且 settings_menu.gd 把开关接到 Settings.set_show_fps
@@ -60,4 +61,4 @@ func test_settings_menu_scene_compiles_and_instantiates() -> void:
 	assert_object(SETTINGS_MENU_SCENE).is_not_null()
 	var menu := SETTINGS_MENU_SCENE.instantiate()
 	assert_object(menu).is_not_null()
-	menu.queue_free()
+	menu.free()

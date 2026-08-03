@@ -11,9 +11,9 @@ const InvClass := preload("res://globals/core/state/expedition_inventory.gd")
 const LoClass := preload("res://globals/core/state/equipment_loadout.gd")
 
 func _ctx() -> PlayerContext:
-	var ap = AttrPanelClass.new(); ap.init_defaults()
-	var sk = SkillRuntimeClass.new(); sk.init_defaults()
-	var inv = InvClass.new(); var lo = LoClass.new()
+	var ap = auto_free(AttrPanelClass.new()); ap.init_defaults()
+	var sk = auto_free(SkillRuntimeClass.new()); sk.init_defaults()
+	var inv = auto_free(InvClass.new()); var lo = auto_free(LoClass.new())
 	return auto_free(PlayerContextClass.for_peer(ap, sk, inv, lo))
 
 func _live(pos := Vector3.ZERO) -> Dictionary:

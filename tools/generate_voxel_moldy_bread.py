@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,14 +34,105 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "chunky torn loaf with green mold blooms and crust breaks"
 
+# Each material owns its own seed/pattern; no shared identity table.
+# Accent swatches: deep plum shadow on warm bread, warm amber, cool teal.
+_PLUM_SHADOW = (0.18, 0.10, 0.22, 1.0)
+_WARM_AMBER = (0.85, 0.55, 0.20, 1.0)
+_COOL_TEAL = (0.18, 0.45, 0.42, 1.0)
+
+PALETTE_CRUMB = (
+    (0.82, 0.70, 0.48, 1.0),
+    (0.74, 0.58, 0.34, 1.0),
+    (0.86, 0.76, 0.56, 1.0),
+    _PLUM_SHADOW,
+    _WARM_AMBER,
+)
+PALETTE_CRUMB_DARK = (
+    (0.64, 0.48, 0.28, 1.0),
+    (0.52, 0.36, 0.18, 1.0),
+    (0.60, 0.44, 0.26, 1.0),
+    _PLUM_SHADOW,
+    _COOL_TEAL,
+)
+PALETTE_CRUST = (
+    (0.48, 0.30, 0.14, 1.0),
+    (0.36, 0.22, 0.10, 1.0),
+    (0.54, 0.34, 0.16, 1.0),
+    _WARM_AMBER,
+    _PLUM_SHADOW,
+)
+PALETTE_CRUST_BURN = (
+    (0.32, 0.18, 0.08, 1.0),
+    (0.22, 0.12, 0.05, 1.0),
+    (0.36, 0.20, 0.10, 1.0),
+    _PLUM_SHADOW,
+    _COOL_TEAL,
+)
+PALETTE_MOLD_A = (
+    (0.40, 0.68, 0.32, 1.0),
+    (0.28, 0.54, 0.24, 1.0),
+    (0.46, 0.74, 0.36, 1.0),
+    _COOL_TEAL,
+    _WARM_AMBER,
+)
+PALETTE_MOLD_B = (
+    (0.22, 0.48, 0.34, 1.0),
+    (0.14, 0.36, 0.26, 1.0),
+    (0.26, 0.54, 0.38, 1.0),
+    _PLUM_SHADOW,
+    _WARM_AMBER,
+)
+PALETTE_MOLD_PALE = (
+    (0.60, 0.78, 0.52, 1.0),
+    (0.50, 0.68, 0.42, 1.0),
+    (0.64, 0.80, 0.56, 1.0),
+    _COOL_TEAL,
+    _WARM_AMBER,
+)
+
 def build_model():
-    crumb = make_material("mb_crumb", (0.78, 0.62, 0.38, 1.0), roughness=0.92)
-    crumb_dark = make_material("mb_crumb_dark", (0.58, 0.42, 0.24, 1.0), roughness=0.94)
-    crust = make_material("mb_crust", (0.42, 0.26, 0.12, 1.0), roughness=0.88)
-    crust_burn = make_material("mb_crust_burn", (0.28, 0.16, 0.08, 1.0), roughness=0.86)
-    mold_a = make_material("mb_mold_a", (0.34, 0.62, 0.28, 1.0), roughness=0.80)
-    mold_b = make_material("mb_mold_b", (0.18, 0.42, 0.30, 1.0), roughness=0.82)
-    mold_pale = make_material("mb_mold_pale", (0.55, 0.72, 0.48, 1.0), roughness=0.78)
+    crumb = make_pixel_material(
+        "mb_crumb", (0.78, 0.62, 0.38, 1.0), roughness=0.92,
+        palette=PALETTE_CRUMB, pixel_size=48, variation=0.40, seed=901,
+        pattern="porous", normal_strength=1.0,
+        edge_darken=0.35, highlight=0.30, detail_noise=0.15,
+    )
+    crumb_dark = make_pixel_material(
+        "mb_crumb_dark", (0.58, 0.42, 0.24, 1.0), roughness=0.94,
+        palette=PALETTE_CRUMB_DARK, pixel_size=48, variation=0.40, seed=913,
+        pattern="porous", normal_strength=1.0,
+        edge_darken=0.35, highlight=0.30, detail_noise=0.15,
+    )
+    crust = make_pixel_material(
+        "mb_crust", (0.42, 0.26, 0.12, 1.0), roughness=0.88,
+        palette=PALETTE_CRUST, pixel_size=48, variation=0.41, seed=927,
+        pattern="cracks", normal_strength=1.1,
+        edge_darken=0.38, highlight=0.30, detail_noise=0.15,
+    )
+    crust_burn = make_pixel_material(
+        "mb_crust_burn", (0.28, 0.16, 0.08, 1.0), roughness=0.86,
+        palette=PALETTE_CRUST_BURN, pixel_size=48, variation=0.40, seed=941,
+        pattern="cracks", normal_strength=1.2,
+        edge_darken=0.42, highlight=0.25, detail_noise=0.18,
+    )
+    mold_a = make_pixel_material(
+        "mb_mold_a", (0.34, 0.62, 0.28, 1.0), roughness=0.80,
+        palette=PALETTE_MOLD_A, pixel_size=48, variation=0.39, seed=953,
+        pattern="speckle", normal_strength=1.0,
+        edge_darken=0.30, highlight=0.55, detail_noise=0.15,
+    )
+    mold_b = make_pixel_material(
+        "mb_mold_b", (0.18, 0.42, 0.30, 1.0), roughness=0.82,
+        palette=PALETTE_MOLD_B, pixel_size=48, variation=0.40, seed=967,
+        pattern="speckle", normal_strength=1.1,
+        edge_darken=0.30, highlight=0.50, detail_noise=0.15,
+    )
+    mold_pale = make_pixel_material(
+        "mb_mold_pale", (0.55, 0.72, 0.48, 1.0), roughness=0.78,
+        palette=PALETTE_MOLD_PALE, pixel_size=48, variation=0.38, seed=983,
+        pattern="speckle", normal_strength=1.0,
+        edge_darken=0.30, highlight=0.60, detail_noise=0.15,
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
 

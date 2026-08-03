@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/props/voxel_prop.gd" id="1_voxel"]
+
+[node name="DungeonPlank" type="StaticBody3D"]
+collision_layer = 64
+collision_mask = 0
+script = ExtResource("1_voxel")
+prop_kind = "plank"
+metadata/dungeon_only = true
+metadata/topdown_kind = "terrain_feature"
+metadata/decor_kind = "plank"
+metadata/blocks_navigation = false
+

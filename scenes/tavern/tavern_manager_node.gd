@@ -30,6 +30,8 @@ func _ready() -> void:
 	_configure_scene_objects()
 	_freeze_tavern_pickables()
 	_configure_bar_interaction()
+	# 顾客服务：夜晚营业阶段开始来客，白天探险阶段停止
+	_sync_customer_service()
 	# 先注册为当前关卡，再生成玩家：确保 player._ready() 中的
 	# register_player 能正确识别酒馆为 current_level，避免
 	# EquipmentPanelPlayerFinder 在旧场景中查找失效玩家。
@@ -59,10 +61,9 @@ func _configure_scene_objects() -> void:
 			_configure_scene_object(child)
 
 ## 冻结酒馆场景中固定摆放的 PickableItem（RigidBody3D）。
-## 酒馆内的酒桶/武器等摆件在场景加载时应保持静止，不受重力或同层可拾取物
-## 之间的碰撞推力影响（MASK_PICKABLE 已包含 LAYER_PICKABLE，叠放的酒桶
-## 会互相碰撞飞散）。玩家拾取时 PickableItem 被 queue_free 销毁，投掷时
-## 生成新的 ThrownItem，因此冻结不影响拾取/投掷流程。动态生成的物品
+## 酒馆内的酒桶/武器等摆件在场景加载时应保持静止，不受重力影响。玩家拾取时
+## PickableItem 被 queue_free 销毁，投掷时生成新的 ThrownItem，因此冻结不影响
+## 拾取/投掷流程。动态生成的物品
 ## （教程酒桶、地牢掉落）在 _ready 之后才进树，不受此方法影响。
 func _freeze_tavern_pickables() -> void:
 	for node in find_children("*", "PickableItem", true, false):
@@ -271,6 +272,18 @@ func _configure_bar_interaction() -> void:
 		static_body.collision_mask = 0
 		static_body.set_script(TAVERN_BAR_INTERACTION_SCRIPT)
 		static_body.set("interaction_name", "吧台")
+
+## 夜晚营业阶段启动顾客服务；白天探险阶段停止（顾客离场）。
+func _sync_customer_service() -> void:
+	var spawner := get_node_or_null("CustomerSpawner")
+	if spawner == null or not spawner.has_method("start_service"):
+		return
+	var tm: Node = _get_tavern_manager()
+	var night: bool = tm != null and tm.current_phase == tm.Phase.NIGHT_TAVERN
+	if night:
+		spawner.start_service()
+	else:
+		spawner.stop_service()
 
 ## 白天探险阶段挂载出发提示（按住 F 环形进度条）
 func _mount_expedition_prompt() -> void:

@@ -5,6 +5,7 @@ const DEFAULT_WEAPON_ICON := "res://assets/textures/icons/icon-weapon.png"
 const DEFAULT_SHIELD_ICON := "res://assets/textures/icons/icon-shield.png"
 const RUNE_ICON_DIR := "res://assets/textures/icons/runes"
 const RUNE_GLYPHS := preload("res://data/rune_glyphs.gd")
+const RUNE_WORD_GLYPHS := preload("res://data/rune_word_glyphs.gd")
 const MATERIAL_ICON_DIR := "res://assets/textures/icons/materials"
 const PIXEL_THEME := preload("res://scenes/ui/lantern_theme.tres")
 const RD := preload("res://globals/combat/rune_data.gd")
@@ -335,10 +336,16 @@ static func material_icon_path(material_id: String) -> String:
 	return "%s/%s.png" % [MATERIAL_ICON_DIR, material_id]
 
 static func icon_for_rune(rune_id: String) -> Texture2D:
-	# 程序化生成符文图标（见 data/rune_glyphs.gd），不再依赖 assets/textures/icons/runes/*.png。
+	# 普通符文卡面：data/rune_glyphs.gd。
 	if rune_id.is_empty():
 		return null
 	return RUNE_GLYPHS.get_texture(rune_id) as Texture2D
+
+static func icon_for_rune_word(word_id: String) -> Texture2D:
+	# 符文之语使用独立的华丽圣匣卡面，不复用普通符文样式。
+	if word_id.is_empty():
+		return null
+	return RUNE_WORD_GLYPHS.get_texture(word_id) as Texture2D
 
 static func rune_icon_path(rune_id: String) -> String:
 	if rune_id.is_empty():
@@ -384,15 +391,10 @@ static func _load_icon_static(path: String, category: String) -> Texture2D:
 	return null
 
 static func _load_png_texture_static(path: String) -> Texture2D:
-	if path.is_empty():
+	if path.is_empty() or not ResourceLoader.exists(path):
 		return null
-	var absolute_path: String = ProjectSettings.globalize_path(path)
-	if not FileAccess.file_exists(absolute_path):
-		return null
-	var image: Image = Image.new()
-	if image.load(path) != OK:
-		return null
-	return ImageTexture.create_from_image(image)
+	# 使用 Godot 导入资源，避免 Image.load() 绕过导入器并在导出构建中失效。
+	return ResourceLoader.load(path, "Texture2D") as Texture2D
 
 static func _icon_for_data(data) -> String:
 	var id: String = _read_string(data, "id", "")

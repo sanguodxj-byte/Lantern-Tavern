@@ -13,8 +13,10 @@ extends RefCounted
 ## 不依赖场景树，可在单元测试中直接 new() 使用。
 
 const SPE := preload("res://globals/combat/style_passive_effects.gd")
+const ACP := preload("res://globals/combat/attack_cadence_policy.gd")
+const AttackContextFactory := preload("res://globals/combat/attack_context_factory.gd")
 
-# ---- 近战攻击冷却 ----
+# ---- 近战攻击冷却（权威公式见 AttackCadencePolicy，此处仅保留与既有 API 的兼容常量）----
 const MELEE_CD_BASE := 0.45            # 单手近战基础冷却（秒）
 const MELEE_CD_TWO_HAND_MULT := 1.5    # 双手武器冷却倍率
 const MELEE_CD_DUAL_WIELD := 0.38      # 双持副手冷却（秒）
@@ -101,22 +103,17 @@ func start_melee_cooldown(hand: String, two_handed: bool, has_cd_reduce: bool) -
 		melee_cd_primary_max = dur
 
 func compute_melee_cd_duration(hand: String, two_handed: bool, has_cd_reduce: bool) -> float:
-	var dur := MELEE_CD_BASE
-	if two_handed:
-		dur = MELEE_CD_BASE * MELEE_CD_TWO_HAND_MULT
-	elif hand == "secondary":
-		dur = MELEE_CD_DUAL_WIELD
-	return dur * get_melee_cd_multiplier(has_cd_reduce)
+	# 权威冷却唯一真相：AttackCadencePolicy（架构审查 P0-3）。
+	# 用最小 AttackContext 派生流派（双手/双持副手），连击层数沿用本组件运行时状态。
+	var ctx := AttackContextFactory.build_from_components(
+		null, "two_hand" if two_handed else "one_hand_melee", "", {}, 1, hand)
+	return ACP.compute_attack_cd(ctx, has_cd_reduce, flurry_storm_stacks)
 
 ## 急速被动（cd_reduce）：冷却 ×0.85
 ## 暴风骤雨（unarmed_flurry_storm）：徒手连击每层 -5% CD（最高 -60%）
+## 冷却乘数唯一真相：AttackCadencePolicy.get_cd_multiplier。
 func get_melee_cd_multiplier(has_cd_reduce: bool) -> float:
-	var mult: float = 1.0
-	if has_cd_reduce:
-		mult *= CD_REDUCE_MULT
-	if flurry_storm_stacks > 0:
-		mult *= SPE.apply_flurry_storm_cd_mult(flurry_storm_stacks)
-	return mult
+	return ACP.get_cd_multiplier(has_cd_reduce, flurry_storm_stacks)
 
 ## 某手是否处于近战冷却中
 func is_melee_on_cooldown(hand: String) -> bool:

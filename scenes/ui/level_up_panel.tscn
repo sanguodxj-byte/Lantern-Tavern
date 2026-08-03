@@ -1,0 +1,207 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/level_up_panel.gd" id="1_panel"]
+[ext_resource type="Theme" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
+
+[node name="LevelUpPanel" type="Control"]
+visible = false
+process_mode = 3
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+theme = ExtResource("2_theme")
+texture_filter = 1
+script = ExtResource("1_panel")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.008, 0.006, 0.012, 0.28)
+
+[node name="SafeMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 28
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 28
+
+[node name="Center" type="CenterContainer" parent="SafeMargin"]
+layout_mode = 2
+
+[node name="Frame" type="PanelContainer" parent="SafeMargin/Center"]
+custom_minimum_size = Vector2(940, 590)
+layout_mode = 2
+theme_type_variation = &"SpellFrame"
+
+[node name="Content" type="VBoxContainer" parent="SafeMargin/Center/Frame"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Header" type="HBoxContainer" parent="SafeMargin/Center/Frame/Content"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="TitleLabel" type="Label" parent="SafeMargin/Center/Frame/Content/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ScreenTitle"
+text = "升级奖励 · 二选一"
+
+[node name="PendingLabel" type="Label" parent="SafeMargin/Center/Frame/Content/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(190, 42)
+layout_mode = 2
+theme_type_variation = &"StatusBadge"
+text = "待处理升级：1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Divider" type="HSeparator" parent="SafeMargin/Center/Frame/Content"]
+layout_mode = 2
+
+[node name="MainChoice" type="VBoxContainer" parent="SafeMargin/Center/Frame/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 14
+
+[node name="Prompt" type="Label" parent="SafeMargin/Center/Frame/Content/MainChoice"]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "二选一：提升一项六维属性"
+horizontal_alignment = 1
+
+[node name="Hint" type="Label" parent="SafeMargin/Center/Frame/Content/MainChoice"]
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "选择属性后，本级不再获得符文机会。属性立即 +1，并同步影响对应战斗数值。"
+horizontal_alignment = 1
+
+[node name="AttributeGrid" type="GridContainer" parent="SafeMargin/Center/Frame/Content/MainChoice"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+columns = 3
+
+[node name="StrButton" type="Button" parent="SafeMargin/Center/Frame/Content/MainChoice/AttributeGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 92)
+layout_mode = 2
+theme_type_variation = &"SlotButton"
+text = "STR 力量  +1\n近战伤害与负重能力"
+
+[node name="DexButton" type="Button" parent="SafeMargin/Center/Frame/Content/MainChoice/AttributeGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 92)
+layout_mode = 2
+theme_type_variation = &"SlotButton"
+text = "DEX 敏捷  +1\n远程与精准武器伤害"
+
+[node name="MagButton" type="Button" parent="SafeMargin/Center/Frame/Content/MainChoice/AttributeGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 92)
+layout_mode = 2
+theme_type_variation = &"SlotButton"
+text = "MAG 魔力  +1\n法术威力与法力潜能"
+
+[node name="ConButton" type="Button" parent="SafeMargin/Center/Frame/Content/MainChoice/AttributeGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 92)
+layout_mode = 2
+theme_type_variation = &"SlotButton"
+text = "CON 体质  +1\n生命上限与物理防御"
+
+[node name="AgiButton" type="Button" parent="SafeMargin/Center/Frame/Content/MainChoice/AttributeGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 92)
+layout_mode = 2
+theme_type_variation = &"SlotButton"
+text = "AGI 灵巧  +1\n闪避与机动能力"
+
+[node name="PerButton" type="Button" parent="SafeMargin/Center/Frame/Content/MainChoice/AttributeGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 92)
+layout_mode = 2
+theme_type_variation = &"SlotButton"
+text = "PER 感知  +1\n暴击与弱点洞察"
+
+[node name="OrLabel" type="Label" parent="SafeMargin/Center/Frame/Content/MainChoice"]
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "— 或 —"
+horizontal_alignment = 1
+
+[node name="RuneOpportunityButton" type="Button" parent="SafeMargin/Center/Frame/Content/MainChoice"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 78)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "选择符文机会（与属性提升互斥）\n进入后从三个互不重复的候选中选择一枚"
+
+[node name="RuneChoice" type="VBoxContainer" parent="SafeMargin/Center/Frame/Content"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 18
+
+[node name="Prompt" type="Label" parent="SafeMargin/Center/Frame/Content/RuneChoice"]
+layout_mode = 2
+theme_type_variation = &"SectionTitle"
+text = "符文奖励已锁定：本级不再提升属性"
+horizontal_alignment = 1
+
+[node name="Hint" type="Label" parent="SafeMargin/Center/Frame/Content/RuneChoice"]
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "选择一枚加入符文库存；候选保持不变，不能返回属性分支或刷新。"
+horizontal_alignment = 1
+
+[node name="RuneOptions" type="HBoxContainer" parent="SafeMargin/Center/Frame/Content/RuneChoice"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="RuneOption0" type="Button" parent="SafeMargin/Center/Frame/Content/RuneChoice/RuneOptions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 280)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SpellSlotButton"
+text = "符文候选 I"
+autowrap_mode = 2
+
+[node name="RuneOption1" type="Button" parent="SafeMargin/Center/Frame/Content/RuneChoice/RuneOptions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 280)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SpellSlotButton"
+text = "符文候选 II"
+autowrap_mode = 2
+
+[node name="RuneOption2" type="Button" parent="SafeMargin/Center/Frame/Content/RuneChoice/RuneOptions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 280)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SpellSlotButton"
+text = "符文候选 III"
+autowrap_mode = 2

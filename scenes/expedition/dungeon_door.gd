@@ -38,6 +38,9 @@ var _leaf_pivots: Array[Node3D] = []
 var _open_tween: Tween = null
 var _navigation_link: NavigationLink3D = null
 
+func can_interact() -> bool:
+	return not is_open and not is_broken
+
 
 func configure(kind: String, normal_dir: Vector2i, front_material: Material, side_material: Material = null, top_material: Material = null) -> void:
 	door_kind = kind

@@ -13,8 +13,12 @@ func test_default_config_matches_procedural_legacy_constants() -> void:
 	assert_float(cfg.door_surround_thickness).is_equal_approx(0.2, 0.001)
 	assert_float(cfg.ceiling_thickness).is_equal_approx(0.1, 0.001)
 	assert_float(cfg.ceiling_transition_gap).is_equal_approx(0.015, 0.001)
-	assert_float(cfg.player_vision_base_energy).is_equal_approx(2.4, 0.001)
-	assert_float(cfg.player_vision_base_range).is_equal_approx(10.0, 0.001)
+	assert_float(cfg.player_vision_base_energy).is_equal_approx(2.2, 0.001)
+	assert_float(cfg.player_vision_base_range).is_equal_approx(10.5, 0.001)
+	assert_float(cfg.player_vision_attenuation).is_equal_approx(1.15, 0.001)
+	assert_float(cfg.player_vision_color.r).is_equal_approx(0.88, 0.001)
+	assert_float(cfg.player_vision_color.g).is_equal_approx(0.90, 0.001)
+	assert_float(cfg.player_vision_color.b).is_equal_approx(0.94, 0.001)
 
 func test_fields_are_mutable() -> void:
 	var cfg := DungeonRenderingConfig.default()

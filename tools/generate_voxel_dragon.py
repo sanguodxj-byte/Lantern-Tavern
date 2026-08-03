@@ -25,8 +25,8 @@ def build_dragon():
     copper = make_material("dragon_copper_scale", (0.55, 0.28, 0.12, 1.0))
     sail = make_material("dragon_night_sail", (0.18, 0.08, 0.32, 1.0))
     ivory = make_material("dragon_ivory_horn", (0.88, 0.82, 0.68, 1.0))
-    ember = make_material("dragon_ember_eye", (1.0, 0.35, 0.05, 1.0), emission=2.0)
-    aqua = make_material("dragon_aqua_vein", (0.20, 0.85, 0.75, 1.0), emission=1.3)
+    ember = make_material("dragon_ember_eye", (1.0, 0.35, 0.05, 1.0))
+    aqua = make_material("dragon_aqua_vein", (0.20, 0.85, 0.75, 1.0))
 
     root = make_root("voxel_dragon_256px_sailwyrm")
     parts = [

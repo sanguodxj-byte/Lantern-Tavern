@@ -45,8 +45,37 @@ class_name CharacterPanel
 # Right Column - Proficiency
 @onready var prof_list: ItemList = %ProfList
 
-var current_player: Player = null
+## 使用 Variant 以支持测试中注入 mock player（运行时动态分派 .equipment / .health）。
+## 生产环境中 GameState.player 返回真实 Player 实例。
+var current_player: Variant = null
 var current_eq_mesh: Node3D = null
+
+# ── 拖拽支持 ──────────────────────────────────────────────────────────────
+const DROP_ZONE_SCRIPT := preload("res://scenes/ui/loot_drop_zone.gd")
+const DRAG_THRESHOLD := 8.0
+
+## 装备槽定义 — key 对齐 EquipmentComponent API:
+##   armor 槽: head/body/hands/feet (armor_slots 字典 key)
+##   weapon 槽: weapon_0..3 (weapon_slots 数组索引)
+##   node_var: 对应 @onready 变量名
+const SLOT_DEFS: Array = [
+	{"key": "head", "node": "slot_head", "tr_key": "EQ_SLOT_HEAD", "kind": "armor"},
+	{"key": "body", "node": "slot_body", "tr_key": "EQ_SLOT_CHEST", "kind": "armor"},
+	{"key": "hands", "node": "slot_hands", "tr_key": "EQ_SLOT_HANDS", "kind": "armor"},
+	{"key": "feet", "node": "slot_feet", "tr_key": "EQ_SLOT_FEET", "kind": "armor"},
+	{"key": "weapon_0", "node": "slot_main_hand", "tr_key": "EQ_SLOT_MAIN", "kind": "weapon", "index": 0},
+	{"key": "weapon_1", "node": "slot_off_hand", "tr_key": "EQ_SLOT_OFF", "kind": "weapon", "index": 1},
+	{"key": "weapon_2", "node": "slot_back", "tr_key": "EQ_SLOT_BACK", "kind": "weapon", "index": 2},
+	{"key": "weapon_3", "node": "slot_ring", "tr_key": "EQ_SLOT_ACC", "kind": "weapon", "index": 3},
+]
+
+## 拖放状态
+var _slot_drag_start_pos: Vector2 = Vector2.ZERO
+var _slot_drag_key: String = ""
+var _gear_drag_start_pos: Vector2 = Vector2.ZERO
+var _gear_drag_index: int = -1
+
+@onready var equip_slots_container: VBoxContainer = $PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipmentSlots
 
 # Skills Database
 var skills_database: Array = [
@@ -73,7 +102,7 @@ func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	return_btn.pressed.connect(_on_return_pressed)
 	
-	# Connect slots signals
+	# Connect slots signals — 点击检视
 	slot_head.pressed.connect(func(): _inspect_slot("Head", tr("Head Armor"), tr("Basic adventuring hood providing minimal defense but high comfort.")))
 	slot_body.pressed.connect(func(): _inspect_slot("Chest", tr("Chest Armor (Leather)"), tr("Reinforced leather tunic, offering decent protection against bites and scratches.")))
 	slot_hands.pressed.connect(func(): _inspect_slot("Hands", tr("Gloves"), tr("Thick leather wrap to protect knuckles during close combat and shield grips.")))
@@ -92,7 +121,6 @@ func _ready() -> void:
 	if not current_player and GameState != null and "player" in GameState:
 		current_player = GameState.player
 	
-	# Get AttrPanel reference
 	ap_ref = Engine.get_main_loop().root.get_node_or_null("AttrPanel")
 	
 	_update_ui_translations()
@@ -103,6 +131,17 @@ func _ready() -> void:
 	_refresh_battle_stats()
 	_refresh_proficiency()
 	
+	# 拖放支持：装备槽和背包容器设为 drop zone
+	_setup_drop_zone(equip_slots_container, "equipment")
+	_setup_drop_zone(gear_list, "backpack")
+	# 装备槽按钮监听 gui_input 以检测拖出手势
+	for slot_def in SLOT_DEFS:
+		var btn: Button = get(slot_def["node"])
+		if btn != null:
+			btn.gui_input.connect(_on_slot_gui_input.bind(btn, slot_def["key"]))
+	# 背包列表监听 gui_input 以检测拖出手势
+	gear_list.gui_input.connect(_on_gear_list_gui_input)
+
 	# Select first item in gear list by default
 	if gear_list.item_count > 0:
 		gear_list.select(0)
@@ -226,46 +265,55 @@ func _refresh_proficiency() -> void:
 # ==================== Existing Functions ====================
 
 func _setup_slots_text() -> void:
-	_setup_slot_icon_display(slot_main_hand)
-	_setup_slot_icon_display(slot_off_hand)
-	if current_player and is_instance_valid(current_player) and current_player.equipment:
-		if current_player.equipment.has_weapon():
-			var w := current_player.equipment.weapon_data
-			var display_name = w.get_full_display_name() if w.has_method("get_full_display_name") else w.name
-			var icon: Texture2D = DETAIL_POPUP_SCRIPT.icon_for_equipment_id(w.id) if WeaponRegistry != null else null
-			if icon != null:
-				slot_main_hand.icon = icon
-				slot_main_hand.text = ""
-				slot_main_hand.tooltip_text = display_name
+	# 所有 8 个装备槽统一从 EquipmentComponent 读取真实数据（数据源唯一）
+	for slot_def in SLOT_DEFS:
+		var btn: Button = get(slot_def["node"])
+		if btn == null:
+			continue
+		_setup_slot_icon_display(btn)
+		var kind: String = slot_def["kind"]
+		var key: String = slot_def["key"]
+		var data = null
+		if current_player != null and is_instance_valid(current_player) and current_player.equipment != null:
+			var eq = current_player.equipment
+			if kind == "armor":
+				if eq.has_method("get_armor_slot_data"):
+					data = eq.get_armor_slot_data(key)
 			else:
-				slot_main_hand.text = tr("Main Hand\n[%s]") % display_name
-				slot_main_hand.tooltip_text = ""
+				var idx: int = int(slot_def.get("index", 0))
+				if idx == 0 and eq.has_method("has_weapon") and eq.has_weapon():
+					data = eq.weapon_data
+				elif idx == 1 and eq.has_method("has_shield") and eq.has_shield():
+					data = eq.shield_data
+				elif eq.has_method("get_weapon_slot_data"):
+					data = eq.get_weapon_slot_data(idx)
+		_apply_slot_display(btn, slot_def, data)
+
+## 将装备数据应用到槽位按钮显示
+func _apply_slot_display(btn: Button, slot_def: Dictionary, data) -> void:
+	var label_text: String = tr(slot_def.get("tr_key", slot_def["key"]))
+	if data != null:
+		var display_name = data.get_full_display_name() if data.has_method("get_full_display_name") else data.name
+		var icon: Texture2D = DETAIL_POPUP_SCRIPT.icon_for_equipment_id(String(data.id)) if WeaponRegistry != null else null
+		if icon != null:
+			btn.icon = icon
+			btn.text = ""
 		else:
-			slot_main_hand.icon = null
-			slot_main_hand.text = tr("Main Hand\n[Fists]")
-			slot_main_hand.tooltip_text = ""
-		if current_player.equipment.has_shield():
-			var s := current_player.equipment.shield_data
-			var s_display = s.get_full_display_name() if s.has_method("get_full_display_name") else s.name
-			var s_icon: Texture2D = DETAIL_POPUP_SCRIPT.icon_for_equipment_id(s.id) if WeaponRegistry != null else null
-			if s_icon != null:
-				slot_off_hand.icon = s_icon
-				slot_off_hand.text = ""
-				slot_off_hand.tooltip_text = s_display
-			else:
-				slot_off_hand.text = tr("Off Hand\n[%s]") % s_display
-				slot_off_hand.tooltip_text = ""
-		else:
-			slot_off_hand.icon = null
-			slot_off_hand.text = tr("Off Hand\n[Empty]")
-			slot_off_hand.tooltip_text = ""
+			btn.icon = null
+			btn.text = "%s\n[%s]" % [label_text, display_name]
+		btn.tooltip_text = _build_equipment_tooltip(display_name, data)
+		btn.modulate = _affix_color_for(data)
 	else:
-		slot_main_hand.icon = null
-		slot_main_hand.text = tr("Main Hand\n[Sword]")
-		slot_main_hand.tooltip_text = ""
-		slot_off_hand.icon = null
-		slot_off_hand.text = tr("Off Hand\n[Shield]")
-		slot_off_hand.tooltip_text = ""
+		btn.icon = null
+		btn.text = "%s\n[%s]" % [label_text, tr("Empty")]
+		btn.tooltip_text = ""
+		btn.modulate = Color.WHITE
+
+## 词缀品质色
+func _affix_color_for(data) -> Color:
+	if data == null or not "affixes" in data or data.affixes.is_empty():
+		return Color.WHITE
+	return WeaponData.get_affix_color(data.affixes)
 
 ## 配置装备槽按钮的图标显示属性
 func _setup_slot_icon_display(button: Button) -> void:
@@ -305,34 +353,28 @@ func _load_gear_list() -> void:
 	gear_list.max_columns = 0  # 自动换行
 	gear_list.same_column_width = true
 	gear_list.fixed_column_width = 80
-	if current_player and is_instance_valid(current_player) and current_player.equipment:
-		if current_player.equipment.has_weapon():
-			var w = current_player.equipment.weapon_data
-			var display_name = w.get_full_display_name() if w.has_method("get_full_display_name") else w.name
-			var icon: Texture2D = DETAIL_POPUP_SCRIPT.icon_for_equipment_id(w.id) if WeaponRegistry != null else null
-			var idx: int = gear_list.add_item("", icon)
-			gear_list.set_item_metadata(idx, {"type": "weapon", "data": w})
-			gear_list.set_item_tooltip(idx, _build_equipment_tooltip(display_name, w))
-		if current_player.equipment.has_shield():
-			var s = current_player.equipment.shield_data
-			var s_icon: Texture2D = DETAIL_POPUP_SCRIPT.icon_for_equipment_id(s.id) if WeaponRegistry != null else null
-			var s_idx: int = gear_list.add_item("", s_icon)
-			gear_list.set_item_metadata(s_idx, {"type": "shield", "data": s})
-			gear_list.set_item_tooltip(s_idx, _build_equipment_tooltip(s.name, s))
-	if TavernManager:
-		for mat_id in TavernManager.inventory.keys():
-			var count = TavernManager.inventory[mat_id]
-			if count > 0:
-				var mat_name = load("res://globals/tavern/brewing_data.gd").get_material_name(String(mat_id))
-				var mat_icon: Texture2D = DETAIL_POPUP_SCRIPT.icon_for_material(mat_id)
-				var m_idx: int = gear_list.add_item("x%d" % count, mat_icon)
-				gear_list.set_item_metadata(m_idx, {"type": "material", "id": mat_id})
-				gear_list.set_item_tooltip(m_idx, "%s x%d" % [mat_name, count])
-	else:
-		gear_list.add_item("Wild Glowcap (x3)")
-		gear_list.set_item_metadata(0, {"type": "material", "id": "wild_glowcap"})
-		gear_list.add_item("Frost Berry (x2)")
-		gear_list.set_item_metadata(1, {"type": "material", "id": "frost_berry"})
+	# 背包列表显示玩家携带的未装备物品（GameState carried equipment）
+	# 与酒馆面板/宝箱面板同一数据源，确保数据唯一
+	var gs: Node = Engine.get_main_loop().root.get_node_or_null("GameState")
+	if gs != null and gs.has_method("get_carried_equipment_dict"):
+		var carried: Dictionary = gs.get_carried_equipment_dict()
+		for equip_id in carried.keys():
+			var count: int = int(carried[equip_id])
+			if count <= 0:
+				continue
+			var data: WeaponData = null
+			if gs.has_method("get_carried_equipment_instance"):
+				data = gs.get_carried_equipment_instance(equip_id)
+			if data == null and WeaponRegistry != null:
+				data = WeaponRegistry.get_weapon_data(equip_id)
+			if data == null:
+				continue
+			var display_name = data.get_full_display_name() if data.has_method("get_full_display_name") else data.name
+			var icon: Texture2D = DETAIL_POPUP_SCRIPT.icon_for_equipment_id(equip_id) if WeaponRegistry != null else null
+			var label_text := "x%d" % count if count > 1 else ""
+			var idx: int = gear_list.add_item(label_text, icon)
+			gear_list.set_item_metadata(idx, {"type": "equipment", "id": equip_id, "count": count, "data": data})
+			gear_list.set_item_tooltip(idx, _build_equipment_tooltip(display_name, data))
 
 ## 构建装备 tooltip（含词缀信息）
 func _build_equipment_tooltip(display_name: String, data) -> String:
@@ -376,7 +418,18 @@ func _on_gear_selected(index: int) -> void:
 	var meta = gear_list.get_item_metadata(index)
 	if not meta:
 		return
-	match meta["type"]:
+	match meta.get("type", ""):
+		"equipment":
+			var data = meta.get("data", null)
+			if data != null:
+				# 判定装备类型：护甲 / 盾 / 武器
+				# 使用 equipment_category / item_tag 判定，与 EquipmentComponent._is_armor_equipment 同源
+				if data.equipment_category.begins_with("armor") or data.item_tag.begins_with("armor"):
+					_inspect_armor(data)
+				elif data.item_tag == "shield" or data.equipment_category == "shields":
+					_inspect_shield(data)
+				else:
+					_inspect_weapon(data)
 		"weapon":
 			_inspect_weapon(meta["data"])
 		"shield":
@@ -600,3 +653,313 @@ func _remove_preview_unnecessary(player_instance: Player) -> void:
 		var n := player_instance.get_node_or_null(path)
 		if n:
 			n.queue_free()
+
+
+# ============================================================================
+# 护甲检视
+# ============================================================================
+
+## 检视护甲装备 — 显示护甲属性和词缀
+func _inspect_armor(a) -> void:
+	var display_name = a.get_full_display_name() if a.has_method("get_full_display_name") else a.name
+	eq_name_lbl.text = display_name
+	if "affixes" in a and not a.affixes.is_empty():
+		eq_name_lbl.add_theme_color_override("font_color", WeaponData.get_affix_color(a.affixes))
+	else:
+		eq_name_lbl.remove_theme_color_override("font_color")
+	eq_dmg_lbl.text = tr("Defense %d") % int(a.armor_phys_def)
+	eq_cond_lbl.text = tr("%d / %d") % [a.condition, a.max_condition]
+	var desc := tr("Protective armor worn by the adventurer.")
+	if "armor_type" in a and not String(a.armor_type).is_empty():
+		desc += " [" + tr(String(a.armor_type).capitalize()) + "]"
+	if "affixes" in a and not a.affixes.is_empty():
+		var affix_lines := WeaponData.get_affix_detail_lines(a.affixes)
+		if not affix_lines.is_empty():
+			desc += "\n" + "\n".join(affix_lines)
+	eq_desc_lbl.text = desc
+	# 护甲不显示武器/盾预览，仅显示角色模型
+	_spawn_preview_character(null, null)
+
+
+# ============================================================================
+# 拖放支持 — 装备槽拖出 + 背包列表拖出 + drop zone 接收
+# 所有数据操作经 EquipmentComponent + GameState，确保数据源唯一。
+# ============================================================================
+
+## 将节点设置为拖放目标，附加 loot_drop_zone.gd 脚本并记录面板引用
+func _setup_drop_zone(node: Control, zone_id: String) -> void:
+	if node == null:
+		return
+	node.set_script(DROP_ZONE_SCRIPT)
+	node.set_meta("drop_panel", self)
+	node.set_meta("zone_id", zone_id)
+
+
+## 装备槽 gui_input: 检测从装备槽拖出（卸下到背包）
+func _on_slot_gui_input(event: InputEvent, btn: Button, slot_key: String) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			_slot_drag_start_pos = event.position
+			_slot_drag_key = slot_key
+		else:
+			_slot_drag_key = ""
+	elif event is InputEventMouseMotion and _slot_drag_key != "":
+		if event.position.distance_to(_slot_drag_start_pos) > DRAG_THRESHOLD:
+			var data: WeaponData = _get_slot_data(slot_key)
+			if data != null:
+				var payload: Dictionary = {
+					"source": "equipment",
+					"type": "equipment",
+					"slot_key": slot_key,
+					"data": data,
+				}
+				var preview := Label.new()
+				preview.text = String(data.get_full_display_name()) if data.has_method("get_full_display_name") else slot_key
+				btn.force_drag(payload, preview)
+			_slot_drag_key = ""
+
+
+## 背包列表 gui_input: 检测拖动手势并发起 force_drag；右键快速装备
+func _on_gear_list_gui_input(event: InputEvent) -> void:
+	# 右键快速装备
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+		var index := gear_list.get_item_at_position(event.position, true)
+		if index < 0 or index >= gear_list.item_count:
+			return
+		var meta = gear_list.get_item_metadata(index)
+		if typeof(meta) != TYPE_DICTIONARY or meta.get("type", "") != "equipment":
+			return
+		gear_list.select(index)
+		_equip_from_backpack(String(meta.get("id", "")))
+		_refresh_after_change()
+		get_viewport().set_input_as_handled()
+		return
+	# 左键拖动检测
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			_gear_drag_start_pos = event.position
+			_gear_drag_index = 0  # 标记拖动进行中
+		else:
+			_gear_drag_index = -1
+	elif event is InputEventMouseMotion and _gear_drag_index >= 0:
+		if event.position.distance_to(_gear_drag_start_pos) > DRAG_THRESHOLD:
+			var idx := gear_list.get_item_at_position(_gear_drag_start_pos, true)
+			if idx >= 0 and idx < gear_list.item_count:
+				var meta = gear_list.get_item_metadata(idx)
+				if typeof(meta) == TYPE_DICTIONARY and meta.get("type", "") == "equipment":
+					_start_gear_drag(meta)
+			_gear_drag_index = -1
+
+
+## 从背包列表发起拖放
+func _start_gear_drag(meta: Dictionary) -> void:
+	var payload: Dictionary = {
+		"source": "backpack",
+		"type": "equipment",
+		"id": String(meta.get("id", "")),
+	}
+	var preview := Label.new()
+	var data = meta.get("data", null)
+	if data != null and data.has_method("get_full_display_name"):
+		preview.text = String(data.get_full_display_name())
+	else:
+		preview.text = String(meta.get("id", ""))
+	gear_list.force_drag(payload, preview)
+
+
+## drop zone 回调: 判断是否可接收拖放
+## 角色面板仅支持面板内拖放（背包 ↔ 装备槽），不支持跨面板。
+func can_drop_to_zone(zone_id: String, data: Dictionary) -> bool:
+	var source := String(data.get("source", ""))
+	var item_type := String(data.get("type", ""))
+	match zone_id:
+		"equipment":
+			# 接收来自背包的装备拖放（装备到玩家）
+			return source == "backpack" and item_type == "equipment"
+		"backpack":
+			# 接收来自装备槽的拖放（卸下到背包）
+			return source == "equipment" and item_type == "equipment"
+	return false
+
+
+## drop zone 回调: 处理拖放
+func drop_to_zone(zone_id: String, data: Dictionary) -> void:
+	var source := String(data.get("source", ""))
+	match zone_id:
+		"equipment":
+			if source == "backpack":
+				var item_id := String(data.get("id", ""))
+				_equip_from_backpack(item_id)
+		"backpack":
+			if source == "equipment":
+				var slot_key := String(data.get("slot_key", ""))
+				_unequip_slot_to_backpack(slot_key)
+	_refresh_after_change()
+
+
+# ============================================================================
+# 装备 / 卸下 — 数据源唯一: EquipmentComponent + GameState
+# ============================================================================
+
+## 从背包装备到玩家身上。
+## 使用 configure_armor_slot / configure_weapon_slot 直接配置槽位，
+## 旧装备先放回背包，新装备从背包移除。
+## 装备变更同步持久化到 GameState，与酒馆面板/宝箱面板同源。
+func _equip_from_backpack(item_id: String) -> bool:
+	if item_id.is_empty():
+		return false
+	if current_player == null or not is_instance_valid(current_player):
+		return false
+	var gs: Node = Engine.get_main_loop().root.get_node_or_null("GameState")
+	if gs == null:
+		return false
+	var equip = current_player.equipment
+	if equip == null:
+		return false
+	# 从背包取出装备实例（保留词缀/耐久）
+	var data: WeaponData = null
+	if gs.has_method("remove_carried_equipment_instance"):
+		data = gs.remove_carried_equipment_instance(item_id)
+	if data == null:
+		if WeaponRegistry != null:
+			data = WeaponRegistry.get_weapon_data(item_id)
+		if data == null:
+			return false
+		if gs.has_method("remove_carried_equipment"):
+			gs.remove_carried_equipment(item_id, 1)
+	# 判定类型并分流装备
+	var equipped: bool = false
+	if equip.has_method("is_armor_equipment") and equip.is_armor_equipment(data):
+		equipped = _configure_armor_from_backpack(equip, data)
+	elif equip.has_method("configure_weapon_slot"):
+		equipped = _configure_weapon_from_backpack(equip, data)
+	if not equipped:
+		# 装备失败，放回背包
+		gs.add_carried_equipment_instance(data)
+		return false
+	# 持久化装备变更到 GameState（与酒馆面板/宝箱面板同源）
+	if gs.has_method("save_equipment_from_player"):
+		gs.save_equipment_from_player(current_player)
+	return true
+
+
+## 从背包装备护甲到玩家身上（使用 configure_armor_slot 直接配置）。
+## 旧护甲先放回背包，避免物理掉落物。
+func _configure_armor_from_backpack(equip: Node, data: WeaponData) -> bool:
+	if equip == null or data == null:
+		return false
+	if not equip.has_method("configure_armor_slot"):
+		return false
+	var target_slot := String(data.armor_slot)
+	if target_slot.is_empty():
+		target_slot = "body"
+	# 旧护甲放回背包
+	if equip.has_method("get_armor_slot_data"):
+		var existing: WeaponData = equip.get_armor_slot_data(target_slot)
+		if existing != null:
+			_add_equipment_to_backpack(existing)
+	return equip.configure_armor_slot(target_slot, data)
+
+
+## 从背包装备武器到玩家身上（使用 configure_weapon_slot 直接配置）。
+## 角色面板基于 zone 拖放，用户无法选择具体槽位，因此始终替换当前激活槽
+## （主手），旧武器先放回背包。若用户想填入空槽可使用酒馆面板的槽位按钮。
+func _configure_weapon_from_backpack(equip: Node, data: WeaponData) -> bool:
+	if equip == null or data == null:
+		return false
+	if not equip.has_method("configure_weapon_slot"):
+		return false
+	var target_idx := int(equip.active_weapon_slot) if "active_weapon_slot" in equip else 0
+	if equip.has_method("get_weapon_slot_data"):
+		var existing: WeaponData = equip.get_weapon_slot_data(target_idx)
+		if existing != null:
+			# 同 id 武器不重复装备，直接激活
+			if String(existing.id) == String(data.id):
+				return true
+			_add_equipment_to_backpack(existing)
+	return equip.configure_weapon_slot(target_idx, data, true)
+
+
+## 卸下指定槽位装备到背包（拖放 / 右键路径）
+func _unequip_slot_to_backpack(slot_key: String) -> void:
+	if slot_key.is_empty():
+		return
+	if current_player == null or not is_instance_valid(current_player):
+		return
+	var equip = current_player.equipment
+	if equip == null:
+		return
+	var slot_def := _find_slot_def(slot_key)
+	if slot_def.is_empty():
+		return
+	var kind: String = String(slot_def.get("kind", ""))
+	var data: WeaponData = _get_slot_data(slot_key)
+	if data == null:
+		return
+	# 放入背包
+	if not _add_equipment_to_backpack(data):
+		return
+	# 清除槽位
+	if kind == "armor":
+		if equip.has_method("configure_armor_slot"):
+			equip.configure_armor_slot(slot_key, null)
+	else:
+		var idx: int = int(slot_def.get("index", -1))
+		if idx >= 0 and equip.has_method("configure_weapon_slot"):
+			equip.configure_weapon_slot(idx, null, false)
+	# 持久化
+	var gs: Node = Engine.get_main_loop().root.get_node_or_null("GameState")
+	if gs != null and gs.has_method("save_equipment_from_player"):
+		gs.save_equipment_from_player(current_player)
+
+
+## 添加装备到背包（GameState carried equipment — 唯一数据源）
+func _add_equipment_to_backpack(data: WeaponData) -> bool:
+	if data == null:
+		return false
+	var gs: Node = Engine.get_main_loop().root.get_node_or_null("GameState")
+	if gs == null:
+		return false
+	if gs.has_method("add_carried_equipment_instance"):
+		return gs.add_carried_equipment_instance(data)
+	return gs.add_carried_equipment(data.id, 1)
+
+
+# ============================================================================
+# 辅助函数
+# ============================================================================
+
+## 获取指定槽位的装备数据
+func _get_slot_data(slot_key: String) -> WeaponData:
+	if current_player == null or not is_instance_valid(current_player):
+		return null
+	var eq = current_player.equipment
+	if eq == null:
+		return null
+	for slot_def in SLOT_DEFS:
+		if String(slot_def["key"]) == slot_key:
+			var kind: String = slot_def["kind"]
+			if kind == "armor":
+				if eq.has_method("get_armor_slot_data"):
+					return eq.get_armor_slot_data(slot_key)
+			else:
+				var idx: int = int(slot_def.get("index", 0))
+				if eq.has_method("get_weapon_slot_data"):
+					return eq.get_weapon_slot_data(idx)
+			break
+	return null
+
+
+## 查找 SLOT_DEFS 中 key 匹配的定义
+func _find_slot_def(slot_key: String) -> Dictionary:
+	for def in SLOT_DEFS:
+		if String(def.get("key", "")) == slot_key:
+			return def
+	return {}
+
+
+## 装备变更后刷新面板显示
+func _refresh_after_change() -> void:
+	_setup_slots_text()
+	_load_gear_list()
+	_load_attributes()

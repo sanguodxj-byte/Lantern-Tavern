@@ -1,0 +1,29 @@
+[
+  {
+    "source": "D:\\123\\Lantern Tavern\\scratch\\texture_generation\\chroma_input\\barony_dungeon_material_source_clean.png",
+    "result": "D:\\123\\Lantern Tavern\\scratch\\texture_generation\\chroma_output\\barony_dungeon_material_source_clean_green_cc_cutout.png",
+    "black_preview": "D:\\123\\Lantern Tavern\\scratch\\texture_generation\\chroma_review\\barony_dungeon_material_source_clean_green_cc_black.png",
+    "checker_preview": "D:\\123\\Lantern Tavern\\scratch\\texture_generation\\chroma_review\\barony_dungeon_material_source_clean_green_cc_checker.png",
+    "route": "output",
+    "gemini_review": null,
+    "key_rgb_median_border": [
+      0.0,
+      255.0,
+      0.0
+    ],
+    "visible_pixels": 524239,
+    "foreground_coverage": 0.499953,
+    "semi_pixels": 0,
+    "internal_green_components_removed": 0,
+    "rim_crumb_pixels_removed": 49,
+    "edge_green_pixels": 0,
+    "edge_purple_pixels": 0,
+    "transparent_green_rgb_pixels": 0,
+    "transparent_corner_alpha": [
+      255,
+      255,
+      0,
+      0
+    ]
+  }
+]

@@ -92,6 +92,16 @@ func _run() -> void:
 	else:
 		print("[DungeonProceduralMaterialCapture] gallery -> %s" % gallery_path)
 
+	var totem := _find_planned_decor("ritual_totem")
+	if totem != null:
+		var totem_path := await _capture_insitu_closeup(totem, "ritual_totem")
+		if totem_path.is_empty():
+			_fail("insitu closeup failed for ritual_totem")
+		else:
+			print("[DungeonProceduralMaterialCapture] insitu ritual_totem -> %s" % totem_path)
+	else:
+		_fail("fixed seed generated no instantiated ritual_totem")
+
 	if not overview_only and not gallery_only:
 		var close_ids: Array[String] = []
 		for id in SAMPLE_CLOSEUP_IDS:
@@ -139,13 +149,18 @@ func _build_procedural_dungeon(seed_value: int) -> Node3D:
 		_fail("DungeonGenerator returned empty layout")
 		return null
 	DungeonHazardPlanner.new().plan(_layout)
+	DungeonRoomFocusPlanner.new().plan(_layout)
 	var spawn_planner := DungeonSpawnPlanner.new()
 	spawn_planner.plan_enemy_spawns(_layout)
 	spawn_planner.plan_item_spawns(_layout)
 	spawn_planner.plan_chest_spawns(_layout)
 	var generation_ms := float(Time.get_ticks_usec() - generation_started) / 1000.0
-	print("[DungeonProceduralMaterialCapture] layout ready rooms=%d specs=%d gen_ms=%.1f" % [
-		_layout.rooms.size(), _layout.item_spawn_specs.size(), generation_ms
+	var ritual_totems := 0
+	for decor_spec in _layout.decor_specs:
+		if String(decor_spec.get("decor_kind", "")) == "ritual_totem":
+			ritual_totems += 1
+	print("[DungeonProceduralMaterialCapture] layout ready rooms=%d specs=%d decor=%d ritual_totems=%d gen_ms=%.1f" % [
+		_layout.rooms.size(), _layout.item_spawn_specs.size(), _layout.decor_specs.size(), ritual_totems, generation_ms
 	])
 
 	var build_started := Time.get_ticks_usec()
@@ -359,6 +374,15 @@ func _capture_insitu_closeup(item: Node3D, mat_id: String) -> String:
 	var ok := _save_current_viewport(out_path)
 	get_window().size = IMAGE_SIZE
 	return out_path if ok else ""
+
+
+func _find_planned_decor(decor_kind: String) -> Node3D:
+	if _build_result == null or _build_result.decor_root == null:
+		return null
+	for node in _build_result.decor_root.get_children():
+		if node is Node3D and bool(node.get_meta("planned_decor", false)) and String(node.get_meta("decor_kind", "")) == decor_kind:
+			return node as Node3D
+	return null
 
 
 func _find_spawned(mat_id: String) -> Node3D:

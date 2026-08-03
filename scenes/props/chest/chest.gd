@@ -1,6 +1,14 @@
 class_name Chest
 extends StaticBody3D
 
+const DUNGEON_SPAWN_FOOTPRINT := preload("res://scenes/expedition/dungeon_spawn_footprint.gd")
+
+# Loot uses a deterministic square-ring search instead of random offsets. The
+# 1.30m spacing clears the conservative item AABB and the normal chest AABB;
+# later rings keep searching when a room has more loot or nearby decor.
+const LOOT_GRID_SPACING := 1.30
+const LOOT_GRID_MAX_RING := 6
+
 ## 宝箱当前所在区域（BrewingData.Zone 枚举值）。
 ## 由 procedural_dungeon 在放置宝箱时注入，决定材料掉落池。
 @export var zone: int = 0  # 默认森林
@@ -22,6 +30,9 @@ var loot_data: Dictionary = {}
 
 ## 宝箱是否已展示战利品面板（面板关闭后销毁宝箱）。
 var _loot_panel_open := false
+
+func can_interact() -> bool:
+	return not is_opened
 
 func try_receive_hit(_source_player: Node, _damage: int) -> void:
 	open_chest()
@@ -100,6 +111,8 @@ func _spawn_remaining_loot() -> void:
 	var pickable_scene = load("res://scenes/equipment/pickable_item.tscn")
 	if pickable_scene == null:
 		return
+	var registry: Array = _loot_spawn_registry()
+	var drop_index := 0
 	# 剩余装备：优先 weapons 数组，兼容旧 weapon 单字段
 	var remaining_weapons: Array = loot_data.get("weapons", [])
 	if remaining_weapons.is_empty():
@@ -111,9 +124,8 @@ func _spawn_remaining_loot() -> void:
 			continue
 		var p_item = pickable_scene.instantiate()
 		p_item.weapon_data = weapon_data
-		p_item.global_position = global_position + Vector3(randf_range(-0.4, 0.4), 0.4, randf_range(-0.4, 0.4))
-		if get_parent():
-			get_parent().add_child(p_item)
+		if _place_loot_item(p_item, registry, drop_index, "weapon"):
+			drop_index += 1
 	# 剩余材料
 	var remaining_materials: Array = loot_data.get("materials", [])
 	for mat_entry in remaining_materials:
@@ -122,11 +134,9 @@ func _spawn_remaining_loot() -> void:
 			continue
 		var p_item = pickable_scene.instantiate()
 		p_item.material_id = mat_id
-		var offset = Vector3(randf_range(-0.5, 0.5), 0.3, randf_range(-0.5, 0.5))
-		p_item.global_position = global_position + offset
-		if get_parent():
-			get_parent().add_child(p_item)
-		print("[Chest] Dropped remaining material: %s" % mat_id)
+		if _place_loot_item(p_item, registry, drop_index, "material:%s" % mat_id):
+			drop_index += 1
+			print("[Chest] Dropped remaining material: %s" % mat_id)
 	# 剩余符文
 	var remaining_runes: Array = loot_data.get("runes", [])
 	for rune_entry in remaining_runes:
@@ -135,11 +145,69 @@ func _spawn_remaining_loot() -> void:
 			continue
 		var p_item = pickable_scene.instantiate()
 		p_item.rune_id = rune_id
-		var offset = Vector3(randf_range(-0.5, 0.5), 0.3, randf_range(-0.5, 0.5))
-		p_item.global_position = global_position + offset
-		if get_parent():
-			get_parent().add_child(p_item)
-		print("[Chest] Dropped remaining rune: %s" % rune_id)
+		if _place_loot_item(p_item, registry, drop_index, "rune:%s" % rune_id):
+			drop_index += 1
+			print("[Chest] Dropped remaining rune: %s" % rune_id)
+
+## Find the shared dungeon registry when this chest belongs to a generated level.
+## Non-dungeon chests still get a local registry so their own drops never overlap.
+func _loot_spawn_registry() -> Array:
+	var node: Node = self
+	while node != null:
+		var build_result = node.get("build_result")
+		if build_result != null:
+			var footprints: Variant = build_result.get("spawn_footprints")
+			if footprints is Array:
+				return footprints
+		node = node.get_parent()
+	return []
+
+## Place one loot item at the first free deterministic square-ring position.
+## The item is registered before it enters the tree, so the next drop sees it.
+func _place_loot_item(item: Node3D, registry: Array, ordinal: int, label: String) -> bool:
+	if item == null or get_parent() == null:
+		if item != null:
+			_discard_unparented_item(item)
+		return false
+	var world_position = _find_loot_position(registry, ordinal)
+	if world_position == null:
+		push_warning("[Chest] skipped overlapping loot drop: %s" % label)
+		_discard_unparented_item(item)
+		return false
+	if get_parent() is Node3D:
+		item.position = (get_parent() as Node3D).to_local(world_position)
+	else:
+		item.global_position = world_position
+	DUNGEON_SPAWN_FOOTPRINT.register(registry, world_position,
+		DUNGEON_SPAWN_FOOTPRINT.half_extents_for("item", label), "chest_loot:%s" % label)
+	get_parent().add_child(item)
+	return true
+
+func _discard_unparented_item(item: Node3D) -> void:
+	if item.is_inside_tree():
+		item.queue_free()
+	else:
+		item.free()
+
+## Deterministic square-ring candidates; no random state means replay/debug runs
+## produce the same spread and tests can prove the non-overlap contract.
+func _find_loot_position(registry: Array, ordinal: int):
+	var candidate_index := 0
+	var origin := global_position if is_inside_tree() else position
+	for ring in range(1, LOOT_GRID_MAX_RING + 1):
+		for x in range(-ring, ring + 1):
+			for z in range(-ring, ring + 1):
+				if maxi(absi(x), absi(z)) != ring:
+					continue
+				var offset := Vector3(float(x) * LOOT_GRID_SPACING, 0.34,
+					float(z) * LOOT_GRID_SPACING)
+				var candidate := origin + offset
+				if DUNGEON_SPAWN_FOOTPRINT.can_place(registry, candidate,
+					DUNGEON_SPAWN_FOOTPRINT.half_extents_for("item", "chest_loot")):
+					if candidate_index >= ordinal:
+						return candidate
+					candidate_index += 1
+	return null
 
 ## 攻击破坏时直接生成物理掉落物（保留原行为）
 func _spawn_loot_physical() -> void:
@@ -152,6 +220,8 @@ func _spawn_loot_physical() -> void:
 		push_warning("[Chest] pickable_item.tscn not found")
 		return
 
+	var registry: Array = _loot_spawn_registry()
+	var drop_index := 0
 	var mult := maxi(loot_multiplier, 1)
 	for _i in range(mult):
 		var drop = loot_table.generate_loot(zone)
@@ -161,8 +231,9 @@ func _spawn_loot_physical() -> void:
 			if weapon_data:
 				var p_item = pickable_scene.instantiate()
 				p_item.weapon_data = weapon_data
-				p_item.global_position = global_position + Vector3(randf_range(-0.4, 0.4), 0.4, randf_range(-0.4, 0.4))
-				get_parent().add_child(p_item)
+				var placed := _place_loot_item(p_item, registry, drop_index, "weapon")
+				if placed:
+					drop_index += 1
 				var affix_str := ""
 				if weapon_data.affixes.size() > 0:
 					affix_str = " [%s]" % ", ".join(weapon_data.affixes)
@@ -179,8 +250,7 @@ func _spawn_loot_physical() -> void:
 				continue
 			var p_item = pickable_scene.instantiate()
 			p_item.rune_id = rune_id
-			p_item.global_position = global_position + Vector3(randf_range(-0.4, 0.4), 0.4, randf_range(-0.4, 0.4))
-			if get_parent():
-				get_parent().add_child(p_item)
-			print("[Chest] Dropped rune: %s" % rune_id)
+			if _place_loot_item(p_item, registry, drop_index, "rune:%s" % rune_id):
+				drop_index += 1
+				print("[Chest] Dropped rune: %s" % rune_id)
 	print("[Chest] Melee attack destroyed all brewing materials! (Only weapon dropped)")

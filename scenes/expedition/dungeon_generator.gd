@@ -74,6 +74,7 @@ func _build_isaac_layout(config: DungeonGenerationConfig, generation_seed: int) 
 	layout.algorithm = "isaac"
 	layout.grid = grid
 	layout.heights = DungeonGenerationConfig.normalize_height_grid(gen.ceiling_heights)
+	layout.floor_elevations = _make_flat_floor_grid(config.width, config.height)
 	layout.rooms = (gen.rooms).duplicate()
 	layout.room_metadata = gen.room_metadata.duplicate(true)
 	layout.room_roles = {}
@@ -87,6 +88,15 @@ func _build_isaac_layout(config: DungeonGenerationConfig, generation_seed: int) 
 	layout.reward_cell = _derive_role_center_cell(layout, "reward")
 	gen.free()
 	return layout
+
+func _make_flat_floor_grid(width: int, height: int) -> Array:
+	var result: Array = []
+	for y in range(height):
+		var row: Array = []
+		for x in range(width):
+			row.append(0.0)
+		result.append(row)
+	return result
 
 func _quality_score(report: Dictionary) -> float:
 	return clampf(

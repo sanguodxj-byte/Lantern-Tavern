@@ -63,6 +63,24 @@ func test_load_config_populates_tags_from_json() -> void:
 	assert_object(material).is_not_null()
 	assert_float(material.base_probability).is_equal_approx(0.008, 0.001)
 
+func test_load_config_removes_tavern_scene_objects_from_dungeon_decor_pool() -> void:
+	_spawner._load_config()
+	var decor: Resource = _spawner.get_tag_config(TAGS.DECOR)
+	assert_object(decor).is_not_null()
+	if decor == null:
+		return
+	var forbidden := {
+		"res://scenes/props/decor/lit_candles.tscn": true,
+		"res://scenes/props/decor/table.tscn": true,
+		"res://scenes/props/decor/chair.tscn": true,
+		"res://scenes/props/decor/bench.tscn": true,
+		"res://scenes/props/decor/weapon_rack.tscn": true,
+		"res://scenes/props/decor/bucket.tscn": true,
+	}
+	for entry in decor.item_scene_paths:
+		assert_bool(not forbidden.has(String(entry.get("path", "")))) \
+			.override_failure_message("ItemSpawner 地牢装饰池包含酒馆物体: %s" % entry.get("path", "")).is_true()
+
 
 # ── get_tag_config ───────────────────────────────────────────
 
@@ -167,7 +185,7 @@ func test_spawn_item_by_tag_decor_uses_parent_batching_when_available() -> void:
 	data.tag = TAGS.DECOR
 	data.base_probability = 1.0
 	data.item_scene_paths = [
-		{"path": "res://scenes/props/decor/bench.tscn", "weight": 100}
+		{"path": "res://scenes/props/dungeon/decor/bones.tscn", "weight": 100}
 	]
 	data.preload_scenes()
 	_spawner.register_tag_config(data)
@@ -178,13 +196,30 @@ func test_spawn_item_by_tag_decor_uses_parent_batching_when_available() -> void:
 
 	assert_object(result).is_not_null()
 	assert_int(parent.requested_paths.size()).is_equal(1)
-	assert_str(parent.requested_paths[0]).is_equal("res://scenes/props/decor/bench.tscn")
+	assert_str(parent.requested_paths[0]).is_equal("res://scenes/props/dungeon/decor/bones.tscn")
 	assert_bool(parent.requested_transforms[0].origin.is_equal_approx(spawn_pos)).is_true()
 	assert_bool(parent.requested_transforms[0].basis.is_equal_approx(Basis.IDENTITY)).is_true()
 	assert_int(parent.get_child_count()).is_equal(1)
 	assert_object(result).is_equal(parent.get_child(0))
 	assert_str(result.get_meta("item_tag")).is_equal(TAGS.DECOR)
 	assert_int(result.get_meta("spawn_zone")).is_equal(0)
+	parent.free()
+
+func test_spawn_item_by_tag_rejects_tavern_scene_object_from_custom_decor_config() -> void:
+	var data: Resource = PLACEMENT_DATA.new()
+	data.tag = TAGS.DECOR
+	data.base_probability = 1.0
+	data.item_scene_paths = [
+		{"path": "res://scenes/props/decor/bench.tscn", "weight": 100}
+	]
+	_spawner.register_tag_config(data)
+	var parent := BatchParent.new()
+	var result = _spawner.spawn_item_by_tag(TAGS.DECOR, Vector3.ZERO, parent, 0)
+	for requested_path in parent.requested_paths:
+		assert_bool(requested_path != "res://scenes/props/decor/bench.tscn").is_true()
+	assert_bool(result == null or result is Node).is_true()
+	if result != null:
+		result.free()
 	parent.free()
 
 

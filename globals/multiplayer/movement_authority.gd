@@ -11,6 +11,7 @@ extends RefCounted
 
 const NP := preload("res://globals/multiplayer/network_protocol.gd")
 const CommandValidator := preload("res://globals/multiplayer/command_validator.gd")
+const ServerCharacterMotor := preload("res://globals/multiplayer/server_character_motor.gd")
 
 ## 每 tick 基础移动速度（米/秒）。服务器固定步长采样（见 SessionRoot.SERVER_TICK_DT）。
 const BASE_SPEED := 4.0
@@ -50,15 +51,17 @@ func validate_input_frame(command: Dictionary, live: Dictionary, server_rev: int
 
 ## 从输入帧积分出新的权威位置（服务器计算，客户端位置不可信）。
 ## dir 取自 move 的 x/z，y 轴固定为 0（地面移动）；dt 为服务器固定步长。
+## 架构审查 P0-1：仅作为「无碰撞世界」的确定性回退；有碰撞世界的权威位移
+## 由 ServerCharacterMotor.move_body（真实 CharacterBody3D + move_and_slide）产出。
 func integrate_position(old_pos: Vector3, move_vec: Vector2, dt: float, speed: float) -> Vector3:
-	if dt <= 0.0:
-		return old_pos
-	var dir := Vector3(move_vec.x, 0.0, move_vec.y)
-	return old_pos + dir * speed * dt
+	return _get_motor().integrate_position(old_pos, move_vec, dt, speed)
 
-## 处理一次 input_frame：校验 -> 积分 -> 产出 player_snapshot 事件。
+## 处理一次 input_frame：校验 -> 移动（物理马达优先，无碰撞世界回退积分）-> 产出 player_snapshot 事件。
+## motor：ServerCharacterMotor（可选；null 时纯积分）。
+## body：该 peer 绑定的真实 CharacterBody3D（可选；房主 Player / 远端 avatar）。
+## 物理模式（motor+body 均有效）：move_and_slide 受碰撞几何约束，墙前持续输入不穿墙。
 ## 返回 {"success":bool, "event":Dictionary, "error_code":String}。
-func resolve_input_frame(command: Dictionary, live: Dictionary, server_rev: int, seq_tracker: CommandValidator.SequenceTracker, dt: float = DEFAULT_TICK_DT) -> Dictionary:
+func resolve_input_frame(command: Dictionary, live: Dictionary, server_rev: int, seq_tracker: CommandValidator.SequenceTracker, dt: float = DEFAULT_TICK_DT, motor: Object = null, body: Object = null) -> Dictionary:
 	var err: String = validate_input_frame(command, live, server_rev, seq_tracker)
 	if err != "":
 		return {"success": false, "event": {}, "error_code": err}
@@ -68,7 +71,13 @@ func resolve_input_frame(command: Dictionary, live: Dictionary, server_rev: int,
 	var move_vec := Vector2(float(mv[0]), float(mv[1]))
 	var sprint: bool = bool(command.get("sprint", false))
 	var speed: float = BASE_SPEED * (SPRINT_MULT if sprint else 1.0)
-	var new_pos: Vector3 = integrate_position(old_pos, move_vec, dt, speed)
+	var new_pos: Vector3 = old_pos
+	if motor != null and body != null and body is CharacterBody3D and is_instance_valid(body):
+		var motion: Dictionary = motor.move_body(body, move_vec, sprint, dt, speed)
+		new_pos = motion.get("position", old_pos)
+	else:
+		# 无碰撞世界（headless 单测 / 无几何专用服务器）：纯积分回退（等价空碰撞空间）。
+		new_pos = integrate_position(old_pos, move_vec, dt, speed)
 	var event := {
 		"event": NP.EVT_PLAYER_SNAPSHOT,
 		"peer_id": peer,
@@ -78,3 +87,10 @@ func resolve_input_frame(command: Dictionary, live: Dictionary, server_rev: int,
 		"sequence": int(command.get("sequence", 0)),
 	}
 	return {"success": true, "event": event, "error_code": ""}
+
+static var _motor: ServerCharacterMotor = null
+
+static func _get_motor() -> ServerCharacterMotor:
+	if _motor == null:
+		_motor = ServerCharacterMotor.new()
+	return _motor

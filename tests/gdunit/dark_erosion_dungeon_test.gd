@@ -18,13 +18,13 @@ func test_runtime_applies_dark_erosion_to_player_light() -> void:
 
 	runtime.apply_player_vision_pressure(1.0)
 	assert_bool(light.visible).is_true()
-	assert_float(light.light_energy).is_equal_approx(2.4, 0.01)
-	assert_float(light.omni_range).is_equal_approx(10.0, 0.01)
+	assert_float(light.light_energy).is_equal_approx(2.2, 0.01)
+	assert_float(light.omni_range).is_equal_approx(10.5, 0.01)
 
 	runtime.apply_player_vision_pressure(0.5)
 	assert_bool(light.visible).is_true()
-	assert_float(light.light_energy).is_equal_approx(1.2, 0.01)
-	assert_float(light.omni_range).is_equal_approx(5.0, 0.01)
+	assert_float(light.light_energy).is_equal_approx(1.1, 0.01)
+	assert_float(light.omni_range).is_equal_approx(5.25, 0.01)
 
 	runtime.apply_player_vision_pressure(0.0)
 	assert_bool(light.visible).is_false()

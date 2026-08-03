@@ -82,8 +82,8 @@ func test_grimoire_imported_materials_keep_pages_cover_metal_and_magic_roles() -
 	assert_object(pages.albedo_texture).is_not_null()
 	assert_object(cover.albedo_texture).is_not_null()
 	assert_float(metal.metallic).is_greater(0.5)
-	assert_bool(glyph.emission_enabled).is_true()
-	assert_object(glyph.emission_texture).is_not_null()
+	assert_bool(glyph.emission_enabled).is_false()
+	assert_object(glyph.emission_texture).is_null()
 	instance.free()
 
 

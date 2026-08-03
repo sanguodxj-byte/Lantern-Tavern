@@ -15,8 +15,9 @@ func test_start_opens_tutorial_choice_and_routes_via_tavern_manager() -> void:
 	var script := load("res://scenes/ui/main_menu.gd") as GDScript
 	var source := script.source_code
 	assert_bool(source.contains("TutorialChoicePanel")).is_true()
-	assert_bool(source.contains("TavernManager.start_new_game(true)")).is_true()
-	assert_bool(source.contains("TavernManager.start_new_game(false)")).is_true()
+	# 出身选择接入后，start_new_game 需传入 origin_id 参数
+	assert_bool(source.contains("TavernManager.start_new_game(true, _pending_origin_id)")).is_true()
+	assert_bool(source.contains("TavernManager.start_new_game(false, _pending_origin_id)")).is_true()
 	assert_bool(source.contains("continue_in_tavern")).is_true()
 	assert_bool(source.contains("res://scenes/world/world.tscn")).is_true()
 	assert_bool(source.contains('change_scene_to_file("res://scenes/tavern/tavern.tscn")')).is_false()
@@ -62,6 +63,21 @@ func test_title_centered_and_menu_is_compact_bottom_right() -> void:
 	assert_bool(start_btn.custom_minimum_size.y >= 58.0 and start_btn.custom_minimum_size.y <= 62.0).is_true()
 	assert_str(start_btn.text).is_not_empty()
 	assert_bool(not start_btn.text.contains("[S]")).is_true()
+	remove_child(menu)
+	menu.free()
+
+
+func test_main_menu_compacts_side_panel_at_720p() -> void:
+	var menu: Control = load(MAIN_MENU_PATH).instantiate()
+	add_child(menu)
+	menu.size = Vector2(1280, 720)
+	menu._apply_responsive_layout()
+	var side_panel := menu.get_node("SidePanel") as Control
+	var menu_box := menu.get_node("SidePanel/MenuVBox") as VBoxContainer
+	assert_float(side_panel.size.y).is_equal(648.0)
+	assert_float(menu_box.offset_top).is_equal(20.0)
+	assert_bool(menu.get_node("SidePanel/MenuVBox/MenuHint").visible).is_false()
+	assert_bool(menu.get_node("SidePanel/MenuVBox/MenuHeader").visible).is_false()
 	remove_child(menu)
 	menu.free()
 

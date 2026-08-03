@@ -5,6 +5,7 @@ extends GdUnitTestSuite
 #       streamed 注册、dispose 清理、集成 isaac。
 
 var _parent: Node3D
+var _saved_pixel_shader: bool
 
 func before() -> void:
 	load("res://scenes/expedition/dungeon_scene_builder.gd")
@@ -20,6 +21,15 @@ func before() -> void:
 func after() -> void:
 	if is_instance_valid(_parent):
 		_parent.queue_free()
+
+func before_test() -> void:
+	# 保存并强制开启像素着色开关，防止其他测试套件泄漏的 false 状态
+	# 导致 adapt_standard_material 返回未适配的原始材质。
+	_saved_pixel_shader = VoxelLightingAdapter.is_pixel_shader_enabled()
+	VoxelLightingAdapter.set_pixel_shader_enabled(true)
+
+func after_test() -> void:
+	VoxelLightingAdapter.set_pixel_shader_enabled(_saved_pixel_shader)
 
 func test_build_empty_layout_returns_unbuilt_result() -> void:
 	var builder := DungeonSceneBuilder.new()
@@ -51,6 +61,55 @@ func test_build_creates_all_roots() -> void:
 				result.hazards_root, result.decor_root, result.spawn_root,
 				result.interaction_root, result.streamed_visual_root, result.streamed_physics_root]:
 		assert_object(root.get_parent()).is_equal(_parent)
+
+
+func test_build_cliff_composition_creates_continuous_top_faces_and_ramp() -> void:
+	var builder := DungeonSceneBuilder.new()
+	var layout := _make_8x7_floor_layout()
+	var cliff_cells: Array[Vector2i] = [Vector2i(2, 3), Vector2i(3, 3), Vector2i(4, 3), Vector2i(5, 3)]
+	for cell in cliff_cells:
+		layout.floor_elevations[cell.y][cell.x] = 1.5
+	var cliff_edges: Array[Dictionary] = []
+	for cell in cliff_cells:
+		for direction_variant in [Vector2i(0, -1), Vector2i(0, 1)]:
+			var direction: Vector2i = direction_variant
+			cliff_edges.append({"cell": cell, "dir": direction})
+	layout.room_composition_specs.append({
+		"room_index": 0,
+		"composition_kind": "cliff",
+		"focus_cell": Vector2i(1, 1),
+		"cover_cells": [],
+		"platform_cells": cliff_cells,
+		"cliff_cells": cliff_cells,
+		"cliff_edges": cliff_edges,
+		"bridge_cells": [],
+		"ramp_specs": [{"cell": Vector2i(3, 2), "dir": Vector2i(0, 1), "high_cell": Vector2i(3, 3), "feature": "cliff"}],
+		"boundary_edges": [],
+		"door_transition_cells": [],
+		"enemy_sectors": [],
+		"elevation_m": 1.5,
+	})
+	var result := builder.build(layout, _parent)
+	var cliff_top_count := 0
+	var cliff_face_count := 0
+	var ramp_count := 0
+	for node in result.decor_root.find_children("*", "MeshInstance3D", true, false):
+		if String(node.name).begins_with("CliffTop_"):
+			cliff_top_count += 1
+			assert_bool(result.streamed_visual_nodes.has(node)).is_true()
+		elif String(node.name).begins_with("CliffFace_"):
+			cliff_face_count += 1
+		elif String(node.name).begins_with("Ramp_"):
+			ramp_count += 1
+	assert_int(cliff_top_count).is_equal(4)
+	assert_int(cliff_face_count).is_greater_equal(4)
+	assert_int(ramp_count).is_equal(1)
+	var cliff_collision_count := 0
+	for body in result.collision_root.find_children("*", "StaticBody3D", true, false):
+		if String(body.name).begins_with("CliffTop_") or String(body.name).begins_with("CliffFace_"):
+			cliff_collision_count += 1
+	assert_int(cliff_collision_count).is_greater_equal(cliff_top_count)
+	result.dispose()
 
 func test_build_hazard_anchor_instantiates_prefab() -> void:
 	var builder := DungeonSceneBuilder.new()
@@ -96,11 +155,13 @@ func test_build_hazard_prefabs_receive_placement_semantics() -> void:
 	var spikes := result.hazards_root.get_child(0) as SpikesTrap
 	var acid := result.hazards_root.get_child(1) as AcidTrap
 	assert_str(String(spikes.get_meta("spike_mount", ""))).is_equal("floor")
-	assert_float(absf(absf(spikes.rotation_degrees.x) - 90.0)).is_less_equal(0.1)
+	assert_float(absf(spikes.rotation_degrees.x)) \
+		.override_failure_message("地面尖刺不应有 X 轴旋转: rotation=%s" % spikes.rotation_degrees) \
+		.is_less_equal(0.1)
 	assert_float(spikes.position.y).is_less_equal(0.2)
 	assert_bool(bool(acid.get_meta("acid_ground_only", false))).is_true()
 	assert_bool(bool(acid.get_meta("acid_pit", false))).is_true()
-	assert_object(acid.find_child("AcidPit", true, false)).is_not_null()
+	assert_object(acid.find_child("VoxelModel", true, false)).is_not_null()
 
 func test_build_chest_instantiates_prefab() -> void:
 	var builder := DungeonSceneBuilder.new()
@@ -156,11 +217,30 @@ func test_downstairs_steps_use_non_metal_matte_material() -> void:
 	layout.room_roles["stairs"] = Rect2i(0, 0, 3, 3)
 	var result := builder.build(layout, _parent)
 	var stairs := result.interaction_root.get_node("DownstairsPortal")
-	var step_mat := stairs.get_node("DownstairsStep1").material_override as StandardMaterial3D
+	var step_mat := stairs.get_node("DownstairsStep1").material_override as ShaderMaterial
 	assert_object(step_mat).is_not_null()
-	assert_int(step_mat.specular_mode).is_equal(BaseMaterial3D.SPECULAR_DISABLED)
-	assert_float(step_mat.metallic).is_equal_approx(0.0, 0.001)
-	assert_float(step_mat.roughness).is_greater_equal(0.75)
+	assert_object(step_mat.get_shader_parameter("atlas")).is_not_null()
+	assert_float(step_mat.get_shader_parameter("world_aligned_uv_enabled")).is_equal(1.0)
+	assert_float(step_mat.get_shader_parameter("specular")).is_equal_approx(0.0, 0.001)
+	assert_float(step_mat.get_shader_parameter("roughness")).is_greater_equal(0.75)
+	result.dispose()
+
+func test_downstairs_portal_has_player_trigger_contract_and_landing() -> void:
+	var builder := DungeonSceneBuilder.new()
+	var layout := _make_3x3_floor_layout()
+	layout.room_roles["stairs"] = Rect2i(0, 0, 3, 3)
+	var result := builder.build(layout, _parent)
+	var stairs := result.interaction_root.get_node("DownstairsPortal")
+	var area := stairs.get_node("DownstairsArea") as Area3D
+	assert_object(area).is_not_null()
+	assert_int(area.collision_layer).is_equal(PhysicsSetup.LAYER_TRIGGER)
+	assert_int(area.collision_mask).is_equal(PhysicsSetup.LAYER_PLAYER)
+	assert_bool(area.monitoring).is_true()
+	assert_bool(area.monitorable).is_true()
+	assert_object(stairs.get_node_or_null("DownstairsLanding")).is_not_null()
+	assert_object(stairs.get_node_or_null("DownstairsSideWallL")).is_not_null()
+	assert_object(stairs.get_node_or_null("DownstairsSideWallR")).is_not_null()
+	assert_object(stairs.get_node_or_null("DownstairsVoid")).is_not_null()
 	result.dispose()
 
 
@@ -177,6 +257,18 @@ func test_dungeon_decor_uses_environment_material_profile() -> void:
 	assert_float(adapted.roughness).is_greater_equal(0.85)
 
 
+func test_wall_material_keeps_floor_default_but_raises_wall_readability_fill() -> void:
+	var builder := DungeonSceneBuilder.new()
+	var wall := builder._make_terrain_mat("WALL", Vector2.ONE)
+	var floor := builder._make_terrain_mat("FLOOR", Vector2.ONE)
+	assert_float(wall.get_shader_parameter("voxel_base_fill")) \
+		.override_failure_message("普通墙面需要更高的最低漫反射填充，避免无近火把时整面不可读") \
+		.is_equal_approx(0.24, 0.001)
+	assert_float(floor.get_shader_parameter("voxel_base_fill")) \
+		.override_failure_message("地板不能跟随墙面填充一起抬高，避免火把附近过曝") \
+		.is_equal_approx(0.16, 0.001)
+
+
 func test_extraction_portal_materials_disable_specular() -> void:
 	var portal_scene := load("res://scenes/expedition/extraction_portal.tscn") as PackedScene
 	var portal := portal_scene.instantiate()
@@ -184,15 +276,39 @@ func test_extraction_portal_materials_disable_specular() -> void:
 	var material_count := 0
 	for mesh_node in portal.find_children("*", "MeshInstance3D", true, false):
 		var mesh := mesh_node as MeshInstance3D
-		var material := mesh.material_override as StandardMaterial3D
+		var material := mesh.material_override as ShaderMaterial
 		if material == null:
 			continue
 		material_count += 1
-		assert_int(material.specular_mode).is_equal(BaseMaterial3D.SPECULAR_DISABLED)
-		assert_float(material.metallic).is_equal_approx(0.0, 0.001)
-		assert_float(material.roughness).is_greater_equal(0.75)
+		assert_object(material.get_shader_parameter("atlas")).is_not_null()
+		assert_float(material.get_shader_parameter("world_aligned_uv_enabled")).is_equal(1.0)
+		assert_float(material.get_shader_parameter("specular")).is_equal_approx(0.0, 0.001)
+		assert_float(material.get_shader_parameter("roughness")).is_greater_equal(0.75)
 	assert_int(material_count).is_greater(0)
 	portal.free()
+
+func test_focus_and_hazard_warning_meshes_use_textured_materials() -> void:
+	var builder := DungeonSceneBuilder.new()
+	var layout := _make_3x3_floor_layout()
+	layout.room_focus_specs.append({
+		"focus_kind": "boss_altar",
+		"cell": Vector2i(1, 1),
+		"room_index": 0,
+	})
+	layout.hazard_anchors.append({"anchor_cell": Vector2i(0, 0), "hazard_type": "spikes"})
+	var result := DungeonBuildResult.new()
+	result.decor_root = Node3D.new()
+	result.hazards_root = Node3D.new()
+	_parent.add_child(result.decor_root)
+	_parent.add_child(result.hazards_root)
+	builder._build_room_focuses(layout, result)
+	builder._build_hazard_warning(layout, result, Vector2i(0, 0), "spikes")
+	for mesh_node in result.decor_root.find_children("*", "MeshInstance3D", true, false):
+		var material := (mesh_node as MeshInstance3D).material_override as ShaderMaterial
+		assert_object(material).is_not_null()
+		assert_object(material.get_shader_parameter("atlas")).is_not_null()
+		assert_float(material.get_shader_parameter("world_aligned_uv_enabled")).is_equal(1.0)
+	result.dispose()
 
 func test_integration_isaac_layout_builds_hazards_and_chests() -> void:
 	# isaac 真产出：hazard + chest planner 跑完后，scene builder 应能 instantiate
@@ -524,6 +640,214 @@ func test_room_focus_visuals_have_no_player_collision() -> void:
 	assert_bool(focus.find_children("*", "PhysicsBody3D", true, false).is_empty()).is_true()
 	result.dispose()
 
+func test_planned_decor_rejects_tavern_scene_object_path() -> void:
+	var builder := DungeonSceneBuilder.new()
+	var layout := _make_3x3_floor_layout()
+	layout.decor_specs.append({
+		"decor_kind": "bench",
+		"scene_path": "res://scenes/props/decor/bench.tscn",
+		"cell": Vector2i(1, 1),
+	})
+	var result := DungeonBuildResult.new()
+	result.decor_root = Node3D.new()
+	_parent.add_child(result.decor_root)
+	builder._build_planned_decor(layout, result, _parent)
+	assert_int(result.decor_root.get_child_count()) \
+		.override_failure_message("地牢构建器不应实例化酒馆长凳").is_equal(0)
+	result.decor_root.queue_free()
+	result.dispose()
+
+func test_room_composition_builds_cover_elevation_ramp_bridge_and_boundary_collision() -> void:
+	var builder := DungeonSceneBuilder.new()
+	var layout := _make_3x3_floor_layout()
+	layout.floor_elevations = [[0.0, 1.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]]
+	layout.room_composition_specs.append({
+		"room_index": 0,
+		"composition_kind": "elevation",
+		"elevation_m": 1.0,
+		"cover_cells": [Vector2i(0, 0)],
+		"platform_cells": [Vector2i(1, 1)],
+		"bridge_cells": [Vector2i(1, 0)],
+		"ramp_specs": [{"cell": Vector2i(0, 1), "dir": Vector2i(1, 0)}],
+		"boundary_edges": [{"cell": Vector2i(1, 1), "dir": Vector2i(0, 1)}],
+	})
+	var result := DungeonBuildResult.new()
+	result.decor_root = Node3D.new()
+	result.collision_root = Node3D.new()
+	_parent.add_child(result.decor_root)
+	_parent.add_child(result.collision_root)
+	builder._build_room_compositions(layout, result)
+	assert_bool(result.decor_root.find_child("Platform_*", true, false) != null).is_true()
+	assert_bool(result.decor_root.find_child("Ramp_*", true, false) != null).is_true()
+	assert_bool(result.decor_root.find_child("Bridge_*", true, false) != null).is_true()
+	assert_bool(result.decor_root.find_child("ElevationBoundary_*", true, false) != null).is_true()
+	assert_int(result.streamed_physics_nodes.size()).is_greater_equal(4)
+	var platform := result.decor_root.find_child("Platform_*", true, false) as MeshInstance3D
+	var bridge := result.decor_root.find_child("Bridge_*", true, false) as MeshInstance3D
+	assert_object(platform.material_override).is_instanceof(ShaderMaterial)
+	assert_object(bridge.material_override).is_instanceof(ShaderMaterial)
+	assert_float((platform.material_override as ShaderMaterial).get_shader_parameter("specular")).is_equal_approx(0.0, 0.001)
+	var ramp := result.decor_root.find_child("Ramp_*", true, false) as MeshInstance3D
+	assert_object(ramp.material_override).is_instanceof(ShaderMaterial)
+	var ramp_arrays := ramp.mesh.surface_get_arrays(0)
+	var ramp_normals := ramp_arrays[Mesh.ARRAY_NORMAL] as PackedVector3Array
+	assert_int(ramp_normals.size()).is_greater(0)
+	for normal in ramp_normals:
+		assert_float(normal.length()).is_equal_approx(1.0, 0.001)
+	result.dispose()
+
+func test_zone_zero_rooms_receive_materialized_wall_bays_away_from_doors() -> void:
+	var builder := DungeonSceneBuilder.new()
+	var layout := DungeonLayout.new()
+	layout.width = 7
+	layout.height = 7
+	layout.tile_size = 3.0
+	layout.zone = 0
+	layout.grid = []
+	layout.heights = []
+	layout.floor_elevations = []
+	for y in range(7):
+		var row: Array = []
+		var height_row: Array = []
+		var elevation_row: Array = []
+		for x in range(7):
+			row.append(2 if x == 0 or y == 0 or x == 6 or y == 6 else 1)
+			height_row.append(3.0)
+			elevation_row.append(0.0)
+		layout.grid.append(row)
+		layout.heights.append(height_row)
+		layout.floor_elevations.append(elevation_row)
+	layout.rooms = [Rect2i(1, 1, 5, 5)]
+	layout.door_specs = [{"inside": Vector2i(3, 1), "outside": Vector2i(3, 0), "dir": Vector2i(0, -1)}]
+	var result := DungeonBuildResult.new()
+	result.decor_root = Node3D.new()
+	_parent.add_child(result.decor_root)
+
+	builder._build_room_wall_architecture(layout, result)
+
+	var bays: Array[Node] = []
+	for child in result.decor_root.get_children():
+		if bool(child.get_meta("wall_architecture", false)):
+			bays.append(child)
+	assert_int(bays.size()).is_equal(3)
+	for bay in bays:
+		assert_bool(bay.get_meta("wall_cell") != Vector2i(3, 1)) \
+			.override_failure_message("墙龛不能占用房门通道").is_true()
+		assert_float((bay as Node3D).position.length()) \
+			.override_failure_message("墙龛根节点必须位于所属墙面，流送不能按世界原点误判区块") \
+			.is_greater(2.0)
+		assert_bool(bay.find_child("RecessGrate", true, false) != null).is_true()
+		assert_bool(bay.find_children("*", "PhysicsBody3D", true, false).is_empty()) \
+			.override_failure_message("浅墙龛不应侵占战斗导航或玩家碰撞").is_true()
+		var meshes := bay.find_children("*", "MeshInstance3D", true, false)
+		assert_int(meshes.size()).is_greater_equal(8)
+		for mesh_node in meshes:
+			var mesh_instance := mesh_node as MeshInstance3D
+			var material := mesh_instance.material_override
+			if material == null and mesh_instance.mesh != null and mesh_instance.mesh.get_surface_count() > 0:
+				material = mesh_instance.get_active_material(0)
+			assert_object(material) \
+				.override_failure_message("墙龛的每个可见部件都必须材质化: %s" % mesh_instance.name) \
+				.is_not_null()
+	var candelabrum := result.decor_root.find_child("RoomCandelabrum_*", false, false) as Node3D
+	assert_object(candelabrum).is_not_null()
+	assert_bool(bool(candelabrum.get_meta("room_light_anchor", false))).is_true()
+	assert_int(candelabrum.find_children("*", "OmniLight3D", true, false).size()).is_equal(1)
+	for mesh_node in candelabrum.find_children("*", "MeshInstance3D", true, false):
+		var mesh_instance := mesh_node as MeshInstance3D
+		assert_object(mesh_instance.get_active_material(0)) \
+			.override_failure_message("落地烛台必须保持铁件/蜡烛材质: %s" % mesh_instance.name) \
+			.is_not_null()
+	result.dispose()
+
+func test_non_start_room_receives_torch_light_anchor() -> void:
+	var builder := DungeonSceneBuilder.new()
+	var layout := DungeonLayout.new()
+	layout.width = 7
+	layout.height = 7
+	layout.tile_size = 3.0
+	layout.zone = 0
+	layout.grid = []
+	layout.heights = []
+	layout.floor_elevations = []
+	for y in range(7):
+		var row: Array = []
+		var height_row: Array = []
+		var elevation_row: Array = []
+		for x in range(7):
+			row.append(2 if x == 0 or y == 0 or x == 6 or y == 6 else 1)
+			height_row.append(3.0)
+			elevation_row.append(0.0)
+		layout.grid.append(row)
+		layout.heights.append(height_row)
+		layout.floor_elevations.append(elevation_row)
+	layout.rooms = [Rect2i(1, 1, 2, 2), Rect2i(4, 4, 2, 2)]
+	layout.room_roles["start"] = layout.rooms[0]
+	layout.room_roles["boss"] = layout.rooms[1]
+	layout.player_spawn_cell = Vector2i(1, 1)
+	var result := DungeonBuildResult.new()
+	result.decor_root = Node3D.new()
+	_parent.add_child(result.decor_root)
+
+	builder._build_decor_and_torches(layout, result, _parent)
+
+	var torch_count := 0
+	var light_count := 0
+	for node in result.decor_root.get_children():
+		if String(node.get_meta("decor_kind", "")) != "torch":
+			continue
+		torch_count += 1
+		light_count += node.find_children("*", "OmniLight3D", true, false).size()
+	assert_int(torch_count).is_greater_equal(1)
+	assert_int(light_count).is_greater_equal(1)
+	result.decor_root.queue_free()
+
+
+func test_room_torch_anchors_respect_existing_lights_and_reserved_cells() -> void:
+	var builder := DungeonSceneBuilder.new()
+	var layout := DungeonLayout.new()
+	layout.width = 9
+	layout.height = 9
+	layout.tile_size = 3.0
+	layout.zone = 0
+	layout.grid = []
+	layout.heights = []
+	layout.floor_elevations = []
+	for y in range(9):
+		var row: Array = []
+		var height_row: Array = []
+		var elevation_row: Array = []
+		for x in range(9):
+			row.append(2 if x == 0 or y == 0 or x == 8 or y == 8 else 1)
+			height_row.append(3.0)
+			elevation_row.append(0.0)
+		layout.grid.append(row)
+		layout.heights.append(height_row)
+		layout.floor_elevations.append(elevation_row)
+	layout.rooms = [Rect2i(1, 1, 7, 7)]
+	var result := DungeonBuildResult.new()
+	result.decor_root = Node3D.new()
+	_parent.add_child(result.decor_root)
+	var existing_light := Node3D.new()
+	existing_light.set_meta("room_light_anchor", true)
+	existing_light.set_meta("wall_cell", Vector2i(3, 1))
+	result.decor_root.add_child(existing_light)
+	layout.room_focus_specs.append({"cell": Vector2i(4, 4)})
+	layout.room_composition_specs.append({
+		"focus_cell": Vector2i(4, 3),
+		"cover_cells": [Vector2i(3, 4)],
+	})
+	var torch_cells: Dictionary = {}
+	builder._seed_existing_room_light_anchor_cells(layout, result, torch_cells)
+	assert_bool(torch_cells.has(Vector2i(3, 1))).is_true()
+	assert_bool(builder._is_population_reserved_cell(layout, Vector2i(4, 4))).is_true()
+	assert_bool(builder._is_population_reserved_cell(layout, Vector2i(4, 3))).is_true()
+	assert_bool(builder._is_population_reserved_cell(layout, Vector2i(3, 4))).is_true()
+	builder._spawn_room_torch_anchors(layout, result, _parent, torch_cells)
+	assert_int(torch_cells.size()).is_equal(3)
+	assert_bool(torch_cells.has(Vector2i(3, 1))).is_true()
+	result.decor_root.queue_free()
+
 
 # ── helpers ──────────────────────────────────────────────────
 func _make_3x3_floor_layout() -> DungeonLayout:
@@ -533,4 +857,23 @@ func _make_3x3_floor_layout() -> DungeonLayout:
 	layout.grid = [[1,1,1],[1,1,1],[1,1,1]]
 	layout.heights = [[3.0,3.0,3.0],[3.0,3.0,3.0],[3.0,3.0,3.0]]
 	layout.tile_size = 3.0
+	return layout
+
+func _make_8x7_floor_layout() -> DungeonLayout:
+	var layout := DungeonLayout.new()
+	layout.width = 8
+	layout.height = 7
+	layout.tile_size = 3.0
+	for y in range(layout.height):
+		var grid_row: Array[int] = []
+		var ceiling_row: Array[float] = []
+		var elevation_row: Array[float] = []
+		for x in range(layout.width):
+			grid_row.append(1)
+			ceiling_row.append(3.0)
+			elevation_row.append(0.0)
+		layout.grid.append(grid_row)
+		layout.heights.append(ceiling_row)
+		layout.floor_elevations.append(elevation_row)
+	layout.rooms = [Rect2i(1, 1, 6, 5)]
 	return layout

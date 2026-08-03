@@ -11,15 +11,19 @@ const SPACE_TAVERN := "tavern"
 const SPACE_DUNGEON := "dungeon"
 
 const FPS_OVERLAY_SCENE := preload("res://scenes/ui/fps_overlay.tscn")
+const VOXEL_LIGHTING := preload("res://globals/visual/voxel_lighting_adapter.gd")
 
 var current_loaded_level: Node3D = null
 var current_space: String = ""
 var overlay_layer: CanvasLayer = null
+var _default_environment: Environment = null
 
 @onready var world_ui: UI = $UI
 @onready var combat_hud: CanvasLayer = $CombatHUD
+@onready var world_environment: WorldEnvironment = $WorldEnvironment
 
 func _ready() -> void:
+	_default_environment = world_environment.environment
 	GameEvents.level_restarted.connect(on_level_restarted)
 	await _warm_shaders()
 	AudioManager.start_music()
@@ -74,6 +78,15 @@ func transition_to_tavern() -> void:
 func transition_to_dungeon() -> void:
 	load_space(SPACE_DUNGEON)
 
+## 进入当前区域的下一楼层，不触发撤离结算或酒馆结算。
+## 楼层状态由 GameState 持有，场景重载后由 DungeonRuntime 挂载新的 HUD。
+func transition_to_next_floor() -> void:
+	if current_space != SPACE_DUNGEON:
+		return
+	if GameState != null and GameState.has_method("advance_dungeon_floor"):
+		GameState.advance_dungeon_floor()
+	load_space(SPACE_DUNGEON)
+
 func load_space(space: String) -> void:
 	_clear_overlay()
 	if current_loaded_level != null:
@@ -97,9 +110,42 @@ func load_space(space: String) -> void:
 		push_error("[World] Space scene root must be Node3D: " + scene_path)
 		return
 	add_child(current_loaded_level)
+	_adopt_level_environment(current_loaded_level)
+	# 同步全局像素着色开关到新加载的场景树。
+	# 酒馆/地牢场景内嵌大量 ShaderMaterial（dungeon_terrain.gdshader），
+	# 其 pixel_lighting_enabled 默认值为 1.0（toon 光照）。
+	# 若不调用 apply_to_tree，关闭像素着色后这些材质仍显示 toon 光照。
+	VOXEL_LIGHTING.apply_to_tree(current_loaded_level, true)
 	if GameState and current_loaded_level is BaseLevel:
 		GameState.register_level(current_loaded_level)
 	_update_shared_ui()
+
+
+func _adopt_level_environment(level: Node) -> void:
+	var target := world_environment
+	if target == null:
+		target = get_node_or_null("WorldEnvironment") as WorldEnvironment
+	if target == null:
+		return
+	var level_environment := _find_level_environment(level)
+	if level_environment == null or level_environment.environment == null:
+		target.environment = _default_environment
+		return
+	target.environment = level_environment.environment
+	level_environment.environment = null
+
+
+func _find_level_environment(node: Node) -> WorldEnvironment:
+	if node == null:
+		return null
+	for child in node.get_children():
+		if child is WorldEnvironment:
+			return child as WorldEnvironment
+	for child in node.get_children():
+		var found := _find_level_environment(child)
+		if found != null:
+			return found
+	return null
 
 func open_overlay_scene(packed_scene: PackedScene) -> Node:
 	_clear_overlay()

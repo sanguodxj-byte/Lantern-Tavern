@@ -1,16 +1,21 @@
-[gd_scene load_steps=3 format=3 uid="uid://cbvq8m4p7x0vw"]
+[gd_scene load_steps=2 format=3 uid="uid://cbvq8m4p7x0vw"]
 
 [ext_resource type="Script" uid="uid://c7q8pfl6j6357" path="res://scenes/characters/player/view_model.gd" id="1_vm"]
-[ext_resource type="PackedScene" path="res://scenes/characters/player/player_visual_model.tscn" id="2_arms"]
 
 [node name="ViewModel" type="Node3D"]
 script = ExtResource("1_vm")
 
 [node name="BobPivot" type="Node3D" parent="."]
 
-[node name="ShieldSocket" type="Node3D" parent="BobPivot"]
-
 [node name="AimPivot" type="Node3D" parent="BobPivot"]
+
+[node name="ShieldActionPivot" type="Node3D" parent="BobPivot/AimPivot"]
+
+[node name="ShieldImpactPivot" type="Node3D" parent="BobPivot/AimPivot/ShieldActionPivot"]
+
+[node name="ShieldSocket" type="Node3D" parent="BobPivot/AimPivot/ShieldActionPivot/ShieldImpactPivot"]
+
+[node name="ShieldOrientation" type="Node3D" parent="BobPivot/AimPivot/ShieldActionPivot/ShieldImpactPivot/ShieldSocket"]
 
 [node name="ActionPivot" type="Node3D" parent="BobPivot/AimPivot"]
 
@@ -20,10 +25,6 @@ script = ExtResource("1_vm")
 
 [node name="MuzzlePoint" type="Node3D" parent="BobPivot/AimPivot/ActionPivot/WeaponSocket"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.6)
-
-[node name="FirstPersonArms" type="Node3D" parent="BobPivot/AimPivot/ActionPivot"]
-
-[node name="PlayerVisualModel" parent="BobPivot/AimPivot/ActionPivot/FirstPersonArms" instance=ExtResource("2_arms")]
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 root_node = NodePath("../BobPivot/AimPivot")

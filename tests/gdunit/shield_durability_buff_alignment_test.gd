@@ -30,15 +30,16 @@ func test_shield_bar_size_matches_pixel_bar() -> void:
 	shield._ready()
 	assert_int(int(shield.custom_minimum_size.x)).is_equal(320)
 	assert_int(int(shield.custom_minimum_size.y)).is_equal(36)
-	shield.queue_free()
+	var shield_size: Vector2 = shield.custom_minimum_size
+	shield.free()
 
 	var bar = PIXEL_BAR_SCRIPT.new()
 	bar._ready()
 	assert_int(int(bar.custom_minimum_size.x)).is_equal(320)
 	assert_int(int(bar.custom_minimum_size.y)).is_equal(36)
-	assert_int(int(shield.custom_minimum_size.x)).is_equal(int(bar.custom_minimum_size.x))
-	assert_int(int(shield.custom_minimum_size.y)).is_equal(int(bar.custom_minimum_size.y))
-	bar.queue_free()
+	assert_int(int(shield_size.x)).is_equal(int(bar.custom_minimum_size.x))
+	assert_int(int(shield_size.y)).is_equal(int(bar.custom_minimum_size.y))
+	bar.free()
 
 
 func test_shield_bar_magic_uses_blue_tint() -> void:
@@ -47,7 +48,7 @@ func test_shield_bar_magic_uses_blue_tint() -> void:
 	shield._ready()
 	# 蓝色（与 HP/MP 蓝色条同源）
 	assert_float(shield._bar_color.b).is_greater(0.5)
-	shield.queue_free()
+	shield.free()
 
 
 func test_shield_bar_physical_uses_gray_tint() -> void:
@@ -58,7 +59,7 @@ func test_shield_bar_physical_uses_gray_tint() -> void:
 	assert_float(shield._bar_color.r).is_greater(0.5)
 	assert_float(shield._bar_color.g).is_greater(0.5)
 	assert_float(shield._bar_color.b).is_greater(0.5)
-	shield.queue_free()
+	shield.free()
 
 
 func test_shield_bar_set_values_activates() -> void:
@@ -69,7 +70,7 @@ func test_shield_bar_set_values_activates() -> void:
 	assert_int(shield._max).is_equal(100)
 	assert_bool(shield.is_active()).is_true()
 	assert_float(shield._display_ratio).is_equal_approx(0.5, 0.001)
-	shield.queue_free()
+	shield.free()
 
 
 func test_shield_bar_deactivate_clears() -> void:
@@ -80,7 +81,7 @@ func test_shield_bar_deactivate_clears() -> void:
 	assert_bool(shield.is_active()).is_false()
 	assert_int(shield._current).is_equal(0)
 	assert_float(shield._display_ratio).is_equal_approx(0.0, 0.001)
-	shield.queue_free()
+	shield.free()
 
 
 # ---- 远端旧版 StatIndicator(耐久度) ----
@@ -155,7 +156,7 @@ func test_buff_icon_size_64x84() -> void:
 	var min_size: Vector2 = icon.custom_minimum_size
 	assert_int(int(min_size.x)).is_equal(64)
 	assert_int(int(min_size.y)).is_equal(64 + 20)
-	icon.queue_free()
+	icon.free()
 
 
 func test_buff_icon_icon_size_constant() -> void:
@@ -173,7 +174,7 @@ func test_buff_icon_setup_applies_color() -> void:
 	assert_str(icon.buff_type).is_equal("burn")
 	assert_float(icon.remaining).is_equal(3.0)
 	assert_bool(icon.is_blinking()).is_true()  # 3.0 <= threshold
-	icon.queue_free()
+	icon.free()
 
 
 func test_buff_icon_blink_state() -> void:
@@ -183,7 +184,7 @@ func test_buff_icon_blink_state() -> void:
 	assert_bool(icon.is_blinking()).is_false()  # 6.5 > threshold (3.0)
 	icon.setup("haste", 2.0)
 	assert_bool(icon.is_blinking()).is_true()
-	icon.queue_free()
+	icon.free()
 
 
 func test_shield_bar_aligns_with_pixel_bar_frame_color() -> void:
@@ -194,7 +195,7 @@ func test_shield_bar_aligns_with_pixel_bar_frame_color() -> void:
 	var pix_frame_r: float = pix.frame_color.r
 	var pix_frame_g: float = pix.frame_color.g
 	var pix_frame_b: float = pix.frame_color.b
-	pix.queue_free()
+	pix.free()
 
 	# PixelBar default (0.72, 0.43, 0.20, 0.96)
 	assert_float(pix_frame_r).is_equal_approx(0.72, 0.01)
@@ -206,7 +207,7 @@ func test_shield_bar_aligns_with_pixel_bar_frame_color() -> void:
 	shield._ready()
 	# ShieldBar._draw 中 frame_color = Color(0.72, 0.43, 0.20, 0.96)
 	# 这里只能通过读取 _draw 代码逻辑验证，已通过人工 review
-	shield.queue_free()
+	shield.free()
 
 
 func test_buff_container_above_magic_shield_bar() -> void:
@@ -219,9 +220,9 @@ func test_buff_container_above_magic_shield_bar() -> void:
 	#     顶=屏幕高-160-20=屏幕高-180, 底=屏幕高-160+16=屏幕高-144
 	#   间距 = 屏幕高-180 - (屏幕高-224) = 44 像素 (足够分离)
 	#
-	# BottomLeftExtras 在 CombatHUD 根(贴底),offset_top=-500/bottom=-432:
-	#   顶=屏幕高-500, 底=屏幕高-432
-	#   与 BuffContainer 顶端(屏幕高-308)间距 = 192 像素
+	# BottomLeftExtras 在 CombatHUD 根(贴底),offset_top=-416/bottom=-348:
+	#   顶=屏幕高-416, 底=屏幕高-348
+	#   与 BuffPanel 顶端(屏幕高-308)间距 = 40 像素
 	var root: Node = get_tree().root
 	var vp_size: Vector2 = root.size
 	var hud_scene := load("res://scenes/ui/combat_hud.tscn") as PackedScene
@@ -236,11 +237,11 @@ func test_buff_container_above_magic_shield_bar() -> void:
 	# 实际位置(屏幕坐标) = vp_size.y + child.position.y
 	var bl_screen_top: float = vp_size.y + bottom_left.position.y
 	var bl_screen_bottom: float = bl_screen_top + bottom_left.size.y
-	# BuffContainer (BottomLeft 的子节点)
-	var buff: Control = hud.get_node("BottomLeft/BuffContainer") as Control
-	# 在父节点坐标系内的位置 + 父节点屏幕顶端
-	var buff_screen_top: float = bl_screen_top + buff.position.y
-	var buff_screen_bottom: float = buff_screen_top + buff.size.y
+	# BuffPanel 是 BottomLeft 的直接子节点；BuffContainer 由其提供主题化安全边距。
+	var buff_panel: Control = hud.get_node("BottomLeft/BuffPanel") as Control
+	var buff: Control = hud.get_node("BottomLeft/BuffPanel/BuffContainer") as Control
+	var buff_screen_top: float = bl_screen_top + buff_panel.position.y
+	var buff_screen_bottom: float = buff_screen_top + buff_panel.size.y
 	# MagicShieldBar (BottomLeft 的子节点)
 	var magic: Control = hud.get_node("BottomLeft/MagicShieldBar") as Control
 	var magic_screen_top: float = bl_screen_top + magic.position.y
@@ -251,9 +252,9 @@ func test_buff_container_above_magic_shield_bar() -> void:
 	var extras: Control = hud.get_node("BottomLeftExtras") as Control
 	var extras_screen_top: float = vp_size.y + extras.position.y
 	var extras_screen_bottom: float = extras_screen_top + extras.size.y
-	# 耐久度底端必须严格在 buff 顶端之上
+	# 耐久度底端必须严格在状态面板顶端之上，并保留紧凑安全间距。
 	var extras_gap: float = buff_screen_top - extras_screen_bottom
-	assert_float(extras_gap).is_greater(20.0)
+	assert_float(extras_gap).is_greater_equal(32.0)
 	hud.queue_free()
 
 
@@ -262,12 +263,12 @@ func test_all_components_have_consistent_width_320() -> void:
 	var pix = PIXEL_BAR_SCRIPT.new()
 	pix._ready()
 	assert_int(int(pix.custom_minimum_size.x)).is_equal(320)
-	pix.queue_free()
+	pix.free()
 
 	var shield = SHIELD_BAR_SCRIPT.new()
 	shield._ready()
 	assert_int(int(shield.custom_minimum_size.x)).is_equal(320)
-	shield.queue_free()
+	shield.free()
 
 	var ind: StatIndicator = STAT_INDICATOR_SCENE.instantiate()
 	assert_int(int(ind.offset_right)).is_equal(108)

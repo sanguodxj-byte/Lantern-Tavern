@@ -4,6 +4,7 @@ extends GdUnitTestSuite
 # Chest.open_chest() takes no args, calls queue_free after loot spawn.
 
 const LT := preload("res://globals/tavern/loot_table.gd")
+const FOOTPRINT := preload("res://scenes/expedition/dungeon_spawn_footprint.gd")
 
 func test_chest_starts_closed() -> void:
 	var chest = Chest.new()
@@ -85,3 +86,36 @@ func test_boss_chest_interactive_loot_generates_three_reward_rolls() -> void:
 		.override_failure_message("boss 奖励大箱应保留多件装备奖励数组") \
 		.is_greater_equal(1)
 	chest.free()
+
+
+func test_chest_loot_positions_are_deterministic_and_non_overlapping() -> void:
+	var chest := Chest.new()
+	chest.position = Vector3(4.0, 0.5, -2.0)
+	var registry: Array = []
+	FOOTPRINT.register(registry, chest.position,
+		FOOTPRINT.half_extents_for("chest", "normal_chest"), "chest:normal_chest")
+
+	var first: Vector3 = chest.call("_find_loot_position", registry, 0)
+	assert_bool(FOOTPRINT.can_place(registry, first,
+		FOOTPRINT.half_extents_for("item", "chest_loot"))).is_true()
+	FOOTPRINT.register(registry, first, FOOTPRINT.half_extents_for("item", "chest_loot"), "loot:0")
+	var second: Vector3 = chest.call("_find_loot_position", registry, 1)
+	assert_bool(FOOTPRINT.can_place(registry, second,
+		FOOTPRINT.half_extents_for("item", "chest_loot"))).is_true()
+	assert_bool(first != second).is_true()
+
+	var replay_registry: Array = []
+	FOOTPRINT.register(replay_registry, chest.position,
+		FOOTPRINT.half_extents_for("chest", "normal_chest"), "chest:normal_chest")
+	var replay_first: Vector3 = chest.call("_find_loot_position", replay_registry, 0)
+	assert_bool(first == replay_first).is_true()
+	chest.free()
+
+
+func test_chest_drop_paths_use_shared_footprint_registry_without_random_offsets() -> void:
+	var source := (load("res://scenes/props/chest/chest.gd") as GDScript).source_code
+	assert_bool(source.contains("DUNGEON_SPAWN_FOOTPRINT")).is_true()
+	assert_bool(source.contains("_loot_spawn_registry")).is_true()
+	assert_bool(source.contains("_find_loot_position")).is_true()
+	assert_bool(source.find("randf_range") == -1) \
+		.override_failure_message("宝箱掉落不得使用会导致重叠的随机水平偏移").is_true()

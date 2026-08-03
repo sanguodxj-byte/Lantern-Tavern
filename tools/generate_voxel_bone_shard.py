@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,11 +34,65 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "jagged pale bone splinter with marrow notch and cracks"
 
+# Bone shard identity palette: pale whites, ivory, yellowed cream, dark marrow red-brown.
+# Each material owns its own seed/pattern; no shared identity table.
+_PALE_IVORY = (0.95, 0.92, 0.82, 1.0)
+_BONE_WHITE = (0.93, 0.90, 0.84, 1.0)
+_YELLOWED_CREAM = (0.88, 0.80, 0.62, 1.0)
+_DARK_MARROW = (0.55, 0.30, 0.22, 1.0)
+_CRACK_BROWN = (0.40, 0.32, 0.24, 1.0)
+_COOL_SHADOW = (0.55, 0.58, 0.66, 1.0)  # cool blue-grey shadow accent
+_MARROW_RED = (0.58, 0.20, 0.16, 1.0)  # warm marrow red accent
+
 def build_model():
-    bone = make_material("bs_bone", (0.90, 0.86, 0.72, 1.0), roughness=0.78)
-    bone_dark = make_material("bs_dark", (0.62, 0.55, 0.42, 1.0), roughness=0.82)
-    marrow = make_material("bs_marrow", (0.72, 0.48, 0.38, 1.0), roughness=0.70)
-    crack = make_material("bs_crack", (0.45, 0.38, 0.30, 1.0), roughness=0.85)
+    bone = make_pixel_material(
+        "bs_bone",
+        (0.90, 0.86, 0.72, 1.0),
+        roughness=0.78,
+        palette=(_PALE_IVORY, _BONE_WHITE, _YELLOWED_CREAM, _COOL_SHADOW, _MARROW_RED),
+        pixel_size=48,
+        variation=0.40,
+        seed=701,
+        pattern="cracks",
+        normal_strength=1.0,
+        edge_darken=0.30, highlight=0.45, detail_noise=0.15,
+    )
+    bone_dark = make_pixel_material(
+        "bs_dark",
+        (0.62, 0.55, 0.42, 1.0),
+        roughness=0.82,
+        palette=(_YELLOWED_CREAM, _CRACK_BROWN, _PALE_IVORY, _COOL_SHADOW),
+        pixel_size=48,
+        variation=0.42,
+        seed=713,
+        pattern="cracks",
+        normal_strength=1.1,
+        edge_darken=0.40, highlight=0.40, detail_noise=0.15,
+    )
+    marrow = make_pixel_material(
+        "bs_marrow",
+        (0.55, 0.30, 0.22, 1.0),
+        roughness=0.70,
+        palette=(_DARK_MARROW, _CRACK_BROWN, _YELLOWED_CREAM, _COOL_SHADOW),
+        pixel_size=48,
+        variation=0.42,
+        seed=727,
+        pattern="porous",
+        normal_strength=1.2,
+        edge_darken=0.46, highlight=0.30, detail_noise=0.15,
+    )
+    crack = make_pixel_material(
+        "bs_crack",
+        (0.45, 0.38, 0.30, 1.0),
+        roughness=0.85,
+        palette=(_CRACK_BROWN, _DARK_MARROW, _YELLOWED_CREAM, _MARROW_RED),
+        pixel_size=48,
+        variation=0.40,
+        seed=741,
+        pattern="cracks",
+        normal_strength=1.2,
+        edge_darken=0.44, highlight=0.30, detail_noise=0.15,
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
     def add(name, center, size, material):

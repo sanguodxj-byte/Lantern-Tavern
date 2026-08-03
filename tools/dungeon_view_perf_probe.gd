@@ -203,7 +203,14 @@ func _measure_visibility(root_node: Node, camera: Camera3D) -> Dictionary:
 		"frustum_lights": 0,
 		"visible_meshes": 0,
 		"frustum_meshes": 0,
-		"active_physics_bodies": 0,
+		"active_enemy_bodies": 0,
+		"active_item_bodies": 0,
+		"active_areas": 0,
+		"active_static_colliders": 0,
+		"active_bone_bodies": 0,
+		"active_fragment_bodies": 0,
+		"active_other_bodies": 0,
+		"active_physics_total": 0,
 		"monitoring_areas": 0,
 		"processing_characters": 0,
 	}
@@ -231,8 +238,23 @@ func _measure_visibility(root_node: Node, camera: Camera3D) -> Dictionary:
 				if camera.is_position_in_frustum(mesh.global_position):
 					stats["frustum_meshes"] += 1
 		elif node is CollisionObject3D:
-			if bool(node.get_meta("stream_physics_active", true)):
-				stats["active_physics_bodies"] += 1
+			var collision_object := node as CollisionObject3D
+			if _is_collision_object_active(collision_object):
+				stats["active_physics_total"] += 1
+				if node is PhysicalBone3D:
+					stats["active_bone_bodies"] += 1
+				elif node is Area3D:
+					stats["active_areas"] += 1
+				elif node is StaticBody3D:
+					stats["active_static_colliders"] += 1
+				elif node is CharacterBody3D and node.is_in_group("enemies"):
+					stats["active_enemy_bodies"] += 1
+				elif node is RigidBody3D and _is_fragment_body(node as RigidBody3D):
+					stats["active_fragment_bodies"] += 1
+				elif node is RigidBody3D and _is_item_body(node as RigidBody3D):
+					stats["active_item_bodies"] += 1
+				else:
+					stats["active_other_bodies"] += 1
 			if node is Area3D and (node as Area3D).monitoring:
 				stats["monitoring_areas"] += 1
 			if node is CharacterBody3D and node.is_physics_processing():
@@ -241,7 +263,7 @@ func _measure_visibility(root_node: Node, camera: Camera3D) -> Dictionary:
 
 
 func _print_sample(sample: Dictionary) -> void:
-	_emit("DUNGEON_VIEW_PROBE yaw=%.1f avg_ms=%.3f worst_ms=%.3f render_objects=%.1f primitives=%.1f chunk=%s active_terrain_nodes=%d active_terrain_instances=%d frustum_terrain_instances=%d visible_lights=%d frustum_lights=%d visible_meshes=%d frustum_meshes=%d active_physics_bodies=%d monitoring_areas=%d processing_characters=%d" % [
+	_emit("DUNGEON_VIEW_PROBE yaw=%.1f avg_ms=%.3f worst_ms=%.3f render_objects=%.1f primitives=%.1f chunk=%s active_terrain_nodes=%d active_terrain_instances=%d frustum_terrain_instances=%d visible_lights=%d frustum_lights=%d visible_meshes=%d frustum_meshes=%d active_enemy_bodies=%d active_item_bodies=%d active_areas=%d active_static_colliders=%d active_bone_bodies=%d active_fragment_bodies=%d active_other_bodies=%d active_physics_total=%d monitoring_areas=%d processing_characters=%d" % [
 		float(sample["yaw"]),
 		float(sample["avg_ms"]),
 		float(sample["worst_ms"]),
@@ -255,7 +277,14 @@ func _print_sample(sample: Dictionary) -> void:
 		int(sample["frustum_lights"]),
 		int(sample["visible_meshes"]),
 		int(sample["frustum_meshes"]),
-		int(sample["active_physics_bodies"]),
+		int(sample["active_enemy_bodies"]),
+		int(sample["active_item_bodies"]),
+		int(sample["active_areas"]),
+		int(sample["active_static_colliders"]),
+		int(sample["active_bone_bodies"]),
+		int(sample["active_fragment_bodies"]),
+		int(sample["active_other_bodies"]),
+		int(sample["active_physics_total"]),
 		int(sample["monitoring_areas"]),
 		int(sample["processing_characters"]),
 	])
@@ -308,6 +337,28 @@ func _count_chunk_entries(chunks: Dictionary) -> int:
 	for entries in chunks.values():
 		count += (entries as Array).size()
 	return count
+
+
+func _is_collision_object_active(body: CollisionObject3D) -> bool:
+	if body.has_meta("stream_physics_registered"):
+		return bool(body.get_meta("stream_physics_active", false))
+	if body is Area3D:
+		var area := body as Area3D
+		return area.monitoring or area.monitorable or area.collision_layer != 0 or area.collision_mask != 0
+	if body is RigidBody3D:
+		var rigid := body as RigidBody3D
+		return not rigid.freeze and (rigid.collision_layer != 0 or rigid.collision_mask != 0)
+	return body.collision_layer != 0 or body.collision_mask != 0
+
+
+func _is_item_body(body: RigidBody3D) -> bool:
+	return body is PickableItem or body.has_meta("item_tag") \
+		or body.get_script() != null and String(body.get_script().resource_path).contains("equipment/")
+
+
+func _is_fragment_body(body: RigidBody3D) -> bool:
+	return bool(body.get_meta("voxel_ragdoll_fragment", false)) \
+		or body.collision_layer == PhysicsSetup.LAYER_DEBRIS
 
 
 func _walk(root_node: Node) -> Array[Node]:

@@ -124,7 +124,7 @@
 2. **玩家模型完成状态矛盾**：28 称「玩家模型 pending」；29 把 player 列入 A 档「已完成」。
 3. **两份代码图谱统计漂移**：CODEMAP.md（gd 555/func 6586）vs gdscript_codemap.json（gd 550/func 6501）——已归档 CODEMAP.md。
 4. **联机范围两文重叠**：24 与 25 描述同一迁移，边界不清。
-5. **第一人称动画现状与计划断层**：task.md 计划开启手臂动画，但 weapon_swing_animation.md 明确「arm_animation_enabled=false，第一人称武器恒静态」。
+5. **第一人称动画边界已收口（2026-08-01）**：第一人称只呈现武器/盾牌；已移除角色部位依赖并启用独立装备动作与程序化反馈。
 
 ---
 
@@ -138,7 +138,7 @@
 ### 🟡 P1 —— 高价值留白
 4. **口味表补丁**：09 补 `[炎热]`（来自 11）；解决哥布林 `[恶臭]`（14）与 09/12 矛盾。
 5. **玩家模型状态核实**：28 与 29 矛盾，对照 `data/character_model_tiers.gd` / 实际资源裁定，统一两文。
-6. **第一人称动画落地**：task.md 为 P1 待实施，依赖 `arm_animation_enabled`（当前 false）→ 先决策是否开启，再推进 ViewModel 分层。
+6. ✅ **第一人称动画落地（2026-08-01）**：武器/盾牌独立 ViewModel、作者化动作变体、惯性/步态/瞄准/后坐/格挡反馈与纯装备测试均已建立。
 7. **地牢生成方向定稿**：04 更新为 isaac 内核 + set-piece 注入 hybrid（吸收 `set_piece_room_design.md`），归档 `mapgen_vs_barony.md`（已做）。
 
 ### 🟢 P2 —— 收敛性

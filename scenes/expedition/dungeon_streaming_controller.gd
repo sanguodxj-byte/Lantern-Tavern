@@ -15,6 +15,13 @@ const STREAM_VISUAL_CHUNK_RADIUS := 1
 const STREAM_TERRAIN_CHUNK_RADIUS := 1
 const STREAM_UPDATE_INTERVAL := 0.25
 const DUNGEON_VISIBLE_LOCAL_LIGHT_BUDGET := 12
+# 动态体（敌人等）视觉激活半径（米）：物理在 24m 停用后，视觉仍保持到该半径，
+# 让敌人自带的 billboard/imposter 纸片 LOD（ENEMY_VISIBILITY_RANGE_END=36m）接管远距渲染，
+# 避免跨 chunk 边界从无到有地"凭空出现"。与 enemy.gd 的 LOD 远裁剪对齐。
+const STREAM_DYNAMIC_VISUAL_ACTIVATION_DISTANCE := 36.0
+# 动态体视觉扫描 chunk 半径：须覆盖 _dynamic_visual_activation_distance()（36m）在
+# 玩家位于 chunk 边缘时仍能被扫描到（chunk=24m，半径 2 即 ±48m）。
+const STREAM_DYNAMIC_VISUAL_CHUNK_RADIUS := 2
 
 var _layout: DungeonLayout = null
 var _build_result: DungeonBuildResult = null
@@ -30,10 +37,12 @@ var _last_active_physics_chunks: Dictionary = {}
 var _last_active_visual_chunks: Dictionary = {}
 var _last_active_terrain_chunks: Dictionary = {}
 var _active_light_set: Dictionary = {}        # light_instance_id -> Light3D（当前已激活灯）
+var _forced_hunt_enemies: Dictionary = {}     # enemy_instance_id -> CharacterBody3D（事件驱动缓存）
 var _streaming_ready := false
 var _update_timer := 0.0
 var _streaming_state_initialized := false
 var _streaming_refresh_count := 0
+var _forced_hunt_refresh_requested := false
 
 ## 配置 controller。layout 提供边界与 tile_size；build_result 提供已注册节点。
 func configure(layout: DungeonLayout, build_result: DungeonBuildResult) -> void:
@@ -88,8 +97,19 @@ func register_physics_node(node: Node) -> void:
 			if body == null or not is_instance_valid(body):
 				continue
 			var chunk: Vector2i = body.get_meta("stream_physics_chunk", Vector2i.ZERO)
-			_set_physics_body_active(body, _is_chunk_within_radius(chunk, _last_player_chunk, STREAM_PHYSICS_CHUNK_RADIUS) \
-				or _is_forced_hunt_enemy(body))
+			_set_physics_body_active(body, _should_activate_physics_body(body, chunk, _last_player_chunk))
+
+## 敌人的全图暗蚀追击状态由 Enemy.set_dark_erosion_hunt 事件驱动通知。
+## 这样玩家停留在同一 chunk 时，streaming tick 不再扫描整个物理注册表。
+func notify_forced_hunt_changed(enemy: CharacterBody3D, active: bool) -> void:
+	if enemy == null or not is_instance_valid(enemy):
+		return
+	var enemy_id := enemy.get_instance_id()
+	if active:
+		_forced_hunt_enemies[enemy_id] = enemy
+	else:
+		_forced_hunt_enemies.erase(enemy_id)
+	_forced_hunt_refresh_requested = true
 
 ## 注册一个 terrain chunk 节点。
 func register_terrain_chunk(chunk: Vector2i, node: Node3D) -> void:
@@ -119,8 +139,11 @@ func update_streaming(force: bool = false) -> void:
 		return
 	var player_pos := _player_position()
 	var player_chunk := _world_to_chunk(player_pos)
-	if not force and player_chunk == _last_player_chunk and not _has_forced_hunt_enemies():
+	var has_forced_hunt := _has_forced_hunt_enemies()
+	if not force and player_chunk == _last_player_chunk \
+			and not has_forced_hunt and not _forced_hunt_refresh_requested:
 		return
+	_forced_hunt_refresh_requested = false
 	_streaming_refresh_count += 1
 	_last_player_chunk = player_chunk
 	_update_lights(player_chunk, player_pos, force)
@@ -148,6 +171,8 @@ func clear() -> void:
 	_last_active_visual_chunks.clear()
 	_last_active_terrain_chunks.clear()
 	_active_light_set.clear()
+	_forced_hunt_enemies.clear()
+	_forced_hunt_refresh_requested = false
 	_streaming_ready = false
 	_streaming_state_initialized = false
 	_streaming_refresh_count = 0
@@ -192,7 +217,9 @@ func _update_physics(player_chunk: Vector2i) -> void:
 	var active := {}
 	for chunk in _iter_chunks(player_chunk, STREAM_PHYSICS_CHUNK_RADIUS):
 		active[chunk] = true
-	_add_forced_hunt_physics_chunks(active)
+	var forced_hunt_chunks := _collect_forced_hunt_physics_chunks()
+	for chunk in forced_hunt_chunks.keys():
+		active[chunk] = true
 	# 新激活的 chunk：激活其中所有物理体
 	for chunk in active.keys():
 		if _last_active_physics_chunks.has(chunk):
@@ -201,8 +228,12 @@ func _update_physics(player_chunk: Vector2i) -> void:
 		for body_variant in bodies:
 			var body := _collision_object_or_null(body_variant)
 			if body != null:
-				_set_physics_body_active(body, true)
+				var forced_environment := forced_hunt_chunks.has(chunk) and not _is_dynamic_stream_body(body)
+				_set_physics_body_active(body, forced_environment \
+					or _should_activate_physics_body(body, chunk, player_chunk))
 	# 仅停用刚离开半径的 chunk。注册时节点已经默认停用，因此无需扫描全地图。
+	# 动态体不在此处无条件隐藏：追逐跨界但仍在距离阈值内的敌人由下方 reconcile 按
+	# 实时位置重新激活，这里只处理确实应停用的静态体/远距动态体。
 	for chunk in _last_active_physics_chunks.keys():
 		if active.has(chunk):
 			continue
@@ -210,41 +241,62 @@ func _update_physics(player_chunk: Vector2i) -> void:
 		for body_variant in bodies:
 			var body := _collision_object_or_null(body_variant)
 			if body != null:
-				_set_physics_body_active(body, false)
+				_set_physics_body_active(body, _should_activate_physics_body(body, chunk, player_chunk))
+	# 3x3 静态碰撞仍保留，但动态体只允许当前 chunk 激活。玩家跨 chunk 时，
+	# 旧的 3x3 交集不会经过上面的进入/离开分支，因此必须在局部 union 内重算动态体。
+	# 另把视觉半径（radius 2）的 chunk 并入扫描集合：reconcile 只处理动态体，
+	# 保证 24–36m 纸片带（含玩家在 chunk 边缘时）的动态体可见性始终正确。
+	var reconcile_chunks := active.duplicate()
+	for chunk in _last_active_physics_chunks.keys():
+		reconcile_chunks[chunk] = true
+	for chunk in _iter_chunks(player_chunk, STREAM_DYNAMIC_VISUAL_CHUNK_RADIUS):
+		reconcile_chunks[chunk] = true
+	var rehome_list: Array = []
+	for chunk in reconcile_chunks.keys():
+		var reconcile_bodies: Array = _physics_chunks.get(chunk, [])
+		for body_variant in reconcile_bodies:
+			var reconcile_body := _collision_object_or_null(body_variant)
+			if reconcile_body != null and _is_dynamic_stream_body(reconcile_body):
+				_set_physics_body_active(reconcile_body, _should_activate_physics_body(reconcile_body, chunk, player_chunk))
+				if bool(reconcile_body.get_meta("stream_physics_active", false)):
+					rehome_list.append(reconcile_body)
+	# 追逐跨 chunk 的动态体：激活后按其实时位置重新归位到当前 chunk，
+	# 否则其注册 chunk 一旦离开 union 就再也不会被扫描，激活状态会永久泄漏。
+	for body in rehome_list:
+		_rehome_dynamic_body(body)
 	_last_active_physics_chunks = active
-	_update_forced_hunt_enemies(active)
+	# 强制追击敌人可能未被注册为 streamed physics（例如迟到的运行时实体），
+	# 但仍必须保持 CharacterBody3D 的 AI 物理处理；这里只遍历事件缓存，不扫全地图。
+	_prune_invalid_forced_hunt_enemies()
+	for enemy_variant in _forced_hunt_enemies.values():
+		var enemy := enemy_variant as CharacterBody3D
+		if enemy == null or not is_instance_valid(enemy):
+			continue
+		_set_physics_body_active(enemy, true)
+		enemy.set_meta("stream_forced_hunt_active", true)
 
 ## 满暗蚀敌人移动时，玩家所在 chunk 不变也必须刷新其脚下环境碰撞。
-## 物理 chunk 半径只扩展到强制敌人当前位置附近，暗蚀结束后下一次刷新会收回。
-func _add_forced_hunt_physics_chunks(active_chunks: Dictionary) -> void:
-	for registered_chunk in _physics_chunks.keys():
-		var bodies: Array = _physics_chunks.get(registered_chunk, [])
-		for body_variant in bodies:
-			var body := _collision_object_or_null(body_variant)
-			if not _is_forced_hunt_enemy(body):
-				continue
-			var enemy_chunk := _world_to_chunk(body.global_position)
-			for chunk in _iter_chunks(enemy_chunk, STREAM_PHYSICS_CHUNK_RADIUS):
-				active_chunks[chunk] = true
+## 只遍历强制追击缓存，物理注册表规模不会放大这条路径的开销。
+func _collect_forced_hunt_physics_chunks() -> Dictionary:
+	var chunks := {}
+	_prune_invalid_forced_hunt_enemies()
+	for enemy_variant in _forced_hunt_enemies.values():
+		var enemy := enemy_variant as CharacterBody3D
+		if enemy == null or not is_instance_valid(enemy):
+			continue
+		var enemy_chunk := _world_to_chunk(enemy.global_position)
+		for chunk in _iter_chunks(enemy_chunk, STREAM_PHYSICS_CHUNK_RADIUS):
+			chunks[chunk] = true
+	return chunks
 
-## 满暗蚀时，敌人跨越普通物理 chunk 半径仍必须运行 CharacterBody3D 的 AI。
-## 只扫描已注册的物理节点，并且仅在玩家跨 chunk 或压力强制刷新时执行，不影响每帧开销。
-func _update_forced_hunt_enemies(active_chunks: Dictionary) -> void:
-	for chunk in _physics_chunks.keys():
-		var bodies: Array = _physics_chunks.get(chunk, [])
-		for body_variant in bodies:
-			var body := _collision_object_or_null(body_variant)
-			if body == null or not body is CharacterBody3D:
-				continue
-			if not body.is_in_group("enemies"):
-				continue
-			if _is_forced_hunt_enemy(body):
-				_set_physics_body_active(body, true)
-				body.set_meta("stream_forced_hunt_active", true)
-			elif bool(body.get_meta("stream_forced_hunt_active", false)):
-				if not active_chunks.has(chunk):
-					_set_physics_body_active(body, false)
-				body.set_meta("stream_forced_hunt_active", false)
+func _prune_invalid_forced_hunt_enemies() -> void:
+	var stale_ids: Array[int] = []
+	for enemy_id in _forced_hunt_enemies.keys():
+		var enemy := _forced_hunt_enemies.get(enemy_id) as CharacterBody3D
+		if enemy == null or not is_instance_valid(enemy) or not _is_forced_hunt_enemy(enemy):
+			stale_ids.append(int(enemy_id))
+	for enemy_id in stale_ids:
+		_forced_hunt_enemies.erase(enemy_id)
 
 func _update_visuals(player_chunk: Vector2i) -> void:
 	if _visual_chunks.is_empty():
@@ -370,16 +422,70 @@ func _register_one_physics_body(body: CollisionObject3D, visual_root: Node = nul
 	if not _physics_chunks.has(chunk):
 		_physics_chunks[chunk] = []
 	_physics_chunks[chunk].append(body)
+	if _is_forced_hunt_enemy(body):
+		_forced_hunt_enemies[body.get_instance_id()] = body
 	_set_physics_body_active(body, false)
+
+func _should_activate_physics_body(body: CollisionObject3D, chunk: Vector2i, player_chunk: Vector2i) -> bool:
+	if _is_forced_hunt_enemy(body):
+		return true
+	if _is_dynamic_stream_body(body):
+		# 动态体（敌人/掉落/触发器）按与玩家的实时距离激活（阈值=一个 chunk 尺寸，24m），
+		# 而非注册 chunk 是否与玩家 chunk 相同：跨 chunk 边界仅 1m 的敌人不应因注册
+		# chunk 不同被整根隐藏，追逐跨界敌人也按当前位置保持激活。
+		var activation_dist := _dynamic_activation_distance()
+		return _node_position(body).distance_to(_player_position()) <= activation_dist
+	return _is_chunk_within_radius(chunk, player_chunk, STREAM_PHYSICS_CHUNK_RADIUS)
+
+func _dynamic_activation_distance() -> float:
+	var tile_size: float = _layout.tile_size if _layout != null else 3.0
+	return float(STREAM_CHUNK_SIZE_CELLS) * tile_size
+
+## 动态体是否仍应在物理休眠时保持可见：距玩家在视觉激活半径内（36m，纸片 LOD 带）。
+## 强制追击敌人（暗蚀满时全图追击）始终可见，避免追击者整根消失。
+func _should_keep_dynamic_body_visible(body: CollisionObject3D) -> bool:
+	if _is_forced_hunt_enemy(body):
+		return true
+	return _node_position(body).distance_to(_player_position()) <= STREAM_DYNAMIC_VISUAL_ACTIVATION_DISTANCE
+
+func _is_dynamic_stream_body(body: CollisionObject3D) -> bool:
+	return body is CharacterBody3D or body is RigidBody3D or body is Area3D
+
+## 将动态体从其注册 chunk 桶重新归位到实时位置所在 chunk，并更新 meta。
+## 仅用于活跃动态体（避免追逐跨界后注册 chunk 残留导致激活状态泄漏）。
+func _rehome_dynamic_body(body: CollisionObject3D) -> void:
+	if not is_instance_valid(body):
+		return
+	var current_chunk := _world_to_chunk(_node_position(body))
+	var registered_chunk: Vector2i = body.get_meta("stream_physics_chunk", current_chunk)
+	if current_chunk == registered_chunk:
+		return
+	var bucket: Array = _physics_chunks.get(registered_chunk, [])
+	bucket.erase(body)
+	body.set_meta("stream_physics_chunk", current_chunk)
+	if not _physics_chunks.has(current_chunk):
+		_physics_chunks[current_chunk] = []
+	if not _physics_chunks[current_chunk].has(body):
+		_physics_chunks[current_chunk].append(body)
 
 func _set_physics_body_active(body: CollisionObject3D, active: bool) -> void:
 	if not is_instance_valid(body):
 		return
+	# 可见性从物理激活解耦：动态体（敌人等）物理在 24m 停用后，只要仍在视觉半径
+	# （36m，与 enemy.gd 的 billboard/imposter LOD 对齐）内就保持可见，让远距纸片
+	# LOD 接管渲染，避免玩家跨 chunk 时敌人从无到有"凭空出现"。静态体仍按 chunk。
+	var visible := active
+	var keep_visual_process := false
+	if not active and _is_dynamic_stream_body(body):
+		visible = _should_keep_dynamic_body_visible(body)
+		keep_visual_process = visible
 	# 不早返回：远离后再次设 false 必须强制 layer=0，否则激活残留的 layer 不会清。
 	# （早返回会跳过 layer=0 设置，导致停用的 body 仍持碰撞。）
 	body.set_meta("stream_physics_active", active)
-	body.visible = active
-	_set_visual_root_active(body, active)
+	body.visible = visible
+	if body is CharacterBody3D and body.has_method("set_streaming_physics_active"):
+		(body as CharacterBody3D).set_streaming_physics_active(active)
+	_set_visual_root_active(body, visible)
 	body.collision_layer = int(body.get_meta("stream_collision_layer", body.collision_layer)) if active else 0
 	body.collision_mask = int(body.get_meta("stream_collision_mask", body.collision_mask)) if active else 0
 	if body is RigidBody3D:
@@ -394,7 +500,7 @@ func _set_physics_body_active(body: CollisionObject3D, active: bool) -> void:
 	elif body is CharacterBody3D and not active:
 		(body as CharacterBody3D).velocity = Vector3.ZERO
 	if body is CharacterBody3D:
-		_set_character_callbacks(body as CharacterBody3D, active)
+		_set_character_callbacks(body as CharacterBody3D, active, keep_visual_process)
 	elif body is Area3D:
 		var area := body as Area3D
 		area.monitoring = bool(area.get_meta("stream_monitoring", true)) if active else false
@@ -413,8 +519,11 @@ func _set_visual_root_active(body: CollisionObject3D, active: bool) -> void:
 	# 粒子与音频，否则隐藏的火把仍常播火焰音（灯光预算只控 OmniLight3D，不控音频/粒子）。
 	_apply_visual_side_effects(root, not active)
 
-func _set_character_callbacks(body: CharacterBody3D, active: bool) -> void:
-	body.set_process(active)
+func _set_character_callbacks(body: CharacterBody3D, active: bool, keep_visual_process: bool = false) -> void:
+	# 可见但物理休眠的动态体（24–36m 纸片 LOD 带）：保留 _process 让 enemy.gd 的
+	# _update_render_optimization 继续运行（billboard/imposter 切换、动画暂停），
+	# 但停掉 _physics_process 与子节点，避免远距敌人仍跑 AI 寻路。
+	body.set_process(active or keep_visual_process)
 	body.set_physics_process(active)
 	for child in body.get_children():
 		_set_node_callbacks_recursive(child, active)
@@ -450,12 +559,8 @@ func _is_forced_hunt_enemy(body: CollisionObject3D) -> bool:
 
 func _has_forced_hunt_enemies() -> bool:
 	_prune_invalid_physics_bodies()
-	for chunk in _physics_chunks.keys():
-		for body_variant in _physics_chunks.get(chunk, []):
-			var body := _collision_object_or_null(body_variant)
-			if _is_forced_hunt_enemy(body):
-				return true
-	return false
+	_prune_invalid_forced_hunt_enemies()
+	return not _forced_hunt_enemies.is_empty()
 
 func _node_position(node: Node3D) -> Vector3:
 	if not is_instance_valid(node):
@@ -482,7 +587,7 @@ func _prune_invalid_physics_bodies() -> void:
 
 func _player_position() -> Vector3:
 	if _player != null and is_instance_valid(_player):
-		return _player.global_position
+		return _player.global_position if _player.is_inside_tree() else _player.position
 	# 无玩家时用 layout 中心近似（与 procedural 的 player_spawn_pos fallback 一致）
 	if _layout != null and not _layout.is_empty():
 		var half_w: float = float(_layout.width) * _layout.tile_size / 2.0

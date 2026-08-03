@@ -16,6 +16,16 @@ func test_world_loads_intro_tavern_and_dungeon_as_spaces() -> void:
 	assert_bool(source.contains("res://scenes/tavern/tavern.tscn")).is_true()
 	assert_bool(source.contains("res://scenes/expedition/procedural_dungeon.tscn")).is_true()
 
+func test_world_exposes_next_floor_transition_without_extraction() -> void:
+	var script := load("res://scenes/world/world.gd") as GDScript
+	var source := script.source_code
+	assert_bool(source.contains("func transition_to_next_floor")).is_true()
+	assert_bool(source.contains("GameState.advance_dungeon_floor()")).is_true()
+	var block_start := source.find("func transition_to_next_floor")
+	var block := source.substr(block_start, source.find("\nfunc load_space", block_start) - block_start)
+	assert_bool(block.contains('load_space(SPACE_DUNGEON)')).is_true()
+	assert_bool(block.contains("extract_to_tavern")).is_false()
+
 func test_tavern_manager_routes_phase_changes_through_world() -> void:
 	var script := load("res://globals/tavern/tavern_manager.gd") as GDScript
 	var source := script.source_code

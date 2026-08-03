@@ -55,6 +55,9 @@ func interact(_source_player: Node = null) -> void:
 		screen_pos = cam.unproject_position(global_position)
 	GameEvents.interaction_hint_changed.emit("door", tutorial_locked_message, screen_pos)
 
+func can_interact() -> bool:
+	return not tutorial_locked_message.is_empty()
+
 func get_kick_prompt() -> String:
 	return tutorial_kick_prompt if not tutorial_kick_prompt.is_empty() else "[F] Open"
 

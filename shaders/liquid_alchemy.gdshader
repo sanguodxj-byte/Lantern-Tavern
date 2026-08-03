@@ -77,8 +77,8 @@ void fragment() {
 	vec3 col = mix(color_base.rgb, color_secondary.rgb, n * 0.6 + fres * 0.4);
 	col = mix(col, color_secondary.rgb, fres * 0.7);
 
-	ALBEDO = col;
-	EMISSION = color_secondary.rgb * bubble * bubble_strength + color_secondary.rgb * fres * 0.25;
+	ALBEDO = col + color_secondary.rgb * bubble * bubble_strength * 0.25;
+	EMISSION = vec3(0.0);
 	METALLIC = metallic;
 	ROUGHNESS = roughness;
 	SPECULAR = 0.6;

@@ -1,13 +1,11 @@
 extends SceneTree
 
 const BATCHED_SCENES := [
-	"res://scenes/props/decor/bones.tscn",
-	"res://scenes/props/decor/bench.tscn",
-	"res://scenes/props/decor/chair.tscn",
-	"res://scenes/props/decor/table.tscn",
-	"res://scenes/props/crates/small_crate.tscn",
-	"res://scenes/props/decor/iron_bar_grate.tscn",
-	"res://scenes/props/structures/pillar.tscn",
+	"res://scenes/props/dungeon/decor/bones.tscn",
+	"res://scenes/props/dungeon/decor/plank.tscn",
+	"res://scenes/props/dungeon/dungeon_crate.tscn",
+	"res://scenes/props/dungeon/decor/iron_bar_grate.tscn",
+	"res://scenes/props/dungeon/pillar.tscn",
 ]
 
 func _initialize() -> void:

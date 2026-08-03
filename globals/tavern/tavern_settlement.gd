@@ -437,6 +437,12 @@ func reset_state() -> void:
 		"goblin": [], "minotaur": [], "cyclops": [], "ghost": [], "elf": [],
 	}
 
+## 应用出身势力加成（docs/36-出身系统与涌现式Build.md §2）。
+## 在 reset_state() 之后、新游戏开始时调用。
+func apply_origin_faction(origin_id: String) -> void:
+	const OD := preload("res://globals/combat/origin_data.gd")
+	OD.apply_faction_bonus(self, origin_id)
+
 func serialize() -> Dictionary:
 	var regulars: Dictionary = {}
 	for race_id in regular_customers:

@@ -14,9 +14,12 @@ extends CanvasLayer
 
 const ManaComponentScript := preload("res://scenes/characters/component/mana_component.gd")
 const BuffIconScript := preload("res://scenes/ui/buff_icon.gd")
+const SpellInterfaceScene := preload("res://scenes/ui/spell_interface.tscn")
+const SpellLoadoutScript := preload("res://globals/combat/spell_loadout.gd")
 const Service := preload("res://globals/core/service.gd")
 
 @onready var minimap: CombatMinimap = $MinimapContainer/Minimap
+@onready var large_map: LargeMap = $LargeMap
 @onready var time_label: Label = $MinimapContainer/TimePanel/TimeLabel
 @onready var dark_erosion_label: Label = $MinimapContainer/DarkErosionPanel/DarkErosionLabel
 @onready var hp_bar: PixelBar = $BottomLeft/HPBar
@@ -28,12 +31,20 @@ const Service := preload("res://globals/core/service.gd")
 @onready var weapon_indicator: StatIndicator = $BottomLeftExtras/WeaponIndicator
 @onready var shield_icon: TextureRect = $BottomLeftExtras/ShieldIcon
 @onready var shield_indicator: StatIndicator = $BottomLeftExtras/ShieldIndicator
-@onready var buff_container: HBoxContainer = $BottomLeft/BuffContainer
+@onready var buff_container: HBoxContainer = $BottomLeft/BuffPanel/BuffContainer
 @onready var magic_shield_bar: Control = $BottomLeft/MagicShieldBar
 @onready var physical_shield_bar: Control = $BottomLeft/PhysicalShieldBar
+@onready var experience_bar: ProgressBar = $BottomCenterExperience/ContentRow/ExperienceBar
+@onready var experience_label: Label = $BottomCenterExperience/ContentRow/ExperienceBar/ExperienceLabel
+@onready var level_label: Label = $BottomCenterExperience/ContentRow/LevelLabel
+@onready var level_up_panel: LevelUpPanel = $LevelUpPanel
 
 var _player: Node = null
 var _mana: ManaComponent = null
+var _spell_interface: Control = null
+var _spell_loadout: RefCounted = null
+var _spell_interface_open: bool = false
+var _attr_panel: Node = null
 var latest_pressure_snapshot: Dictionary = {}
 var _buff_icons: Dictionary = {}  # { buff_type: Node (BuffIcon) }
 
@@ -51,14 +62,20 @@ var _last_buffs_snapshot: Dictionary = {}  # 上次 buff 快照
 
 
 func _ready() -> void:
+	add_to_group("combat_hud")
 	layer = 15
 	_update_pressure_labels({})
+	# 大地图绑定小地图作为数据源
+	if large_map and minimap:
+		large_map.set_minimap(minimap)
 	# 初始化像素条
 	if hp_bar:
-		hp_bar.bar_color = Color(0.85, 0.15, 0.12)
+		hp_bar.bar_kind = PixelBar.BarKind.HEALTH
+		hp_bar.bar_color = Color("#D33A32")
 		hp_bar.label_text = tr("HP")
 	if mp_bar:
-		mp_bar.bar_color = Color(0.2, 0.35, 0.9)
+		mp_bar.bar_kind = PixelBar.BarKind.MANA
+		mp_bar.bar_color = Color("#2585D8")
 		mp_bar.label_text = tr("MP")
 	# 连接玩家事件
 	if GameEvents:
@@ -69,10 +86,21 @@ func _ready() -> void:
 
 		# 经营 HUD 打开时整层隐藏，避免战斗 UI 泄露并拦截经营面板鼠标点击
 		GameEvents.tavern_hud_visibility_changed.connect(_on_tavern_hud_visibility_changed)
+	_setup_spell_interface()
+	_setup_progression_ui()
+
+
+func _exit_tree() -> void:
+	if _attr_panel != null and _attr_panel.has_signal("experience_changed"):
+		var callback := Callable(self, "_on_experience_changed")
+		if _attr_panel.experience_changed.is_connected(callback):
+			_attr_panel.experience_changed.disconnect(callback)
 
 
 func _process(_delta: float) -> void:
 	_ensure_player()
+	if _spell_interface_open and (_player == null or not is_instance_valid(_player) or not _player.can_open_spell_interface()):
+		close_spell_interface()
 	_check_bars_changed()
 	_check_shields_changed()
 	_check_buffs_changed()
@@ -85,6 +113,129 @@ func _process(_delta: float) -> void:
 	if _buffs_dirty:
 		_buffs_dirty = false
 		_update_buffs()
+
+
+## M键切换大地图，ESC关闭大地图
+func _input(event: InputEvent) -> void:
+	if level_up_panel != null and level_up_panel.visible:
+		return
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
+		if event.pressed:
+			if try_open_spell_interface():
+				get_viewport().set_input_as_handled()
+		else:
+			close_spell_interface()
+		return
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_M:
+			get_viewport().set_input_as_handled()
+			toggle_large_map()
+		elif event.keycode == KEY_ESCAPE and is_large_map_visible():
+			get_viewport().set_input_as_handled()
+			large_map.hide_map()
+
+
+func _setup_spell_interface() -> void:
+	var gs := Service.game_state()
+	if gs != null and "spell_loadout" in gs:
+		if gs.has_method("refresh_spell_rune_inventory"):
+			gs.refresh_spell_rune_inventory()
+		_spell_loadout = gs.spell_loadout
+	elif _spell_loadout == null:
+		_spell_loadout = SpellLoadoutScript.new()
+	var rune_ids: Array[String] = []
+	if _spell_loadout != null and _spell_loadout.has_method("get_available_rune_ids"):
+		rune_ids = _spell_loadout.get_available_rune_ids()
+	if _spell_interface == null:
+		_spell_interface = SpellInterfaceScene.instantiate() as Control
+		_spell_interface.name = "SpellInterface"
+		_spell_interface.visible = false
+		add_child(_spell_interface)
+	_spell_interface.configure(_spell_loadout, rune_ids)
+	var selected_cb := Callable(self, "_on_spell_slot_selected")
+	if not _spell_interface.spell_selected.is_connected(selected_cb):
+		_spell_interface.spell_selected.connect(selected_cb)
+
+
+func _on_spell_slot_selected(slot_index: int, _spell: Dictionary) -> void:
+	_ensure_player()
+	if _player != null and "spell_caster" in _player:
+		_player.spell_caster.select_slot(slot_index)
+
+
+func try_open_spell_interface() -> bool:
+	if level_up_panel != null and level_up_panel.visible:
+		return false
+	_ensure_player()
+	if _player == null or not is_instance_valid(_player):
+		return false
+	if not _player.has_method("can_open_spell_interface") or not _player.can_open_spell_interface():
+		return false
+	if _player.has_method("is_character_panel_visible") and _player.is_character_panel_visible():
+		return false
+	_setup_spell_interface()
+	_spell_interface_open = true
+	_spell_interface.visible = true
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	return true
+
+
+func close_spell_interface() -> void:
+	if not _spell_interface_open:
+		return
+	_spell_interface_open = false
+	if _spell_interface != null:
+		_spell_interface.visible = false
+	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+
+func is_spell_interface_visible() -> bool:
+	return _spell_interface_open and _spell_interface != null and _spell_interface.visible
+
+
+func _setup_progression_ui() -> void:
+	_attr_panel = Service.attr_panel()
+	var gs := Service.game_state()
+	if level_up_panel != null:
+		level_up_panel.configure(_attr_panel, gs)
+	if _attr_panel == null:
+		return
+	var callback := Callable(self, "_on_experience_changed")
+	if not _attr_panel.experience_changed.is_connected(callback):
+		_attr_panel.experience_changed.connect(callback)
+	_update_experience_display(
+		int(_attr_panel.get_level()),
+		int(_attr_panel.level_exp),
+		int(_attr_panel.get_level_upgrade_threshold())
+	)
+
+
+func _on_experience_changed(level: int, current_exp: int, required_exp: int, gained_exp: int) -> void:
+	_update_experience_display(level, current_exp, required_exp)
+	if gained_exp > 0 and combat_log != null:
+		combat_log.push_entry(tr("获得 %d 角色经验") % gained_exp, Color(1.0, 0.76, 0.32))
+
+
+func _update_experience_display(level: int, current_exp: int, required_exp: int) -> void:
+	if experience_bar != null:
+		experience_bar.max_value = maxi(required_exp, 1)
+		experience_bar.value = clampi(current_exp, 0, maxi(required_exp, 1))
+	if experience_label != null:
+		experience_label.text = tr("经验 %d / %d") % [current_exp, required_exp]
+	if level_label != null:
+		level_label.text = tr("等级 %d") % level
+
+
+## 切换大地图显示/隐藏
+func toggle_large_map() -> void:
+	if large_map == null or not is_instance_valid(large_map):
+		return
+	large_map.toggle()
+
+
+## 大地图是否可见（供其他系统查询，抑制世界空间 UI 等）
+func is_large_map_visible() -> bool:
+	return large_map != null and is_instance_valid(large_map) and large_map.visible
 
 
 ## 检测血量/蓝量是否变化，变化时标记脏
@@ -342,4 +493,7 @@ func set_world_space(_space: String) -> void:
 ## 经营 HUD 显隐时同步切换战斗 HUD：经营界面打开时整层隐藏，
 ## 既消除战斗 UI 泄露，又让其边角 Control 不再拦截经营面板的鼠标点击。
 func _on_tavern_hud_visibility_changed(is_tavern_hud_visible: bool) -> void:
+	# 经营界面打开时关闭大地图
+	if is_tavern_hud_visible and is_large_map_visible():
+		large_map.hide_map()
 	visible = not is_tavern_hud_visible

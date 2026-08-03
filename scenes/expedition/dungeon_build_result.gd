@@ -20,6 +20,9 @@ var streamed_physics_root: Node3D = null # streaming 物理根
 var streamed_visual_nodes: Array[Node3D] = []
 var streamed_physics_nodes: Array[Node] = []
 var terrain_chunks: Dictionary = {}  # Vector2i chunk -> Array[Node3D]
+## Conservative horizontal AABBs reserved by builder-created scene objects.
+## Population spawners append to this registry before instantiation.
+var spawn_footprints: Array[Dictionary] = []
 
 # 阶段 9 条 1 步2：地形 Transform 收集产物（builder 产出，procedural 批渲染复用）
 # procedural 的 _build_multi_meshes/_build_merged_collisions 改读这些字段而非旧类字段
@@ -50,6 +53,7 @@ func dispose() -> void:
 	streamed_visual_nodes.clear()
 	streamed_physics_nodes.clear()
 	terrain_chunks.clear()
+	spawn_footprints.clear()
 	floor_transforms.clear()
 	ceiling_transforms.clear()
 	ceiling_transition_transforms_by_size.clear()

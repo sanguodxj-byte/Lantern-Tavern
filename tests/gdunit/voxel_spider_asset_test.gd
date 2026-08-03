@@ -14,7 +14,10 @@ const PX_PER_METER := 32.0
 
 const EXPECTED_BONES := [
 	"Root", "Thorax", "Head", "Abdomen", "Venom", "Mandible.L", "Mandible.R",
-	"Leg1.L", "Leg1.R", "Leg2.L", "Leg2.R", "Leg3.L", "Leg3.R", "Leg4.L", "Leg4.R",
+	"Leg1.L", "Leg1Lower.L", "Leg1Foot.L", "Leg1.R", "Leg1Lower.R", "Leg1Foot.R",
+	"Leg2.L", "Leg2Lower.L", "Leg2Foot.L", "Leg2.R", "Leg2Lower.R", "Leg2Foot.R",
+	"Leg3.L", "Leg3Lower.L", "Leg3Foot.L", "Leg3.R", "Leg3Lower.R", "Leg3Foot.R",
+	"Leg4.L", "Leg4Lower.L", "Leg4Foot.L", "Leg4.R", "Leg4Lower.R", "Leg4Foot.R",
 ]
 
 const EXPECTED_ANIMATIONS := [
@@ -174,7 +177,7 @@ func test_spider_material_ramps_and_semantic_accents_are_explicit() -> void:
 	assert_str(source).not_contains("import random")
 
 
-func test_spider_rig_source_owns_fifteen_bones_and_fourteen_actions() -> void:
+func test_spider_rig_source_owns_thirty_one_bones_and_fourteen_actions() -> void:
 	var source := FileAccess.get_file_as_string(GENERATOR_PATH)
 	assert_str(source).contains("def _create_spider_armature")
 	assert_str(source).contains("def _parent_parts_to_spider_bones")
@@ -190,6 +193,22 @@ func test_spider_rig_source_owns_fifteen_bones_and_fourteen_actions() -> void:
 	for animation_name in EXPECTED_ANIMATIONS:
 		assert_bool(actions.has(animation_name)).is_true()
 	assert_str(source).not_contains("debug_")
+
+
+func test_spider_run_uses_ordered_alternating_tetrapod_gait_and_three_bone_legs() -> void:
+	var source := FileAccess.get_file_as_string(GENERATOR_PATH)
+	assert_str(source).contains('SPIDER_GAIT_GROUP_A = ("Leg1.L", "Leg2.R", "Leg3.L", "Leg4.R")')
+	assert_str(source).contains('SPIDER_GAIT_GROUP_B = ("Leg1.R", "Leg2.L", "Leg3.R", "Leg4.L")')
+	assert_str(source).contains("def _spider_gait_pose")
+	assert_str(source).contains("def _pose_offset_from_blender_world")
+	assert_str(source).contains("Every leg-chain pivot sits on the exact face-contact patch")
+	var parts := _parts_by_name()
+	for side in ["left", "right"]:
+		var suffix := "L" if side == "left" else "R"
+		for leg_index in range(1, 5):
+			assert_str(parts["leg%d_root_%s" % [leg_index, side]]["bone"]).is_equal("Leg%d.%s" % [leg_index, suffix])
+			assert_str(parts["leg%d_mid_%s" % [leg_index, side]]["bone"]).is_equal("Leg%dLower.%s" % [leg_index, suffix])
+			assert_str(parts["leg%d_foot_%s" % [leg_index, side]]["bone"]).is_equal("Leg%dFoot.%s" % [leg_index, suffix])
 
 
 func test_spider_is_accepted_at_a_tier_after_individual_dod() -> void:
@@ -227,6 +246,44 @@ func test_spider_exports_match_authored_geometry_and_creature_rig_contract() -> 
 	assert_bool(report.ok).override_failure_message(str(report)).is_true()
 	assert_int(report.bone_names.size()).is_equal(EXPECTED_BONES.size())
 	assert_int(report.animation_names.size()).is_equal(EXPECTED_ANIMATIONS.size())
+
+
+func test_spider_imported_run_drives_all_eight_three_segment_leg_chains() -> void:
+	var packed := load(RIG_PATH) as PackedScene
+	assert_object(packed).is_not_null()
+	if packed == null:
+		return
+	var instance := packed.instantiate() as Node3D
+	var player := instance.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	assert_object(player).is_not_null()
+	if player == null:
+		instance.free()
+		return
+	var run := player.get_animation("run")
+	assert_object(run).is_not_null()
+	if run == null:
+		instance.free()
+		return
+	assert_float(run.length).is_between(0.95, 1.05)
+	var rotation_bones := {}
+	for track_index in run.get_track_count():
+		var path := String(run.track_get_path(track_index))
+		var bone_name := path.split(":")[-1]
+		if run.track_get_type(track_index) == Animation.TYPE_ROTATION_3D:
+			rotation_bones[bone_name] = run.track_get_key_count(track_index)
+	for side in ["L", "R"]:
+		for leg_index in range(1, 5):
+			for bone_name in [
+				"Leg%d.%s" % [leg_index, side],
+				"Leg%dLower.%s" % [leg_index, side],
+				"Leg%dFoot.%s" % [leg_index, side],
+			]:
+				assert_bool(rotation_bones.has(bone_name)).override_failure_message(
+					"spider run missing rotation track: %s" % bone_name
+				).is_true()
+				if rotation_bones.has(bone_name):
+					assert_int(int(rotation_bones[bone_name])).is_greater_equal(5)
+	instance.free()
 
 
 func test_spider_structural_and_real_three_view_evidence_is_readable_and_nonblank() -> void:

@@ -165,7 +165,6 @@ def build_grimoire() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
             "l": (0.62, 1.0, 1.0, 1.0),
         },
         roughness=0.18,
-        emission=2.2,
         tile_size_px=2.0,
     )
 

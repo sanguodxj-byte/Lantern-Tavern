@@ -32,17 +32,47 @@ func _init() -> void:
 	_guid_to_peer = {}
 
 ## 稳定身份：peer_id 每次连接会变（§14.2），这里用外部传入的 player_guid 作为重连身份锚。
-func register_online(peer_id: int, player_guid: String, now: float) -> void:
+## 架构审查 P0-1：返回结构化结果，ONLINE 重复 GUID 必须拒绝——
+## 相同 GUID 直接覆盖 _guid_to_peer 会让后加入连接接管他人身份（错误重连/结算串账）。
+## 返回 {"ok":bool, "error_code":String, "peer_id":int}。
+##   * 空 GUID：允许（按 peer_id 派生身份），不登记 _guid_to_peer；
+##   * GUID 已被【其他 ONLINE peer】占用：拒绝 ERR_DUPLICATE_IDENTITY（同一 peer 重复调用幂等）；
+##   * GUID 仅存在于 GRACE（断线保留）条目：允许登记——重连路径由调用方负责迁移/接管，
+##     不应因「保留身份仍在索引」而拒绝新 spawn（调用方须先完成 GRACE 接管才 spawn）。
+func register_online(peer_id: int, player_guid: String, now: float) -> Dictionary:
+	var guid: String = player_guid
+	if _peers.has(peer_id):
+		# 幂等：同一 peer 重复注册（重连/测试）直接刷新状态，不判冲突。
+		var p: Dictionary = _peers[peer_id]
+		p["status"] = STATUS_ONLINE
+		p["last_seen"] = now
+		p["player_guid"] = guid
+		if guid != "":
+			_guid_to_peer[guid] = peer_id
+		return {"ok": true, "error_code": "", "peer_id": peer_id}
+	if guid != "" and _guid_to_peer.has(guid):
+		var owner: int = int(_guid_to_peer[guid])
+		if _peers.has(owner) and _peers[owner]["status"] == STATUS_ONLINE and owner != peer_id:
+			return {"ok": false, "error_code": NP.ERR_DUPLICATE_IDENTITY, "peer_id": owner}
 	_peers[peer_id] = {
 		"status": STATUS_ONLINE,
 		"disconnect_time": -1.0,
 		"token": "",
 		"token_expiry": -1.0,
 		"last_seen": now,
-		"player_guid": player_guid,
+		"player_guid": guid,
 	}
-	if player_guid != "":
-		_guid_to_peer[player_guid] = peer_id
+	if guid != "":
+		_guid_to_peer[guid] = peer_id
+	return {"ok": true, "error_code": "", "peer_id": peer_id}
+
+## 该 GUID 当前是否被某个 ONLINE peer 占用（spawn 前的唯一性预检，P0-1）。
+## GRACE（断线保留）条目不计为占用——重连接管由 _handle_resume 处理。
+func has_online_guid(player_guid: String) -> bool:
+	if player_guid == "" or not _guid_to_peer.has(player_guid):
+		return false
+	var pid: int = int(_guid_to_peer[player_guid])
+	return _peers.has(pid) and _peers[pid]["status"] == STATUS_ONLINE
 
 ## 是否已存在该 peer 的 GRACE 条目（用于判断连接事件是否可能是「重连」）。
 func has_grace_entry(peer_id: int) -> bool:

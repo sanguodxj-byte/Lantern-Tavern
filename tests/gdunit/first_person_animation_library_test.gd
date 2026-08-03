@@ -18,9 +18,10 @@ func test_first_person_action_library_only_targets_visual_action_layer() -> void
 		var animation := library.get_animation(action_name)
 		if animation == null:
 			continue
+		var expected_root := "ShieldActionPivot" if action_name in LIBRARY.CANONICAL_SHIELD_ACTIONS else "ActionPivot"
 		for track_index in animation.get_track_count():
-			assert_bool(String(animation.track_get_path(track_index)).begins_with("ActionPivot")) \
-				.override_failure_message("first-person action writes outside ActionPivot: %s" % action_name).is_true()
+			assert_bool(String(animation.track_get_path(track_index)).begins_with(expected_root)) \
+				.override_failure_message("first-person action writes outside its equipment pivot: %s" % action_name).is_true()
 
 func test_each_first_person_style_has_distinct_attack_fingerprint() -> void:
 	var library := LIBRARY.build()
@@ -55,8 +56,9 @@ func test_every_style_hold_clip_has_a_ready_to_charge_transition() -> void:
 		assert_object(hold).is_not_null()
 		if hold == null:
 			continue
-		var position_track := hold.find_track("ActionPivot:position", Animation.TYPE_VALUE)
-		var rotation_track := hold.find_track("ActionPivot:rotation", Animation.TYPE_VALUE)
+		var root_path := "ShieldActionPivot" if profile == &"shield" else "ActionPivot"
+		var position_track := hold.find_track("%s:position" % root_path, Animation.TYPE_VALUE)
+		var rotation_track := hold.find_track("%s:rotation" % root_path, Animation.TYPE_VALUE)
 		assert_int(position_track).is_greater_equal(0)
 		assert_int(rotation_track).is_greater_equal(0)
 		var first_pose := str(hold.track_get_key_value(position_track, 0)) + str(hold.track_get_key_value(rotation_track, 0))
@@ -67,6 +69,33 @@ func test_every_style_hold_clip_has_a_ready_to_charge_transition() -> void:
 func test_mount_rotation_matches_specific_two_hand_style_before_generic_sword_token() -> void:
 	assert_float(LIBRARY._mount_rotation_z_for_action(&"vm_greatsword_attack")).is_equal_approx(-135.0, 0.001)
 	assert_float(LIBRARY._mount_rotation_z_for_action(&"vm_sword_slash")).is_equal_approx(-140.0, 0.001)
+	assert_float(LIBRARY._mount_rotation_z_for_action(&"vm_shield_block")).is_equal_approx(0.0, 0.001)
+
+
+func test_runtime_weapon_library_replaces_legacy_shield_tracks_with_additive_canonical_motion() -> void:
+	var library := LIBRARY.load_for_weapon("sword", "standard")
+	for action_name in LIBRARY.CANONICAL_SHIELD_ACTIONS:
+		var animation := library.get_animation(action_name)
+		assert_object(animation).is_not_null()
+		if animation == null:
+			continue
+		for track_index in animation.get_track_count():
+			assert_bool(String(animation.track_get_path(track_index)).begins_with("ShieldActionPivot")).is_true()
+	var block := library.get_animation(&"vm_shield_block")
+	var position_track := block.find_track("ShieldActionPivot:position", Animation.TYPE_VALUE)
+	assert_vector(block.track_get_key_value(position_track, 0)).is_equal(Vector3.ZERO)
+	assert_float((block.track_get_key_value(position_track, 2) as Vector3).length()).is_greater(0.1)
+	assert_int(block.loop_mode).is_equal(Animation.LOOP_NONE)
+	assert_vector(block.track_get_key_value(position_track, 3)).is_equal(
+		block.track_get_key_value(position_track, 2)
+	)
+	var bash := library.get_animation(&"vm_bash_shield")
+	assert_int(bash.track_get_key_count(0)).is_greater_equal(6)
+	var bash_windup: Vector3 = bash.track_get_key_value(0, 2)
+	var bash_contact: Vector3 = bash.track_get_key_value(0, 3)
+	assert_float(bash_windup.z).is_less(-0.1)
+	assert_float(bash_contact.z).is_greater(bash_windup.z)
+	assert_float(bash_contact.x).is_greater(0.15)
 
 func _fingerprint(animation: Animation) -> String:
 	var values: Array[String] = []

@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3 uid="uid://b8m4kq2v9x7zr"]
+[gd_scene load_steps=6 format=3 uid="uid://b8m4kq2v9x7zr"]
 
 [ext_resource type="Script" path="res://scenes/multiplayer/multiplayer_avatar.gd" id="1_ava"]
 [sub_resource type="CapsuleMesh" id="2_cap"]
@@ -8,13 +8,22 @@ height = 1.6
 albedo_color = Color(0.30, 0.55, 0.85, 1)
 [sub_resource type="StandardMaterial3D" id="4_lbl"]
 albedo_color = Color(1, 1, 1, 1)
+[sub_resource type="CapsuleShape3D" id="5_shape"]
+radius = 0.4
+height = 1.6
 
-[node name="RemoteAvatar" type="Node3D"]
+[node name="RemoteAvatar" type="CharacterBody3D"]
+collision_layer = 2
+collision_mask = 101
 script = ExtResource("1_ava")
 
 [node name="Body" type="MeshInstance3D" parent="."]
 mesh = SubResource("2_cap")
 material_override = SubResource("3_mat")
+position = Vector3(0, 0.9, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("5_shape")
 position = Vector3(0, 0.9, 0)
 
 [node name="Label3D" type="Label3D" parent="."]

@@ -1,0 +1,28 @@
+[gd_scene format=3 uid="uid://72dkquie8ull"]
+
+[ext_resource type="AnimationLibrary" path="res://scenes/characters/player/weapon_animations/sword/standard.tres" id="1_library"]
+[ext_resource type="PackedScene" uid="uid://db1m4xno4oknv" path="res://assets/meshes/weapons/weapons_voxel_sword.glb" id="2_weapon"]
+
+[node name="FirstPersonWeaponAnimationEditor" type="Node3D" unique_id=78602319]
+
+[node name="ActionPivot" type="Node3D" parent="." unique_id=1371166795]
+transform = Transform3D(0.9702808, 0.0340974, -0.23956753, -0.0690776, 0.98785585, -0.1391731, 0.23191276, 0.15158576, 0.96085286, 0.06, 0.16, 0)
+
+[node name="WeaponSocket" type="Node3D" parent="ActionPivot" unique_id=1290179675]
+transform = Transform3D(-0.80901706, 0.5877852, 0, -0.5877852, -0.80901706, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="Weapon" parent="ActionPivot/WeaponSocket" unique_id=1501473215 instance=ExtResource("2_weapon")]
+transform = Transform3D(0.9999998, 4.656613e-08, -5.9604645e-08, -1.03376806e-07, 0.9999999, -3.1664968e-08, 0, 1.8626451e-09, 1, 0.20898095, -0.34044796, -0.2136012)
+
+
+
+[node name="ShieldActionPivot" type="Node3D" parent="."]
+
+[node name="ShieldImpactPivot" type="Node3D" parent="ShieldActionPivot"]
+
+[node name="ShieldSocket" type="Node3D" parent="ShieldActionPivot/ShieldImpactPivot"]
+
+[node name="ShieldOrientation" type="Node3D" parent="ShieldActionPivot/ShieldImpactPivot/ShieldSocket"]
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1354645034]
+libraries/ = ExtResource("1_library")

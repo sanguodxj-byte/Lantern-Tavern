@@ -1,13 +1,7 @@
 [gd_scene load_steps=17 format=3]
 
-[sub_resource type="StandardMaterial3D" id="IronMat"]
-albedo_color = Color(0.06, 0.06, 0.055, 1)
-roughness = 0.82
-metallic = 0.65
-
-[sub_resource type="StandardMaterial3D" id="WaxMat"]
-albedo_color = Color(0.72, 0.62, 0.42, 1)
-roughness = 0.92
+[ext_resource type="Material" path="res://scenes/props/decor/dungeon_iron_atlas_mat.tres" id="1_iron"]
+[ext_resource type="Material" path="res://scenes/props/decor/dungeon_wax_atlas_mat.tres" id="2_wax"]
 
 [sub_resource type="Curve" id="Curve_flame_alpha"]
 _data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.18, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
@@ -85,52 +79,52 @@ metadata/voxel_px_per_meter = 32
 [node name="BaseLower" type="MeshInstance3D" parent="."]
 position = Vector3(0, 0.046875, 0)
 mesh = SubResource("BaseLowerMesh")
-surface_material_override/0 = SubResource("IronMat")
+surface_material_override/0 = ExtResource("1_iron")
 
 [node name="BaseUpper" type="MeshInstance3D" parent="."]
 position = Vector3(0, 0.125, 0)
 mesh = SubResource("BaseUpperMesh")
-surface_material_override/0 = SubResource("IronMat")
+surface_material_override/0 = ExtResource("1_iron")
 
 [node name="Stem" type="MeshInstance3D" parent="."]
 position = Vector3(0, 0.515625, 0)
 mesh = SubResource("StemMesh")
-surface_material_override/0 = SubResource("IronMat")
+surface_material_override/0 = ExtResource("1_iron")
 
 [node name="ArmX" type="MeshInstance3D" parent="."]
 position = Vector3(0, 0.78125, 0)
 mesh = SubResource("ArmXMesh")
-surface_material_override/0 = SubResource("IronMat")
+surface_material_override/0 = ExtResource("1_iron")
 
 [node name="ArmZ" type="MeshInstance3D" parent="."]
 position = Vector3(0, 0.78125, 0)
 mesh = SubResource("ArmZMesh")
-surface_material_override/0 = SubResource("IronMat")
+surface_material_override/0 = ExtResource("1_iron")
 
 [node name="CandleCenter" type="MeshInstance3D" parent="."]
 position = Vector3(0, 0.984375, 0)
 mesh = SubResource("CandleMesh")
-surface_material_override/0 = SubResource("WaxMat")
+surface_material_override/0 = ExtResource("2_wax")
 
 [node name="CandleLeft" type="MeshInstance3D" parent="."]
 position = Vector3(-0.28125, 0.921875, 0)
 mesh = SubResource("CandleMesh")
-surface_material_override/0 = SubResource("WaxMat")
+surface_material_override/0 = ExtResource("2_wax")
 
 [node name="CandleRight" type="MeshInstance3D" parent="."]
 position = Vector3(0.28125, 0.921875, 0)
 mesh = SubResource("CandleMesh")
-surface_material_override/0 = SubResource("WaxMat")
+surface_material_override/0 = ExtResource("2_wax")
 
 [node name="CandleBack" type="MeshInstance3D" parent="."]
 position = Vector3(0, 0.921875, -0.28125)
 mesh = SubResource("CandleMesh")
-surface_material_override/0 = SubResource("WaxMat")
+surface_material_override/0 = ExtResource("2_wax")
 
 [node name="CandleFront" type="MeshInstance3D" parent="."]
 position = Vector3(0, 0.921875, 0.28125)
 mesh = SubResource("CandleMesh")
-surface_material_override/0 = SubResource("WaxMat")
+surface_material_override/0 = ExtResource("2_wax")
 
 [node name="FlameCenterParticles" type="GPUParticles3D" parent="."]
 position = Vector3(0, 1.171875, 0)

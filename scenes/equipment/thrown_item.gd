@@ -19,6 +19,7 @@ var has_hit_world: bool = false
 var has_resolved_collision: bool = false
 var is_being_dropped: bool
 var original_basis: Basis
+var _converted_to_pickable: bool = false
 
 func _ready() -> void:
 	PhysicsSetup.setup_rigidbody(self)
@@ -187,6 +188,11 @@ func _resolve_body_entered(body: Node) -> void:
 					AudioManager.play("sword-hit-wall", audio_stream_player_3d)
 
 func on_sleep() -> void:
+	# sleeping_state_changed also reports wake-ups. Only a real transition into
+	# sleep may replace the thrown body, and it may do so once.
+	if not sleeping or _converted_to_pickable:
+		return
+	_converted_to_pickable = true
 	if weapon_data == null and shield_data == null:
 		queue_free()
 		return

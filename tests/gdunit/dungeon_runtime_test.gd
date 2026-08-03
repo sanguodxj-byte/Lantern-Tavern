@@ -58,7 +58,8 @@ func test_runtime_has_full_runtime_interface_set() -> void:
 	var src := (load("res://scenes/expedition/dungeon_runtime.gd") as GDScript).source_code
 	for iface in ["func spawn_player()", "func spawn_enemies(", "func spawn_items()",
 			"func mount_expedition_hud()", "func setup_exploration_pressure()",
-			"func wire_extraction_portal_signal()", "func finish_expedition(",
+			"func wire_extraction_portal_signal()", "func wire_downstairs_signal()",
+			"func on_downstairs_entered(", "func finish_expedition(",
 			"func on_extraction_requested(", "func on_expedition_overtime(",
 			"func on_pressure_changed(", "func on_door_pressure_action(",
 			"func apply_player_vision_pressure(", "func apply_environment_activity(",
@@ -110,4 +111,3 @@ func test_start_wires_spawned_player_to_streaming_controller() -> void:
 	rt.queue_free()
 	ctrl.queue_free()
 	world.queue_free()
-

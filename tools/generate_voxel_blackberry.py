@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,13 +34,59 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "clustered dark drupelet berry with stem nub and leaf bit"
 
+# Blackberry pixel palette: clustered dark drupelet berry - dark purples, deep
+# blue, reddish stems.
+# Each material owns its own seed/pattern; no shared identity table.
+_BERRY_DARK = (0.18, 0.06, 0.18, 1.0)
+_BERRY_LIT = (0.38, 0.12, 0.35, 1.0)
+_BERRY_DEEP = (0.08, 0.02, 0.10, 1.0)
+_DEEP_BLUE = (0.10, 0.08, 0.28, 1.0)
+_HIGHLIGHT = (0.55, 0.28, 0.50, 1.0)
+_STEM_GREEN = (0.28, 0.42, 0.16, 1.0)
+_STEM_REDDISH = (0.45, 0.20, 0.12, 1.0)
+_LEAF_GREEN = (0.22, 0.55, 0.18, 1.0)
+# Accent swatches: warm gold and bright magenta on cool purple berry.
+_WARM_GOLD = (0.85, 0.65, 0.25, 1.0)
+_BRIGHT_MAGENTA = (0.75, 0.20, 0.55, 1.0)
+
+
 def build_model():
-    berry = make_material("bb_berry", (0.18, 0.06, 0.18, 1.0), roughness=0.55)
-    berry_lit = make_material("bb_lit", (0.38, 0.12, 0.35, 1.0), roughness=0.48)
-    berry_deep = make_material("bb_deep", (0.08, 0.02, 0.10, 1.0), roughness=0.60)
-    stem = make_material("bb_stem", (0.28, 0.42, 0.16, 1.0), roughness=0.82)
-    leaf = make_material("bb_leaf", (0.22, 0.55, 0.18, 1.0), roughness=0.78)
-    highlight = make_material("bb_hi", (0.55, 0.28, 0.50, 1.0), roughness=0.40)
+    berry = make_pixel_material(
+        "bb_berry", (0.18, 0.06, 0.18, 1.0),
+        roughness=0.55, palette=(_BERRY_DARK, _BERRY_LIT, _DEEP_BLUE, _WARM_GOLD, _BRIGHT_MAGENTA),
+        pixel_size=48, variation=0.40, seed=1101, pattern="speckle", normal_strength=0.9,
+        edge_darken=0.35, highlight=0.30, detail_noise=0.15,
+    )
+    berry_lit = make_pixel_material(
+        "bb_lit", (0.38, 0.12, 0.35, 1.0),
+        roughness=0.48, palette=(_BERRY_LIT, _HIGHLIGHT, _BERRY_DARK, _WARM_GOLD, _DEEP_BLUE),
+        pixel_size=48, variation=0.41, seed=1107, pattern="speckle", normal_strength=1.0,
+        edge_darken=0.30, highlight=0.40, detail_noise=0.15,
+    )
+    berry_deep = make_pixel_material(
+        "bb_deep", (0.08, 0.02, 0.10, 1.0),
+        roughness=0.60, palette=(_BERRY_DEEP, _BERRY_DARK, _DEEP_BLUE, _WARM_GOLD, _BRIGHT_MAGENTA),
+        pixel_size=48, variation=0.40, seed=1113, pattern="speckle", normal_strength=1.1,
+        edge_darken=0.38, highlight=0.25, detail_noise=0.18,
+    )
+    highlight = make_pixel_material(
+        "bb_hi", (0.55, 0.28, 0.50, 1.0),
+        roughness=0.40, palette=(_HIGHLIGHT, _BERRY_LIT, _WARM_GOLD, _DEEP_BLUE),
+        pixel_size=48, variation=0.39, seed=1119, pattern="speckle", normal_strength=0.8,
+        edge_darken=0.25, highlight=0.50, detail_noise=0.15,
+    )
+    stem = make_pixel_material(
+        "bb_stem", (0.28, 0.42, 0.16, 1.0),
+        roughness=0.82, palette=(_STEM_GREEN, _STEM_REDDISH, _WARM_GOLD, _DEEP_BLUE),
+        pixel_size=48, variation=0.40, seed=1123, pattern="wood", normal_strength=1.0,
+        edge_darken=0.35, highlight=0.30, detail_noise=0.15,
+    )
+    leaf = make_pixel_material(
+        "bb_leaf", (0.22, 0.55, 0.18, 1.0),
+        roughness=0.78, palette=(_LEAF_GREEN, _STEM_GREEN, _WARM_GOLD, _DEEP_BLUE),
+        pixel_size=48, variation=0.41, seed=1129, pattern="banded", normal_strength=1.1,
+        edge_darken=0.35, highlight=0.30, detail_noise=0.15,
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
     def add(name, center, size, material):

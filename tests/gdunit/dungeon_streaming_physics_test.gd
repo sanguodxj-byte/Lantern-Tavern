@@ -7,6 +7,147 @@ func before() -> void:
 	load("res://scenes/expedition/dungeon_layout.gd")
 	load("res://scenes/expedition/dungeon_build_result.gd")
 
+func test_streamed_character_body_across_chunk_boundary_stays_active_when_near() -> void:
+	var ctrl := _make_controller()
+	var enemy := CharacterBody3D.new()
+	var chunk_size := float(DungeonStreamingController.STREAM_CHUNK_SIZE_CELLS) * 3.0
+	# 玩家与敌人各在 chunk 边界两侧，实际距离仅 1m。
+	enemy.position = Vector3(chunk_size + 0.5, 0.0, 0.0)
+	enemy.collision_layer = PhysicsSetup.LAYER_ENEMY
+	enemy.collision_mask = PhysicsSetup.MASK_ENEMY
+	add_child(enemy)
+	ctrl.register_physics_node(enemy)
+	var player := Node3D.new()
+	player.position = Vector3(chunk_size - 0.5, 0.0, 0.0)
+	add_child(player)
+	ctrl.set_player(player)
+	ctrl.update_streaming(true)
+	assert_bool(enemy.visible) 		.override_failure_message("跨 chunk 边界仅 1m 的敌人不应被整根隐藏") 		.is_true()
+	assert_bool(enemy.is_physics_processing()).is_true()
+	assert_int(enemy.collision_layer).is_equal(PhysicsSetup.LAYER_ENEMY)
+	assert_int(enemy.collision_mask).is_equal(PhysicsSetup.MASK_ENEMY)
+	assert_bool(bool(enemy.get_meta("stream_physics_active", false))).is_true()
+	_teardown(ctrl, [enemy, player])
+
+func test_streamed_character_body_chasing_across_chunks_is_rehomed_and_stays_active() -> void:
+	var ctrl := _make_controller()
+	var enemy := CharacterBody3D.new()
+	var chunk_size := float(DungeonStreamingController.STREAM_CHUNK_SIZE_CELLS) * 3.0
+	enemy.position = Vector3(chunk_size * 2.0 + 0.5, 0.0, 0.0)
+	enemy.collision_layer = PhysicsSetup.LAYER_ENEMY
+	enemy.collision_mask = PhysicsSetup.MASK_ENEMY
+	add_child(enemy)
+	ctrl.register_physics_node(enemy)
+	var player := Node3D.new()
+	player.position = Vector3(chunk_size * 2.0 - 0.5, 0.0, 0.0)
+	add_child(player)
+	ctrl.set_player(player)
+	ctrl.update_streaming(true)
+	# 玩家跨入新 chunk，敌人追击至玩家附近（注册 chunk 已与实时位置分离）。
+	player.position = Vector3(0.5, 0.0, 0.0)
+	enemy.position = Vector3(1.5, 0.0, 0.0)
+	ctrl.update_streaming(true)
+	assert_bool(enemy.visible) 		.override_failure_message("追逐跨 chunk 后敌人应保持可见") 		.is_true()
+	assert_bool(enemy.is_physics_processing()).is_true()
+	assert_bool(bool(enemy.get_meta("stream_physics_active", false))).is_true()
+	assert_bool(Vector2i(enemy.get_meta("stream_physics_chunk", Vector2i.ZERO)) == Vector2i.ZERO) 		.override_failure_message("追逐跨 chunk 的动态体应重新归位到当前 chunk") 		.is_true()
+	# 玩家远离后，远距动态体应正确停用。
+	player.position = Vector3(chunk_size * 3.0, 0.0, 0.0)
+	ctrl.update_streaming(true)
+	assert_bool(bool(enemy.get_meta("stream_physics_active", true))).is_false()
+	_teardown(ctrl, [enemy, player])
+
+
+func test_dynamic_body_in_paper_band_stays_visible_but_physics_dormant() -> void:
+	# 24m 物理激活半径之外、36m 视觉半径之内的动态体：物理休眠（碰撞层清空、
+	# 无 physics_process），但必须保持可见，让 billboard/imposter 纸片 LOD 接管渲染。
+	var ctrl := _make_controller()
+	var enemy := CharacterBody3D.new()
+	var chunk_size := float(DungeonStreamingController.STREAM_CHUNK_SIZE_CELLS) * 3.0
+	var band_distance := chunk_size * 1.25  # 30m，处于 24–36m 纸片带
+	enemy.position = Vector3(band_distance, 0.0, 0.0)
+	enemy.collision_layer = PhysicsSetup.LAYER_ENEMY
+	enemy.collision_mask = PhysicsSetup.MASK_ENEMY
+	add_child(enemy)
+	ctrl.register_physics_node(enemy)
+	var player := Node3D.new()
+	player.position = Vector3.ZERO
+	add_child(player)
+	ctrl.set_player(player)
+	ctrl.update_streaming(true)
+	assert_bool(bool(enemy.get_meta("stream_physics_active", true))) 		.override_failure_message("纸片带内的动态体物理应休眠") 		.is_false()
+	assert_bool(enemy.is_physics_processing()) 		.override_failure_message("纸片带内的动态体不应跑物理 AI") 		.is_false()
+	assert_int(enemy.collision_layer) 		.override_failure_message("纸片带内的动态体不应持碰撞层") 		.is_equal(0)
+	assert_bool(enemy.visible) 		.override_failure_message("纸片带内的动态体应保持可见（纸片 LOD 接管远距渲染）") 		.is_true()
+	assert_bool(enemy.is_processing()) 		.override_failure_message("纸片带内的动态体应保留 _process，让 billboard/imposter LOD 继续切换且正常受光") 		.is_true()
+	_teardown(ctrl, [enemy, player])
+
+
+func test_dynamic_body_beyond_visual_radius_is_hidden() -> void:
+	# 超过 36m 视觉半径：动态体物理休眠且整根隐藏，避免远处空耗 draw call。
+	var ctrl := _make_controller()
+	var enemy := CharacterBody3D.new()
+	var chunk_size := float(DungeonStreamingController.STREAM_CHUNK_SIZE_CELLS) * 3.0
+	var far_distance := chunk_size * 1.75  # 42m，超出 36m 视觉半径
+	enemy.position = Vector3(far_distance, 0.0, 0.0)
+	enemy.collision_layer = PhysicsSetup.LAYER_ENEMY
+	enemy.collision_mask = PhysicsSetup.MASK_ENEMY
+	add_child(enemy)
+	ctrl.register_physics_node(enemy)
+	var player := Node3D.new()
+	player.position = Vector3.ZERO
+	add_child(player)
+	ctrl.set_player(player)
+	ctrl.update_streaming(true)
+	assert_bool(bool(enemy.get_meta("stream_physics_active", true))).is_false()
+	assert_bool(enemy.is_physics_processing()).is_false()
+	assert_bool(enemy.visible) 		.override_failure_message("超出 36m 视觉半径的动态体应整根隐藏") 		.is_false()
+	_teardown(ctrl, [enemy, player])
+
+
+func test_paper_band_body_becomes_hidden_when_player_moves_far_away() -> void:
+	# 玩家从纸片带走远（>36m）时，动态体应由"可见纸片"转为整根隐藏。
+	var ctrl := _make_controller()
+	var enemy := CharacterBody3D.new()
+	var chunk_size := float(DungeonStreamingController.STREAM_CHUNK_SIZE_CELLS) * 3.0
+	enemy.position = Vector3(chunk_size * 1.25, 0.0, 0.0)  # 30m 纸片带
+	enemy.collision_layer = PhysicsSetup.LAYER_ENEMY
+	enemy.collision_mask = PhysicsSetup.MASK_ENEMY
+	add_child(enemy)
+	ctrl.register_physics_node(enemy)
+	var player := Node3D.new()
+	player.position = Vector3.ZERO
+	add_child(player)
+	ctrl.set_player(player)
+	ctrl.update_streaming(true)
+	assert_bool(enemy.visible).is_true()
+	player.position = Vector3(chunk_size * 3.0, 0.0, 0.0)  # 72m；与 30m 敌人相距 42m，超出 36m 视觉半径
+	ctrl.update_streaming(true)
+	assert_bool(enemy.visible) 		.override_failure_message("走远后纸片带动态体应整根隐藏") 		.is_false()
+	assert_bool(bool(enemy.get_meta("stream_physics_active", true))).is_false()
+	_teardown(ctrl, [enemy, player])
+
+
+func test_paper_band_static_body_keeps_physics_within_chunk_grid() -> void:
+	# 可见性解耦只针对动态体：同一 30m 距离带内，静态体仍按物理 chunk（radius 1，
+	# 含 chunk 1 即 24–48m）保持碰撞激活，不受动态体的"休眠但可见"影响。
+	var ctrl := _make_controller()
+	var static_body := StaticBody3D.new()
+	var chunk_size := float(DungeonStreamingController.STREAM_CHUNK_SIZE_CELLS) * 3.0
+	static_body.position = Vector3(chunk_size * 1.25, 0.0, 0.0)  # 30m，位于 chunk 1
+	static_body.collision_layer = PhysicsSetup.LAYER_SCENE_OBJECT
+	add_child(static_body)
+	ctrl.register_physics_node(static_body)
+	var player := Node3D.new()
+	player.position = Vector3.ZERO
+	add_child(player)
+	ctrl.set_player(player)
+	ctrl.update_streaming(true)
+	assert_bool(static_body.visible) 		.override_failure_message("静态体在物理 chunk 网格内应保持可见") 		.is_true()
+	assert_int(static_body.collision_layer) 		.override_failure_message("静态体在物理 chunk 网格内应保持碰撞激活") 		.is_equal(PhysicsSetup.LAYER_SCENE_OBJECT)
+	_teardown(ctrl, [static_body, player])
+
+
 func test_streamed_physics_includes_character_bodies_and_stops_far_enemies() -> void:
 	var ctrl := _make_controller()
 	var near_body := RigidBody3D.new()
@@ -31,6 +172,28 @@ func test_streamed_physics_includes_character_bodies_and_stops_far_enemies() -> 
 	assert_int(far_enemy.collision_mask).is_equal(0)
 	assert_bool(bool(far_enemy.get_meta("stream_physics_active", true))).is_false()
 	_teardown(ctrl, [near_body, far_enemy, player])
+
+func test_dynamic_body_in_adjacent_chunk_stays_frozen_until_player_enters() -> void:
+	var ctrl := _make_controller()
+	var item := RigidBody3D.new()
+	var chunk_size := float(DungeonStreamingController.STREAM_CHUNK_SIZE_CELLS) * 3.0
+	item.position = Vector3(chunk_size + 1.0, 0.0, 0.0)
+	item.collision_layer = PhysicsSetup.LAYER_PICKABLE
+	item.collision_mask = PhysicsSetup.MASK_PICKABLE
+	add_child(item)
+	ctrl.register_physics_node(item)
+	var player := Node3D.new()
+	player.position = Vector3.ZERO
+	add_child(player)
+	ctrl.set_player(player)
+	ctrl.update_streaming(true)
+	assert_bool(item.freeze).is_true()
+	assert_int(item.collision_layer).is_equal(0)
+	player.position = item.position
+	ctrl.update_streaming(true)
+	assert_bool(item.freeze).is_false()
+	assert_int(item.collision_layer).is_equal(PhysicsSetup.LAYER_PICKABLE)
+	_teardown(ctrl, [item, player])
 
 func test_streamed_character_body_restores_collision_when_reentering_chunk() -> void:
 	var ctrl := _make_controller()

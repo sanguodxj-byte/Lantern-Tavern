@@ -49,6 +49,20 @@ func test_dynamic_torch_light_disables_specular_contribution() -> void:
 	torch.free()
 
 
+func test_dynamic_torch_uses_local_desaturated_light_pool() -> void:
+	var torch_scene := load("res://scenes/props/torch/torch.tscn") as PackedScene
+	var torch: Node = torch_scene.instantiate()
+	add_child(torch)
+	var light := _find_first_omni(torch)
+	assert_object(light).is_not_null()
+	assert_float(light.light_energy).is_equal_approx(1.15, 0.001)
+	assert_float(light.omni_range).is_equal_approx(6.0, 0.001)
+	assert_float(light.omni_attenuation).is_equal_approx(1.35, 0.001)
+	assert_float(light.light_color.g).is_equal_approx(0.82, 0.001)
+	assert_float(light.light_color.b).is_equal_approx(0.64, 0.001)
+	torch.free()
+
+
 func test_baked_torch_light_disables_specular_contribution() -> void:
 	var baked_scene := load("res://assets/meshes/props/baked_torch.tscn") as PackedScene
 	var baked: Node = baked_scene.instantiate()
@@ -57,4 +71,9 @@ func test_baked_torch_light_disables_specular_contribution() -> void:
 	assert_object(light).is_not_null()
 	assert_float(light.light_specular) \
 		.override_failure_message("烘焙地牢火把不得向环境材质贡献镜面高光").is_equal_approx(0.0, 0.001)
+	assert_float(light.light_energy).is_equal_approx(1.15, 0.001)
+	assert_float(light.omni_range).is_equal_approx(6.0, 0.001)
+	assert_float(light.omni_attenuation).is_equal_approx(1.35, 0.001)
+	assert_float(light.light_color.g).is_equal_approx(0.82, 0.001)
+	assert_float(light.light_color.b).is_equal_approx(0.64, 0.001)
 	baked.free()

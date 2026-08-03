@@ -162,8 +162,8 @@ def build_rock_golem() -> bpy.types.Object:
     stone_dark = make_mat("golem_stone_dark", (0.16, 0.15, 0.14, 1.0), roughness=0.97)
     moss = make_mat("golem_moss", (0.22, 0.40, 0.18, 1.0), roughness=0.98)
     moss_dark = make_mat("golem_moss_dark", (0.12, 0.26, 0.10, 1.0), roughness=0.98)
-    core = make_mat("golem_core_glow", (0.95, 0.42, 0.10, 1.0), emission=1.6, roughness=0.35)
-    core_deep = make_mat("golem_core_deep", (0.70, 0.18, 0.05, 1.0), emission=0.8, roughness=0.40)
+    core = make_mat("golem_core_glow", (0.95, 0.42, 0.10, 1.0), roughness=0.35)
+    core_deep = make_mat("golem_core_deep", (0.70, 0.18, 0.05, 1.0), roughness=0.40)
     rivet = make_mat("golem_rivet_iron", (0.35, 0.34, 0.32, 1.0), roughness=0.55, metallic=0.65)
     crack = make_mat("golem_crack_shadow", (0.08, 0.07, 0.06, 1.0), roughness=0.99)
 

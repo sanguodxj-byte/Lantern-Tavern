@@ -6,6 +6,29 @@ func test_csv_file_exists() -> void:
 	assert_bool(ResourceLoader.exists("res://scenes/ui/localization/translations.csv")).is_true()
 
 
+func test_parse_csv_line_unescapes_newline() -> void:
+	var lm = auto_free(load("res://globals/core/localization_manager.gd").new())
+	var result = lm._parse_csv_line("Head\\n[Empty],Head\\n[Empty],头部\\n[空]")
+	assert_int(result.size()).is_equal(3)
+	# Literal \n in CSV must become a real newline so tr("Head\n[Empty]") matches.
+	assert_str(result[0]).is_equal("Head\n[Empty]")
+	assert_str(result[2]).is_equal("头部\n[空]")
+
+
+func test_parse_csv_line_unescapes_newline_inside_quotes() -> void:
+	var lm = auto_free(load("res://globals/core/localization_manager.gd").new())
+	var result = lm._parse_csv_line('"To the keeper,\\n\\nThe heir has left.","en","zh"')
+	assert_int(result.size()).is_equal(3)
+	assert_str(result[0]).is_equal("To the keeper,\n\nThe heir has left.")
+
+
+func test_parse_csv_line_keeps_backslash_before_other_chars() -> void:
+	var lm = auto_free(load("res://globals/core/localization_manager.gd").new())
+	var result = lm._parse_csv_line("a\\b,c")
+	assert_int(result.size()).is_equal(2)
+	assert_str(result[0]).is_equal("a\\b")
+
+
 func test_parse_csv_line_simple() -> void:
 	var lm = auto_free(load("res://globals/core/localization_manager.gd").new())
 	var result = lm._parse_csv_line("hello,world,test")

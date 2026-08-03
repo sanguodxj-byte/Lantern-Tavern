@@ -39,7 +39,13 @@ func _process(_delta: float) -> void:
 		transition_state(Player.State.MOVING)
 		return
 	if player.is_weapon_action_held(input_action):
-		if player.is_active_weapon_ranged() and not player.is_active_weapon_crossbow():
+		if player.is_active_spell_focus_weapon():
+			var elapsed := Time.get_ticks_msec() - state_data.weapon_charge_started_msec
+			var charge_ratio := clampf(float(elapsed) / 800.0, 0.0, 1.0)
+			state_data.set_weapon_charge_ratio(charge_ratio)
+			if player.view_model != null and is_instance_valid(player.view_model) and player.view_model.has_method("update_weapon_hold"):
+				player.view_model.update_weapon_hold(charge_ratio)
+		elif player.is_active_weapon_ranged() and not player.is_active_weapon_crossbow():
 			# 弓：持续按住蓄力期间驱动拉弓进度动画；弩：无需蓄力动画和颤抖
 			var elapsed := Time.get_ticks_msec() - state_data.weapon_charge_started_msec
 			var charge_ratio := clampf(float(elapsed) / 800.0, 0.0, 1.0)
@@ -66,6 +72,13 @@ func _process(_delta: float) -> void:
 	if elapsed < min_hold:
 		player.set_weapon_aiming(false)
 		_restore_view_model()
+		transition_state(Player.State.MOVING)
+		return
+	if player.is_active_spell_focus_weapon():
+		var charge_ratio := clampf(float(elapsed) / 800.0, 0.0, 1.0)
+		player.set_weapon_aiming(false)
+		_restore_view_model()
+		player.spell_caster.release_full_charge(player, charge_ratio, player.get_tree().current_scene)
 		transition_state(Player.State.MOVING)
 		return
 	var release_state := state_data.weapon_release_state

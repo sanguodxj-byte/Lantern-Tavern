@@ -202,6 +202,9 @@ func test_tavern_equipment_panel_uses_parchment_texture_background() -> void:
 	var source := (load("res://scenes/ui/tavern_equipment_panel.gd") as GDScript).source_code
 	assert_bool(source.contains("func _remove_internal_information_fills() -> void")).is_true()
 	assert_bool(source.contains('add_theme_stylebox_override("panel", panel_style)')).is_true()
+	assert_bool(source.contains("decorative_panel_paths")).is_true()
+	assert_bool(source.contains('find_children("", "TabContainer"')).is_false()
+	assert_bool(source.contains('find_children("", "ItemList"')).is_false()
 	assert_bool(scene_source.contains('[node name="StatsPanel" type="TabContainer"')).is_true()
 	var stats_source := (load("res://scenes/ui/equipment_stats_visual.gd") as GDScript).source_code
 	assert_bool(stats_source.contains('draw_rect(row, Color(0, 0, 0, 0), true)')).is_true()
@@ -225,38 +228,40 @@ func test_tavern_preview_rotation_is_front_side() -> void:
 
 func test_char_panel_main_hand_hides_text_when_icon_present() -> void:
 	var source := (load("res://scenes/ui/character_panel.gd") as GDScript).source_code
-	var func_start := source.find("func _setup_slots_text()")
+	var func_start := source.find("func _apply_slot_display(")
 	assert_int(func_start).is_greater(-1)
-	var func_end := source.find("func _load_attributes()")
+	var func_end := source.find("func _affix_color_for(", func_start)
 	var func_body := source.substr(func_start, func_end - func_start)
-	# 有图标时应清空 text
+	# 所有装备槽共用同一显示函数；有图标时清空按钮文字，并保留详情 tooltip。
 	assert_bool(func_body.contains("if icon != null:")).is_true()
-	assert_bool(func_body.contains("slot_main_hand.text = \"\"")).is_true()
-	assert_bool(func_body.contains("slot_main_hand.tooltip_text = display_name")).is_true()
+	assert_bool(func_body.contains("btn.text = \"\"")).is_true()
+	assert_bool(func_body.contains("btn.tooltip_text = _build_equipment_tooltip")).is_true()
 
 
 func test_char_panel_off_hand_hides_text_when_icon_present() -> void:
 	var source := (load("res://scenes/ui/character_panel.gd") as GDScript).source_code
-	var func_start := source.find("func _setup_slots_text()")
-	assert_int(func_start).is_greater(-1)
-	var func_end := source.find("func _load_attributes()")
-	var func_body := source.substr(func_start, func_end - func_start)
-	# 副手有图标时应清空 text
-	assert_bool(func_body.contains("if s_icon != null:")).is_true()
-	assert_bool(func_body.contains("slot_off_hand.text = \"\"")).is_true()
-	assert_bool(func_body.contains("slot_off_hand.tooltip_text = s_display")).is_true()
+	var setup_start := source.find("func _setup_slots_text()")
+	var setup_end := source.find("func _apply_slot_display(", setup_start)
+	var setup_body := source.substr(setup_start, setup_end - setup_start)
+	var display_start := setup_end
+	var display_end := source.find("func _affix_color_for(", display_start)
+	var display_body := source.substr(display_start, display_end - display_start)
+	# 副手与主手都经由 SLOT_DEFS 和统一显示函数处理，不能再维护分叉逻辑。
+	assert_bool(setup_body.contains("for slot_def in SLOT_DEFS")).is_true()
+	assert_bool(setup_body.contains("_apply_slot_display(btn, slot_def, data)")).is_true()
+	assert_bool(display_body.contains("btn.text = \"\"")).is_true()
+	assert_bool(display_body.contains("btn.tooltip_text = _build_equipment_tooltip")).is_true()
 
 
 func test_char_panel_slots_show_text_when_no_equipment() -> void:
 	var source := (load("res://scenes/ui/character_panel.gd") as GDScript).source_code
-	var func_start := source.find("func _setup_slots_text()")
+	var func_start := source.find("func _apply_slot_display(")
 	assert_int(func_start).is_greater(-1)
-	var func_end := source.find("func _load_attributes()")
+	var func_end := source.find("func _affix_color_for(", func_start)
 	var func_body := source.substr(func_start, func_end - func_start)
-	# 无武器时应显示文字
-	assert_bool(func_body.contains('tr("Main Hand\\n[Fists]")')).is_true()
-	# 无盾牌时应显示文字
-	assert_bool(func_body.contains('tr("Off Hand\\n[Empty]")')).is_true()
+	# 无装备时使用统一槽位翻译名和 Empty 状态，主手/副手不再各自硬编码。
+	assert_bool(func_body.contains('tr(slot_def.get("tr_key", slot_def["key"]))')).is_true()
+	assert_bool(func_body.contains('btn.text = "%s\\n[%s]" % [label_text, tr("Empty")]')).is_true()
 
 
 # ── character_panel.gd: 角色预览改为侧前视角 ──────────────────────────────

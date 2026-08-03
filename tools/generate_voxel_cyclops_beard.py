@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,11 +34,41 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "tuft of coarse gray-brown whiskers"
 
+# Cyclops beard pixel palette: gray-browns, coarse dark grays, pale tips.
+# Each material owns its own seed/pattern; no shared identity table.
+_GRAY_BROWN = (0.55, 0.48, 0.38, 1.0)
+_COARSE_DARK = (0.32, 0.26, 0.20, 1.0)
+_PALE_TIP = (0.72, 0.66, 0.55, 1.0)
+_ROOT_PAD = (0.42, 0.28, 0.22, 1.0)
+_RUST_RED = (0.50, 0.20, 0.16, 1.0)  # warm rust accent on gray
+_SHADOW_BLUE = (0.20, 0.22, 0.30, 1.0)  # cool blue shadow accent
+
+
 def build_model():
-    hair = make_material("cb_hair", (0.55, 0.48, 0.38, 1.0), roughness=0.88)
-    dark = make_material("cb_dark", (0.32, 0.26, 0.20, 1.0), roughness=0.90)
-    pale = make_material("cb_pale", (0.72, 0.66, 0.55, 1.0), roughness=0.82)
-    root_m = make_material("cb_root", (0.42, 0.28, 0.22, 1.0), roughness=0.85)
+    hair = make_pixel_material(
+        "cb_hair", (0.55, 0.48, 0.38, 1.0),
+        roughness=0.88, palette=(_GRAY_BROWN, _PALE_TIP, _COARSE_DARK, _RUST_RED),
+        pixel_size=48, variation=0.38, seed=2501, pattern="vein", normal_strength=1.0,
+        edge_darken=0.38, highlight=0.30, detail_noise=0.15,
+    )
+    dark = make_pixel_material(
+        "cb_dark", (0.32, 0.26, 0.20, 1.0),
+        roughness=0.90, palette=(_COARSE_DARK, _GRAY_BROWN, _SHADOW_BLUE),
+        pixel_size=48, variation=0.40, seed=2513, pattern="vein", normal_strength=1.1,
+        edge_darken=0.45, highlight=0.30, detail_noise=0.15,
+    )
+    pale = make_pixel_material(
+        "cb_pale", (0.72, 0.66, 0.55, 1.0),
+        roughness=0.82, palette=(_PALE_TIP, _GRAY_BROWN, _COARSE_DARK, _RUST_RED),
+        pixel_size=48, variation=0.40, seed=2525, pattern="speckle", normal_strength=1.2,
+        edge_darken=0.32, highlight=0.35, detail_noise=0.15,
+    )
+    root_m = make_pixel_material(
+        "cb_root", (0.42, 0.28, 0.22, 1.0),
+        roughness=0.85, palette=(_ROOT_PAD, _COARSE_DARK, _GRAY_BROWN, _SHADOW_BLUE),
+        pixel_size=48, variation=0.42, seed=2537, pattern="vein", normal_strength=0.9,
+        edge_darken=0.46, highlight=0.30, detail_noise=0.15,
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
     def add(name, center, size, material):

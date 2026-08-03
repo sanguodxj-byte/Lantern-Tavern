@@ -1,4 +1,4 @@
-﻿extends Node
+extends Node
 ## NetworkManager（autoload singleton，按 project.godot 注册名访问；不声明 class_name 避免与 autoload 同名冲突）
 
 ## 联机传输（SceneMultiplayer + ENet）+ 权威编排接入层。
@@ -11,6 +11,7 @@
 const NP := preload("res://globals/multiplayer/network_protocol.gd")
 const SessionRootClass := preload("res://globals/multiplayer/session_root.gd")
 const PlayerContextClass := preload("res://globals/core/player_context.gd")
+const ServerSaveRepository := preload("res://globals/multiplayer/server_save_repository.gd")
 
 signal peer_joined(peer_id: int)
 signal peer_left(peer_id: int)
@@ -31,6 +32,7 @@ signal peer_authorized(peer_id: int, context)
 const DEFAULT_PORT: int = 54321
 const MAX_PLAYERS: int = 4
 const HOST_PEER_ID: int = 1
+
 
 var is_active: bool = false
 var is_host: bool = false
@@ -67,6 +69,8 @@ var _snapshot_accum: float = 0.0
 ## 网络统计：{事件类型: RPC 下发次数}（仅真实联机时累计，用于压测观测）。
 var _net_stats: Dictionary = {}
 var _netstat_timer: float = 0.0
+## P0-2：服务器固定 tick 输入消费的帧时间累积器（以 SessionRoot.SERVER_TICK_DT 步进）。
+var _input_tick_accum: float = 0.0
 
 func _ready() -> void:
 	multiplayer.peer_connected.connect(_on_peer_connected)
@@ -88,6 +92,20 @@ func _ensure_session() -> void:
 		add_child(session)
 		# world_revision 闭环：SessionRoot 在权威世界状态变更时经此把 EVT_WORLD_REVISION_CHANGED 下发到所有客户端。
 		session.broadcast_event = _dispatch_world_event
+		# P1-5：把联机 per-peer 玩家解析注入 GameState.resolve_player_node——
+		# 地牢压力/撤离/敌人目标等路径在联机下按 peer 解析，不再默认落到房主/单机玩家。
+		var gs: Node = get_node_or_null("/root/GameState")
+		if gs != null and "player_resolver" in gs:
+			gs.player_resolver = func(pid: int) -> Node:
+				if session == null or session.registry == null:
+					return null
+				var ctx = session.registry.get_context(pid)
+				if ctx == null:
+					return null
+				return ctx.player_node
+		# P1-1：注入服务器可信存档仓（按 player_guid 持久化权威状态）。
+		# spawn 恢复与出征结算写回经此仓闭环；单测可注入临时目录。
+		session.server_save_repo = ServerSaveRepository.new()
 
 ## 服务器主导出：开启 ENet 服务器 + 初始化权威 SessionRoot。
 func host(port: int = DEFAULT_PORT, max_players: int = MAX_PLAYERS) -> Error:
@@ -228,12 +246,18 @@ func _on_server_disconnected() -> void:
 
 ## 服务器处理一次玩家生成请求：创建权威 PlayerContext、签发稳定重连 token、广播 spawned。
 ## 返回 {"ctx":PlayerContext, "token":String, "peer_id":int}；非服务器或失败返回 {"ctx":null,...}。
+## P0-1：重复在线身份被 SessionRoot 拒绝（ctx==null）时向该 peer 下发 EVT_COMMAND_REJECTED。
 func _server_handle_spawn(peer_id: int, save_state: Dictionary = {}, player_guid: String = "") -> Dictionary:
 	_ensure_session()
 	if not session.is_server:
 		return {"ctx": null, "token": "", "peer_id": peer_id}
 	var ctx: PlayerContextClass = session.handle_spawn_request(peer_id, save_state, player_guid)
 	if ctx == null:
+		var rej := {"event": NP.EVT_COMMAND_REJECTED, "error_code": NP.ERR_DUPLICATE_IDENTITY}
+		if _can_rpc():
+			rpc_server_event.rpc_id(peer_id, rej)
+		else:
+			_dispatch_event(rej, peer_id)
 		return {"ctx": null, "token": "", "peer_id": peer_id}
 	var token: String = session.connection_auth.issue_token(peer_id, session.current_time)
 	var evt := {"event": NP.EVT_PLAYER_SPAWNED, "peer_id": peer_id}
@@ -255,6 +279,16 @@ func _server_handle_command(peer_id: int, command: Dictionary) -> Dictionary:
 		for ev in (res["extra_events"] as Array):
 			if ev is Dictionary and not (ev as Dictionary).is_empty():
 				_buffer_or_dispatch(ev)
+	# world_revision 闭环自愈（架构审查 P0-2 配套）：客户端可能因接入时机错过早期
+	# EVT_WORLD_REVISION_CHANGED 广播（如晚到客户端在驱动挂接前收到 spawn/实体 bump），
+	# 导致其所有命令被 INVALID_WORLD_REVISION 永久拒绝。此处对【该 peer】定向推送当前
+	# revision，使客户端重新学习后即可恢复上送（不改动其它校验语义）。
+	if not bool(res.get("success", false)) and String(res.get("error_code", "")) == NP.ERR_INVALID_WORLD_REVISION:
+		var rev_evt := {"event": NP.EVT_WORLD_REVISION_CHANGED, "world_revision": session.world.world_revision, "current_space": session.world.current_space}
+		if _can_rpc():
+			rpc_server_event.rpc_id(peer_id, rev_evt)
+		else:
+			_dispatch_event(rev_evt, peer_id)
 	return res
 
 ## 区分“可节流快照”与“需即时下发的事件”：
@@ -356,6 +390,22 @@ func tick(delta: float) -> void:
 	if session == null or not session.is_server:
 		return
 	session.current_time += delta
+	# P0-2：固定 tick 消费 per-peer 最新输入（30Hz），与 RPC 到达频率解耦——
+	# 客户端提高合法 sequence 的发送频率不会让服务器重复执行 SERVER_TICK_DT 位移。
+	_input_tick_accum += delta
+	var tick_dt: float = SessionRootClass.SERVER_TICK_DT
+	while _input_tick_accum >= tick_dt:
+		_input_tick_accum -= tick_dt
+		_consume_input_tick()
+	# 房主自身 peer 无真实 ENet 连接、不发心跳（_maybe_send_heartbeat 只服务远端客户端）：
+	# 每 tick 刷新其 last_seen，否则 HEARTBEAT_TIMEOUT 后房主自己被判掉线（GRACE），
+	# 房主命令全被拒、房间被 should_end_room_on_disconnect 拆除（双进程测试暴露）。
+	if local_peer_id > 0:
+		session.heartbeat(local_peer_id, session.current_time)
+	# P0-1-C：排空 field/summon 异步实体事件 outbox（HP/死亡/掉落复制，统一出口）。
+	if session.has_method("poll_spell_world_events"):
+		for ev in session.poll_spell_world_events():
+			_buffer_or_dispatch(ev)
 	_flush_snapshots(delta)
 	for pid in session.connection_auth.online_peer_ids():
 		if session.connection_auth.check_timeout(pid, session.current_time):
@@ -367,6 +417,15 @@ func tick(delta: float) -> void:
 		_netstat_timer = 0.0
 		if not _net_stats.is_empty():
 			print("[NETSTATS] ", _net_stats)
+
+## 消费一个服务器输入 tick：每 peer 恰处理最新一帧输入，快照事件走统一节流下发。
+func _consume_input_tick() -> void:
+	if session == null:
+		return
+	for item in session.consume_input_tick():
+		var res: Dictionary = item.get("result", {})
+		if bool(res.get("success", false)) and res.has("event") and not res["event"].is_empty():
+			_buffer_or_dispatch(res["event"])
 
 ## 按 SNAPSHOT_BROADCAST_HZ 把缓冲的 player_snapshot 下发（最新一帧/peer）。
 ## 同时 emit event_dispatched（host 侧桥接层经此收到自身快照）与 RPC（远端客户端）。
@@ -405,11 +464,12 @@ func _apply_event(event: Dictionary) -> void:
 # 客户端 → 服务器 RPC（意图上送）
 # ---------------------------------------------------------------------------
 
-func send_spawn(save_state: Dictionary, player_guid: String) -> void:
+func send_spawn(_legacy_save_state: Dictionary, player_guid: String) -> void:
 	if not is_client():
 		return
 	reconnect_player_guid = player_guid
-	rpc_client_spawn.rpc_id(HOST_PEER_ID, local_peer_id, save_state, player_guid)
+	# RPC 参数保留空字典以兼容协议形状；服务器无条件忽略客户端存档数据。
+	rpc_client_spawn.rpc_id(HOST_PEER_ID, local_peer_id, {}, player_guid)
 
 func send_command(command: Dictionary) -> void:
 	if not is_client():
@@ -419,9 +479,14 @@ func send_command(command: Dictionary) -> void:
 ## 客户端/房主统一上送命令入口：
 ##   客户端 → RPC 上送服务器（send_command）；
 ##   房主（listen-server）自身也是玩家，直接走服务器权威路径，不经 RPC 回路。
+## P0-2：CMD_INPUT 一律入服务器固定 tick 缓冲（不立即执行）——输入频率与服务器
+## 权威位移解耦，无论客户端 30/60/120Hz 上送，每 tick 每 peer 只消费最新一帧。
 ## 返回 SessionRoot.on_command 的结果（房主路径）或空字典（客户端路径，结果经事件下发）。
 func submit_command(command: Dictionary) -> Dictionary:
 	if is_host:
+		if command.get("type", "") == NP.CMD_INPUT:
+			session.queue_input(local_peer_id, command)
+			return {}
 		return _server_handle_command(local_peer_id, command)
 	if is_client():
 		send_command(command)
@@ -526,25 +591,31 @@ func send_leave() -> void:
 # RPC 定义
 # ---------------------------------------------------------------------------
 
-## 客户端 → 服务器：请求生成玩家（带入单人存档摘要 save_state 与稳定身份 player_guid）。
+## 客户端 → 服务器：请求生成玩家。客户端自报 save_state 属不可信输入，服务器明确忽略；
+## 权威存档只能由房主本地 spawn_self() 或未来服务器持久化仓库注入。
 @rpc("any_peer", "call_remote", "reliable")
-func rpc_client_spawn(peer_id: int, save_state: Dictionary, player_guid: String) -> void:
+func rpc_client_spawn(peer_id: int, _untrusted_save_state: Dictionary, player_guid: String) -> void:
 	if not is_host:
 		return
 	var sender: int = multiplayer.get_remote_sender_id()
 	if sender != peer_id:
 		return  # 安全：peer 只能为自己生成
-	var res: Dictionary = _server_handle_spawn(peer_id, save_state, player_guid)
+	var res: Dictionary = _server_handle_spawn(peer_id, {}, player_guid)
 	if res.get("ctx") != null:
 		rpc_server_spawned.rpc_id(peer_id, peer_id, String(res.get("token", "")))
 
 ## 客户端 → 服务器：上送一条意图命令。
+## P0-2：CMD_INPUT 不立即执行——只更新 per-peer 最新输入缓冲，由服务器固定 tick
+## （tick() 内 30Hz）消费；其余命令即时进入权威处理（攻击/交互/施法保持响应性）。
 @rpc("any_peer", "call_remote", "reliable")
 func rpc_client_command(peer_id: int, command: Dictionary) -> void:
 	if not is_host:
 		return
 	var sender: int = multiplayer.get_remote_sender_id()
 	if sender != peer_id:
+		return
+	if command.get("type", "") == NP.CMD_INPUT:
+		session.queue_input(peer_id, command)
 		return
 	_server_handle_command(peer_id, command)
 

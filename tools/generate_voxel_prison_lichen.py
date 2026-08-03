@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,11 +34,43 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "flat crusty lichen mat with spore cups"
 
+# Prison lichen pixel palette: crusty gray-green lichen, dark crust, pale
+# highlights, cup browns, accent violet and rust.
+# Each material owns its own seed/pattern; no shared identity table.
+_LICHEN_MAIN = (0.55, 0.58, 0.32, 1.0)
+_DARK_CRUST = (0.32, 0.36, 0.18, 1.0)
+_PALE_CRUST = (0.70, 0.72, 0.48, 1.0)
+_CUP_BROWN = (0.62, 0.42, 0.28, 1.0)
+_PALE_YELLOW = (0.78, 0.74, 0.50, 1.0)
+_MID_CRUST = (0.42, 0.46, 0.24, 1.0)
+_ACCENT_VIOLET = (0.18, 0.08, 0.38, 1.0)
+_ACCENT_RUST = (0.55, 0.30, 0.18, 1.0)
+
 def build_model():
-    lichen = make_material("pl_lichen", (0.55, 0.58, 0.32, 1.0), roughness=0.90)
-    dark = make_material("pl_dark", (0.32, 0.36, 0.18, 1.0), roughness=0.92)
-    pale = make_material("pl_pale", (0.70, 0.72, 0.48, 1.0), roughness=0.85)
-    cup = make_material("pl_cup", (0.62, 0.42, 0.28, 1.0), roughness=0.80)
+    lichen = make_pixel_material(
+        "pl_lichen", (0.55, 0.58, 0.32, 1.0),
+        roughness=0.90, palette=(_LICHEN_MAIN, _PALE_CRUST, _MID_CRUST, _ACCENT_VIOLET),
+        pixel_size=48, variation=0.41, seed=1901, pattern="cracks", normal_strength=1.0,
+        edge_darken=0.38, highlight=0.30, detail_noise=0.15,
+    )
+    dark = make_pixel_material(
+        "pl_dark", (0.32, 0.36, 0.18, 1.0),
+        roughness=0.92, palette=(_DARK_CRUST, _MID_CRUST, _ACCENT_RUST, _LICHEN_MAIN),
+        pixel_size=48, variation=0.41, seed=1913, pattern="cracks", normal_strength=1.1,
+        edge_darken=0.38, highlight=0.30, detail_noise=0.15,
+    )
+    pale = make_pixel_material(
+        "pl_pale", (0.70, 0.72, 0.48, 1.0),
+        roughness=0.85, palette=(_PALE_CRUST, _PALE_YELLOW, _LICHEN_MAIN, _CUP_BROWN),
+        pixel_size=48, variation=0.40, seed=1925, pattern="cracks", normal_strength=0.9,
+        edge_darken=0.38, highlight=0.30, detail_noise=0.15,
+    )
+    cup = make_pixel_material(
+        "pl_cup", (0.62, 0.42, 0.28, 1.0),
+        roughness=0.80, palette=(_CUP_BROWN, _PALE_YELLOW, _ACCENT_RUST, _DARK_CRUST),
+        pixel_size=48, variation=0.42, seed=1937, pattern="speckle", normal_strength=1.2,
+        edge_darken=0.38, highlight=0.30, detail_noise=0.15,
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
     def add(name, center, size, material):

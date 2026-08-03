@@ -12,7 +12,7 @@ class_name DungeonGenerationConfig
 extends RefCounted
 
 const HEIGHT_UNIT_METERS := 1.0
-const MIN_CEILING_HEIGHT_METERS := 3.0
+const MIN_CEILING_HEIGHT_METERS := 2.0
 
 # ── 顶层生成参数 ─────────────────────────────────────────────
 var seed: int = 0                # 生成随机种子；0 表示由 DungeonGenerator 选随机种子
@@ -157,5 +157,5 @@ func matches_procedural_dungeon_defaults() -> bool:
 		and ceiling_transition_gap == 0.015 \
 		and standard_door_size_meters == Vector2(1.0, 2.0) \
 		and boss_door_size_meters == Vector2(2.0, 2.0) \
-		and ceiling_height_base == 3.0 \
+		and ceiling_height_base == 2.0 \
 		and target_room_count == 18

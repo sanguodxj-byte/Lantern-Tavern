@@ -1,8 +1,9 @@
 extends GdUnitTestSuite
 ## 区域选择系统 (ZoneManager) + 对接测试。
-## 验证五区元数据、散落材料池、chest/dungeon 接入、main_menu 跳转。
+## 验证六区元数据、散落材料池、chest/dungeon 接入、main_menu 跳转。
 
 const ZM := preload("res://globals/dungeon/zone_manager.gd")
+const ZONE_MAP_ASSET := "res://assets/textures/ui/expedition_zone_map.png"
 var zm: Node
 
 func before_test() -> void:
@@ -14,7 +15,7 @@ func before_test() -> void:
 func test_zone_manager_autoload_exists() -> void:
 	assert_object(zm).is_not_null()
 
-func test_five_zones_defined() -> void:
+func test_six_zones_defined() -> void:
 	assert_int(ZM.ZONE_META.size()).is_equal(6)
 	assert_int(zm.all_zones().size()).is_equal(6)
 
@@ -130,6 +131,43 @@ func test_zone_select_scene_exists() -> void:
 func test_zone_select_script_exists() -> void:
 	assert_bool(ResourceLoader.exists("res://scenes/ui/zone_select.gd")).is_true()
 
+func test_zone_select_uses_pixel_map_instead_of_text_list() -> void:
+	var scene_source := FileAccess.get_file_as_string("res://scenes/ui/zone_select.tscn")
+	assert_str(scene_source).contains("ZoneMapTexture") \
+		.override_failure_message("区域选择场景必须包含像素区域地图纹理")
+	assert_str(scene_source).contains("ZoneHotspots") \
+		.override_failure_message("区域选择场景必须包含地图选区交互层")
+	assert_str(scene_source).contains("ZoneDetails") \
+		.override_failure_message("区域选择场景必须保留当前选区详情")
+	assert_bool(not scene_source.contains("ZoneList")) \
+		.override_failure_message("区域选择不应继续使用纵向文字列表").is_true()
+	assert_bool(not scene_source.contains("ScrollContainer")) \
+		.override_failure_message("区域地图不应包裹在旧文字列表滚动容器中").is_true()
+	assert_str(scene_source).contains(ZONE_MAP_ASSET) \
+		.override_failure_message("区域选择场景必须引用正式像素地图素材")
+
+func test_zone_map_asset_has_transparent_cutout_and_pixel_scale() -> void:
+	var absolute_path := ProjectSettings.globalize_path(ZONE_MAP_ASSET)
+	assert_bool(FileAccess.file_exists(absolute_path)) \
+		.override_failure_message("缺少正式区域地图素材: %s" % ZONE_MAP_ASSET).is_true()
+	if not FileAccess.file_exists(absolute_path):
+		return
+	var image := Image.load_from_file(absolute_path)
+	assert_object(image).is_not_null()
+	if image == null:
+		return
+	assert_int(image.get_width()).is_equal(768)
+	assert_int(image.get_height()).is_equal(768)
+	for point in [
+		Vector2i(0, 0),
+		Vector2i(image.get_width() - 1, 0),
+		Vector2i(0, image.get_height() - 1),
+		Vector2i(image.get_width() - 1, image.get_height() - 1),
+	]:
+		assert_float(image.get_pixelv(point).a) \
+			.override_failure_message("去绿底后的区域地图四角必须透明: %s" % point) \
+			.is_less(0.05)
+
 func test_zone_select_no_invalid_button_alignment_property() -> void:
 	# 回归：Button 在 Godot 4 没有 text_vertical_alignment 属性，
 	# 设置会触发 "Invalid assignment of property or key" 运行时报错。
@@ -148,3 +186,68 @@ func test_zone_select_adds_to_character_panel_group() -> void:
 		.is_true()
 		
 	root.remove_child(zone_select)
+
+func test_zone_select_builds_six_map_hotspots_and_details() -> void:
+	var host := Control.new()
+	host.size = Vector2(1920, 1080)
+	add_child(host)
+	var zone_select := load("res://scenes/ui/zone_select.tscn").instantiate() as Control
+	host.add_child(zone_select)
+	await await_idle_frame()
+
+	var hotspots := zone_select.get_node("%ZoneHotspots") as Control
+	assert_int(hotspots.get_child_count()).is_equal(6)
+	for zone_id in range(6):
+		var hotspot := hotspots.get_node_or_null("ZoneHotspot%d" % zone_id) as Button
+		assert_object(hotspot).is_not_null()
+		assert_int(int(hotspot.get_meta("zone_id", -1))).is_equal(zone_id)
+	assert_object(zone_select.get_node_or_null("%ZoneMapTexture")).is_not_null()
+	assert_object(zone_select.get_node_or_null("%ZoneDetails")).is_not_null()
+	assert_bool((zone_select.get_node("%StartBtn") as Button).disabled).is_true()
+	host.queue_free()
+
+func test_zone_select_preview_updates_details_without_committing_zone() -> void:
+	var previous_zone: int = int(zm.get_zone())
+	zm.set_zone(0)
+	var host := Control.new()
+	host.size = Vector2(1920, 1080)
+	add_child(host)
+	var zone_select := load("res://scenes/ui/zone_select.tscn").instantiate() as Control
+	host.add_child(zone_select)
+	await await_idle_frame()
+
+	var hotspot := zone_select.get_node("%ZoneHotspots/ZoneHotspot3") as Button
+	hotspot.emit_signal("pressed")
+	await await_idle_frame()
+
+	assert_int(zone_select.get_selected_zone()).is_equal(3)
+	assert_int(zm.get_zone()).is_equal(0)
+	assert_str((zone_select.get_node("%ZoneName") as Label).text).is_equal(zm.get_zone_name(3))
+	assert_str((zone_select.get_node("%ZoneDescription") as Label).text).is_equal(zm.get_zone_desc(3))
+	assert_bool((zone_select.get_node("%StartBtn") as Button).disabled).is_false()
+	host.queue_free()
+	zm.set_zone(previous_zone)
+
+func test_capture_zone_select_preview_if_renderer_available() -> void:
+	# headless CI cannot provide a rendered viewport; the runtime contract tests
+	# above still cover the scene tree and state changes in that mode.
+	if DisplayServer.get_name() == "headless":
+		return
+	var original_window_size := DisplayServer.window_get_size()
+	DisplayServer.window_set_size(Vector2i(1920, 1080))
+	var host := Control.new()
+	host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(host)
+	var zone_select := load("res://scenes/ui/zone_select.tscn").instantiate() as Control
+	zone_select.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	host.add_child(zone_select)
+	for _index in range(12):
+		await get_tree().process_frame
+	var image := get_viewport().get_texture().get_image()
+	assert_object(image).is_not_null()
+	if image != null and not image.is_empty():
+		var output_dir := "res://reports/ui_preview"
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(output_dir))
+		assert_int(image.save_png("%s/zone_select_1920x1080_zh.png" % output_dir)).is_equal(OK)
+	host.queue_free()
+	DisplayServer.window_set_size(original_window_size)

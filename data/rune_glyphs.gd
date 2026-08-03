@@ -1,211 +1,369 @@
 extends RefCounted
-## 符文图标程序化生成器。
+## 128×128 像素符文图标程序化生成器。
 ##
-## 取代 assets/textures/icons/runes/*.png 的生图方案：每个符文图标由一组
-## 归一化(0..1, y 向下)的矢量图元在运行时绘制为 ImageTexture，无需任何位图资源。
-##
-## 设计要点（便于后续扩展）：
-##   - 新增/修改符文只需在 rune_data.gd 注册，图标会自动生成（确定性、按 rune_id 播种），
-##     不依赖美术出图，也不受“生图绿底工作流”约束。
-##   - 图元格式开放：line / disc / ring / poly / polyline / arc，可自由组合。
-##   - 如需为某个符文手工刻画专属符号，登记到 _overrides[rune_id] 即可覆盖自动生成。
-##   - 光栅化为纯 CPU（Image），无需渲染器，headless 与导出后均可正常使用。
+## 所有图案先写入 32×32 逻辑栅格，再按整数最近邻扩展。这样在
+## headless、桌面端和 Android 上均得到完全一致的硬边像素轮廓。
 
 const RD := preload("res://globals/combat/rune_data.gd")
 
-## 图元覆盖表：rune_id -> 自定义图元数组。留空则全部走 _auto_glyph 确定性生成。
-static var _overrides: Dictionary = {}
+const DEFAULT_SIZE := 128
+const LOGICAL_SIZE := 32
+const SAFE_MIN := 2
+const SAFE_MAX := 29
+const OUTLINE := Color("#15171D")
 
-## 纹理缓存：key = "%s|%d" % [rune_id, size]
+## rune_id|size -> ImageTexture
 static var _cache: Dictionary = {}
 
 
-## 获取某符文的程序化图标纹理（默认 128px，与旧 PNG 尺寸一致）。
-static func get_texture(rune_id: String, size: int = 128) -> Texture2D:
+static func get_texture(rune_id: String, size: int = DEFAULT_SIZE) -> Texture2D:
 	if size <= 0:
-		size = 128
+		size = DEFAULT_SIZE
 	var key := "%s|%d" % [rune_id, size]
 	if _cache.has(key):
 		return _cache[key] as Texture2D
-	var prims := _build_glyph(rune_id)
-	var color := _color_for(rune_id)
-	var img := _rasterize(prims, color, size)
-	var tex := ImageTexture.create_from_image(img)
-	_cache[key] = tex
-	return tex
+	var logical := _draw_logical_glyph(rune_id)
+	var texture := ImageTexture.create_from_image(_expand_nearest(logical, size))
+	_cache[key] = texture
+	return texture
 
 
-## 获取图元定义（供测试/调试）。
+## 返回 32×32 的逻辑像素图，供测试、调试及图鉴工具使用。
+static func get_logical_image(rune_id: String) -> Image:
+	return _draw_logical_glyph(rune_id)
+
+
+## 保留旧调试接口；返回确定性语义描述，而非矢量曲线图元。
 static func get_glyph(rune_id: String) -> Array:
-	return _build_glyph(rune_id)
+	return [
+		{"id": rune_id, "family": _family_for(rune_id), "seed": _stable_seed(rune_id)},
+	]
+
+
+static func clear_cache() -> void:
+	_cache.clear()
+
+
+static func _draw_logical_glyph(rune_id: String) -> Image:
+	var image := Image.create(LOGICAL_SIZE, LOGICAL_SIZE, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	var main := _color_for(rune_id)
+	var highlight := main.lerp(Color.WHITE, 0.42)
+	var seed := _stable_seed(rune_id)
+	var family := _family_for(rune_id)
+
+	# 先铺卡面背景，主体完成后再压回金属边框，确保边界干净而不抢主体。
+	_draw_card_background(image, seed)
+	match family:
+		"elemental":
+			_draw_elemental(image, rune_id, seed, OUTLINE, main, highlight)
+		"combat":
+			_draw_combat(image, rune_id, seed, OUTLINE, main, highlight)
+		"mystic":
+			_draw_mystic(image, rune_id, seed, OUTLINE, main, highlight)
+		"dark":
+			_draw_dark(image, rune_id, seed, OUTLINE, main, highlight)
+		"holy":
+			_draw_holy(image, rune_id, seed, OUTLINE, main, highlight)
+		_:
+			_draw_debug_unknown(image, seed, OUTLINE, main, highlight)
+	_draw_card_frame(image, family, main, highlight)
+	return image
+
+
+static func _draw_card_background(img: Image, seed: int) -> void:
+	var outer := Color("#090B10")
+	var metal_dark := Color("#34313A")
+	var metal_mid := Color("#77717D")
+	var inner_dark := Color("#171820")
+	var stone_a := Color("#24242D")
+	var stone_b := Color("#2B2934")
+
+	# 切角方牌：四角透明，牌体从坐标 2 开始。
+	_fill_raw_rect(img, Rect2i(4, 2, 24, 28), outer)
+	_fill_raw_rect(img, Rect2i(2, 4, 28, 24), outer)
+	_fill_raw_rect(img, Rect2i(4, 3, 24, 26), metal_dark)
+	_fill_raw_rect(img, Rect2i(3, 4, 26, 24), metal_dark)
+	_fill_raw_rect(img, Rect2i(5, 4, 22, 24), metal_mid)
+	_fill_raw_rect(img, Rect2i(4, 5, 24, 22), metal_mid)
+	_fill_raw_rect(img, Rect2i(6, 5, 20, 22), inner_dark)
+	_fill_raw_rect(img, Rect2i(5, 6, 22, 20), inner_dark)
+	_fill_raw_rect(img, Rect2i(7, 6, 18, 20), stone_a)
+	_fill_raw_rect(img, Rect2i(6, 7, 20, 18), stone_a)
+
+	# 低对比度像素砖纹/石纹。只在内场出现，不干扰中心符文。
+	for y in range(8, 25):
+		for x in range(8, 25):
+			var pattern := (x * 7 + y * 11 + seed) % 13
+			if pattern == 0 or (pattern == 5 and (x + y) % 2 == 0):
+				img.set_pixel(x, y, stone_b)
+	for y in [10, 15, 20]:
+		var offset := 1 if ((seed + y) % 2 == 0) else 0
+		for x in range(8 + offset, 24, 5):
+			img.set_pixel(x, y, inner_dark)
+
+
+static func _draw_card_frame(img: Image, family: String, main: Color, high: Color) -> void:
+	var metal_light := Color("#AAA3AE")
+	var metal_shadow := Color("#201E26")
+	# 上左高光、下右暗边，形成硬边金属厚度。
+	_fill_raw_rect(img, Rect2i(6, 4, 20, 1), metal_light)
+	_fill_raw_rect(img, Rect2i(4, 6, 1, 20), metal_light)
+	_fill_raw_rect(img, Rect2i(6, 27, 20, 1), metal_shadow)
+	_fill_raw_rect(img, Rect2i(27, 6, 1, 20), metal_shadow)
+	# 四颗家族色铆钉。
+	for p in [Vector2i(6, 6), Vector2i(25, 6), Vector2i(6, 25), Vector2i(25, 25)]:
+		img.set_pixelv(p, OUTLINE)
+		var inset := Vector2i(1 if p.x < 16 else -1, 1 if p.y < 16 else -1)
+		img.set_pixelv(p + inset, main)
+
+	match family:
+		"elemental":
+			# 上下能量刻痕。
+			for x in [12, 15, 18]:
+				img.set_pixel(x, 4, main)
+				img.set_pixel(31 - x, 27, high)
+		"combat":
+			# 左右刃齿。
+			for y in [10, 15, 20]:
+				_fill_raw_rect(img, Rect2i(3, y, 3, 2), main)
+				_fill_raw_rect(img, Rect2i(26, y, 3, 2), main)
+		"mystic":
+			# 四向菱形节点。
+			for p in [Vector2i(16, 4), Vector2i(27, 16), Vector2i(16, 27), Vector2i(4, 16)]:
+				_node_raw(img, p, main, high)
+		"dark":
+			# 下垂裂角与顶部断口。
+			_fill_raw_rect(img, Rect2i(9, 27, 3, 2), main)
+			_fill_raw_rect(img, Rect2i(20, 27, 3, 2), main)
+			img.set_pixel(15, 4, OUTLINE)
+			img.set_pixel(16, 5, main)
+		"holy":
+			# 上冠与底部封印。
+			_stroke_raw(img, [Vector2i(11, 5), Vector2i(16, 2), Vector2i(21, 5)], OUTLINE, high)
+			_fill_raw_rect(img, Rect2i(12, 27, 8, 2), main)
+		_:
+			_fill_raw_rect(img, Rect2i(14, 4, 4, 1), main)
+
+
+static func _node_raw(img: Image, center: Vector2i, main: Color, high: Color) -> void:
+	img.set_pixelv(center, high)
+	for p in [center + Vector2i(-1, 0), center + Vector2i(1, 0), center + Vector2i(0, -1), center + Vector2i(0, 1)]:
+		if p.x >= 0 and p.y >= 0 and p.x < LOGICAL_SIZE and p.y < LOGICAL_SIZE:
+			img.set_pixelv(p, main)
+
+
+static func _stroke_raw(img: Image, points: Array[Vector2i], edge: Color, main: Color) -> void:
+	for i in range(points.size() - 1):
+		_draw_line_raw(img, points[i], points[i + 1], edge, 3)
+	for i in range(points.size() - 1):
+		_draw_line_raw(img, points[i], points[i + 1], main, 1)
+
+
+static func _draw_elemental(img: Image, rune_id: String, seed: int, edge: Color, main: Color, high: Color) -> void:
+	# 流动/喷发的中轴；火、雷等少数符文覆盖为更直接的语义轮廓。
+	match rune_id:
+		"ember", "tejas":
+			_stroke(img, [Vector2i(16, 27), Vector2i(11, 21), Vector2i(16, 15), Vector2i(13, 9), Vector2i(20, 5)], edge, main)
+			_stroke(img, [Vector2i(16, 23), Vector2i(21, 18), Vector2i(18, 12)], edge, main)
+		"hima":
+			_stroke(img, [Vector2i(16, 5), Vector2i(16, 27)], edge, main)
+			_stroke(img, [Vector2i(7, 16), Vector2i(25, 16)], edge, main)
+			_stroke(img, [Vector2i(10, 10), Vector2i(22, 22)], edge, main)
+			_stroke(img, [Vector2i(22, 10), Vector2i(10, 22)], edge, main)
+		"vajra":
+			_stroke(img, [Vector2i(18, 4), Vector2i(12, 15), Vector2i(18, 15), Vector2i(13, 28)], edge, main)
+			_stroke(img, [Vector2i(12, 15), Vector2i(9, 12)], edge, main)
+		"visha":
+			_stroke(img, [Vector2i(16, 5), Vector2i(11, 11), Vector2i(18, 17), Vector2i(13, 24), Vector2i(16, 28)], edge, main)
+			_node(img, Vector2i(21, 9), edge, main)
+		"jala", "pavana":
+			_stroke(img, [Vector2i(8, 10), Vector2i(14, 7), Vector2i(20, 11), Vector2i(15, 16), Vector2i(9, 21), Vector2i(16, 25), Vector2i(23, 20)], edge, main)
+		"bhumi", "kardama":
+			_stroke(img, [Vector2i(16, 5), Vector2i(16, 25), Vector2i(9, 25), Vector2i(6, 28)], edge, main)
+			_stroke(img, [Vector2i(16, 18), Vector2i(23, 23), Vector2i(23, 27)], edge, main)
+		"krishna", "dhuma":
+			_stroke(img, [Vector2i(20, 5), Vector2i(12, 11), Vector2i(19, 17), Vector2i(11, 25)], edge, main)
+			_stroke(img, [Vector2i(12, 11), Vector2i(8, 7)], edge, main)
+		_:
+			_stroke(img, [Vector2i(16, 5), Vector2i(16, 27)], edge, main)
+			_stroke(img, [Vector2i(16, 12), Vector2i(8 + (seed % 4), 8)], edge, main)
+			_stroke(img, [Vector2i(16, 19), Vector2i(23 - (seed % 4), 15)], edge, main)
+	_highlight_tip(img, Vector2i(16, 5), high)
+
+
+static func _draw_combat(img: Image, rune_id: String, seed: int, edge: Color, main: Color, high: Color) -> void:
+	var tip_x := 22 if seed % 2 == 0 else 10
+	_stroke(img, [Vector2i(7 if tip_x == 22 else 25, 24), Vector2i(tip_x, 16), Vector2i(7 if tip_x == 22 else 25, 8)], edge, main)
+	_stroke(img, [Vector2i(6, 16), Vector2i(26, 16)], edge, main)
+	match rune_id:
+		"guardian":
+			_stroke(img, [Vector2i(16, 5), Vector2i(9, 10), Vector2i(9, 22), Vector2i(16, 28), Vector2i(23, 22), Vector2i(23, 10), Vector2i(16, 5)], edge, main)
+		"quick", "praghana":
+			_stroke(img, [Vector2i(7, 11), Vector2i(20, 11), Vector2i(25, 16), Vector2i(20, 21), Vector2i(7, 21)], edge, main)
+		"para", "bhedana":
+			_stroke(img, [Vector2i(8, 27), Vector2i(22, 7)], edge, main)
+			_stroke(img, [Vector2i(14, 7), Vector2i(22, 7), Vector2i(22, 15)], edge, main)
+		"echo":
+			_stroke(img, [Vector2i(8, 10), Vector2i(16, 5), Vector2i(24, 10)], edge, main)
+			_stroke(img, [Vector2i(8, 17), Vector2i(16, 12), Vector2i(24, 17)], edge, main)
+	_highlight_tip(img, Vector2i(tip_x, 16), high)
+
+
+static func _draw_mystic(img: Image, rune_id: String, seed: int, edge: Color, main: Color, high: Color) -> void:
+	# 菱形核心与四向支路；不使用连续圆，避免被缩小为平滑徽章。
+	_stroke(img, [Vector2i(16, 6), Vector2i(24, 16), Vector2i(16, 26), Vector2i(8, 16), Vector2i(16, 6)], edge, main)
+	match rune_id:
+		"ayu", "prana":
+			_stroke(img, [Vector2i(16, 9), Vector2i(16, 23)], edge, main)
+			_stroke(img, [Vector2i(11, 16), Vector2i(21, 16)], edge, main)
+		"maya":
+			_stroke(img, [Vector2i(8, 10), Vector2i(16, 5), Vector2i(24, 10)], edge, main)
+			_stroke(img, [Vector2i(8, 22), Vector2i(16, 27), Vector2i(24, 22)], edge, main)
+		"yantra":
+			_node(img, Vector2i(16, 16), edge, main)
+			_node(img, Vector2i(9, 9), edge, main)
+			_node(img, Vector2i(23, 23), edge, main)
+		"mantra", "chitta":
+			_stroke(img, [Vector2i(10, 16), Vector2i(16, 10), Vector2i(22, 16), Vector2i(16, 22), Vector2i(10, 16)], edge, main)
+		_:
+			_stroke(img, [Vector2i(16, 6), Vector2i(16 + (seed % 5) - 2, 2)], edge, main)
+	_highlight_tip(img, Vector2i(16, 6), high)
+
+
+static func _draw_dark(img: Image, rune_id: String, seed: int, edge: Color, main: Color, high: Color) -> void:
+	# 下坠裂口与内收钩，强调负空间和不稳定感。
+	_stroke(img, [Vector2i(10, 5), Vector2i(18, 11), Vector2i(13, 17), Vector2i(21, 23), Vector2i(16, 28)], edge, main)
+	_stroke(img, [Vector2i(23, 7), Vector2i(18, 11), Vector2i(25, 15)], edge, main)
+	match rune_id:
+		"kala":
+			_stroke(img, [Vector2i(8, 21), Vector2i(8, 12), Vector2i(16, 7), Vector2i(24, 12), Vector2i(24, 21)], edge, main)
+		"mrityu":
+			_stroke(img, [Vector2i(16, 5), Vector2i(16, 27)], edge, main)
+			_stroke(img, [Vector2i(10, 13), Vector2i(22, 13)], edge, main)
+		"bhaya", "ghora":
+			_stroke(img, [Vector2i(8, 10), Vector2i(8, 24), Vector2i(16, 28), Vector2i(24, 24), Vector2i(24, 10)], edge, main)
+	_highlight_tip(img, Vector2i(10, 5), high)
+
+
+static func _draw_holy(img: Image, rune_id: String, seed: int, edge: Color, main: Color, high: Color) -> void:
+	_stroke(img, [Vector2i(16, 27), Vector2i(16, 7)], edge, main)
+	_stroke(img, [Vector2i(8, 14), Vector2i(16, 7), Vector2i(24, 14)], edge, main)
+	match rune_id:
+		"dipa":
+			_stroke(img, [Vector2i(12, 24), Vector2i(16, 19), Vector2i(20, 24)], edge, main)
+		"moksha":
+			_stroke(img, [Vector2i(9, 21), Vector2i(9, 25), Vector2i(16, 29), Vector2i(23, 25), Vector2i(23, 21)], edge, main)
+		"amrita":
+			_stroke(img, [Vector2i(9, 20), Vector2i(16, 25), Vector2i(23, 20)], edge, main)
+		"siddhi":
+			_stroke(img, [Vector2i(9, 11), Vector2i(16, 4), Vector2i(23, 11)], edge, main)
+	_highlight_tip(img, Vector2i(16, 7), high)
+
+
+static func _draw_debug_unknown(img: Image, seed: int, edge: Color, main: Color, high: Color) -> void:
+	_stroke(img, [Vector2i(8, 8), Vector2i(24, 8), Vector2i(24, 24), Vector2i(8, 24), Vector2i(8, 8)], edge, main)
+	_stroke(img, [Vector2i(10, 22), Vector2i(22, 10)], edge, main)
+	_highlight_tip(img, Vector2i(10 + seed % 10, 8), high)
+
+
+static func _stroke(img: Image, points: Array[Vector2i], edge: Color, main: Color) -> void:
+	for i in range(points.size() - 1):
+		_draw_line(img, points[i], points[i + 1], edge, 4)
+	for i in range(points.size() - 1):
+		_draw_line(img, points[i], points[i + 1], main, 2)
+
+
+static func _node(img: Image, center: Vector2i, edge: Color, main: Color) -> void:
+	_fill_rect(img, Rect2i(center - Vector2i(2, 2), Vector2i(5, 5)), edge)
+	_fill_rect(img, Rect2i(center - Vector2i(1, 1), Vector2i(3, 3)), main)
+
+
+static func _highlight_tip(img: Image, pos: Vector2i, high: Color) -> void:
+	if pos.x >= SAFE_MIN and pos.x <= SAFE_MAX and pos.y >= SAFE_MIN and pos.y <= SAFE_MAX:
+		img.set_pixelv(pos, high)
+
+
+static func _draw_line(img: Image, a: Vector2i, b: Vector2i, color: Color, width: int) -> void:
+	var dx := absi(b.x - a.x)
+	var dy := -absi(b.y - a.y)
+	var sx := 1 if a.x < b.x else -1
+	var sy := 1 if a.y < b.y else -1
+	var err := dx + dy
+	var point := a
+	while true:
+		_fill_rect(img, Rect2i(point - Vector2i(width / 2, width / 2), Vector2i(width, width)), color)
+		if point == b:
+			break
+		var twice_error := 2 * err
+		if twice_error >= dy:
+			err += dy
+			point.x += sx
+		if twice_error <= dx:
+			err += dx
+			point.y += sy
+
+
+static func _draw_line_raw(img: Image, a: Vector2i, b: Vector2i, color: Color, width: int) -> void:
+	var dx := absi(b.x - a.x)
+	var dy := -absi(b.y - a.y)
+	var sx := 1 if a.x < b.x else -1
+	var sy := 1 if a.y < b.y else -1
+	var err := dx + dy
+	var point := a
+	while true:
+		_fill_raw_rect(img, Rect2i(point - Vector2i(width / 2, width / 2), Vector2i(width, width)), color)
+		if point == b:
+			break
+		var twice_error := 2 * err
+		if twice_error >= dy:
+			err += dy
+			point.x += sx
+		if twice_error <= dx:
+			err += dx
+			point.y += sy
+
+
+static func _fill_raw_rect(img: Image, rect: Rect2i, color: Color) -> void:
+	var clipped := rect.intersection(Rect2i(Vector2i.ZERO, Vector2i(LOGICAL_SIZE, LOGICAL_SIZE)))
+	for y in range(clipped.position.y, clipped.end.y):
+		for x in range(clipped.position.x, clipped.end.x):
+			img.set_pixel(x, y, color)
+
+
+static func _fill_rect(img: Image, rect: Rect2i, color: Color) -> void:
+	var clipped := rect.intersection(Rect2i(SAFE_MIN, SAFE_MIN, SAFE_MAX - SAFE_MIN + 1, SAFE_MAX - SAFE_MIN + 1))
+	for y in range(clipped.position.y, clipped.end.y):
+		for x in range(clipped.position.x, clipped.end.x):
+			img.set_pixel(x, y, color)
+
+
+static func _expand_nearest(logical: Image, size: int) -> Image:
+	var image := logical.duplicate()
+	image.resize(size, size, Image.INTERPOLATE_NEAREST)
+	return image
+
+
+static func _family_for(rune_id: String) -> String:
+	if not RD.has_rune(rune_id):
+		return "unknown"
+	var rarity := String(RD.get_rune(rune_id).get("rarity", ""))
+	match rarity:
+		"common": return "elemental"
+		"uncommon": return "combat"
+		"rare": return "mystic"
+		"epic": return "dark"
+		"legendary": return "holy"
+	return "unknown"
 
 
 static func _color_for(rune_id: String) -> Color:
-	var hex := RD.get_rune_color(rune_id)
-	return Color.from_string(hex, Color.WHITE)
+	return Color.from_string(RD.get_rune_color(rune_id), Color.WHITE)
 
 
-static func _build_glyph(rune_id: String) -> Array:
-	if _overrides.has(rune_id):
-		return _overrides[rune_id]
-	return _auto_glyph(rune_id)
-
-
-## 确定性矢量符文：一根中轴（stave）+ 若干支线（branches），
-## 由 rune_id 哈希播种，保证同一符文始终生成同一图形且各不相同、呈“如尼文”风格。
-static func _auto_glyph(rune_id: String) -> Array:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = rune_id.hash()
-	var prims: Array = []
-	# 中轴
-	prims.append({"type": "line", "a": Vector2(0.5, 0.14), "b": Vector2(0.5, 0.86)})
-	var n_branch := rng.randi_range(2, 4)
-	var mirror := rng.randf() < 0.5
-	for i in n_branch:
-		var ty := 0.22 + 0.56 * (float(i + 1) / float(n_branch + 1))
-		ty += (rng.randf() - 0.5) * 0.06
-		var side := -1 if rng.randf() < 0.5 else 1
-		var ang := deg_to_rad(rng.randf_range(28.0, 70.0))
-		var len := rng.randf_range(0.18, 0.32)
-		var dx := cos(ang) * len * side
-		var dy := sin(ang) * len
-		var start := Vector2(0.5, ty)
-		var end := Vector2(0.5 + dx, ty - dy)
-		prims.append({"type": "line", "a": start, "b": end})
-		if mirror:
-			prims.append({"type": "line", "a": start, "b": Vector2(0.5 - dx, ty - dy)})
-	# 可选的横向短杠
-	if rng.randf() < 0.4:
-		var cy := 0.34 + rng.randf() * 0.32
-		prims.append({"type": "line", "a": Vector2(0.28, cy), "b": Vector2(0.72, cy)})
-	# 可选的顶端圆点
-	if rng.randf() < 0.3:
-		prims.append({"type": "disc", "c": Vector2(0.5, 0.12), "r": 0.05})
-	return prims
-
-
-# ── 光栅化（CPU，无需渲染器，headless/导出均可用）──────────────
-
-static func _rasterize(prims: Array, color: Color, size: int) -> Image:
-	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
-	var lw := maxf(2.0, float(size) / 14.0)
-	for p in prims:
-		var t := String(p.get("type", ""))
-		match t:
-			"line":
-				_draw_line(img, p["a"], p["b"], color, lw, size)
-			"disc":
-				_fill_disc(img, _to_px(p["c"], size), float(p["r"]) * size, color)
-			"ring":
-				_fill_ring(img, _to_px(p["c"], size), float(p["r"]) * size, color, lw)
-			"poly":
-				_draw_poly_fill(img, p["pts"], color, size)
-			"polyline":
-				var pts: Array = p["pts"]
-				for i in range(pts.size() - 1):
-					_draw_line(img, pts[i], pts[i + 1], color, lw, size)
-			"arc":
-				_draw_arc(img, _to_px(p["c"], size), float(p["r"]) * size,
-					float(p["a0"]), float(p["a1"]), color, lw)
-	return img
-
-
-static func _to_px(v: Vector2, size: int) -> Vector2:
-	return Vector2(v.x * size, v.y * size)
-
-
-static func _draw_line(img: Image, a: Vector2, b: Vector2, color: Color, lw: float, size: int) -> void:
-	var ax := a.x * size
-	var ay := a.y * size
-	var bx := b.x * size
-	var by := b.y * size
-	var steps := int(ceil(maxf(absf(bx - ax), absf(by - ay)))) + 1
-	steps = maxi(steps, 1)
-	for i in range(steps + 1):
-		var tt := float(i) / float(steps)
-		var x := ax + (bx - ax) * tt
-		var y := ay + (by - ay) * tt
-		_fill_disc(img, Vector2(x, y), lw * 0.5, color)
-
-
-static func _fill_disc(img: Image, c: Vector2, r: float, color: Color) -> void:
-	if r <= 0.0:
-		return
-	var r2 := r * r
-	var x0 := int(floor(c.x - r))
-	var x1 := int(ceil(c.x + r))
-	var y0 := int(floor(c.y - r))
-	var y1 := int(ceil(c.y + r))
-	x0 = maxi(x0, 0)
-	y0 = maxi(y0, 0)
-	x1 = mini(x1, img.get_width() - 1)
-	y1 = mini(y1, img.get_height() - 1)
-	for y in range(y0, y1 + 1):
-		for x in range(x0, x1 + 1):
-			var dx := float(x) - c.x
-			var dy := float(y) - c.y
-			if dx * dx + dy * dy <= r2:
-				img.set_pixel(x, y, color)
-
-
-static func _fill_ring(img: Image, c: Vector2, r: float, color: Color, lw: float) -> void:
-	var half := lw * 0.5
-	var x0 := int(floor(c.x - r - half))
-	var x1 := int(ceil(c.x + r + half))
-	var y0 := int(floor(c.y - r - half))
-	var y1 := int(ceil(c.y + r + half))
-	x0 = maxi(x0, 0)
-	y0 = maxi(y0, 0)
-	x1 = mini(x1, img.get_width() - 1)
-	y1 = mini(y1, img.get_height() - 1)
-	for y in range(y0, y1 + 1):
-		for x in range(x0, x1 + 1):
-			var dx := float(x) - c.x
-			var dy := float(y) - c.y
-			var d := sqrt(dx * dx + dy * dy)
-			if absf(d - r) <= half:
-				img.set_pixel(x, y, color)
-
-
-static func _draw_poly_fill(img: Image, pts: Array, color: Color, size: int) -> void:
-	if pts.size() < 3:
-		return
-	var pxs: Array[Vector2] = []
-	for v in pts:
-		pxs.append(_to_px(v, size))
-	var min_y := 1e9
-	var max_y := -1e9
-	for p in pxs:
-		min_y = minf(min_y, p.y)
-		max_y = maxf(max_y, p.y)
-	min_y = maxf(min_y, 0.0)
-	max_y = minf(max_y, float(img.get_height() - 1))
-	var y0 := int(floor(min_y))
-	var y1 := int(ceil(max_y))
-	for y in range(y0, y1 + 1):
-		var xs: Array[float] = []
-		for i in range(pxs.size()):
-			var a := pxs[i]
-			var b := pxs[(i + 1) % pxs.size()]
-			if (a.y <= float(y) and b.y > float(y)) or (b.y <= float(y) and a.y > float(y)):
-				var tt := (float(y) - a.y) / (b.y - a.y)
-				xs.append(a.x + tt * (b.x - a.x))
-		xs.sort()
-		var k := 0
-		while k + 1 < xs.size():
-			var xa := int(ceil(xs[k]))
-			var xb := int(floor(xs[k + 1]))
-			xa = maxi(xa, 0)
-			xb = mini(xb, img.get_width() - 1)
-			for x in range(xa, xb + 1):
-				img.set_pixel(x, y, color)
-			k += 2
-
-
-static func _draw_arc(img: Image, c: Vector2, r: float, a0: float, a1: float, color: Color, lw: float) -> void:
-	var n := maxi(int(ceil(absf(a1 - a0) / 0.12)), 2)
-	for i in range(n + 1):
-		var ang := a0 + (a1 - a0) * float(i) / float(n)
-		var p := Vector2(c.x + cos(ang) * r, c.y + sin(ang) * r)
-		_fill_disc(img, p, lw * 0.5, color)
+static func _stable_seed(value: String) -> int:
+	# 不使用 String.hash()：其实现细节不应成为图标跨平台一致性的前提。
+	var hash: int = 5381
+	for i in value.length():
+		hash = ((hash << 5) + hash) ^ value.unicode_at(i)
+	return absi(hash)

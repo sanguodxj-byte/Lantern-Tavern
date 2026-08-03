@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,12 +34,80 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "clotted dark-red blood puddle with raised scabs"
 
+# Each material owns its own seed/pattern; no shared identity table.
+_DARK_RED = (0.55, 0.05, 0.06, 1.0)
+_DEEP_BLACK_RED = (0.28, 0.02, 0.04, 1.0)
+_CLOT_RED = (0.42, 0.08, 0.10, 1.0)
+_CLOT_BLACK = (0.12, 0.04, 0.05, 1.0)
+_SCAB_BROWN = (0.32, 0.12, 0.10, 1.0)
+_SHEEN_PINK = (0.72, 0.12, 0.14, 1.0)
+_SICKLY_GREEN = (0.18, 0.22, 0.10, 1.0)
+_RUST = (0.42, 0.16, 0.08, 1.0)
+# Accent swatches: deep purple shadow and warm orange on dark blood.
+_DEEP_PURPLE_SHADOW = (0.10, 0.05, 0.18, 1.0)
+_WARM_ORANGE = (0.85, 0.45, 0.15, 1.0)
+
 def build_model():
-    blood = make_material("tb_blood", (0.55, 0.05, 0.06, 1.0), roughness=0.55)
-    blood_deep = make_material("tb_deep", (0.28, 0.02, 0.04, 1.0), roughness=0.62)
-    clot = make_material("tb_clot", (0.42, 0.08, 0.10, 1.0), roughness=0.78)
-    scab = make_material("tb_scab", (0.32, 0.12, 0.10, 1.0), roughness=0.88)
-    sheen = make_material("tb_sheen", (0.72, 0.12, 0.14, 1.0), roughness=0.35)
+    blood = make_pixel_material(
+        "tb_blood",
+        _DARK_RED,
+        roughness=0.55,
+        palette=(_DARK_RED, _DEEP_BLACK_RED, _RUST, _SICKLY_GREEN, _DEEP_PURPLE_SHADOW, _WARM_ORANGE),
+        pixel_size=48,
+        variation=0.40,
+        seed=501,
+        pattern="cracks",
+        normal_strength=1.1,
+        edge_darken=0.38, highlight=0.40, detail_noise=0.15,
+    )
+    blood_deep = make_pixel_material(
+        "tb_deep",
+        _DEEP_BLACK_RED,
+        roughness=0.62,
+        palette=(_DEEP_BLACK_RED, _CLOT_BLACK, _DARK_RED, _SICKLY_GREEN, _DEEP_PURPLE_SHADOW, _WARM_ORANGE),
+        pixel_size=48,
+        variation=0.41,
+        seed=513,
+        pattern="cracks",
+        normal_strength=1.2,
+        edge_darken=0.42, highlight=0.30, detail_noise=0.18,
+    )
+    clot = make_pixel_material(
+        "tb_clot",
+        _CLOT_RED,
+        roughness=0.78,
+        palette=(_CLOT_RED, _CLOT_BLACK, _RUST, _SICKLY_GREEN, _DEEP_PURPLE_SHADOW, _WARM_ORANGE),
+        pixel_size=48,
+        variation=0.40,
+        seed=527,
+        pattern="cracks",
+        normal_strength=1.0,
+        edge_darken=0.42, highlight=0.30, detail_noise=0.18,
+    )
+    scab = make_pixel_material(
+        "tb_scab",
+        _SCAB_BROWN,
+        roughness=0.90,
+        palette=(_SCAB_BROWN, _CLOT_BLACK, _RUST, _DEEP_BLACK_RED, _DEEP_PURPLE_SHADOW, _WARM_ORANGE),
+        pixel_size=48,
+        variation=0.40,
+        seed=541,
+        pattern="speckle",
+        normal_strength=1.3,
+        edge_darken=0.45, highlight=0.25, detail_noise=0.20,
+    )
+    sheen = make_pixel_material(
+        "tb_sheen",
+        _SHEEN_PINK,
+        roughness=0.35,
+        palette=(_SHEEN_PINK, _DARK_RED, _RUST, _SICKLY_GREEN, _DEEP_PURPLE_SHADOW, _WARM_ORANGE),
+        pixel_size=48,
+        variation=0.39,
+        seed=557,
+        pattern="cracks",
+        normal_strength=0.9,
+        edge_darken=0.30, highlight=0.55, detail_noise=0.15,
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
     def add(name, center, size, material):

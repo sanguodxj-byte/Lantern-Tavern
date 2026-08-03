@@ -32,6 +32,42 @@ func test_is_floor_cell_bounds_and_value() -> void:
 	layout.grid[1][1] = 5  # PILLAR
 	assert_bool(layout.is_floor_cell(Vector2i(1, 1))).is_true()
 
+func test_floor_height_defaults_to_zero_and_reads_elevated_cells() -> void:
+	var layout := _make_3x3_floor_layout()
+	assert_float(layout.floor_height_at(Vector2i(1, 1))).is_equal(0.0)
+	layout.floor_elevations = [[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]]
+	assert_float(layout.floor_height_at(Vector2i(1, 1))).is_equal(1.0)
+	assert_float(layout.floor_height_at(Vector2i(99, 99))).is_equal(0.0)
+
+func test_subcell_spawn_offsets_are_deterministic_and_not_centered() -> void:
+	var layout := _make_3x3_floor_layout()
+	layout.seed = 94021
+	var cell := Vector2i(1, 1)
+	var enemy_offset: Vector2 = layout.subcell_offset_for("enemy", cell, 0)
+	var enemy_offset_again: Vector2 = layout.subcell_offset_for("enemy", cell, 0)
+	var item_offset: Vector2 = layout.subcell_offset_for("item", cell, 0)
+	assert_bool(enemy_offset.is_equal_approx(enemy_offset_again)).is_true()
+	assert_bool(not enemy_offset.is_zero_approx()) \
+		.override_failure_message("敌人生成偏移不能退化为格中心").is_true()
+	assert_bool(not item_offset.is_zero_approx()) \
+		.override_failure_message("物品生成偏移不能退化为格中心").is_true()
+	assert_bool(not enemy_offset.is_equal_approx(item_offset)) \
+		.override_failure_message("不同实体类别应使用不同的格内分布，避免全部沿格中心线").is_true()
+	assert_float(absf(enemy_offset.x)).is_less_equal(0.35)
+	assert_float(absf(enemy_offset.y)).is_less_equal(0.35)
+
+func test_cell_to_world_shares_center_formula_and_applies_category_offset() -> void:
+	var layout := _make_3x3_floor_layout()
+	layout.floor_elevations = [[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]]
+	layout.seed = 94021
+	var cell := Vector2i(1, 1)
+	var center := layout.cell_to_world(cell, 0.5)
+	var item := layout.cell_to_world(cell, 0.5, "item", 0)
+	assert_float(center.x).is_equal_approx(-1.5, 0.001)
+	assert_float(center.y).is_equal_approx(1.5, 0.001)
+	assert_float(center.z).is_equal_approx(-1.5, 0.001)
+	assert_bool(not item.is_equal_approx(center)).is_true()
+
 func test_key_cell_missing_detection() -> void:
 	var layout := DungeonLayout.new()
 	assert_bool(layout.is_key_cell_missing(layout.player_spawn_cell)).is_true()
@@ -53,14 +89,20 @@ func test_duplicate_layout_is_independent() -> void:
 	var layout := _make_3x3_floor_layout()
 	layout.player_spawn_cell = Vector2i(0, 0)
 	layout.door_specs.append({"inside": Vector2i(0, 0), "outside": Vector2i(1, 0)})
+	layout.floor_elevations = [[1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+	layout.room_composition_specs.append({"composition_kind": "elevation", "platform_cells": [Vector2i(0, 0)]})
 	# 先设原件 start（副本要在 dup 之后还能独立持有原值）
 	layout.room_roles["start"] = Rect2i(0, 0, 1, 1)
 	var copy := layout.duplicate_layout()
 	# 改原件，副本不受影响
 	layout.grid[0][0] = 0
 	layout.door_specs.clear()
+	layout.floor_elevations[0][0] = 0.0
+	layout.room_composition_specs.clear()
 	assert_int(copy.grid[0][0]).is_equal(1)
 	assert_int(copy.door_specs.size()).is_equal(1)
+	assert_float(copy.floor_height_at(Vector2i(0, 0))).is_equal(1.0)
+	assert_int(copy.room_composition_specs.size()).is_equal(1)
 	# Rect2i 值类型副本：改原件 start，副本仍保留原 Rect2i
 	layout.room_roles["start"] = Rect2i(9, 9, 1, 1)
 	var copy_start: Rect2i = copy.room_roles["start"]
@@ -104,7 +146,7 @@ func test_validate_rejects_node_ref_in_spec() -> void:
 	layout.room_roles["boss"] = Rect2i(2, 2, 1, 1)
 	# 构造一个含 PackedScene 引用的 door_spec（违反“生成阶段不持场景节点”原则）
 	var bad_spec := {"inside": Vector2i(0, 0), "outside": Vector2i(1, 0)}
-	bad_spec["scene"] = load("res://scenes/props/decor/bones.tscn")  # PackedScene
+	bad_spec["scene"] = load("res://scenes/props/dungeon/decor/bones.tscn")  # PackedScene
 	layout.door_specs.append(bad_spec)
 	var r := layout.validate()
 	assert_bool(r["valid"]).is_false()

@@ -14,14 +14,23 @@ const DETAIL_POPUP := preload("res://scenes/ui/equipment_detail_popup.gd")
 const PLAYER_STATE_AIMING := preload("res://scenes/characters/player/state/player_state_aiming.gd")
 const PLAYER_STATE_ATTACK_PREPARING := preload("res://scenes/characters/player/state/player_state_attack_preparing.gd")
 const PLAYER_STATE_SHOOTING := preload("res://scenes/characters/player/state/player_state_shooting.gd")
+const PLAYER_ANIMATION_PROFILE := preload("res://globals/visual/player_animation_profile.gd")
 const PLAYER_VISION_LIGHT_NAME := "PlayerVisionLight"
+const PLAYER_VISION_TERRAIN_MASK := 1 << 0
+const DUNGEON_RENDERING_CONFIG := preload("res://scenes/expedition/dungeon_rendering_config.gd")
 const HITBOX_BUILDER := preload("res://globals/combat/combat_hitbox_builder.gd")
 const SKILL_DISPATCHER := preload("res://scenes/characters/player/player_skill_dispatcher.gd")
 const SPE := preload("res://globals/combat/style_passive_effects.gd")
 const Service := preload("res://globals/core/service.gd")
+const COMBAT_PROGRESSION := preload("res://globals/combat/combat_progression.gd")
+const VOXEL_LIGHTING := preload("res://globals/visual/voxel_lighting_adapter.gd")
 const CHEST_LOOT_PANEL_SCENE := preload("res://scenes/ui/chest_loot_panel.tscn")
+const RWPH := preload("res://globals/combat/rune_word_passive_hooks.gd")
 const COMBAT_BUFF_COMPONENT := preload("res://scenes/characters/component/combat_buff_component.gd")
 const AIM_HELPER := preload("res://scenes/characters/player/player_aim_helper.gd")
+const SPELL_ACCESS_POLICY := preload("res://globals/combat/spell_access_policy.gd")
+const PLAYER_SPELL_CASTER := preload("res://scenes/characters/player/player_spell_caster.gd")
+const ARCANE_SWORD_PASSIVE_ID := SPELL_ACCESS_POLICY.ARCANE_SWORD_PASSIVE_ID
 @export var acceleration: float
 @export var jump_force: float
 @export var gravity: float
@@ -43,13 +52,6 @@ const AIM_HELPER := preload("res://scenes/characters/player/player_aim_helper.gd
 
 ## 角色身体渲染层（第 10 层），主摄像机 cull_mask=1 不渲染此层
 const CHARACTER_BODY_RENDER_LAYER := 1 << 9
-## 第一人称武器层（第 11 层）。只将双臂骨骼挂点复制到此层，
-## 让武器相机能看到握持动作，同时不把头部/躯干带入第一人称画面。
-const FIRST_PERSON_ARM_RENDER_LAYER := 1 << 10
-const FIRST_PERSON_ARM_BONE_NODES: Array[StringName] = [
-	&"UpperArm_R", &"LowerArm_R", &"Hand_R",
-	&"UpperArm_L", &"LowerArm_L", &"Hand_L",
-]
 
 enum State {MOVING, PICKING_UP, THROWING, ATTACK_PREPARING, SLASHING, SHOOTING, AIMING, KICKING, BLOCKING, HURT, DYING, GRABBING, CHARGING}
 
@@ -110,6 +112,11 @@ var state: State
 var state_node: PlayerState
 ## 战斗 buff 管理器（从 player.gd 提取为独立组件）
 var buffs := COMBAT_BUFF_COMPONENT.new()
+## 固定法术施法控制器：选槽、单机权威调用或联机意图上送。
+var spell_caster := PLAYER_SPELL_CASTER.new()
+
+# 符文之语「奔雷之语」奔跑撞击冷却（秒，0 = 可触发）
+var _sprint_impact_cd: float = 0.0
 
 ## 兼容性：combat_buffs 字典直接访问（委托给 buffs 组件）
 var combat_buffs: Dictionary:
@@ -127,6 +134,13 @@ const MELEE_CHARGE_MAX_MULT := PLAYER_COMBAT_RUNTIME.MELEE_CHARGE_MAX_MULT      
 const PERFECT_BLOCK_BUFF_MULT := PLAYER_COMBAT_RUNTIME.PERFECT_BLOCK_BUFF_MULT  # 完美格挡后下次攻击 ×1.5（doc21 #6）
 const SIDESTEP_BUFF_MULT := PLAYER_COMBAT_RUNTIME.SIDESTEP_BUFF_MULT            # 残影首次攻击 ×1.3（doc21 #7）
 const CROSSBOW_RELOAD_FALLBACK_SEC := PLAYER_COMBAT_RUNTIME.CROSSBOW_RELOAD_FALLBACK_SEC
+# 符文之语「奔雷之语」奔跑撞击参数
+const SPRINT_IMPACT_CD_SEC := 0.5           # 同一目标撞击冷却（秒）
+const SPRINT_IMPACT_MIN_SPEED := 5.0        # 触发撞击所需的最低水平移速（m/s）
+const SPRINT_IMPACT_DAMAGE_PER_SPEED := 2.5 # 伤害 = 当前水平速度 × 此系数
+const SPRINT_IMPACT_KNOCKBACK := 4.0        # 撞击击退力（m/s）
+const SPRINT_IMPACT_STUN_SEC := 0.3         # 撞击眩晕（秒）
+const SPRINT_IMPACT_PHYSICAL_MULT := 1.5    # 被撞者撞墙时的地形撞击伤害倍率
 
 ## 兼容性属性：测试直接读写主/副手近战冷却（委托给 combat_rt）
 var _melee_cd_primary: float:
@@ -159,6 +173,13 @@ var _chest_loot_panel: Node = null
 @export var base_material: Material = null
 
 func _ready() -> void:
+	# 角色身体材质适配：与 enemy.gd 保持一致，由 VoxelLightingAdapter 统一适配 GLB 内嵌材质。
+	# 仅适配 character 节点，避免与 ViewModel 的武器/盾牌专用适配（apply_weapon_tree）冲突。
+	# 开关关闭时 _adapt_material 对 StandardMaterial3D 返回 null（不设 override），
+	# 对 ShaderMaterial 写入 pixel_lighting_enabled=0.0（回退标准 Lambert）。
+	var _char_node := get_node_or_null("character")
+	if _char_node != null:
+		VOXEL_LIGHTING.apply_to_tree(_char_node, true)
 	if has_meta("equipment_preview"):
 
 		movement_input_enabled = false
@@ -243,27 +264,14 @@ func _process_passive_effects(delta: float) -> void:
 			health.heal(heal_amt)
 	# 流派专精被动运行时衰减（暴风骤雨层数过期 / 元素环倒计时，doc21 §一）
 	combat_rt.tick_style_passives(delta)
+	# 符文之语持续型被动（明护恢复/知苦自伤/构造体攻击等）
+	RWPH.on_player_tick(self, delta)
 
 func _hide_character_body() -> void:
 	var character_node := get_node_or_null("character")
 	if character_node == null:
 		return
 	_set_render_layer_recursive(character_node, CHARACTER_BODY_RENDER_LAYER)
-
-## Legacy helper retained for equipment-preview callers. Production first-person
-## arms are rendered by ViewModel's duplicated arm skeleton instead.
-func set_first_person_arm_render_layer(character_node: Node = null) -> void:
-	if character_node == null:
-		character_node = get_node_or_null("character")
-	if character_node == null:
-		return
-	var skeleton := character_node.get_node_or_null("Armature/Skeleton3D")
-	if skeleton == null:
-		return
-	for bone_node_name in FIRST_PERSON_ARM_BONE_NODES:
-		var arm_attachment := skeleton.get_node_or_null(String(bone_node_name))
-		if arm_attachment != null:
-			_set_render_layer_recursive(arm_attachment, FIRST_PERSON_ARM_RENDER_LAYER)
 
 ## 武器变更回调：重新隐藏角色身体，并同步第一人称视觉副本
 func _on_weapon_changed_for_view(_weapon_data: Variant) -> void:
@@ -289,25 +297,29 @@ func _set_render_layer_recursive(node: Node, layer: int) -> void:
 		_set_render_layer_recursive(child, layer)
 
 func _setup_player_light() -> void:
+	var vision_config := DUNGEON_RENDERING_CONFIG.default()
 	var existing := get_node_or_null(PLAYER_VISION_LIGHT_NAME) as OmniLight3D
 	if existing != null:
 		existing.visible = true
-		existing.light_energy = 2.4
-		existing.omni_range = 10.0
-		existing.omni_attenuation = 0.45
+		existing.light_color = vision_config.player_vision_color
+		existing.light_energy = vision_config.player_vision_base_energy
+		existing.omni_range = vision_config.player_vision_base_range
+		existing.omni_attenuation = vision_config.player_vision_attenuation
 		existing.shadow_enabled = false
 		existing.distance_fade_enabled = false
+		existing.light_cull_mask = PLAYER_VISION_TERRAIN_MASK
 		existing.position = Vector3(0, 1.5, 0)
 		return
 	var light := OmniLight3D.new()
 	light.name = PLAYER_VISION_LIGHT_NAME
-	light.light_color = Color(1.0, 0.85, 0.6)
+	light.light_color = vision_config.player_vision_color
 	light.visible = true
-	light.light_energy = 2.4
-	light.omni_range = 10.0
-	light.omni_attenuation = 0.45
+	light.light_energy = vision_config.player_vision_base_energy
+	light.omni_range = vision_config.player_vision_base_range
+	light.omni_attenuation = vision_config.player_vision_attenuation
 	light.shadow_enabled = false
 	light.distance_fade_enabled = false
+	light.light_cull_mask = PLAYER_VISION_TERRAIN_MASK
 	light.position = Vector3(0, 1.5, 0)
 	add_child(light)
 
@@ -321,8 +333,22 @@ func _process(delta: float) -> void:
 	if camera != null and is_instance_valid(camera):
 		camera.fov = lerpf(camera.fov, target_camera_fov, delta * FOV_LERP_SPEED)
 
+func _handle_spell_input() -> void:
+	if Input.is_action_just_pressed("spell_slot_1"): spell_caster.select_slot(0)
+	elif Input.is_action_just_pressed("spell_slot_2"): spell_caster.select_slot(1)
+	elif Input.is_action_just_pressed("spell_slot_3"): spell_caster.select_slot(2)
+	elif Input.is_action_just_pressed("spell_slot_4"): spell_caster.select_slot(3)
+	elif Input.is_action_just_pressed("spell_slot_5"): spell_caster.select_slot(4)
+	var spell_ui_open := false
+	var gs := Service.game_state()
+	if gs != null and gs.has_method("is_spell_interface_open"):
+		spell_ui_open = bool(gs.is_spell_interface_open())
+	if Input.is_action_just_pressed("cast_spell") and not spell_ui_open:
+		spell_caster.cast_selected(self, get_tree().current_scene)
+
 ## F/G 键技能释放：F 键动作技能（无媒介限制），G 键武器流派技能（受媒介限制）
 func _handle_skill_input() -> void:
+	_handle_spell_input()
 	var sr: Node = Service.skill_runtime()
 	if sr == null:
 		return
@@ -360,8 +386,11 @@ func _physics_process(delta: float) -> void:
 	process_gravity()
 	process_pushback(delta)
 	move_and_slide()
+	_sync_first_person_equipment_motion()
 	if has_meta("equipment_preview"):
 		return
+	# 符文之语「奔雷之语」：奔跑撞击敌人
+	_check_sprint_impact(delta)
 	check_for_selection()
 	# 推进技能运行时 CD 与施法前摇
 	var sr: Node = Service.skill_runtime()
@@ -380,7 +409,7 @@ func _physics_process(delta: float) -> void:
 		# 旧实现分别调用 select_raycast.get_collider() 且无 is_instance_valid 守卫，
 		# 宝箱/门在被 queue_free 后下一帧仍可能被射线命中并解引用为已释放对象。
 		var select_collider := _get_valid_select_collider()
-		if select_collider is Chest:
+		if select_collider is Chest and _can_interact_collider(select_collider):
 			var chest := select_collider as Chest
 			if Input.is_action_pressed("use"):
 				chest_interact_time += delta
@@ -395,7 +424,7 @@ func _physics_process(delta: float) -> void:
 				chest_interact_time = 0.0
 		else:
 			chest_interact_time = 0.0
-			if interaction_input_enabled and select_collider != null and not (select_collider is PickableItem) and select_collider.has_method("interact") and Input.is_action_just_pressed("use"):
+			if interaction_input_enabled and select_collider != null and not (select_collider is PickableItem) and select_collider.has_method("interact") and _can_interact_collider(select_collider) and Input.is_action_just_pressed("use"):
 				# 联机客户端：上送交互意图，由服务器权威执行（禁止本地直接调用 collider.interact）
 				if is_network_controlled() and multiplayer_driver != null:
 					multiplayer_driver.send_interact(_entity_id_of(select_collider))
@@ -453,17 +482,34 @@ func _input(event: InputEvent) -> void:
 				equipment.cycle_weapon_slot(1)
 				get_viewport().set_input_as_handled()
 				return
-		if not is_panel_visible and Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
+		# 法术编辑界面持有鼠标期间，Player 不得把左键点击抢回捕获模式。
+		# 防御：Player 不在场景树（headless 单测/预制体）时 get_tree() 为 null，跳过 HUD 查询。
+		var tree := get_tree()
+		var hud: Node = tree.get_first_node_in_group("combat_hud") if tree != null else null
+		var spell_ui_visible: bool = hud != null and hud.has_method("is_spell_interface_visible") and hud.is_spell_interface_visible()
+		if not is_panel_visible and not spell_ui_visible and Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 			return
 			
 	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED and not is_panel_visible:
+		if view_model != null and is_instance_valid(view_model) and view_model.has_method("add_look_input"):
+			view_model.add_look_input(event.relative)
 		# 瞄准时降低鼠标灵敏度（望远镜效果），使远距离瞄准更精细
 		var sens_mult := AIM_SENSITIVITY_MULT if is_weapon_aiming else 1.0
 		var sens := mouse_sensitivity * sens_mult
 		rotate_y(-event.relative.x * sens) # PI 3.14 => 180 degrees 
 		camera.rotate_x(-event.relative.y * sens)
 		camera.rotation.x = clampf(camera.rotation.x, MAX_ANGLE_LOOK_DOWN, MAX_ANGLE_LOOK_UP)
+
+
+## Supplies presentation-only locomotion state to the weapon/shield ViewModel.
+## The ViewModel never reads movement input itself and cannot affect physics.
+func _sync_first_person_equipment_motion() -> void:
+	if view_model == null or not is_instance_valid(view_model) or not view_model.has_method("set_motion_state"):
+		return
+	var local_velocity := global_transform.basis.inverse() * velocity
+	var sprinting := movement_input_enabled and Input.is_action_pressed("run")
+	view_model.set_motion_state(local_velocity, is_on_floor(), sprinting)
 
 func _track_weapon_action_input(event: InputEvent) -> void:
 	if event == null:
@@ -476,6 +522,10 @@ func _track_weapon_action_input(event: InputEvent) -> void:
 			MOUSE_BUTTON_LEFT:
 				action_name = "action"
 			MOUSE_BUTTON_RIGHT:
+				# 合法施法媒介下，右键由 CombatHUD 用作按住法术界面入口，不能同时进入格挡。
+				if can_open_spell_interface():
+					_weapon_action_held["block"] = false
+					return
 				action_name = "block"
 	if action_name == "":
 		return
@@ -571,6 +621,8 @@ func check_for_possible_action() -> void:
 	# 统一经 _get_valid_select_collider() 取有效碰撞体，收口 is_instance_valid 过滤
 	# 仅调用一次：select_collider 用于 hint 分支构建，current_collider 额外含 kick 门 fallback 用于变化检测
 	var select_collider: Object = _get_valid_select_collider()
+	if select_collider != null and not _can_interact_collider(select_collider):
+		select_collider = null
 	var current_collider: Object = select_collider
 	if current_collider == null and combat_input_enabled and _raycast_is_colliding(kick_raycast):
 		var kick_collider = kick_raycast.get_collider()
@@ -582,6 +634,10 @@ func check_for_possible_action() -> void:
 	var chest_in_progress := current_collider is Chest and Input.is_action_pressed("use")
 	# 碰撞体未变且非宝箱进度更新：提示内容与上一帧完全一致，跳过 tr()/拼接/emit
 	if not collider_changed and not chest_in_progress:
+		if current_collider == null and not current_possible_action.is_empty():
+			GameEvents.interaction_hint_changed.emit("", "", Vector2.ZERO)
+			current_possible_action = ""
+			_last_possible_action_collider = null
 		return
 
 	var new_action := ""
@@ -589,7 +645,7 @@ func check_for_possible_action() -> void:
 	var hint_screen_pos := Vector2.ZERO
 	# 复用 select_collider 构建 hint（kick 门走下方 current_collider 分支）
 	var collider: Object = select_collider
-	if collider is PickableItem:
+	if collider is PickableItem and _can_interact_collider(collider):
 		var item_name := ""
 		if collider.has_method("get_item_name"):
 			item_name = collider.get_item_name()
@@ -603,7 +659,7 @@ func check_for_possible_action() -> void:
 		else:
 			new_action = "%s\n%s" % [tr("Chest"), tr("Hold [E] to Open (5s)")]
 		hint_type = "chest"
-	elif collider != null and collider.has_method("interact"):
+	elif collider != null and collider.has_method("interact") and _can_interact_collider(collider):
 		var action_name := tr("Object")
 		if "interaction_name" in collider and String(collider.interaction_name) != "":
 			action_name = tr(String(collider.interaction_name))
@@ -612,10 +668,6 @@ func check_for_possible_action() -> void:
 			verb = "[E] %s" % tr(String(collider.interaction_verb))
 		new_action = "%s\n%s" % [action_name, verb]
 		hint_type = "interact"
-	elif collider != null and collider.has_method("get_item_name"):
-		var item_name: String = collider.get_item_name()
-		new_action = "[E] %s %s" % [tr("Pick Up"), tr(item_name)]
-		hint_type = "pickup"
 	# select_raycast 命中时计算屏幕坐标用于悬浮窗定位（显示在物体右侧）
 	if collider != null:
 		hint_screen_pos = _get_raycast_screen_position(select_raycast)
@@ -683,9 +735,12 @@ func try_receive_hit(source_enemy: Enemy, damage: int) -> void:
 	elif state == State.BLOCKING:
 		AudioManager.play("block", action_audio_stream_player)
 		FxHelper.call_deferred("create_block_number", global_position, damage)
+		_play_first_person_block_impact(source_enemy, damage)
 		# 持盾格挡：0.3s 完美窗口内不消耗盾牌耐久
 		if _is_shield_block() and not _is_in_block_grace_window():
 			equipment.apply_shield_damage(damage)
+		if _is_shield_block():
+			COMBAT_PROGRESSION.award_player_shield_block(self, "melee", damage)
 		source_enemy.try_stun()
 
 ## ARPG 战斗结算入口：接受 CombatEngine.DamageResult（含向量击退/秒眩晕/最终伤害）
@@ -704,6 +759,10 @@ func try_receive_hit_result(source_enemy: Enemy, result) -> void:
 		if has_mechanism_passive("afterimage"):
 			set_sidestep_buff()
 		return  # 完全免伤，跳过伤害结算
+	# 符文之语：闪避检定（完全免伤）
+	if RWPH.try_dodge(self):
+		AudioManager.play("dodge", action_audio_stream_player)
+		return
 	# 穿透格挡的攻击无视格挡状态，直接造成伤害
 	var can_hurt: bool = state_node.can_get_hurt() or result.ignores_block
 	if can_hurt:
@@ -715,6 +774,11 @@ func try_receive_hit_result(source_enemy: Enemy, result) -> void:
 		# 奥术护盾（SPELL）：法术蓝量转化的护盾吸收伤害
 		final_damage = combat_rt.absorb_with_arcane_shield(final_damage)
 		final_damage = buffs.consume_damage_absorb(final_damage, health.max_life if health != null else 0)
+		# 符文之语：受伤伤害修正（解脱减伤/大地护甲/不朽保命/狂暴增伤）
+		var rwph_reduce := RWPH.get_damage_reduce_pct(self)
+		if rwph_reduce > 0.0:
+			final_damage = int(round(float(final_damage) * (1.0 - rwph_reduce)))
+		final_damage = RWPH.on_player_take_damage(self, final_damage, source_enemy)
 		var impact_direction := source_enemy.global_position.direction_to(global_position)
 		if result.knockback_impulse != Vector3.ZERO:
 			impact_direction = result.knockback_impulse.normalized()
@@ -733,10 +797,13 @@ func try_receive_hit_result(source_enemy: Enemy, result) -> void:
 	elif state == State.BLOCKING:
 		AudioManager.play("block", action_audio_stream_player)
 		FxHelper.call_deferred("create_block_number", global_position, result.final_damage)
+		_play_first_person_block_impact(source_enemy, result.final_damage)
 		var in_grace := _is_in_block_grace_window()
 		# 持盾格挡：完美窗口内不消耗盾牌耐久；双手武器格挡不消耗耐久
 		if _is_shield_block() and not in_grace:
 			equipment.apply_shield_damage(result.final_damage)
+		if _is_shield_block():
+			COMBAT_PROGRESSION.award_player_shield_block(self, result.attack_type, result.final_damage)
 		# 完美格挡成功（窗口内）→ 触发完美格挡·增伤标记（下次攻击 ×1.5，doc21 #6）
 		# 同时作用于持盾完美格挡与双手武器精确格挡；连续完美格挡仅刷新不叠加
 		if in_grace and has_mechanism_passive("perfect_block_empower"):
@@ -752,6 +819,19 @@ func try_receive_hit_result(source_enemy: Enemy, result) -> void:
 				equipment.apply_shield_damage(result.final_damage)
 		source_enemy.try_stun()
 		_accumulate_armor_proficiency(true)
+
+
+## Adds a local shield jolt on a successful block without changing damage,
+## stun, durability or network authority.
+func _play_first_person_block_impact(source_enemy: Enemy, damage: int) -> void:
+	if view_model == null or not is_instance_valid(view_model) or not view_model.has_method("play_block_impact"):
+		return
+	var horizontal_bias := 0.0
+	if source_enemy != null and is_instance_valid(source_enemy):
+		var world_direction := global_position.direction_to(source_enemy.global_position)
+		horizontal_bias = clampf((global_transform.basis.inverse() * world_direction).x, -1.0, 1.0)
+	var strength := clampf(float(maxi(damage, 1)) / 24.0, 0.35, 1.35)
+	view_model.play_block_impact(strength, horizontal_bias)
 
 ## 受击后累积体质经验（防御韧性训练）
 func _accumulate_defense_exp() -> void:
@@ -820,6 +900,13 @@ func get_active_weapon_attack_type() -> String:
 
 func is_active_weapon_ranged() -> bool:
 	return equipment != null and equipment.is_active_weapon_ranged()
+
+func is_active_spell_focus_weapon() -> bool:
+	var weapon := get_active_hand_weapon_data()
+	if weapon == null:
+		return false
+	var profile := String(PLAYER_ANIMATION_PROFILE.profile_for_weapon(weapon))
+	return profile == "staff" or profile == "grimoire"
 
 ## 当前武器是否为弩（弩无需拉弓蓄力，点击即射）
 func is_active_weapon_crossbow() -> bool:
@@ -1060,11 +1147,61 @@ func get_style_context() -> Dictionary:
 
 ## 计算近战蓄力伤害倍率：未装备蓄力被动或蓄力为 0 → 1.0（无增伤）
 func get_melee_charge_multiplier(charge_ratio: float) -> float:
+	# 符文之语「瞬蓄之语」：无需蓄力即可获得满蓄力增伤
+	if has_mechanism_passive("charge_free"):
+		return MELEE_CHARGE_MAX_MULT
 	if charge_ratio <= 0.0:
 		return 1.0
 	if not has_mechanism_passive("charge"):
 		return 1.0
 	return lerpf(1.0, MELEE_CHARGE_MAX_MULT, clampf(charge_ratio, 0.0, 1.0))
+
+# ============================================================================
+# 符文之语「奔雷之语」：奔跑撞击敌人
+# ============================================================================
+
+## 奔跑撞击检测：拥有 rune_word_sprint_impact 且正在奔跑（速度达标）时，
+## 用 kick_raycast 探测前方敌人并施加撞击伤害 + 击退（带冷却）。
+## 冲撞技能（CHARGING 状态）有自己的命中结算，此处跳过避免重复。
+func _check_sprint_impact(delta: float) -> void:
+	if not has_mechanism_passive("rune_word_sprint_impact"):
+		return
+	if state == State.CHARGING or state == State.DYING:
+		return
+	_sprint_impact_cd = maxf(0.0, _sprint_impact_cd - delta)
+	if _sprint_impact_cd > 0.0:
+		return
+	if not movement_input_enabled or not Input.is_action_pressed("run"):
+		return
+	var hspeed := Vector2(velocity.x, velocity.z).length()
+	if hspeed < SPRINT_IMPACT_MIN_SPEED:
+		return
+	if not _raycast_is_colliding(kick_raycast):
+		return
+	var collider := kick_raycast.get_collider()
+	if collider == null or not is_instance_valid(collider):
+		return
+	var enemy := collider as Enemy
+	if enemy == null:
+		return
+	_apply_sprint_impact_to_enemy(enemy, hspeed)
+	_sprint_impact_cd = SPRINT_IMPACT_CD_SEC
+
+## 对敌人施加奔跑撞击伤害：伤害随速度增长，附带击退与短眩晕，
+## 并启用物理撞击（被撞者撞墙时受额外地形撞击伤害）。
+func _apply_sprint_impact_to_enemy(enemy: Enemy, speed: float) -> void:
+	if enemy == null or not is_instance_valid(enemy):
+		return
+	var forward := -global_transform.basis.z.normalized()
+	var result := CE_LIB.DamageResult.new()
+	result.hit = true
+	result.final_damage = int(max(1.0, speed * SPRINT_IMPACT_DAMAGE_PER_SPEED))
+	result.knockback_force = SPRINT_IMPACT_KNOCKBACK
+	result.knockback_impulse = forward * SPRINT_IMPACT_KNOCKBACK
+	result.stun_duration = SPRINT_IMPACT_STUN_SEC
+	result.physical_impact_enabled = true
+	result.physical_impact_damage_mult = SPRINT_IMPACT_PHYSICAL_MULT
+	enemy.try_receive_hit_result(self, result)
 
 ## 完美格挡·增伤 buff：完美格挡成功时置位（doc21 #6）
 func set_perfect_block_buff() -> void:
@@ -1139,8 +1276,43 @@ func _get_valid_select_collider() -> Object:
 		return null
 	return collider
 
+## 统一判断准心目标是否有当前可执行的交互。
+## has_method("interact") 只是实现细节，不能单独作为提示资格；
+## 没有名称/能力声明的装饰物仍可保留碰撞和受击逻辑，但不显示悬浮提示。
+func _can_interact_collider(collider: Object) -> bool:
+	if collider == null or not is_instance_valid(collider):
+		return false
+	if collider is PickableItem:
+		return _pickable_item_has_interaction_payload(collider as PickableItem)
+	if collider is Chest:
+		return not bool(collider.get("is_opened"))
+	if collider.has_method("can_interact"):
+		return collider.has_method("interact") and bool(collider.can_interact())
+	if collider is Door:
+		return not String(collider.get("tutorial_locked_message")).strip_edges().is_empty()
+	if not collider.has_method("interact"):
+		return false
+	if "interaction_name" in collider:
+		return not String(collider.get("interaction_name")).strip_edges().is_empty()
+	return false
+
+func _pickable_item_has_interaction_payload(item: PickableItem) -> bool:
+	if item == null or not is_instance_valid(item) or not item.has_method("get_item_name"):
+		return false
+	return item.weapon_data != null or item.shield_data != null \
+		or item.furniture_data != null or not item.material_id.strip_edges().is_empty() \
+		or not item.rune_id.strip_edges().is_empty()
+
 func _raycast_is_colliding(raycast: RayCast3D) -> bool:
 	return raycast != null and is_instance_valid(raycast) and not raycast.is_queued_for_deletion() and raycast.is_colliding()
+
+## 是否具备按住右键打开法术界面的资格：魔导书、法杖，或单手剑 + 奥法之剑被动。
+func can_open_spell_interface() -> bool:
+	if equipment == null:
+		return false
+	var weapon: WeaponData = equipment.get_active_weapon_data()
+	return SPELL_ACCESS_POLICY.can_use_spell_interface(weapon, has_mechanism_passive(ARCANE_SWORD_PASSIVE_ID))
+
 
 func is_character_panel_visible() -> bool:
 	var scene_tree := get_tree()

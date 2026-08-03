@@ -1,20 +1,26 @@
-[gd_resource type="ShaderMaterial" load_steps=3 format=3]
+[gd_resource type="ShaderMaterial" format=3 uid="uid://co7mop1nt0l5i"]
 
-[ext_resource type="Shader" path="res://scenes/tavern/materials/tavern_atlas_world_32px.gdshader" id="1_shader"]
-[ext_resource type="Texture2D" path="res://assets/textures/tavern/tavern_material_atlas_32x32.png" id="2_atlas"]
+[ext_resource type="Shader" uid="uid://dybpmg03ep4k5" path="res://scenes/tavern/materials/tavern_atlas_world_32px.gdshader" id="1_shader"]
+[ext_resource type="Texture2D" uid="uid://doq3dy7ulfgho" path="res://assets/textures/tavern/tavern_wall_stone_variants_32px.png" id="2_atlas"]
 
 [resource]
+render_priority = 0
 shader = ExtResource("1_shader")
 shader_parameter/atlas_texture = ExtResource("2_atlas")
-shader_parameter/atlas_region_tiles = Vector4(0, 0, 32, 8)
+shader_parameter/atlas_region_tiles = Vector4(0, 0, 4, 3)
+shader_parameter/atlas_grid = Vector2(4, 4)
+shader_parameter/atlas_tile_size_px = 32.0
+shader_parameter/atlas_inset_px = 0.0
+shader_parameter/atlas_continuous_region = 1.0
+shader_parameter/atlas_mirror_repeat = 1.0
 shader_parameter/meters_per_tile = 1.0
-shader_parameter/albedo_tint = Color(1, 1, 1, 1)
+shader_parameter/albedo_tint = Color(1.35, 1.32, 1.25, 1)
 shader_parameter/material_roughness = 0.95
 shader_parameter/material_metallic = 0.0
-shader_parameter/noise_strength = 0.1
+shader_parameter/noise_strength = 0.03
 shader_parameter/noise_scale = 1.05
-shader_parameter/decal_tint = Color(0.62, 0.47, 0.32, 1)
-shader_parameter/decal_strength = 0.22
-shader_parameter/decal_scale = 0.95
-shader_parameter/decal_threshold = 0.68
+shader_parameter/decal_tint = Color(0.45, 0.48, 0.42, 1)
+shader_parameter/decal_strength = 0.08
+shader_parameter/decal_scale = 0.7
+shader_parameter/decal_threshold = 0.8
 shader_parameter/roughness_variation = 0.06

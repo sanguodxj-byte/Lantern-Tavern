@@ -1,77 +1,62 @@
 # Lantern Tavern — 项目长期记忆
 
-## 渲染/平台/光照
+## 渲染/光照
 - 桌面+新款安卓(不做iOS)。forward_plus+forward_mobile。火光/光池/雾/软阴影三后端通用；SDFGI/VoxelGI/SSAO/SSR/Decals/ReflectionProbe 仅 Forward+/Mobile。
-- 火把动态 OmniLight3D(warm,range11,energy3.4,fade24/10)；蜡烛/壁炉静态。契约 omni_range>=10 & light_energy>=3.2。procedural_dungeon 流式加载,DUNGEON_VISIBLE_LOCAL_LIGHT_BUDGET=12(代码 dungeon_streaming_controller.gd:17 为准,旧记 28 已作废)。
-- **视觉评估截图**：headless 走 RendererDummy，`get_texture()` 返回 null，**须窗口模式**运行 `tools/visual_eval_capture.gd`（独立 SubViewport `own_world_3d=true` + 确定性灯光）才能真实渲染；本机 NVIDIA D3D12 / Forward+。一次性粒子(metal_spark)截图须短帧(~12)捕捉发射瞬间。Godot 4.7 `Environment.ambient_light_enabled` 已移除→用 `ambient_light_source=1`(COLOR)；`MeshInstance3D` 无 `.material`→用 `.material_override`。
+- 火把动态 OmniLight3D(warm,range11,energy3.4)；蜡烛/壁炉静态。契约 omni_range>=10 & light_energy>=3.2。灯光预算=12(dungeon_streaming_controller.gd:17)。
+- headless RendererDummy `get_texture()`=null→真实截图须窗口模式跑 tools/visual_eval_capture.gd(独立SubViewport own_world_3d=true)。4.7：`ambient_light_enabled`移除→`ambient_light_source=1`；MeshInstance3D 用 `.material_override`。
+- **发光边界（用户裁定）**：只有实际光源物体/能量现象可自发光（火焰、蜡烛/烛台、酸液陷阱光体、法术弹/符文爆发、撤离门光核等，且场景有对应 Light3D 或明确能量语义）；所有普通旧资产（角色眼睛/核心、植物、材料掉落、武器符文、门框、地形焦点等）必须为受光非 emissive 材质。运行时导入材质与第一人称副本强制关闭 emission；契约测试 `non_light_asset_emission_test.gd`。
 
-## 像素 FX（已接线，非孤立）
-- 全经 autoload `FxHelper`(globals/core/fx_helper.gd) 接战斗 runtime：enemy_state_hurt→blood_fx+voxel_chip+damage_number；blocking→metal_spark；dying/impaling→blood_fx。shader_warmer.FX_SCENES 预编译(含 voxel_chip.tscn)。
-- 像素 shader 配方(双后端,禁 SCREEN_TEXTURE/discard)：UV floor 网格化→hash(floor(p)) 块噪声→颜色 quantize→alpha step 硬边。参考 fire_flame_particle/metal_spark_particle.gdshader。
-- 被击部位体素特效：body_part_resolver.gd(命中点→最近命名骨骼)+voxel_palette.gd(部位/材质/生物→Color)→hurt 取 approx_hit_point→resolve_part_color→create_voxel_chip。gotcha：voxel_chip 须 setup() 在 add_child 前(否则首帧白闪)；normalize_creature_id 须剥实例后缀(Goblin2/@Goblin@2)才匹配生物覆盖；mono 下 %Chips unique_name 失败→改 get_node_or_null("Chips")。测试 body_part_voxel_fx_test.gd(勿入 netcode 清单)。
+## 像素FX/UI图标
+- hurt→blood_fx+voxel_chip+damage_number；blocking→metal_spark。voxel_chip：setup()须add_child前；normalize_creature_id剥实例后缀；mono下%Chips失败→get_node_or_null("Chips")。
+- **符文图标规范（已决定）**：`data/rune_glyphs.gd` 为权威程序绘制入口；最终 128×128 RGBA8 完整像素卡面，由 32×32 逻辑像素以最近邻放大，切角透明、暗色纹理背景、深描边+金属双层边框、四角铆钉、五大家族专属框饰与中央符文；无抗锯齿/渐变/软发光/字体直绘。50 枚符文按元素/战斗/神秘/黑暗/神圣语义骨架确定性生成。规范见 `docs/19-符文系统（构筑深度）.md §3.2`，图鉴产物 `reports/ui_preview/rune_codex_128px.png`。
+- **符文之语图标规范（已决定）**：独立入口 `data/rune_word_glyphs.gd`，不得复用普通符文卡；最终 128×128，由 32×32 最近邻放大。固定八角圣匣、三层金属框、稀有度金属色、主题冠饰、独立中央复合签名和按配方顺序排列的 2–3 颗符文色宝石。每个 word_id 必须有独立完整纹理：背景连续刻线、边框刻度/缺口、中央签名字形、冠饰线型至少四层受 ID 种子影响；主题仅定义语言，不得作为共享成品模板；测试比较完整 Image.get_data() 确保两两不同。除底部配方宝石方块外，背景/边框/冠饰/侧边/中央严禁孤立或叠加小方块，差异仅用连续折线、刻痕、缺口和轮廓表达。规范见文档 §3.3/术语表，图鉴 `reports/ui_preview/rune_word_codex_128px.png`。
+- **战斗资源条规范（已决定）**：左下 HUD HP/MP/两类护盾统一为 320×40 切角像素仪表：深色底板、双层硬边框、左侧几何类型铭牌、分段填充、硬边高光阴影/纹理；HP 赤红，MP 青蓝，魔法护盾奥术蓝，物理护盾冷银。视觉重绘不可改动 CombatHUD 原数值绑定与护盾淡入淡出；预览 `reports/ui_preview/resource_bars_1280x720.png`。
+- **法术配方/图标规范（已决定）**：`SpellRecipeData.RECIPES` 是唯一固定有序配方表；每个法术必须有唯一组合、已登记符文和可绘制 `imagery`。`data/spell_glyphs.gd` 按具体意象（火球、冰矛、雷链、毒雾、石墙、圣疗、召唤门等）逐法术绘制独立 128×128 卡面，32×32 最近邻放大；不得抽象模板换色、文字直绘、渐变或软光。图鉴 `reports/ui_preview/spell_codex_128px.png`。
+- **法术执行/FX边界（已决定）**：`SpellRuntime` 是固定槽位法术从配方/法力/方向/冷却到结构化 `effect_plan` 的单一计划边界；PlayerSpellCaster 已接 1–5 选槽/C施法，SpellAuthority 已执行 heal/barrier/movement/buff 并接 ProjectileService；联机 CMD_CAST_SPELL 只发槽位，SessionRoot 重解析。SpellWorldExecutor 已消费 ray/area/ground/summon，提供射线、周期区域/地面场、有限时召唤与预算清理；PlayerContext 已有 per-peer SpellLoadout/SpellRuntime/Mana，SessionRoot 已按 ctx 重解析并扣法力。已补地面阻挡、最小召唤攻击、重连 spell_state 快照和服务端 cooldown commit，并闭合 EVT_SPELL_RESOLVED 客户端表现；staff/grimoire 左键共用 ATTACK_PREPARING 蓄力800ms，只有满蓄力才释放当前法术槽，右键按住仅打开编辑界面且不会被 Player 抢回鼠标；仍需每种召唤的独立AI/模型/导航与逐法术最终数值，禁止误报全部33法术最终内容完成。`PixelSpellFx` 仅消费视觉事件，FX 绝不结算伤害；只有明确能量意象可 emission。
 
 ## GDScript/测试硬规则
-- autoload 禁 class_name。Variant 推断=解析错误：Dictionary.get()/and-or 链须显式标类型；Array[T].pop_back()→`var n:T=`。**测试 mock 的函数参数用 Object/Variant,勿用 Node**(4.7 强校验,mock 常是 RefCounted)。var 先声明后用。
-- 静态函数禁 tr()→TranslationServer.translate()。PackedScene.instantiate() headless 不触发 _ready()→须 add_child。跨脚本引用用 `const X:=preload(...)`(class_name 预编译期可能不可见)。
-- UI 分离属性须 add_theme_constant_override/add_theme_font_size_override。autoload _ready 加子节点须 get_tree().root.call_deferred("add_child",x)。
-- 4.7：RenderingServer.get_rendering_info 不收 2 参数、RENDERING_INFO_TOTAL 移除→用 Performance.RENDER_TOTAL_OBJECTS_IN_FRAME/RENDER_TOTAL_PRIMITIVES_IN_FRAME。不支持 @export_tool_button。
-- gdUnit4：assert_float.is_equal_approx(e,tol)；Color 无 assert_color→assert_bool(c.is_equal_approx(e)).is_true()；extends GdUnitTestSuite；冲量/速度断言 await physics_frame(2-3)。运行 `$GODOT --headless --path $PROJ -s res://tests/gdunit4_runner.gd -- --ignoreHeadlessMode -a "tests/gdunit/<f>.gd"`，exit 0/101 通过。
-- **沙箱**：mono 写 user:// 被拦→signal 11；须 dangerouslyDisableSandbox+重定向 APPDATA/LOCALAPPDATA(Windows 绝对路径 D:/...)。stdout 写文件再 grep,勿管道 head/tail。每批前 taskkill /F /IM Godot_v4.7-stable_mono_win64.exe。headless 检测 DisplayServer.get_name()=="headless"。重复实例化 skeleton-rig 敌人(rat)第2次必 signal 11。
+- autoload禁class_name。Variant推断=解析错误→Dictionary.get()/and-or显式标类型；Array[T].pop_back()→`var n:T=`。测试mock参数用Object/Variant勿Node。
+- 静态禁tr()→TranslationServer.translate()。PackedScene.instantiate() headless不触发_ready()→须add_child。
+- 4.7：RenderingServer.get_rendering_info不收2参→用Performance.RENDER_TOTAL_OBJECTS/PRIMITIVES_IN_FRAME。无@export_tool_button。
+- gdUnit4：assert_float.is_equal_approx(e,tol)；Color→assert_bool(c.is_equal_approx(e)).is_true()；await physics_frame(2-3)。run:`$GODOT --headless --path $PROJ -s res://tests/gdunit4_runner.gd -- --ignoreHeadlessMode -a "tests/gdunit/<f>.gd"`(exit 0/101通过)。
+- 沙箱：mono写user://被拦→signal 11；须dangerouslyDisableSandbox+重定向APPDATA/LOCALAPPDATA。每批前taskkill Godot_v4.7-stable_mono_win64.exe。重复实例化skeleton敌人(rat)第2次必signal 11。
+- ⚠️ **Python 改写 Godot `.gd` 必须 `open(path,"w",encoding="utf-8",newline="\n")`**：漏写 `newline` 在 Windows 会把 LF→CRLF，使 Godot `script.source_code` 长度多出~行数字符，基于 `source.substr(find("func X"),500).contains(...)` 的测试会越界误判失败（排查极耗时）。改完用 `b.count(b"\r\n")` 验证为 0。改用 Edit 工具或带 newline 的 Python。
 
-## 伤害/战斗
-- 动作战斗：命中恒 true(hitbox 接触),无投骰。删 hit_bonus/armor_evade/shield_block；伤害改确定性均值 dice_count*(sides+1)/2。ignore_def/armor_def 留。
-- 远程：神射手→ME.apply_sharpshooter_crit(+10%暴击)；穿透→ME.apply_penetrating_damage(×1.12)。focused/worn 词缀 hit_bonus_add→crit_bonus_add。proc(侧垫步/魔力凝息/招架)保留。
+## 战斗(实现≠文档05)
+- 命中恒true(hitbox接触)无投骰；伤害=确定性均值 dice_count*(sides+1)/2。删hit_bonus/armor_evade/shield_block；ignore_def/armor_def留。
+- 远程：神射手+10%暴击；穿透×1.12；focused/worn词缀hit_bonus_add→crit_bonus_add。
+- ⚠️ 设计文档05仍写%hit(75%基准)，与实现冲突待重写。
+- 🚨 **源码战斗公式/算法/数值常量均为占位符，不是已决定数值！** 设计文档(05/06/21/31 等用户拍板的)才是权威；代码应被对齐「到文档」，反之不可。写数值文档时**严禁**把 `*.gd` 里的常量当 `【代码·已决定】`——应标 `【代码·占位符·待定】`，冲突项以文档为准去改代码（不是改文档迁就代码）。
+- **流派武器伤害倍率 `damage_mult`（写入 `战斗数值体系.md §2.5`）**：仅乘在**武器伤害**上，**与法术无关**——法术伤害由法术卡自身倍率决定，不乘此值。七流派全部 ✅ 已决定：单手 1.00 / 持盾 0.80 / 双手 1.35 / 双持 主1.00+副0.60 / 徒手 0.80 / 远程 1.00 / 法系 0.50。代码 `STYLE_META` 各流派 `damage_mult` 多为隐式 1.0(双手 1.0)，系占位符待对齐到本文档。
+- **流派攻速倍率 `attack_speed_mult` / 移速倍率 `move_speed_mult`**（§2.5.2/§2.5.3）现为**提案·待确认**：单手1.0/0.95→0.95、双手0.85/0.90、双持1.20/1.00、徒手1.30/1.10、远程0.90/0.95、法系0.90/0.95；DPS验算双手1.59为顶点(可能过强,备选0.85→0.75或1.35→1.20)。
+- **`attack_speed_mult` 语义=武器冷却（用户裁定）**：不是软攻速加成，而是**硬锁**——冷却期间禁止攻击、必须等待。公式 `武器冷却=BASE_ATTACK_INTERVAL(1.0s)/(attack_speed_mult×敏捷加成)`(`combat_engine.gd:33,54-57`)。⚠️ **代码缺口**：敌人有 `time_since_last_attack`+`duration_between_attacks`+`can_attack()` 时间锁(`enemy_state_moving.gd:132-133`)；**玩家侧无等价冷却锁**，`scenes/characters` 下只有敌人有 `time_since_last_attack`——「玩家武器冷却」概念未落地，待实现对齐文档。
 
 ## 敌人/体素/本地化
-- 死亡卡死根因：EnemyStateDying._enter_tree 在物理步进内做物理操作→死锁。修复搬进 call_deferred("_begin_death_effects"),headless 用 _is_headless() 守卫布娃娃。回归 enemy_dying_defer_test/enemy_knockback_death_defer_test。
-- 体素敌人无 Skeleton3D→VoxelRagdoll；骨架敌人走 PhysicalBoneSimulator3D。voxel_prop 运行时优先 load baked_<kind>.tscn。敌人=蒙皮 GLB+imposter LOD(18)。
-- UI tr()；CSV key,en,zh 占位 %%。CanvasLayer：UI=20/CombatHUD=15/tavern_hud=25/Pause=128/overlay=32。
-- **tavern 手工场景铁律**：禁任何 bake/generate/merge/批量重写；tavern_structure.gd(@tool) 结构网格同步同名+"Body" StaticBody3D,禁 rebuild/_build/_add_box_collision。改动仅目标节点。
+- 死亡卡死：EnemyStateDying._enter_tree物理步进内做物理→死锁；修复call_deferred("_begin_death_effects")+_is_headless()守卫。
+- 敌人死亡表现统一优先 VoxelRagdoll；当前敌人场景里的 PhysicalBoneSimulator3D/PhysicalBone3D 仅为旧资源兼容，不参与存活期或死亡表现，运行时禁用模拟器并清零骨骼碰撞。voxel_prop运行时优先load baked_<kind>.tscn。
+- tavern手工场景铁律：禁bake/generate/merge/批量重写；tavern_structure.gd(@tool)仅同步同名+"Body" StaticBody3D，改动仅目标节点。
 
-## 联机架构（核心链路 + 铁律）
-- 链路：ClientCommandDriver→NetworkManager.submit_command→SessionRoot.on_command(peer_id,cmd)→各 Authority→rpc_server_event→multiplayer_scene_bridge。用 NetworkManager.multiplayer(禁 get_tree().multiplayer)。
-- 复制一律显式 RPC(MultiplayerSpawner 4.7 不可靠)。桥接每 peer 只显远端为 avatar,自身经 _spawn_local 守卫 peer_id==_local_peer_id() 跳过。
-- 身份锚=player_guid+reconnect_token(ENet 每次重连新 peer_id,禁作主键)。on_command 对 CMD_RESUME 短路→migrate_peer+_migrate_peer_state→resume→发 SESSION_SNAPSHOT。
-- 出生点唯一真相源 DungeonLayout.calc_player_spawn_pos()(两端逐字节一致)。handle_spawn_request 必用 player_spawn_pos,绝不硬编码 ZERO。勿删 TILE_SIZE(minimap+2 测试读)。
-- world_revision：SessionRoot._bump_world(space) 递增+广播 EVT_WORLD_REVISION_CHANGED；重播已有实体(is_new=false)不 bump。测试勿硬编码,改读 s.world.world_revision。
-- 心跳：client_command_driver _physics_process 累加 _maybe_send_heartbeat(5s),仅 is_client。
-- 实体同步真相源 EntitySyncAuthority.build_delta(prev,curr)；rebroadcast_entities()委托 reconcile_entities({})。操作=server_spawn/update/despawn_entity。
-- 安全基线 security_audit_test.gd(11 例)收口 10 类作弊,穷举 CV.FORBIDDEN_TRUSTED_FIELDS 拒绝。重连恢复 reconnect_recovery_test.gd(5 例)。
-- 桥接 _apply_session_snapshot：应用权威快照后反查 despawn 不在快照的本地 _entities 键(消幽灵)。收敛走"快照全量+客户端反查 despawn"。
+## 装备/体素建模
+- 盔甲/装备是**独立模型**，不是身体模型的一部分；建模为包裹身体的空心板壳（hollow shell），各板在身体表面外侧保持间隙，不能与身体产生正体积重叠。
+- 装备与身体验证指标：装备包围盒应大于身体包围盒（“大一圈”）；`armour self-overlap = 0`；`armour-vs-body positive-volume overlap = 0`。
+- Blender 5.1 后台导入 GLB 后，必须 `bpy.context.view_layer.update()` + `o.update_tag()` 再读取 `matrix_world` 的 AABB，否则世界矩阵陈旧，导致包围盒尺寸错误。
+- Blender 后台运行相对路径行为不一致：GLTF 导出会按启动目录解析，而渲染输出 `scene.render.filepath` 可能解析到 `C:\`。装备/渲染工具应使用 `PROJECT = Path(__file__).resolve().parent.parent` 生成的绝对路径，避免输出漂移。
 
-## 联机 gotcha 速查
-- dungeon_layout 事件键 "type" 非 "event"→两键都查。send_interact→target_entity_id；send_attack→target_hint(两键都带)。重复拾取→ERR_INVALID_TARGET。
-- String.get_slice("|",1) 返回第1字段；取完整指纹须 line.split("|",true,1)[1]。远端 avatar 动态查 get_avatar_peers() 找"非房主非自身",勿写死 peer id。同 seed→同 layout_fingerprint。
-- Phase9 Lobby：主菜单「联机」→lobby_menu.tscn；autoload MultiplayerSession(host_room/join_room/start_expedition/leave_room+晚到重播)。DungeonSession 挂 /root/MultiplayerSession/DungeonSession。leave_room 须 free+复位+room_updated.emit([])。冒烟 tools/_smoke_lobby.gd→LOBBY_SMOKE_RESULT:PASS。
-- 带宽节流 SNAPSHOT_BROADCAST_HZ=30,player_snapshot 缓冲 _snapshot_buffer[peer],30Hz _flush_snapshots。PerfMonitor HUD(F3)。
-- 专用服务器 scenes/multiplayer/dedicated_server.gd(非玩家)。env DS_PORT(54321)/DS_MAX_PLAYERS(8)/DS_IDLE_SHUTDOWN_SEC(0)。启动器 tools/dedicated_server.cmd。
 
-## 联机集成测试运行
-- 双进程 ENet 测试需 5~12min,run_in_background 2min 硬上限强杀→用 PowerShell 前台(带 timeout),超时自动转后台。loopback ENet 偶发不通=沙箱抖动非回归,改 gdUnit 单测验逻辑。
-- CI 清单 tools/run_multiplayer_tests.sh(netcode 套件;--list/--selfcheck/--junit=)：Godot 需 Windows 风格 --path(用 cygpath -w)、export APPDATA。断言以 gdUnit Overall Summary/Statistics errors/failures==0(exit 101=orphan 仍 PASS)。非 netcode 套件勿入。
-- 全量运行器 tools/run_all_gdunit_batched.ps1：递归扫描 tests/gdunit/*_test.gd 自动发现,reports/all_gdunit_*.csv|log 汇总。命名 *_test.gd 即纳入。
-- DSC 单测：spawn_server_entities 内 get_node_or_null("/root/NetworkManager") 要求 DSC 在树内→须 NetworkManager.add_child(ctrl)。每用例 free 旧 session→_ensure_session()→init_server()+is_host=true。
+## 联机
+- 链路ClientCommandDriver→NetworkManager.submit_command→SessionRoot.on_command→各Authority→rpc_server_event→bridge。用NetworkManager.multiplayer(禁get_tree().multiplayer)。复制显式RPC。
+- 身份锚=player_guid+reconnect_token(ENet重连新peer_id禁作主键)。出生点DungeonLayout.calc_player_spawn_pos()(两端一致)；handle_spawn_request禁硬编码ZERO。勿删TILE_SIZE。
+- 同步30Hz节流SNAPSHOT_BROADCAST_HZ=30(_entity_update_buffer→_flush_snapshots；spawn/despawn即时)；快照收敛=全量+客户端反查despawn。心跳5s仅client。
+- gotcha：dungeon_layout事件键"type"非"event"；send_interact→target_entity_id；send_attack→target_hint；远端avatar动态get_avatar_peers()。
 
-## 地牢性能优化(已落地,2026-07-21)
-- 流控跨块差集增量：dungeon_streaming_controller 灯光用 `_active_light_set` 差集(去掉全表 hide-all)，视觉/地形 chunk 用 last-active 集合增量增删。灯光预算仍为 12。
-- 火把粒子/音频随可见性暂停：隐藏时递归暂停 GPUParticles3D/CPUParticles3D(emitting=false) 与 AudioStreamPlayer3D(stream_paused=true)。**关键坑**：火把在 `_spawn_torch_on_wall` 只注册为 **physics 节点**(`streamed_physics_nodes`)，不走可视节点，故须在物理激活路径 `_set_visual_root_active` 也对根调 `_apply_visual_side_effects`（首轮只在可视路径做，对火把无效，第二轮补漏）。灯光预算只控 OmniLight3D，不控粒子/音频。
-- 敌人 LOS 节流：enemy.gd `has_line_of_sight_to` 加 `_los_cache_timer`(LOS_INTERVAL=0.2s) 缓存射线结果，最多每 0.2s 重测；仅影响初次索敌延迟，已登记玩家不依赖此检测。
-- P0 敌人分帧实例化：DungeonSpawner 新增 `build_enemy_spawn_plan(layout,player)`(描述符列表) 与 `instantiate_enemy_descriptor(desc,...)`；`spawn_enemies_from_layout` 增 `batched` 参数(默认 false 保持同步契约,测试安全)。DungeonRuntime.spawn_enemies 改取计划后按帧批量(ENEMY_SPAWN_BATCH_PER_FRAME=4)实例化并注册 streaming；无场景树时回退同步。
-- P1 实体同步 30Hz 节流：network_manager `server_update_entity` 有真实 peer 时把 EVT_ENTITY_SNAPSHOT 入 `_entity_update_buffer`(按 entity_id 合并)，在 `tick()`→`_flush_snapshots` 按 SNAPSHOT_BROADCAST_HZ=30 下发；spawn/despawn 仍可靠即时。单进程 headless 仍即时(保持单测同步性)。
-- **GDScript gotcha**：粒子基类 `Particles3D` 在本机 Godot 4.7 GDScript 作用域**不可作类型名**(`Could not find type "Particles3D"`)。判粒子须用具体类型 `GPUParticles3D`/`CPUParticles3D`，勿用基类 cast。
-- **验证方式**：headless `--script` 加载改文件做解析校验(须 dangerouslyDisableSandbox+重定向 APPDATA/LOCALAPPDATA)。`--script` 模式 autoload 不全→`AudioManager`/`PhysicsSetup` 等"Identifier not found"属误报，非本改动引入；真实游戏内可解析。
+## 地牢性能(已落地)
+- 流控差集增量；火把/音频随可见性暂停。LOS节流0.2s。分帧实例化ENEMY_SPAWN_BATCH_PER_FRAME=4。
+- navmesh：ENABLE_ASYNC_NAVMESH_BAKE:=false(默认关)；P-B错峰PATH_UPDATE_JITTER_MS=50；P-C AI模拟半径18m is_ai_active()。
+- 真实性能压测后追加：静态环境碰撞仍保持玩家周围3x3 chunk；CharacterBody3D/RigidBody3D/Area3D动态物理仅激活玩家当前chunk(radius=0)，满暗蚀强制追击敌人例外跨区激活。
+- `Particles3D`本机4.7不可作类型名→GPUParticles3D/CPUParticles3D。headless `--script`须dangerouslyDisableSandbox+重定向。
 
-## 地牢性能第二轮新热点(2026-07-21 排查) + 第三轮实施
-- P-A 生成单帧卡顿：`_build_navigation_mesh`(:720) `bake_from_source_geometry_data` 同步烤整图 navmesh。
-  **第三轮实施**：加 `ENABLE_ASYNC_NAVMESH_BAKE:=false`(默认关闭)。开启走 `bake_from_source_geometry_data_async` 后台烤(缺 API 回退同步)。**为何默认关**：本环境仅 headless，导航烘焙文档不稳定(偶发 crash；--script 下异步回调不触发致探针挂起)，无法验证异步能把多边形回填进 NavigationRegion3D；若失败敌人永久无法寻路=灾难。待「有窗口」构建冒烟测试通过后置 true。perf 测试靠 `bake_from_source_geometry_data` 前缀子串仍通过。
-- P-B navmesh 雷群(**已实施**)：`enemy_state_moving` 加 `PATH_UPDATE_JITTER_MS:=50` + 每实例 `_path_update_interval_ms := PATH_UPDATE_INTERVAL_MS + randi_range(0,50)`，初始相位 `-randi_range(0,150)`；追击/巡逻两处节流比较改用 `_path_update_interval_ms`。错开同批敌人同帧 `set_target_position`(整图 A*) 触发。
-- P-C 物理激活半径 ~36m 与 imposter LOD 18m 失衡(**已实施**)：`enemy.gd` 加 `AI_SIM_RADIUS_M:=18.0`(=ENEMY_IMPOSTER_LOD_DISTANCE 边界)+`is_ai_active()`(已交战/暗蚀强制/玩家≤18m→true;远距未交战→false)；`enemy_state_moving._physics_process` 开头门控：`is_ai_active()` 否时仅清零水平速度+process_movement 保持静止，跳过追击/巡逻 A* 与导航查询。边界互补(LOD>18m 开,AI>18m 停)，无可见冻结。
-- P-D 火把/非批装饰为独立 MeshInstance3D 未 MultiMesh→draw call 高；应纳入 `batched_decor_scenes` 或火焰预算(未动,需谨慎处理火把灯光/粒子/音频)。
-- P-E shader 首次编译 hitch（无预热）；已有 `shaders/shader_warmer.gd` + `world.gd` 加载期 warming(FX_SCENES 含 voxel_chip 等)，地牢侧可后续补首批敌人材质 warming(未动)。
-- P-F/P-G 追击射线预算 / `fx_helper` 特效对象池(观测项,重战时优化,未动)。
-- 澄清：`network_manager.tick()` 单人 early-return、`_run_detection` 不存在、`exploration_pressure` 每分钟几次→均非热点。
-- 详细报告：docs/地牢性能排查_第二轮.md 含「五、实施状态」。
-
-## 工具
-- 场景实例化排错探针 tools/scene_instantiate_probe.gd + 驱动 D:/tmp/run_probe_driver.sh：崩溃可续跑(每场景 add_child 前先写 user://probe_state.txt,驱动重启越过 crasher)。
-- GDScript 代码图 tools/gdscript_codemap.py→docs/CODEMAP.md+gdscript_codemap.json(重跑刷新)。
+## 工具/Git
+- 代码图tools/gdscript_codemap.py→根gdscript_codemap.json(docs副本已归档)。
+- Bash工具PortableGit路径损坏→改用PowerShell调`D:\Git\cmd\git.exe`；临时文件已.gitignore；push用凭据缓存`GIT_TERMINAL_PROMPT=0`。
+- ⚠️ Windows路径分隔符坑：`git ls-files`输出用正斜杠`/`，而`Get-Item.FullName`是反斜杠`\`。用`$tracked -contains $rel`判断"是否已被跟踪"时会因分隔符不匹配而**恒为false**→误把已跟踪文件当未跟踪删掉！比对前必须`$rel = $rel.Replace('\','/')`归一化。
+- ⚠️ 禁盲目`git add -A`：会顺带把所有未跟踪改动（含无关工作内容）一并暂存。删错/误暂存后恢复：`git reset -q HEAD`(仅清暂存保留工作树) + `git restore --worktree -- <path>`(从HEAD把误删的已跟踪文件拉回磁盘)。

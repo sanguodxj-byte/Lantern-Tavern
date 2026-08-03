@@ -6,6 +6,9 @@ const PROBE_SCENE := "res://tools/dungeon_stress_perf_probe_scene.tscn"
 
 func test_stress_probe_declares_required_scenarios_and_frame_gate() -> void:
 	var source := FileAccess.get_file_as_string(PROBE_SCRIPT)
+	assert_str(source).contains("no_enemies")
+	assert_str(source).contains("_run_no_enemies")
+	assert_str(source).contains("spawn_population_enabled = _scenario != \"no_enemies\"")
 	assert_str(source).contains("dense_monsters")
 	assert_str(source).contains("multi_room_population")
 	assert_str(source).contains("cross_room_traversal")
@@ -15,6 +18,20 @@ func test_stress_probe_declares_required_scenarios_and_frame_gate() -> void:
 	assert_str(source).contains("TIME_PHYSICS_PROCESS")
 	assert_str(source).contains("item_spawner")
 	assert_str(source).contains("instantiate_enemy_descriptor")
+	assert_str(source).contains("active_enemy_bodies")
+	assert_str(source).contains("active_item_bodies")
+	assert_str(source).contains("active_areas")
+	assert_str(source).contains("active_static_colliders")
+	assert_str(source).contains("active_bone_bodies")
+	assert_str(source).contains("active_fragment_bodies")
+	assert_str(source).contains("_collect_physics_breakdown")
+	assert_str(source).contains("_collect_runtime_breakdown")
+	assert_str(source).contains("visible_meshes")
+	assert_str(source).contains("enemy_meshes")
+	assert_str(source).contains("environment_meshes")
+	assert_str(source).contains("active_animation_players")
+	assert_str(source).contains("active_ai_enemies")
+	assert_str(source).contains("avoidance_agents")
 
 
 func test_stress_probe_uses_real_procedural_dungeon_and_player() -> void:

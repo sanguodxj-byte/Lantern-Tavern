@@ -294,10 +294,10 @@ func test_batched_decor_includes_iron_bar_grate() -> void:
 	var script: GDScript = load("res://scenes/expedition/dungeon_runtime_config.gd")
 	var source := script.source_code
 	# iron_bar_grate 必须纳入批处理集合，10 根铁栏合并为每批 1 个 draw call
-	assert_bool(source.contains("\"res://scenes/props/decor/iron_bar_grate.tscn\": true")) \
+	assert_bool(source.contains("\"res://scenes/props/dungeon/decor/iron_bar_grate.tscn\": true")) \
 		.override_failure_message("iron_bar_grate 应并入 BATCHED_DECOR_SCENES 批量渲染").is_true()
 	# 批处理只收集 MeshInstance3D，会剥离 Light/Particle/脚本——该场景必须不含这些动态组件
-	var grate := load("res://scenes/props/decor/iron_bar_grate.tscn") as PackedScene
+	var grate := load("res://scenes/props/dungeon/decor/iron_bar_grate.tscn") as PackedScene
 	assert_object(grate).is_not_null()
 	var grate_inst := grate.instantiate() as Node3D
 	add_child(grate_inst)

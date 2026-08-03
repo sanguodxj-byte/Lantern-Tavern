@@ -2,14 +2,22 @@ class_name PlayerStateSlashing
 extends PlayerState
 
 const WEAPON_CONDITION_WEAR := 2
-const ATTR_EXP_PER_HIT := 5
-const PROFICIENCY_PER_HIT := 1
 
 const CB := preload("res://globals/combat/combat_bridge.gd")
 const ME := preload("res://globals/combat/milestone_effects.gd")
 const SPE := preload("res://globals/combat/style_passive_effects.gd")
 const SLASH_ANIM := preload("res://globals/combat/combat_slash_animator.gd")
 const FP_VISUAL_STATE_MACHINE := preload("res://scenes/characters/player/first_person_weapon_visual_state_machine.gd")
+const REH := preload("res://globals/combat/rune_effect_hooks.gd")
+const RWPH := preload("res://globals/combat/rune_word_passive_hooks.gd")
+const SES := preload("res://globals/combat/status_effect_system.gd")
+const PLAYER_ANIMATION_PROFILE := preload("res://globals/visual/player_animation_profile.gd")
+
+## B3 挥砍移动限制：重武器（巨剑/斧/战锤/长矛）挥砍期间压低移动速度，轻武器不限制。
+## 仅作用于本地移动积分，不改输入、不冻结敌人、不影响联机权威。
+const SLASH_MOVE_MULT_HEAVY := 0.55
+const SLASH_MOVE_MULT_LIGHT := 1.0
+const HEAVY_SLASH_PROFILES: Array[StringName] = [&"greatsword", &"axe", &"warhammer", &"spear"]
 
 var has_emitted_damage := false
 var hitbox: Area3D = null
@@ -24,6 +32,7 @@ var heavy_swing_arc_angle_deg := 0.0
 
 func _enter_tree() -> void:
 	var weapon := player.get_active_hand_weapon_data()
+	time_start_slash = Time.get_ticks_msec()
 	heavy_swing_enabled = player.has_method("should_use_heavy_swing_animation") \
 		and player.should_use_heavy_swing_animation()
 	var animation_name := SLASH_ANIM.player_animation_name(weapon, heavy_swing_enabled)
@@ -55,7 +64,8 @@ func _enter_tree() -> void:
 	player.animation_player.animation_finished.connect(on_animation_finished)
 
 func _physics_process(delta: float) -> void:
-	player.process_movement(delta)
+	# B3: 重武器挥砍期间移速降低（移动积分倍率），轻武器为 1.0 不受影响。
+	player.process_movement(delta, slash_move_multiplier_for(player.get_active_hand_weapon_data()))
 	var slash_progress := SLASH_ANIM.progress(time_start_slash, slash_duration_msec)
 	SLASH_ANIM.apply_weapon_arc(weapon_placeholder, weapon_placeholder_base, slash_progress, 1.0)
 	# Visual sampling only: CombatSlashAnimator remains the authority for timing/hits.
@@ -161,8 +171,19 @@ func _resolve_enemy_hit(enemy: Enemy) -> void:
 		result.knockback_force = result.knockback_force * dmg_mult
 	if result.hit:
 		player.equipment.apply_weapon_damage(WEAPON_CONDITION_WEAR)
+		# 符文之语伤害倍率与状态效果受击增伤
+		var rune_mult := RWPH.get_outgoing_damage_mult(player, enemy) * SES.get_incoming_damage_mult(enemy)
+		if rune_mult != 1.0:
+			result.final_damage = maxi(1, int(round(float(result.final_damage) * rune_mult)))
 		enemy.try_receive_hit_result(player, result)
-		_accumulate_combat_exp(CB.get_weapon_proficiency_key(weapon), result.attack_type)
+		# 触发符文机制与符文之语被动
+		var hit_pos: Vector3 = enemy.global_position
+		REH.on_player_hit_enemy(player, enemy, hit_pos, int(result.final_damage))
+		RWPH.on_player_hit_enemy(player, enemy, hit_pos, int(result.final_damage))
+		# 检查敌人是否因本次命中死亡
+		var ehealth = enemy.get("health")
+		if ehealth != null and is_instance_valid(ehealth) and int(ehealth.get("current_life")) <= 0:
+			RWPH.on_enemy_killed(player, enemy, hit_pos)
 		has_emitted_damage = true
 	else:
 		AudioManager.play("slash-miss", player.action_audio_stream_player)
@@ -179,22 +200,6 @@ func _get_player_level() -> int:
 		return ap.get_level()
 	return 1
 
-func _accumulate_combat_exp(proficiency_key: String, attack_type: String) -> void:
-	var ap: Node = Engine.get_main_loop().root.get_node_or_null("AttrPanel")
-	if ap == null:
-		return
-	match attack_type:
-		"melee":
-			ap.accumulate_attr("str", ATTR_EXP_PER_HIT)
-		"ranged":
-			ap.accumulate_attr("dex", ATTR_EXP_PER_HIT)
-		"spell":
-			ap.accumulate_attr("mag", ATTR_EXP_PER_HIT)
-		_:
-			ap.accumulate_attr("str", ATTR_EXP_PER_HIT)
-	ap.accumulate_proficiency(proficiency_key if proficiency_key != "" else "unarmed", PROFICIENCY_PER_HIT)
-	ap.check_skill_unlocks()
-
 func _get_off_hand_type() -> String:
 	if state_data.weapon_attack_hand == "secondary" and player.can_dual_wield_attack_with_active_equipment():
 		return CB.get_weapon_class(player.get_active_hand_weapon_data())
@@ -203,3 +208,10 @@ func _get_off_hand_type() -> String:
 ## 本次挥砍的蓄力伤害倍率（未装备蓄力被动则为 1.0，无增伤）
 func _charge_multiplier() -> float:
 	return player.get_melee_charge_multiplier(state_data.weapon_charge_ratio)
+
+## B3 挥砍移动系数：重武器（巨剑/斧/战锤/长矛）挥砍期间压低移速（0.55），
+## 轻武器与空手不限制（1.0）。纯函数便于测试，不访问节点树。
+static func slash_move_multiplier_for(weapon: Variant) -> float:
+	if weapon != null and PLAYER_ANIMATION_PROFILE.profile_for_weapon(weapon) in HEAVY_SLASH_PROFILES:
+		return SLASH_MOVE_MULT_HEAVY
+	return SLASH_MOVE_MULT_LIGHT

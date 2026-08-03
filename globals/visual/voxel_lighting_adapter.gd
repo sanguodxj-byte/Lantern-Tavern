@@ -35,8 +35,6 @@ const PROP_SHADER_PROFILE := {
 const WEAPON_METAL_ROUGHNESS_MIN := 0.18
 const WEAPON_METAL_ROUGHNESS_MAX := 0.55
 const WEAPON_METAL_THRESHOLD := 0.25
-const WEAPON_EMISSIVE_ROUGHNESS_MIN := 0.18
-const WEAPON_EMISSIVE_ROUGHNESS_MAX := 0.45
 const MATERIAL_TIERS := ["wood", "iron", "steel", "meteoric", "mithril", "adamantite"]
 const WOOD_TEXTURE_PRESERVE := 0.48
 const METAL_FINISH_TEXTURE_SIZE := 32
@@ -48,6 +46,31 @@ static var _adapt_cache: Dictionary = {}
 static var _metal_finish_texture_cache: Dictionary = {}
 static var _cache_hits: int = 0
 static var _cache_misses: int = 0
+
+## 全局像素着色开关。关闭后 apply_to_tree / adapt_standard_material /
+## apply_shader_profile 全部跳过 toon 参数写入，材质保持 GLB 原始 StandardMaterial3D 状态。
+## 对于带自定义 light() 的 ShaderMaterial（dungeon_terrain.gdshader），apply_shader_profile
+## 仍会写入 pixel_lighting_enabled=0.0，使 shader 回退到标准 Lambert 漫反射。
+## 运行时切换需配合 revert_tree() 清除已写入的 override。
+static var _pixel_shader_enabled: bool = true
+
+## 标记已被适配器写入 override 的 MeshInstance3D / MultiMeshInstance3D 节点，供 revert_tree 还原。
+const ADAPTED_META_KEY := "_voxel_lighting_adapted"
+
+## MultiMeshInstance3D 的原始 material_override（在适配前保存），供 revert_tree 还原。
+const ORIGINAL_MATERIAL_META_KEY := "_voxel_lighting_original_material"
+
+
+## 设置全局像素着色开关。返回切换前的旧值。
+static func set_pixel_shader_enabled(enabled: bool) -> bool:
+	var old := _pixel_shader_enabled
+	_pixel_shader_enabled = enabled
+	return old
+
+
+## 查询全局像素着色开关是否开启。
+static func is_pixel_shader_enabled() -> bool:
+	return _pixel_shader_enabled
 
 
 static func apply_to_tree(
@@ -63,6 +86,12 @@ static func apply_to_tree(
 	# duplicate() 操作可能引发段错误。
 	if OS.has_feature("headless"):
 		return
+	# 全局像素着色开关关闭时不再 early-return：
+	# 27 个 baked_*.tscn 道具直接在场景文件中引用 dungeon_terrain.gdshader，
+	# 该 shader 的 pixel_lighting_enabled 默认值为 1.0（toon 光照）。
+	# 若 early-return，这些 ShaderMaterial 不会被同步为 0.0，toon 光照持续生效。
+	# 关闭时仍遍历树：ShaderMaterial 被 duplicate 并写入 pixel_lighting_enabled=0.0；
+	# StandardMaterial3D 由 _adapt_material 内部跳过（返回 null），不做 toon 转换。
 	var should_apply := force or _looks_like_voxel(root) or mode == MODE_WEAPON
 	_apply_node(root, should_apply, shader_profile, mode, material_tier)
 
@@ -72,11 +101,82 @@ static func apply_weapon_tree(root: Node, material_tier: String = "") -> void:
 	apply_to_tree(root, true, DEFAULT_SHADER_PROFILE, MODE_WEAPON, material_tier)
 
 
+## 运行时还原已被适配器写入 override 的材质。
+## 清除 MeshInstance3D 上的 material_override 和 surface override，
+## 使网格回到 GLB 原始 StandardMaterial3D 状态。
+## 仅清除带 ADAPTED_META_KEY 标记的节点，避免误清其他系统的 override。
+static func revert_tree(root: Node) -> void:
+	if root == null:
+		return
+	_revert_node(root)
+
+
+## 运行时同步场景树的材质到当前开关状态。
+## 当像素着色开关在运行时切换后调用：先 revert 已适配的材质，
+## 再以新开关状态重新适配。同时处理 MultiMeshInstance3D（批量道具）。
+static func sync_tree(root: Node) -> void:
+	if root == null:
+		return
+	revert_tree(root)
+	apply_to_tree(root, true)
+
+
+static func _revert_node(node: Node) -> void:
+	if node is MultiMeshInstance3D and node.has_meta(ADAPTED_META_KEY):
+		var mm := node as MultiMeshInstance3D
+		if mm.has_meta(ORIGINAL_MATERIAL_META_KEY):
+			mm.material_override = mm.get_meta(ORIGINAL_MATERIAL_META_KEY) as Material
+			mm.remove_meta(ORIGINAL_MATERIAL_META_KEY)
+		mm.remove_meta(ADAPTED_META_KEY)
+	if node is MeshInstance3D and node.has_meta(ADAPTED_META_KEY):
+		var mi := node as MeshInstance3D
+		mi.material_override = null
+		if mi.mesh != null:
+			for surface_index in range(mi.mesh.get_surface_count()):
+				mi.set_surface_override_material(surface_index, null)
+		mi.remove_meta(ADAPTED_META_KEY)
+	for child in node.get_children():
+		_revert_node(child)
+
+
 static func apply_shader_profile(material: ShaderMaterial, shader_profile: Dictionary = DEFAULT_SHADER_PROFILE) -> void:
 	if material == null:
 		return
+	# 无论开关状态如何，都同步 pixel_lighting_enabled 标志到 ShaderMaterial。
+	# 这确保带自定义 light() 函数的 shader（如 dungeon_terrain.gdshader）在
+	# 开关关闭时回退到标准 Lambert 漫反射，而不是使用默认的半兰伯特/量化参数。
+	_sync_pixel_lighting_flag(material)
+	# 全局像素着色开关关闭时不写入 toon shader 参数。
+	if not _pixel_shader_enabled:
+		return
 	for key in shader_profile.keys():
 		material.set_shader_parameter(String(key), shader_profile[key])
+
+
+## 缓存：shader 资源路径 → 是否拥有 pixel_lighting_enabled uniform。
+## 避免每次 apply_shader_profile 都调用 get_shader_uniform_list。
+static var _pixel_flag_shader_cache: Dictionary = {}
+
+
+## 如果 ShaderMaterial 的 shader 声明了 pixel_lighting_enabled uniform，
+## 根据 _pixel_shader_enabled 写入 1.0 或 0.0。不带此 uniform 的 shader 不受影响。
+static func _sync_pixel_lighting_flag(material: ShaderMaterial) -> void:
+	if material == null or material.shader == null:
+		return
+	var shader := material.shader
+	var path := shader.resource_path
+	var has_flag: bool
+	if _pixel_flag_shader_cache.has(path):
+		has_flag = _pixel_flag_shader_cache[path]
+	else:
+		has_flag = false
+		for param in shader.get_shader_uniform_list():
+			if param.get("name", "") == "pixel_lighting_enabled":
+				has_flag = true
+				break
+		_pixel_flag_shader_cache[path] = has_flag
+	if has_flag:
+		material.set_shader_parameter("pixel_lighting_enabled", 1.0 if _pixel_shader_enabled else 0.0)
 
 
 static func disable_light_specular(light: Light3D) -> void:
@@ -92,6 +192,9 @@ static func adapt_standard_material(
 ) -> StandardMaterial3D:
 	if source == null:
 		return null
+	# 全局像素着色开关关闭时返回原始材质，不做 toon 转换。
+	if not _pixel_shader_enabled:
+		return source
 	var cache_key := _cache_key(source, mode, material_tier)
 	if _adapt_cache.has(cache_key):
 		_cache_hits += 1
@@ -99,6 +202,13 @@ static func adapt_standard_material(
 	_cache_misses += 1
 
 	var copy := source.duplicate() as StandardMaterial3D
+	# Project rule: imported assets never remain emissive. Color identity is kept
+	# in albedo/texture and must respond to real scene lighting.
+	copy.emission_enabled = false
+	copy.emission = Color.BLACK
+	copy.emission_texture = null
+	copy.emission_energy_multiplier = 0.0
+	copy.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
 	copy.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
 	# 保留 GLB 材质原始的 vertex_color_use_as_albedo 设置。
 	# 强制设为 true 会把依赖 albedo_color / albedo_texture 的材质变成白色。
@@ -115,6 +225,7 @@ static func adapt_standard_material(
 static func clear_cache() -> void:
 	_adapt_cache.clear()
 	_metal_finish_texture_cache.clear()
+	_pixel_flag_shader_cache.clear()
 	_cache_hits = 0
 	_cache_misses = 0
 
@@ -139,41 +250,31 @@ static func _adapt_weapon_standard(
 	source: StandardMaterial3D,
 	material_tier: String = "",
 ) -> void:
-	## 武器：金属保留 metallic + 可控 roughness；木/皮保持哑光。
-	if source.emission_enabled:
-		# 魔力晶体：保留 GLB 的贴图和发光，同时避免非金属分支把晶体压成哑光。
+	## 武器：金属保留 metallic + 可控 roughness；木/皮/晶体保持受光材质。
+	var is_metal := _is_metal_material(source)
+	if is_metal:
+		# 金属：toon 漫反射 + soft 高光，避免变成塑料
 		copy.specular_mode = BaseMaterial3D.SPECULAR_TOON
-		copy.metallic = 0.0
-		copy.roughness = clampf(
-			source.roughness,
-			WEAPON_EMISSIVE_ROUGHNESS_MIN,
-			WEAPON_EMISSIVE_ROUGHNESS_MAX,
+		copy.metallic = clampf(source.metallic, 0.55, 1.0)
+		# 管线导出的钢约 0.25–0.4；夹到可读区间
+		var r := source.roughness
+		if r < WEAPON_METAL_ROUGHNESS_MIN:
+			r = WEAPON_METAL_ROUGHNESS_MIN
+		elif r > WEAPON_METAL_ROUGHNESS_MAX:
+			r = WEAPON_METAL_ROUGHNESS_MAX
+		copy.roughness = r
+		# 略提亮钢面，避免地牢暗光下刀刃发黑
+		copy.albedo_color = Color(
+			minf(copy.albedo_color.r * 1.06, 1.0),
+			minf(copy.albedo_color.g * 1.06, 1.0),
+			minf(copy.albedo_color.b * 1.08, 1.0),
+			copy.albedo_color.a
 		)
 	else:
-		var is_metal := _is_metal_material(source)
-		if is_metal:
-			# 金属：toon 漫反射 + soft 高光，避免变成塑料
-			copy.specular_mode = BaseMaterial3D.SPECULAR_TOON
-			copy.metallic = clampf(source.metallic, 0.55, 1.0)
-			# 管线导出的钢约 0.25–0.4；夹到可读区间
-			var r := source.roughness
-			if r < WEAPON_METAL_ROUGHNESS_MIN:
-				r = WEAPON_METAL_ROUGHNESS_MIN
-			elif r > WEAPON_METAL_ROUGHNESS_MAX:
-				r = WEAPON_METAL_ROUGHNESS_MAX
-			copy.roughness = r
-			# 略提亮钢面，避免地牢暗光下刀刃发黑
-			copy.albedo_color = Color(
-				minf(copy.albedo_color.r * 1.06, 1.0),
-				minf(copy.albedo_color.g * 1.06, 1.0),
-				minf(copy.albedo_color.b * 1.08, 1.0),
-				copy.albedo_color.a
-			)
-		else:
-			# 握把/木/皮：哑光体素
-			copy.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
-			copy.metallic = 0.0
-			copy.roughness = maxf(source.roughness, 0.75)
+		# 握把/木/皮/晶体：普通受光体素材质。
+		copy.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+		copy.metallic = 0.0
+		copy.roughness = maxf(source.roughness, 0.62)
 	_apply_material_tier_variant(copy, source, material_tier)
 
 
@@ -188,9 +289,10 @@ static func _apply_material_tier_variant(
 	# 盾牌 GLB 的 shield_material_* 名称同时包含木板、皮握把和原生金属硬件；
 	# 只有 wood_* 是木面，铁/钢/陨铁/秘银/精金件必须保留为硬件，
 	# 否则木盾会被整张刷成同一块木色，正背面也失去结构层次。
-	# 魔力晶体和符文颜色是武器身份的一部分，不被材质阶梯抹平。
+	# 魔力晶体和符文颜色是武器身份的一部分，不被材质阶梯抹平；
+	# 但身份来自普通 albedo/texture，不依赖自发光。
 	var material_name := _material_name(source)
-	if source.emission_enabled or material_name.contains("magic") or material_name.contains("rune"):
+	if material_name.contains("magic") or material_name.contains("rune"):
 		return
 	var is_shield_embedded := material_name.contains("shield_material_")
 	var is_shield_wood_source := material_name.contains("shield_material_wood_")
@@ -276,6 +378,8 @@ static func _soften_wood_texture(source_texture: Texture2D) -> Texture2D:
 	if source_image == null or source_image.is_empty():
 		return source_texture
 	var softened := source_image.duplicate() as Image
+	if softened.is_compressed():
+		softened.decompress()
 	softened.convert(Image.FORMAT_RGBA8)
 	var anchor := Color(0.48, 0.29, 0.14, 1.0)
 	for y in range(softened.get_height()):
@@ -506,6 +610,8 @@ static func _apply_node(
 	var is_voxel := inherited_voxel or _looks_like_voxel(node) or mode == MODE_WEAPON
 	if node is MeshInstance3D and is_voxel:
 		_apply_mesh(node as MeshInstance3D, shader_profile, mode, material_tier)
+	elif node is MultiMeshInstance3D and is_voxel:
+		_apply_multimesh(node as MultiMeshInstance3D, shader_profile)
 	for child in node.get_children():
 		_apply_node(child, is_voxel, shader_profile, mode, material_tier)
 
@@ -516,10 +622,14 @@ static func _apply_mesh(
 	mode: String,
 	material_tier: String,
 ) -> void:
+	var adapted_any := false
 	var override := _adapt_material(mesh_instance.material_override, shader_profile, mode, material_tier)
 	if override != null:
 		mesh_instance.material_override = override
+		adapted_any = true
 	if mesh_instance.mesh == null:
+		if adapted_any:
+			mesh_instance.set_meta(ADAPTED_META_KEY, true)
 		return
 	for surface_index in range(mesh_instance.mesh.get_surface_count()):
 		var source := mesh_instance.get_surface_override_material(surface_index)
@@ -528,6 +638,34 @@ static func _apply_mesh(
 		var adapted := _adapt_material(source, shader_profile, mode, material_tier)
 		if adapted != null:
 			mesh_instance.set_surface_override_material(surface_index, adapted)
+			adapted_any = true
+	if adapted_any:
+		mesh_instance.set_meta(ADAPTED_META_KEY, true)
+
+
+## 适配 MultiMeshInstance3D 的 material_override。
+## 批量道具（batched decor）通过 MultiMeshInstance3D 渲染，材质以
+## material_override 形式设置。适配前保存原始材质到 meta，供 revert_tree 还原。
+static func _apply_multimesh(
+	mm_instance: MultiMeshInstance3D,
+	shader_profile: Dictionary,
+) -> void:
+	var source: Material = mm_instance.material_override
+	if source == null:
+		return
+	# 保存原始材质（仅首次），供 revert_tree 还原。
+	if not mm_instance.has_meta(ORIGINAL_MATERIAL_META_KEY):
+		mm_instance.set_meta(ORIGINAL_MATERIAL_META_KEY, source)
+	var adapted := _adapt_material(source, shader_profile)
+	if adapted != null:
+		mm_instance.material_override = adapted
+		mm_instance.set_meta(ADAPTED_META_KEY, true)
+	else:
+		# 开关关闭且 source 为 StandardMaterial3D：_adapt_material 返回 null。
+		# 恢复原始材质，清除适配标记。
+		mm_instance.material_override = mm_instance.get_meta(ORIGINAL_MATERIAL_META_KEY) as Material
+		if mm_instance.has_meta(ADAPTED_META_KEY):
+			mm_instance.remove_meta(ADAPTED_META_KEY)
 
 
 static func _adapt_material(
@@ -537,10 +675,17 @@ static func _adapt_material(
 	material_tier: String = "",
 ) -> Material:
 	if source is ShaderMaterial:
+		# ShaderMaterial 始终 duplicate 并同步 pixel_lighting_enabled 标志，
+		# 无论开关是否开启。关闭时 apply_shader_profile 会写入 0.0 使
+		# dungeon_terrain.gdshader 的 light() 回退到标准 Lambert。
 		var shader_copy := source.duplicate() as ShaderMaterial
 		apply_shader_profile(shader_copy, shader_profile)
 		return shader_copy
 	if source is StandardMaterial3D:
+		# 开关关闭时跳过 StandardMaterial3D 的 toon 转换，返回 null
+		# 使 _apply_mesh 不设置 override、不标记 ADAPTED_META_KEY。
+		if not _pixel_shader_enabled:
+			return null
 		return adapt_standard_material(source as StandardMaterial3D, mode, material_tier)
 	# source 为 null 时不创建默认白色材质：保留网格无材质状态，
 	# 避免给无材质的网格套上白色 StandardMaterial3D。

@@ -5,6 +5,7 @@ extends GdUnitTestSuite
 const PICKABLE_PATH := "res://scenes/equipment/pickable_item.tscn"
 const CAPTURE_TOOL := "res://tools/dungeon_material_visual_capture.gd"
 const PROCEDURAL_CAPTURE_TOOL := "res://tools/dungeon_procedural_material_visual_capture.gd"
+const REAL_OVERVIEW_CAPTURE_TOOL := "res://tools/dungeon_real_overview_capture.gd"
 const PROCEDURAL_OVERVIEW_PATH := "res://reports/dungeon_materials_preview/dungeon_procedural_materials_overview.png"
 const OVERVIEW_PATH := "res://reports/dungeon_materials_preview/dungeon_materials_overview.png"
 const MATERIAL_MODELS := preload("res://data/material_model_registry.gd")
@@ -106,6 +107,15 @@ func test_procedural_capture_tool_companion_exists() -> void:
 		var img := Image.new()
 		assert_int(img.load(PROCEDURAL_OVERVIEW_PATH)).is_equal(OK)
 		assert_int(img.get_width()).is_greater_equal(320)
+
+
+func test_real_overview_capture_uses_production_dungeon_lighting() -> void:
+	assert_bool(FileAccess.file_exists(REAL_OVERVIEW_CAPTURE_TOOL)).is_true()
+	var source := FileAccess.get_file_as_string(REAL_OVERVIEW_CAPTURE_TOOL)
+	assert_str(source).not_contains("DungeonCaptureFill")
+	assert_str(source).not_contains("_configure_capture_lighting")
+	assert_str(source).contains("DUNGEON_SCENE.instantiate()")
+	assert_str(source).contains("dungeon_real_exploration.png")
 
 
 func _count_meshes(node: Node) -> int:

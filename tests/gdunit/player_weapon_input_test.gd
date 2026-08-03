@@ -21,10 +21,13 @@ func test_pickup_state_equips_weapon_data_from_pickable_item() -> void:
 
 
 func test_pickup_state_checks_equip_weapon_return_value() -> void:
-	# 回归测试：装备失败时不应销毁物品，应回退到移动状态
+	# 回归测试：装备失败时不应销毁物品，应回退到移动状态。
+	# 生产代码以 equipped_ok 局部变量承接返回值并检查（护甲/武器分支共用同一失败路径）。
 	var source := _source("res://scenes/characters/player/state/player_state_picking_up.gd")
-	assert_bool(source.contains("not player.equipment.equip_weapon")) \
-		.override_failure_message("拾取状态必须检查 equip_weapon 返回值，失败时不销毁物品").is_true()
+	assert_bool(source.contains("equipped_ok = player.equipment.equip_weapon")) \
+		.override_failure_message("拾取状态必须检查 equip_weapon 返回值").is_true()
+	assert_bool(source.contains("if not equipped_ok:")) \
+		.override_failure_message("装备失败时不得继续（不销毁物品）").is_true()
 	assert_bool(source.contains("transition_state(Player.State.MOVING)")) \
 		.override_failure_message("装备失败应回退到移动状态").is_true()
 
@@ -237,7 +240,10 @@ func test_network_attack_is_sent_on_release_not_press() -> void:
 	var network_body := source.substr(network_start, network_end - network_start)
 	assert_bool(network_body.contains("_network_primary_attack_held = true")).is_true()
 	assert_bool(network_body.contains("not player.is_weapon_action_held(\"action\")")).is_true()
-	assert_bool(network_body.contains("drv.send_attack(0, atk_type)")).is_true()
+	# P0-2：客户端不再自报 attack_type（服务器从权威 loadout 派生），只提交意图。
+	assert_bool(network_body.contains("drv.send_attack(0)")).is_true()
+	assert_bool(network_body.contains("atk_type")).is_false() \
+		.override_failure_message("联机攻击意图不得再携带客户端自报的 attack_type")
 
 
 func test_aiming_changes_camera_fov_and_can_reset() -> void:

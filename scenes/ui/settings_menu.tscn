@@ -106,6 +106,16 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "显示 FPS"
 
+[node name="PixelShaderCheck" type="CheckButton" parent="CenterContainer/Panel/Margin/VBox" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
+text = "像素着色"
+
+[node name="CameraImpactCheck" type="CheckButton" parent="CenterContainer/Panel/Margin/VBox" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
+text = "镜头冲击"
+
 [node name="LanguageTitle" type="Label" parent="CenterContainer/Panel/Margin/VBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 34

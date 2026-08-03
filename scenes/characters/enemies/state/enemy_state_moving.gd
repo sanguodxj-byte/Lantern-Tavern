@@ -27,11 +27,16 @@ func _enter_tree() -> void:
 
 func _physics_process(delta: float) -> void:
 	var ai_active := enemy.is_ai_active()
-	enemy.refresh_navigation_avoidance()
 	if not ai_active:
-		_patrol(delta)
-		enemy.process_movement(delta)
+		# 远距未交战敌人属于流式物理壳：保留 CharacterBody3D 供命中/暗蚀唤醒，
+		# 但不巡逻、不刷新 RVO/NavigationAgent，也不每物理帧 move_and_slide。
+		# 只有尚未落地、受击或被投掷时才继续最小物理步进，避免悬空或击退冻结。
+		enemy.stop_navigation()
+		_play_animation("idle")
+		if _requires_idle_physics_step():
+			enemy.process_movement(delta)
 		return
+	enemy.refresh_navigation_avoidance()
 	if enemy.should_chase_player():
 		_chase_player(delta)
 	else:

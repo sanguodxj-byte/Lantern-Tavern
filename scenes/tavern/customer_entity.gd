@@ -10,6 +10,10 @@ var seat_marker: Marker3D
 var _state: String = "walking"  # walking / seated / leaving
 var _chat_label: Label3D
 var _chat_timer: float = 0.0
+## 生成器引用（spawner 注入，供服务触发器定位座位与结算）
+var spawner: Node = null
+## 服务触发器（3D 酿酒流程：手持盛酒器时对准顾客交互）
+var serve_trigger: Node = null
 
 # 满意度台词池（策划案 12 §5.2，四档情绪反差强烈）
 const LINES_PERFECT := ["神迹！这股香醇彻底征服了我！不虚此生！"]
@@ -24,6 +28,20 @@ const LINES_ENTER := ["来一杯。", "老板，上酒。", "今晚生意不错�
 
 func _ready() -> void:
 	_setup_chat_label()
+	_setup_serve_trigger()
+
+## 挂载服务触发器：静态碰撞体（LAYER_SCENE_OBJECT），
+## 玩家盛酒器对准已落座顾客时显示"端上酒杯"提示并可交互。
+func _setup_serve_trigger() -> void:
+	var trigger := StaticBody3D.new()
+	trigger.name = "ServeTrigger"
+	trigger.set_script(load("res://scenes/tavern/brewing/customer_serve_trigger.gd"))
+	add_child(trigger)
+	serve_trigger = trigger
+
+## 由 CustomerSpawner 注入自身引用。
+func assign_spawner(node: Node) -> void:
+	spawner = node
 
 func _setup_chat_label() -> void:
 	_chat_label = Label3D.new()

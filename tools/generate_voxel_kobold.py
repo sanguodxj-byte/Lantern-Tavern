@@ -170,12 +170,12 @@ def _build_palette() -> dict[str, bpy.types.Material]:
         "skin_tan": make_material("skin_tan", (0.80, 0.62, 0.38, 1.0), roughness=0.5),
         "bone_white": make_material("bone_white", (0.85, 0.82, 0.72, 1.0), roughness=0.4),
         "nose_black": make_material("nose_black", (0.05, 0.05, 0.05, 1.0), roughness=0.8),
-        "eye_red_glow": make_material("eye_red_glow", (1.00, 0.15, 0.05, 1.0), roughness=0.1, emission=4.0),
+        "eye_red_glow": make_material("eye_red_glow", (1.00, 0.15, 0.05, 1.0), roughness=0.1),
         "leather_brown": make_material("leather_brown", (0.35, 0.20, 0.10, 1.0), roughness=0.8),
         "leather_dark": make_material("leather_dark", (0.18, 0.11, 0.06, 1.0), roughness=0.85),
         "candle_wax_mat": make_material("candle_wax_mat", (0.92, 0.88, 0.75, 1.0), roughness=0.3),
-        "flame_orange": make_material("flame_orange", (1.00, 0.45, 0.05, 1.0), roughness=0.1, emission=4.5),
-        "flame_yellow": make_material("flame_yellow", (1.00, 0.85, 0.20, 1.0), roughness=0.1, emission=6.0),
+        "flame_orange": make_material("flame_orange", (1.00, 0.45, 0.05, 1.0), roughness=0.1),
+        "flame_yellow": make_material("flame_yellow", (1.00, 0.85, 0.20, 1.0), roughness=0.1),
     }
 
 

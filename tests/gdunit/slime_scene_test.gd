@@ -5,7 +5,7 @@ const RIG_PATH := "res://assets/meshes/characters/voxel_slime_24px_rig.glb"
 const CLAW_PATH := "res://data/weapons/claw.tres"
 
 const EXPECTED_BONES := [
-	"Root", "Torso", "Head", "Face", "Core", "Pseudopod.L", "Pseudopod.R",
+	"Root", "GelBase", "Torso", "Head", "Crown", "Face", "Core", "Pseudopod.L", "Pseudopod.R",
 ]
 
 const EXPECTED_ANIMATIONS := [

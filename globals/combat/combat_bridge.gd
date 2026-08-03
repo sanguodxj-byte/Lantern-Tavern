@@ -7,6 +7,7 @@ const CE := preload("res://globals/combat/combat_engine.gd")
 const ME := preload("res://globals/combat/milestone_effects.gd")
 const SPE := preload("res://globals/combat/style_passive_effects.gd")
 const AR := preload("res://globals/combat/armor_resolver.gd")
+const AttackContextFactory := preload("res://globals/combat/attack_context_factory.gd")
 
 # 旧 ShieldData 或测试替身没有战斗字段时的兼容回退。
 const DEFAULT_SHIELD_BLOCK_VALUE: int = 3
@@ -65,28 +66,19 @@ static func _apply_style_passives_to_attack(attack: CE.AttackInput, ctx: Diction
 ##     "accumulation_bonus": float,    # 蓄势累积伤害
 ##     "is_full_charge": bool }        # 满蓄力释放
 static func build_player_attack(player: Node3D, weapon, main_hand_type: String, off_hand_type: String, attacker_attrs: Dictionary, attacker_level: int, is_backstab: bool = false, skill: Dictionary = {}, style_context: Dictionary = {}) -> CE.AttackInput:
-	var attack := CE.AttackInput.new()
-	attack.attacker_str = int(attacker_attrs.get("str", 10))
-	attack.attacker_dex = int(attacker_attrs.get("dex", 10))
-	attack.attacker_mag = int(attacker_attrs.get("mag", 10))
-	attack.attacker_con = int(attacker_attrs.get("con", 10))
-	attack.attacker_agi = int(attacker_attrs.get("agi", 10))
-	attack.attacker_per = int(attacker_attrs.get("per", 10))
-	attack.attacker_level = attacker_level
-	main_hand_type = _resolve_main_hand_type(weapon, main_hand_type)
-	attack.style = CE.determine_style(main_hand_type, off_hand_type)
-	attack.attack_type = _resolve_attack_type(weapon, main_hand_type)
-	attack.is_backstab = is_backstab
-	if weapon != null:
-		_apply_weapon_to_attack(attack, weapon)
-	else:
-		# 徒手：低基础伤害（确定性，正常攻击无击退）
-		attack.weapon_damage_dice = {"count": 1, "sides": 4}
-		attack.weapon_damage_flat = 0.0
-		attack.weapon_damage_mult = 1.0
+	# 攻击装配唯一真相：AttackContextFactory（架构审查 P0-2）。
+	# 属性/武器/风格/攻击类型/伤害输入全部经同一纯逻辑构造器派生，
+	# 与服务器权威路径（SessionRoot → AttackContextFactory.build_from_player_state）共用一套装配，
+	# 保证单机与联机得到相同的武器骰、流派、attack_type 与射程语义。
+	var ctx := AttackContextFactory.build_from_components(weapon, main_hand_type, off_hand_type, attacker_attrs, attacker_level)
+	ctx.is_backstab = is_backstab
+	ctx.style_context = style_context
+	var attack := AttackContextFactory.to_attack_input(ctx)
+	# 以下层是单机特有的技能/里程碑/熟练度/流派被动运行时修正（读取本地 autoload）。
 	_apply_skill_to_attack(attack, skill)
-	_apply_milestones_to_attack(attack, main_hand_type, skill)
+	_apply_milestones_to_attack(attack, ctx.main_hand_type, skill)
 	_apply_style_passives_to_attack(attack, style_context)
+	_apply_proficiency_to_attack(attack, weapon)
 	return attack
 
 ## 从敌人武器构造攻方输入（敌人属性用默认值，策划案未给敌人属性面板）
@@ -191,7 +183,9 @@ static func resolve_player_attack(player: Node3D, enemy: Node3D, weapon, main_ha
 	var forward := Vector3(0, 0, -1)
 	if player != null:
 		forward = -player.global_transform.basis.z.normalized()
-	return CE.resolve_attack(attack, defender, forward)
+	var result := CE.resolve_attack(attack, defender, forward)
+	result.proficiency_key = get_weapon_proficiency_key(weapon)
+	return result
 
 ## 敌人攻击玩家结算
 static func resolve_enemy_attack(enemy: Node3D, player: Node3D, weapon, defender_attrs: Dictionary, player_has_shield: bool) -> CE.DamageResult:
@@ -220,7 +214,9 @@ static func resolve_projectile_attack(source: Node3D, enemy: Node3D, weapon, mai
 				shield_resource = _get_equipment_shield_resource(eq)
 	var defender := build_enemy_defender(enemy, has_shield, shield_resource)
 	var forward := attack_forward.normalized() if attack_forward.length() > 0.01 else Vector3(0, 0, -1)
-	return CE.resolve_attack(attack, defender, forward)
+	var result := CE.resolve_attack(attack, defender, forward)
+	result.proficiency_key = get_weapon_proficiency_key(weapon)
+	return result
 
 # ============================================================================
 # 4. 朝向判定辅助（策划案 §4 背袭/侧击加成）
@@ -322,6 +318,22 @@ static func _apply_milestones_to_attack(attack: CE.AttackInput, main_hand_type: 
 		attack.base_damage_bonus_percent += ME.two_hand_damage_mult_bonus(true) * 100.0
 	if is_spell and _has_bound_passive_skill("魔力涌动"):
 		attack.base_damage_bonus_percent += 5.0
+
+
+## 注入武器熟练度阶梯加成（docs/36-出身系统与涌现式Build.md §3）。
+## 从 AttrPanel autoload 读取当前熟练度阶梯，应用到 AttackInput。
+static func _apply_proficiency_to_attack(attack: CE.AttackInput, weapon) -> void:
+	var prof_key: String = get_weapon_proficiency_key(weapon)
+	if prof_key == "" or prof_key == "unarmed":
+		return
+	var ap = Engine.get_main_loop().root.get_node_or_null("AttrPanel")
+	if ap == null or not ap.has_method("get_proficiency_bonus"):
+		return
+	var bonus: Dictionary = ap.get_proficiency_bonus(prof_key)
+	if bonus.is_empty():
+		return
+	attack.proficiency_damage_mult = float(bonus.get("damage_mult", 1.0))
+	attack.proficiency_crit_bonus = float(bonus.get("crit_bonus", 0.0))
 
 
 static func _apply_skill_to_attack(attack: CE.AttackInput, skill: Dictionary) -> void:

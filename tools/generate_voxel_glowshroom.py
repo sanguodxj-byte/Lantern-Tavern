@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -35,15 +35,66 @@ MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "warped emissive blue cave mushroom with vented cap"
 
 
+# Glowshroom pixel palette: bioluminescent blues, pale stalk, spore white.
+# Each material owns its own seed/pattern; no shared identity table.
+_DEEP_BLUE = (0.08, 0.28, 0.62, 1.0)
+_MID_BLUE = (0.14, 0.48, 0.86, 1.0)
+_RIM_CYAN = (0.42, 0.82, 1.0, 1.0)
+_SPORE_WHITE = (0.78, 0.94, 1.0, 1.0)
+_STALK_PALE = (0.72, 0.82, 0.88, 1.0)
+_PURPLE_SHADOW = (0.18, 0.08, 0.38, 1.0)
+_VIOLET_ACCENT = (0.42, 0.18, 0.62, 1.0)
+
+
 def build_glowshroom():
-    stalk_pale = make_material("gs_stalk_pale", (0.72, 0.82, 0.88, 1.0), roughness=0.78)
-    stalk_cool = make_material("gs_stalk_cool", (0.48, 0.62, 0.74, 1.0), roughness=0.84)
-    stalk_shadow = make_material("gs_stalk_shadow", (0.28, 0.38, 0.48, 1.0), roughness=0.90)
-    cap_deep = make_material("gs_cap_deep", (0.08, 0.28, 0.62, 1.0), roughness=0.55, emission=0.4)
-    cap_mid = make_material("gs_cap_mid", (0.14, 0.48, 0.86, 1.0), roughness=0.48, emission=1.0)
-    cap_rim = make_material("gs_cap_rim", (0.42, 0.82, 1.0, 1.0), roughness=0.32, emission=2.6)
-    gill = make_material("gs_gill", (0.55, 0.78, 0.95, 1.0), roughness=0.42, emission=1.2)
-    spore = make_material("gs_spore", (0.78, 0.94, 1.0, 1.0), roughness=0.28, emission=3.0)
+    stalk_pale = make_pixel_material(
+        "gs_stalk_pale", (0.72, 0.82, 0.88, 1.0),
+        roughness=0.75, palette=(_STALK_PALE, _MID_BLUE, _PURPLE_SHADOW),
+        pixel_size=48, variation=0.40, seed=201, pattern="vein",
+        normal_strength=1.2, edge_darken=0.40, highlight=0.25, detail_noise=0.15,
+    )
+    stalk_cool = make_pixel_material(
+        "gs_stalk_cool", (0.48, 0.62, 0.74, 1.0),
+        roughness=0.80, palette=(_MID_BLUE, _DEEP_BLUE, _VIOLET_ACCENT),
+        pixel_size=48, variation=0.42, seed=211, pattern="vein",
+        normal_strength=1.3, edge_darken=0.42, highlight=0.20, detail_noise=0.15,
+    )
+    stalk_shadow = make_pixel_material(
+        "gs_stalk_shadow", (0.28, 0.38, 0.48, 1.0),
+        roughness=0.85, palette=(_DEEP_BLUE, _MID_BLUE, _PURPLE_SHADOW),
+        pixel_size=48, variation=0.42, seed=223, pattern="cracks",
+        normal_strength=1.4, edge_darken=0.50, highlight=0.15, detail_noise=0.18,
+    )
+    cap_deep = make_pixel_material(
+        "gs_cap_deep", (0.08, 0.28, 0.62, 1.0),
+        roughness=0.50, palette=(_DEEP_BLUE, _RIM_CYAN, _VIOLET_ACCENT),
+        pixel_size=48, variation=0.40, seed=233, pattern="scales",
+        normal_strength=1.4, edge_darken=0.35, highlight=0.45, detail_noise=0.15,
+    )
+    cap_mid = make_pixel_material(
+        "gs_cap_mid", (0.14, 0.48, 0.86, 1.0),
+        roughness=0.42, palette=(_MID_BLUE, _RIM_CYAN, _SPORE_WHITE, _VIOLET_ACCENT),
+        pixel_size=48, variation=0.42, seed=239, pattern="scales",
+        normal_strength=1.4, edge_darken=0.32, highlight=0.50, detail_noise=0.15,
+    )
+    cap_rim = make_pixel_material(
+        "gs_cap_rim", (0.42, 0.82, 1.0, 1.0),
+        roughness=0.28, palette=(_RIM_CYAN, _SPORE_WHITE),
+        pixel_size=48, variation=0.42, seed=241, pattern="speckle",
+        normal_strength=1.0, edge_darken=0.25, highlight=0.70, detail_noise=0.12,
+    )
+    gill = make_pixel_material(
+        "gs_gill", (0.55, 0.78, 0.95, 1.0),
+        roughness=0.38, palette=(_RIM_CYAN, _SPORE_WHITE, _PURPLE_SHADOW),
+        pixel_size=48, variation=0.40, seed=251, pattern="porous",
+        normal_strength=1.0, edge_darken=0.40, highlight=0.35, detail_noise=0.15,
+    )
+    spore = make_pixel_material(
+        "gs_spore", (0.78, 0.94, 1.0, 1.0),
+        roughness=0.22, palette=(_SPORE_WHITE, _RIM_CYAN),
+        pixel_size=48, variation=0.42, seed=257, pattern="speckle",
+        normal_strength=0.8, edge_darken=0.15, highlight=0.80, detail_noise=0.10,
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
 

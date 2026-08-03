@@ -116,6 +116,8 @@ func test_start_expedition_enters_dungeon() -> void:
 		.override_failure_message("TavernManager 缺少 start_expedition()").is_true()
 	assert_bool(source.contains('_go_to_world_space("dungeon")')) \
 		.override_failure_message("start_expedition 应进入地牢空间").is_true()
+	assert_bool(source.contains("reset_dungeon_floor")) \
+		.override_failure_message("新远征必须从 L1 开始").is_true()
 
 func test_zone_select_triggers_start_expedition() -> void:
 	var script = load("res://scenes/ui/zone_select.gd") as GDScript

@@ -83,6 +83,10 @@ func tick(delta: float) -> void:
 	if not target_visible and memory_remaining <= 0.0 and target != null:
 		clear()
 
+func has_pending_memory() -> bool:
+	return target != null and (not is_instance_valid(target) \
+		or (not target_visible and memory_remaining > 0.0))
+
 func clear() -> void:
 	target = null
 	target_visible = false

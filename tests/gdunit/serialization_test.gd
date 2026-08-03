@@ -70,44 +70,58 @@ func test_game_state_serialize_contains_all_fields() -> void:
 	gs.carried_materials = {"blackberry": 3}
 	gs.carried_weapons = 5
 	var data: Dictionary = gs.serialize()
-	assert_bool(data.has("carried_materials")).is_true()
-	assert_bool(data.has("carried_runes")).is_true()
-	assert_bool(data.has("carried_equipment")).is_true()
+	assert_bool(data.has("dungeon_floor")).is_true()
+	assert_bool(data.has("expedition_inventory")).is_true()
+	assert_bool(data.has("equipment_loadout")).is_true()
+	assert_bool(data.has("spell_loadout")).is_true()
 	assert_bool(data.has("carried_weapons")).is_true()
 	assert_bool(data.has("carried_shields")).is_true()
-	assert_bool(data.has("weapon_slot_ids")).is_true()
-	assert_bool(data.has("armor_slot_ids")).is_true()
-	assert_bool(data.has("active_weapon_slot")).is_true()
-	assert_bool(data.has("carried_space_limit")).is_true()
+	var inventory: Dictionary = data["expedition_inventory"]
+	assert_bool(inventory.has("materials")).is_true()
+	assert_bool(inventory.has("runes")).is_true()
+	assert_bool(inventory.has("equipment")).is_true()
+	assert_bool(inventory.has("space_limit")).is_true()
 
 func test_game_state_deserialize_restores_state() -> void:
 	var gs1: Node = auto_free(GS_SCRIPT.new())
 	gs1.carried_materials = {"rat_tail": 5}
+	gs1.carried_runes = {"ember": 1, "force": 1, "launch": 1}
+	gs1.refresh_spell_rune_inventory()
+	gs1.spell_loadout.set_rune(0, 0, "ember")
+	gs1.spell_loadout.set_rune(0, 1, "force")
+	gs1.spell_loadout.set_rune(0, 2, "launch")
 	gs1.carried_equipment = {"axe": 2}
 	gs1.carried_weapons = 3
 	gs1.weapon_slot_ids[0] = "axe"
 	gs1.weapon_slot_ids[2] = "shield"
 	gs1.active_weapon_slot = 0
+	gs1.set_dungeon_floor(3)
 	var data: Dictionary = gs1.serialize()
 
 	var gs2: Node = auto_free(GS_SCRIPT.new())
 	gs2.deserialize(data)
 	assert_int(int(gs2.carried_materials.get("rat_tail", 0))).is_equal(5)
+	assert_int(int(gs2.carried_runes.get("ember", 0))).is_equal(1)
+	assert_array(gs2.spell_loadout.get_runes(0)).is_equal(["ember", "force", "launch"])
+	assert_str(String(gs2.spell_loadout.get_spell(0).get("id", ""))).is_equal("spell_fireball")
 	assert_int(int(gs2.carried_equipment.get("axe", 0))).is_equal(2)
 	assert_int(gs2.carried_weapons).is_equal(3)
 	assert_str(gs2.weapon_slot_ids[0]).is_equal("axe")
 	assert_str(gs2.weapon_slot_ids[2]).is_equal("shield")
 	assert_int(gs2.active_weapon_slot).is_equal(0)
+	assert_str(gs2.get_dungeon_floor_label()).is_equal("L3")
 
 func test_game_state_reset_state() -> void:
 	var gs: Node = auto_free(GS_SCRIPT.new())
 	gs.carried_materials = {"blackberry": 10}
 	gs.carried_weapons = 5
 	gs.weapon_slot_ids[0] = "sword"
+	gs.set_dungeon_floor(4)
 	gs.reset_state()
 	assert_bool(gs.carried_materials.is_empty()).is_true()
 	assert_int(gs.carried_weapons).is_equal(0)
 	assert_str(gs.weapon_slot_ids[0]).is_empty()
+	assert_str(gs.get_dungeon_floor_label()).is_equal("L1")
 
 # ---------- FermentationSystem serialize/deserialize ----------
 

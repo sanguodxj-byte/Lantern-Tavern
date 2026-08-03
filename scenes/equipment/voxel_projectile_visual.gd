@@ -8,6 +8,7 @@ extends Node3D
 ## 所有体素盒通过面接触组成单一附着组件，无正体积重叠。
 
 const PX := 1.0 / 32.0  # 1px = 1/32m
+const VOXEL_LIGHTING := preload("res://globals/visual/voxel_lighting_adapter.gd")
 
 ## 投射物类型：arrow（长弓箭矢）/ bolt（弩箭）
 @export var projectile_kind: String = "arrow"
@@ -203,16 +204,18 @@ static func _bolt_boxes() -> Array[Dictionary]:
 # 材质缓存
 # ============================================================================
 
-## 获取共享的 StandardMaterial3D（toon 着色），按 color+metallic+roughness 复用
+## 获取共享的 StandardMaterial3D，按 color+metallic+roughness+像素开关 复用
 static func _get_material(color: Color, metallic: float, roughness: float) -> StandardMaterial3D:
-	var key := "%s_%.2f_%.2f" % [color.to_html(), metallic, roughness]
+	var pixel_on := VOXEL_LIGHTING.is_pixel_shader_enabled()
+	var key := "%s_%.2f_%.2f_%d" % [color.to_html(), metallic, roughness, 1 if pixel_on else 0]
 	if _mat_cache.has(key):
 		return _mat_cache[key]
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
 	mat.metallic = metallic
 	mat.roughness = roughness
-	mat.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
-	mat.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+	if pixel_on:
+		mat.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
+		mat.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	_mat_cache[key] = mat
 	return mat

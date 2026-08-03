@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,12 +34,50 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "four-petal pale mist flower with glowing center"
 
+# Mistflower pixel palette: luminous pale blues, misty whites, vivid glowing
+# cyan center, deep teal shadows, pale green stem.
+# Each material owns its own seed/pattern; no shared identity table.
+_MIST_WHITE = (0.82, 0.90, 0.96, 1.0)
+_PETAL_BLUE = (0.48, 0.58, 0.78, 1.0)
+_PETAL_DEEP = (0.28, 0.38, 0.58, 1.0)
+_CENTER_GLOW = (0.45, 0.90, 1.0, 1.0)
+_STEM_GREEN = (0.30, 0.52, 0.28, 1.0)
+_GLOW_WHITE = (0.90, 0.98, 1.0, 1.0)
+_CYAN_HOT = (0.30, 0.95, 0.95, 1.0)
+_VIOLET_SHADE = (0.35, 0.25, 0.55, 1.0)
+
+
 def build_model():
-    petal = make_material("mf_petal", (0.78, 0.85, 0.92, 1.0), roughness=0.55)
-    petal_dark = make_material("mf_dark", (0.55, 0.62, 0.75, 1.0), roughness=0.60)
-    center = make_material("mf_center", (0.55, 0.85, 1.0, 1.0), roughness=0.35, emission=1.5)
-    stem = make_material("mf_stem", (0.35, 0.55, 0.32, 1.0), roughness=0.82)
-    glow = make_material("mf_glow", (0.85, 0.95, 1.0, 1.0), roughness=0.25, emission=2.2)
+    petal = make_pixel_material(
+        "mf_petal", (0.82, 0.90, 0.96, 1.0),
+        roughness=0.30, palette=(_MIST_WHITE, _GLOW_WHITE, _PETAL_BLUE, _CYAN_HOT),
+        pixel_size=48, variation=0.38, seed=2401, pattern="crystal", normal_strength=1.1,
+        edge_darken=0.3, highlight=0.5, detail_noise=0.15,
+    )
+    petal_dark = make_pixel_material(
+        "mf_dark", (0.48, 0.58, 0.78, 1.0),
+        roughness=0.38, palette=(_PETAL_BLUE, _PETAL_DEEP, _VIOLET_SHADE, _MIST_WHITE),
+        pixel_size=48, variation=0.40, seed=2413, pattern="crystal", normal_strength=1.2,
+        edge_darken=0.3, highlight=0.5, detail_noise=0.15,
+    )
+    center = make_pixel_material(
+        "mf_center", (0.45, 0.90, 1.0, 1.0),
+        roughness=0.18, palette=(_CENTER_GLOW, _CYAN_HOT, _GLOW_WHITE, _MIST_WHITE),
+        pixel_size=48, variation=0.42, seed=2425, pattern="speckle", normal_strength=1.0,
+        edge_darken=0.3, highlight=0.5, detail_noise=0.15,
+    )
+    stem = make_pixel_material(
+        "mf_stem", (0.30, 0.52, 0.28, 1.0),
+        roughness=0.72, palette=(_STEM_GREEN, _PETAL_DEEP, _CENTER_GLOW, _VIOLET_SHADE),
+        pixel_size=48, variation=0.40, seed=2437, pattern="cracks", normal_strength=1.3,
+        edge_darken=0.3, highlight=0.5, detail_noise=0.15,
+    )
+    glow = make_pixel_material(
+        "mf_glow", (0.90, 0.98, 1.0, 1.0),
+        roughness=0.12, palette=(_GLOW_WHITE, _CYAN_HOT, _CENTER_GLOW),
+        pixel_size=48, variation=0.38, seed=2449, pattern="speckle", normal_strength=0.9,
+        edge_darken=0.3, highlight=0.5, detail_noise=0.15,
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
     def add(name, center, size, material):

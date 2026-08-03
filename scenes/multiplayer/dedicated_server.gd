@@ -10,8 +10,9 @@ extends Node
 ##   5. 每帧驱动 NetworkManager.tick（服务器时钟 / 断线清理 / 快照节流 flush / 心跳超时）；
 ##   6. 全部玩家离开后可选自动关服（idle 空闲超时）。
 ##
-## 权威地牢仅需 layout（seed→出生点）来放置权威实体；移动为纯数学积分
-## （MovementAuthority.integrate_position）不依赖碰撞几何，故用 build_authority_only 跳过场景几何。
+## 权威地牢仅需 layout（seed→出生点）来放置权威实体；P0-2 起专用服务器额外生成
+## 【仅静态碰撞】的轻量地牢（build_authority_collision_only），使服务器移动马达
+## 走 move_and_slide 真实墙体裁决（不再依赖纯数学积分 MovementAuthority.integrate_position）。
 ##
 ## 启动（headless）：
 ##   Godot --headless --path <proj> scenes/multiplayer/dedicated_server.tscn
@@ -95,7 +96,9 @@ func _start_expedition() -> void:
 	_controller.name = "DungeonAuthority"
 	add_child(_controller)
 	# 仅权威地牢状态（无可见几何、无本地 Player）。
-	_controller.build_authority_only(_seed)
+	# P0-2：生成【仅静态碰撞】的轻量地牢表示——服务器移动马达据此做真实墙体裁决
+	# （纯积分回退只在无碰撞世界残留；持续向墙输入不再穿墙）。
+	_controller.build_authority_collision_only(_seed)
 	if _controller.has_method("spawn_server_entities"):
 		_controller.spawn_server_entities()
 	_expedition_started = true

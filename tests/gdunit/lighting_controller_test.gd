@@ -6,8 +6,8 @@ const SCENE_FILE := "res://scenes/tavern/tavern.tscn"
 
 # 编辑器中火把的原始参数（voxel_prop.gd::_build_torch 经 @tool 在编辑器内生成）。
 # 运行时 apply_tavern_profile 会收束这些值，但收束幅度不能过大，否则实机远暗于编辑器。
-const EDITOR_TORCH_ENERGY := 3.4
-const EDITOR_TORCH_RANGE := 11.0
+const EDITOR_TORCH_ENERGY := 1.5
+const EDITOR_TORCH_RANGE := 5.0
 
 
 func _find_first_omni(node: Node) -> OmniLight3D:
@@ -33,6 +33,48 @@ func test_quality_tier_detects_compatibility_renderer() -> void:
 	ProjectSettings.set_setting("rendering/renderer/rendering_method", prev)
 
 
+# ── P1-4：性能预算分档 → 光照质量档映射 ──────────────────────────
+
+func test_quality_tier_to_lighting_maps_budget_tiers() -> void:
+	# PerformanceBudget.QualityTier: FULL=0 / BALANCED=1 / PERFORMANCE=2 / EMERGENCY=3
+	assert_int(LightingController.quality_tier_to_lighting(0)).is_equal(LightingController.Quality.HIGH)
+	assert_int(LightingController.quality_tier_to_lighting(1)).is_equal(LightingController.Quality.MEDIUM)
+	assert_int(LightingController.quality_tier_to_lighting(2)).is_equal(LightingController.Quality.LOW)
+	assert_int(LightingController.quality_tier_to_lighting(3)).is_equal(LightingController.Quality.LOW)
+
+func test_budget_tier_changed_updates_lighting_quality() -> void:
+	# 模拟 PerformanceBudget.quality_tier_changed 信号：GPU 压力上升 → 光照档跟随降档。
+	LightingController.set_quality_tier(LightingController.Quality.HIGH)
+	LightingController._on_budget_tier_changed(2, 0.78)  # PERFORMANCE
+	assert_int(LightingController.get_quality_tier()).is_equal(LightingController.Quality.LOW)
+	LightingController._on_budget_tier_changed(0, 1.0)   # FULL 恢复
+	assert_int(LightingController.get_quality_tier()).is_equal(LightingController.Quality.HIGH)
+
+## P1-2：变档必须重应用【已应用光源】的范围/能量——运行中降档后火把立即跟随新档位。
+func test_budget_tier_change_reapplies_applied_lights() -> void:
+	var root := Node3D.new()
+	var torch := OmniLight3D.new()
+	torch.name = "TorchLight"
+	torch.set_meta("light_role", "torch")
+	torch.omni_range = 11.0
+	torch.light_energy = 3.4
+	root.add_child(torch)
+	add_child(root)
+	# 以 HIGH 应用档案。
+	LightingController.set_quality_tier(LightingController.Quality.HIGH)
+	LightingController.apply_tavern_profile(root)
+	assert_float(torch.omni_range).is_equal_approx(LightingController.TAVERN_TORCH_RANGE[LightingController.Quality.HIGH], 0.01)
+	# 性能预算降档到 LOW → 已应用光源必须被重应用为新档位范围。
+	LightingController._on_budget_tier_changed(2, 0.78)
+	assert_int(LightingController.get_quality_tier()).is_equal(LightingController.Quality.LOW)
+	assert_float(torch.omni_range) \
+		.override_failure_message("变档后已应用火把范围必须跟随新档位（仍为旧档 %.2f）" % torch.omni_range) \
+		.is_equal_approx(LightingController.TAVERN_TORCH_RANGE[LightingController.Quality.LOW], 0.01)
+	# 恢复 HIGH（清理状态，避免影响后续用例）。
+	LightingController._on_budget_tier_changed(0, 1.0)
+	root.free()
+
+
 func test_tavern_profile_tightens_torch_light() -> void:
 	# Arrange
 	LightingController.set_quality_tier(0)  # HIGH
@@ -46,11 +88,11 @@ func test_tavern_profile_tightens_torch_light() -> void:
 	add_child(root)
 	# Act
 	LightingController.apply_tavern_profile(root)
-	# Assert: range收束为酒馆 HIGH 档(6.0)，能量收束为 2.4，并加入闪烁组
-	assert_float(torch.omni_range).is_equal_approx(6.0, 0.01)
-	assert_float(torch.light_energy).is_equal_approx(2.4, 0.01)
+	# Assert: range/energy 收束为酒馆局部光池，并加入闪烁组
+	assert_float(torch.omni_range).is_equal_approx(4.75, 0.01)
+	assert_float(torch.light_energy).is_equal_approx(1.55, 0.01)
 	assert_float(torch.light_specular).is_equal_approx(0.0, 0.001)
-	assert_float(torch.light_color.r - torch.light_color.g).is_less_equal(0.21)
+	assert_float(torch.light_color.r - torch.light_color.g).is_less_equal(0.13)
 	assert_bool(torch.is_in_group("flicker_light")).is_true()
 	root.free()
 
@@ -72,6 +114,22 @@ func test_tavern_profile_disables_specular_for_every_scene_light() -> void:
 
 	assert_float(torch.light_specular).is_equal_approx(0.0, 0.001)
 	assert_float(fill.light_specular).is_equal_approx(0.0, 0.001)
+	root.free()
+
+
+func test_tavern_profile_limits_warm_accent_color_pollution() -> void:
+	var root := Node3D.new()
+	var fireplace := OmniLight3D.new()
+	fireplace.light_color = Color(0.95, 0.62, 0.38, 1.0)
+	fireplace.omni_range = 5.8
+	root.add_child(fireplace)
+	add_child(root)
+
+	LightingController.apply_tavern_profile(root)
+
+	assert_float(fireplace.omni_range).is_equal_approx(4.0, 0.01)
+	assert_float(fireplace.light_color.g).is_greater(0.77)
+	assert_float(fireplace.light_color.b).is_greater(0.62)
 	root.free()
 
 
@@ -156,11 +214,28 @@ func test_tavern_torch_range_not_far_below_editor_all_tiers() -> void:
 			.is_greater_equal(0.35)
 
 
-func test_tavern_torch_energy_below_dungeon_constraint() -> void:
-	# 酒馆火把能量仍须低于地牢可见性约束（energy>=3.2），保持层次差异
+func test_tavern_torch_energy_stays_bounded_for_interior_use() -> void:
+	# 酒馆允许比地牢局部火把稍亮，但仍需限制峰值，避免台面和墙体烧白。
 	assert_float(LightingController.TAVERN_TORCH_ENERGY) \
-		.override_failure_message("酒馆火把能量不应超过地牢约束值 3.2") \
+		.override_failure_message("酒馆火把能量不应超过室内高光预算") \
 		.is_less(3.2)
+
+
+func test_tavern_scene_uses_balanced_neutral_fill() -> void:
+	var tavern := (load(SCENE_FILE) as PackedScene).instantiate()
+	var world_environment := tavern.get_node("WorldEnvironment") as WorldEnvironment
+	var environment := world_environment.environment
+	var directional := tavern.get_node("DirectionalLight3D") as DirectionalLight3D
+
+	assert_float(environment.ambient_light_energy).is_equal_approx(0.58, 0.001)
+	assert_float(environment.ambient_light_color.b - environment.ambient_light_color.r) \
+		.is_less_equal(0.02)
+	assert_float(environment.fog_light_color.r - environment.fog_light_color.b) \
+		.is_greater_equal(-0.04)
+	assert_float(directional.light_energy).is_equal_approx(0.5, 0.001)
+	assert_float(directional.light_color.b - directional.light_color.r).is_less_equal(0.11)
+
+	tavern.free()
 
 
 # ── WYSIWYG 一致性测试：VoxelProp 上下文光照 ───────────────────

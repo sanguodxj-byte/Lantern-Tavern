@@ -49,6 +49,75 @@ func test_accumulate_proficiency_adds_exp() -> void:
 func test_accumulate_level_exp_levels_up() -> void:
 	_ap.accumulate_level_exp(150)
 	assert_int(_ap.get_level()).is_greater_equal(2)
+	assert_int(_ap.get_pending_level_choices()).is_equal(1)
+
+
+func test_level_exp_overflow_queues_every_level_choice() -> void:
+	_ap.reset()
+	var levels_gained: int = _ap.accumulate_level_exp(350)
+	assert_int(levels_gained).is_equal(2)
+	assert_int(_ap.get_level()).is_equal(3)
+	assert_int(_ap.level_exp).is_equal(50)
+	assert_int(_ap.get_pending_level_choices()).is_equal(2)
+
+
+func test_level_up_attribute_increases_exactly_one_stat_and_consumes_choice() -> void:
+	_ap.reset()
+	_ap.accumulate_level_exp(100)
+	var attr_snapshot: Dictionary = _ap.get_player_attrs()
+	assert_bool(_ap.choose_level_up_attribute("con")).is_true()
+	assert_int(_ap.get_attr("con")).is_equal(int(attr_snapshot["con"]) + 1)
+	for key in ["str", "dex", "mag", "agi", "per"]:
+		assert_int(_ap.get_attr(key)).is_equal(int(attr_snapshot[key]))
+	assert_int(_ap.get_pending_level_choices()).is_equal(0)
+
+
+func test_level_up_attribute_rejects_invalid_or_missing_choice() -> void:
+	_ap.reset()
+	assert_bool(_ap.choose_level_up_attribute("str")).is_false()
+	_ap.accumulate_level_exp(100)
+	assert_bool(_ap.choose_level_up_attribute("invalid")).is_false()
+	assert_int(_ap.get_pending_level_choices()).is_equal(1)
+
+
+func test_level_up_rune_candidates_are_stable_unique_and_granted_once() -> void:
+	_ap.reset()
+	_ap.accumulate_level_exp(100)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 24680
+	var first: Array = _ap.begin_level_up_rune_choice(rng)
+	var second: Array = _ap.begin_level_up_rune_choice(RandomNumberGenerator.new())
+	assert_int(first.size()).is_equal(3)
+	assert_array(first).is_equal(second)
+	assert_bool(first[0] != first[1] and first[0] != first[2] and first[1] != first[2]).is_true()
+	var inventory := {}
+	var grant := func(rune_id: String, amount: int) -> bool:
+		inventory[rune_id] = int(inventory.get(rune_id, 0)) + amount
+		return true
+	assert_bool(_ap.choose_level_up_rune(String(first[1]), grant)).is_true()
+	assert_int(int(inventory.get(first[1], 0))).is_equal(1)
+	assert_int(_ap.get_pending_level_choices()).is_equal(0)
+	assert_array(_ap.pending_rune_candidates).is_empty()
+
+
+func test_entering_rune_branch_locks_out_attribute_reward_for_same_level() -> void:
+	_ap.reset()
+	_ap.accumulate_level_exp(100)
+	var candidates: Array = _ap.begin_level_up_rune_choice()
+	assert_int(candidates.size()).is_equal(3)
+	assert_bool(_ap.choose_level_up_attribute("str")).is_false()
+	assert_int(_ap.get_attr("str")).is_equal(5)
+	assert_int(_ap.get_pending_level_choices()).is_equal(1)
+	assert_array(_ap.pending_rune_candidates).is_equal(candidates)
+
+
+func test_failed_rune_grant_does_not_consume_level_choice() -> void:
+	_ap.reset()
+	_ap.accumulate_level_exp(100)
+	var candidates: Array = _ap.begin_level_up_rune_choice()
+	var reject := func(_rune_id: String, _amount: int) -> bool: return false
+	assert_bool(_ap.choose_level_up_rune(String(candidates[0]), reject)).is_false()
+	assert_int(_ap.get_pending_level_choices()).is_equal(1)
 
 
 func test_compute_max_hp_base() -> void:
@@ -86,6 +155,7 @@ func test_check_skill_unlocks_empty_initially() -> void:
 
 
 func test_serialize_deserialize() -> void:
+	_ap.reset()
 	_ap.accumulate_attr("dex", 30)
 	_ap.accumulate_proficiency("bow", 20)
 	_ap.accumulate_level_exp(50)
@@ -98,6 +168,16 @@ func test_serialize_deserialize() -> void:
 	assert_int(ap2.get_level()).is_equal(_ap.get_level())
 
 
+func test_serialize_deserialize_preserves_pending_level_reward() -> void:
+	_ap.reset()
+	_ap.accumulate_level_exp(100)
+	var candidates: Array = _ap.begin_level_up_rune_choice()
+	var ap2 = auto_free(load("res://globals/combat/attr_panel.gd").new())
+	ap2.deserialize(_ap.serialize())
+	assert_int(ap2.get_pending_level_choices()).is_equal(1)
+	assert_array(ap2.pending_rune_candidates).is_equal(candidates)
+
+
 func test_reset_clears_all() -> void:
 	_ap.accumulate_attr("str", 100)
 	_ap.accumulate_proficiency("two_hand", 50)
@@ -105,6 +185,7 @@ func test_reset_clears_all() -> void:
 	assert_int(_ap.get_attr("str")).is_equal(5)
 	assert_int(_ap.get_proficiency("two_hand")).is_equal(0)
 	assert_int(_ap.get_level()).is_equal(1)
+	assert_int(_ap.get_pending_level_choices()).is_equal(0)
 
 
 func test_has_milestone() -> void:

@@ -21,6 +21,7 @@ const NP := preload("res://globals/multiplayer/network_protocol.gd")
 const NetworkManagerClass := preload("res://globals/core/network_manager.gd")
 const DEFAULT_AVATAR := preload("res://scenes/multiplayer/multiplayer_avatar.tscn")
 const DEFAULT_ENTITY := preload("res://scenes/multiplayer/multiplayer_entity.tscn")
+const PixelSpellFxScript := preload("res://fx/pixel_spell_fx.gd")
 
 ## avatar 场景（远端玩家可见节点）。可在场景中 override。
 @export var avatar_scene: PackedScene = DEFAULT_AVATAR
@@ -62,9 +63,16 @@ func _on_peer_authorized(peer_id: int, _context) -> void:
 		return
 	if peer_id == _local_peer_id():
 		return
-	_spawn_local(peer_id, Vector3.ZERO)
+	# 出生位置取服务器权威位置（live_state），保证服务器马达起点/客户端 avatar 起点一致。
+	var start_pos: Vector3 = Vector3.ZERO
+	var nm: Node = _network_manager()
+	if nm != null and nm.session != null and "session" in nm:
+		var ls: Dictionary = nm.session._live_state.get(peer_id, {})
+		if not ls.is_empty() and ls.has("position"):
+			start_pos = ls.get("position", Vector3.ZERO)
+	_spawn_local(peer_id, start_pos)
 	if _can_rpc():
-		rpc_spawn_avatar.rpc(peer_id, Vector3.ZERO)
+		rpc_spawn_avatar.rpc(peer_id, start_pos)
 		# 把【已存在】的远端玩家 avatar 也下发给新接入的客户端，
 		# 实现晚到/重连客户端的“真实场景恢复”——能看到会话中既有玩家（非仅房主）。
 		for existing in _avatars.keys():
@@ -86,8 +94,31 @@ func _spawn_local(peer_id: int, position: Vector3) -> Node3D:
 	av.name = "Avatar_%d" % peer_id
 	av.peer_id = peer_id
 	_container.add_child(av)
-	av.global_position = position
+	# P0-1：avatar 出生位置必须与该 peer 的服务器权威位置一致（live_state），
+	# 否则服务器移动马达从错误起点积分（首次输入帧会把权威位置瞬移回原点附近）。
+	var nm: Node = _network_manager()
+	var start_pos: Vector3 = position
+	if nm != null and nm.session != null and "session" in nm:
+		var ls: Dictionary = nm.session._live_state.get(peer_id, {})
+		if not ls.is_empty() and ls.has("position"):
+			start_pos = ls.get("position", position)
+	# 同步 avatar 脚本的插值目标：avatar._physics_process（含 interp_speed=0 的服务器
+	# 快照吸附）每物理帧把 global_position 写回 target_position，若不设置则出生即回原点。
+	if "target_position" in av:
+		av.target_position = start_pos
+	av.global_position = start_pos
 	_avatars[peer_id] = av
+	# P0-4：服务器侧把远端 avatar 绑定为该 peer 的权威 caster 节点（施法世界效果执行点）。
+	# 自目标效果（heal/barrier/buff）依赖真实 health/buffs 组件，avatar 暂为位置代理，
+	# 世界效果（projectile/ray/area/ground/summon）可权威执行；caster 绑定前服务器
+	# 会在任何资源 commit 前拒绝施法（PLAYER_NOT_READY）。
+	if nm != null and "is_host" in nm and bool(nm.is_host):
+		# P0-1：服务器侧 avatar 是权威移动的物理载体（move_and_slide 碰撞约束），
+		# 关闭本地插值，位置完全由服务器马达产出（快照目标即马达结果，无打架）。
+		if "interp_speed" in av:
+			av.interp_speed = 0.0
+		if nm.session != null:
+			nm.session.bind_player_entity(peer_id, av)
 	return av
 
 ## 客户端收到：实例化对应 peer 的远端 avatar（服务器已本地生成，不再重复）。
@@ -125,6 +156,12 @@ func _on_event(event: Dictionary) -> void:
 					av.apply_snapshot(pos, yaw)
 		NP.EVT_PLAYER_DESPAWNED:
 			_despawn(int(event.get("peer_id", 0)))
+		NP.EVT_SPELL_RESOLVED:
+			PixelSpellFxScript.spawn(_entity_container, {"phase": "cast", "spell_id": event.get("spell_id", ""), "imagery": event.get("imagery", "unknown"), "color": event.get("color", Color.WHITE)}, Vector3(event.get("origin", Vector3.ZERO)), Vector3(event.get("direction", Vector3.FORWARD)))
+			if int(event.get("peer_id", -1)) == _local_peer_id():
+				var local_player := _local_player_node()
+				if local_player != null and "mana" in local_player and local_player.mana != null:
+					local_player.mana.current_mana = clampi(int(event.get("mana_remaining", local_player.mana.current_mana)), 0, local_player.mana.max_mana)
 		NP.EVT_ENTITY_SPAWNED:
 			# 实体事件在服务器/客户端同经 _dispatch_event/rpc_server_event 广播，
 			# 故两端都在此生成可见节点（无需像 avatar 那样单独 RPC）。
@@ -285,11 +322,23 @@ func _apply_extraction_settlement(settlement: Dictionary) -> void:
 	for k in (settlement.get("equipment", {}) as Dictionary).keys():
 		if gs.has_method("add_carried_equipment"):
 			gs.add_carried_equipment(String(k), int((settlement["equipment"] as Dictionary)[k]))
+	# P1-4：联机成长（经验/升级/熟练度）随结算写回单人存档属性面板
+	# （服务器权威快照覆盖本地镜像——联机期间本地面板不累积 XP，覆盖即同步）。
+	if settlement.has("attributes") and settlement["attributes"] is Dictionary:
+		var ap: Node = get_node_or_null("/root/AttrPanel")
+		if ap != null and ap.has_method("deserialize"):
+			ap.deserialize(settlement["attributes"])
 	# 持久化：联机出征结算写入固定槽位 0（垂直切片简化；生产应接当前存档槽位）。
 	var sm: Node = get_node_or_null("/root/SaveManager")
 	if sm != null and sm.has_method("save_to_slot"):
 		sm.save_to_slot(0)
 
 ## 取得 NetworkManager 单例（autoload）。未挂载（纯逻辑单测）时返回 null。
+func _local_player_node() -> Node:
+	var session := get_node_or_null("/root/MultiplayerSession")
+	if session != null and "local_player" in session:
+		return session.local_player
+	return get_tree().get_first_node_in_group("player")
+
 func _network_manager() -> Node:
 	return get_node_or_null("/root/NetworkManager")

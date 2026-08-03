@@ -189,18 +189,62 @@ func _material_highlight_color(id: String) -> Color:
 
 func _rune_highlight_color(id: String) -> Color:
 	match id:
-		"ember":
-			return Color(1.0, 0.35, 0.12)
-		"quick":
-			return Color(0.25, 0.85, 1.0)
-		"force":
-			return Color(0.9, 0.85, 0.35)
-		"echo":
-			return Color(0.75, 0.45, 1.0)
-		"guardian":
-			return Color(0.35, 0.9, 0.55)
-		_:
-			return Color(0.7, 0.55, 1.0)
+		# 元素系
+		"ember": return Color(1.0, 0.32, 0.32)
+		"hima": return Color(0.27, 0.50, 1.0)
+		"vajra": return Color(1.0, 0.92, 0.0)
+		"visha": return Color(0.41, 0.94, 0.68)
+		"jala": return Color(0.0, 0.72, 0.83)
+		"pavana": return Color(0.50, 0.85, 1.0)
+		"bhumi": return Color(0.55, 0.43, 0.39)
+		"tejas": return Color(1.0, 0.70, 0.0)
+		"krishna": return Color(0.19, 0.11, 0.57)
+		"marichi": return Color(1.0, 0.95, 0.46)
+		"kardama": return Color(0.47, 0.33, 0.28)
+		"dhuma": return Color(0.62, 0.62, 0.62)
+		# 战斗系
+		"force": return Color(1.0, 0.57, 0.0)
+		"quick": return Color(0.0, 0.90, 1.0)
+		"surge": return Color(0.46, 1.0, 0.01)
+		"launch": return Color(0.88, 0.25, 0.98)
+		"echo": return Color(1.0, 0.43, 0.25)
+		"guardian": return Color(0.39, 1.0, 0.85)
+		"para": return Color(1.0, 0.54, 0.50)
+		"drava": return Color(0.15, 0.78, 0.85)
+		"spandana": return Color(1.0, 0.44, 0.27)
+		"praghana": return Color(0.40, 0.73, 0.42)
+		"nighata": return Color(0.94, 0.33, 0.31)
+		"bhedana": return Color(0.67, 0.28, 0.74)
+		"aghata": return Color(1.0, 0.79, 0.16)
+		"vikshepa": return Color(0.16, 0.71, 0.95)
+		# 神秘系
+		"ayu": return Color(1.0, 0.50, 0.67)
+		"maya": return Color(0.80, 0.40, 1.0)
+		"prana": return Color(0.94, 0.38, 0.57)
+		"shakti": return Color(1.0, 0.09, 0.27)
+		"vidya": return Color(0.0, 0.75, 0.65)
+		"tapas": return Color(1.0, 0.44, 0.0)
+		"karma": return Color(1.0, 0.84, 0.0)
+		"dharma": return Color(0.0, 0.90, 0.46)
+		"virya": return Color(0.76, 0.09, 0.36)
+		"mantra": return Color(0.48, 0.12, 0.64)
+		"yantra": return Color(0.27, 0.35, 0.39)
+		"chitta": return Color(0.0, 0.67, 0.76)
+		# 黑暗系
+		"mrityu": return Color(0.74, 0.74, 0.74)
+		"kala": return Color(0.49, 0.30, 1.0)
+		"tamas": return Color(0.10, 0.14, 0.49)
+		"raudra": return Color(0.85, 0.27, 0.08)
+		"bhaya": return Color(0.29, 0.08, 0.55)
+		"ghora": return Color(0.51, 0.47, 0.09)
+		"nashana": return Color(0.75, 0.21, 0.05)
+		"vibhatsa": return Color(0.24, 0.15, 0.14)
+		# 神圣系
+		"dipa": return Color(1.0, 0.84, 0.25)
+		"siddhi": return Color(1.0, 0.24, 0.0)
+		"moksha": return Color(0.09, 1.0, 1.0)
+		"amrita": return Color(0.70, 0.87, 0.86)
+		_: return Color(0.7, 0.55, 1.0)
 
 func _find_first_mesh_instance(node: Node) -> MeshInstance3D:
 	if node is MeshInstance3D:

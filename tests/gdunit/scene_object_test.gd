@@ -16,3 +16,10 @@ func test_interact_marks_and_destroys_scene_object() -> void:
 	assert_bool(obj.was_interacted).is_true()
 	assert_bool(obj.is_destroyed).is_true()
 	obj.free()
+
+func test_unnamed_scene_object_is_not_an_interaction_prompt_target() -> void:
+	var obj = SceneObjectScript.new()
+	assert_bool(obj.can_interact()).is_false()
+	obj.interaction_name = "Bar"
+	assert_bool(obj.can_interact()).is_true()
+	obj.free()

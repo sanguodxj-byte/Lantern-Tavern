@@ -213,6 +213,7 @@ func test_is_sideswipe_parallel_not_sideswipe() -> void:
 
 func test_resolve_player_attack_returns_damage_result() -> void:
 	var weapon := _make_weapon(2, 6)
+	weapon.proficiency_key = "sword"
 	var player := _make_dummy_node3d()
 	var enemy := _make_dummy_node3d()
 	enemy.position = Vector3(0, 0, -2)  # 在玩家前方
@@ -221,6 +222,23 @@ func test_resolve_player_attack_returns_damage_result() -> void:
 	var result = CB.resolve_player_attack(player, enemy, weapon, "one_hand_melee", "", attrs, 1)
 	assert_bool(result.hit).is_true()
 	assert_int(result.final_damage).is_greater(0)
+	assert_str(result.proficiency_key).is_equal("sword")
+	player.queue_free()
+	enemy.queue_free()
+
+func test_resolve_projectile_attack_carries_weapon_proficiency_key() -> void:
+	var weapon := _make_weapon(2, 6)
+	weapon.weapon_class = "longbow"
+	weapon.attack_type = "ranged"
+	weapon.proficiency_key = "bow"
+	var player := _make_dummy_node3d()
+	var enemy := _make_dummy_node3d()
+	var attrs := {"str": 10, "dex": 15, "mag": 8, "con": 10, "agi": 10, "per": 10}
+	var result = CB.resolve_projectile_attack(
+		player, enemy, weapon, "longbow", "", attrs, 1, Vector3.FORWARD
+	)
+	assert_str(result.attack_type).is_equal("ranged")
+	assert_str(result.proficiency_key).is_equal("bow")
 	player.queue_free()
 	enemy.queue_free()
 
@@ -338,7 +356,9 @@ func test_skill_modifiers_apply_damage_and_ignore_block() -> void:
 	var attack = CB.build_player_attack(player, spear, "", "", attrs, 1, false, skill)
 	assert_int(attack.style).is_equal(CE.Style.TWO_HAND)
 	assert_bool(attack.ignore_block).is_true()
-	assert_float(attack.weapon_damage_mult).is_equal(1.8)
+	# P1-3：武器伤害倍率 = 技能倍率 × 流派倍率（流派伤害倍率唯一真相在 STYLE_META）。
+	var style_mult: float = float(CE.STYLE_META[CE.Style.TWO_HAND].get("damage_mult", 1.0))
+	assert_float(attack.weapon_damage_mult).is_equal_approx(1.8 * style_mult, 0.001)
 	player.queue_free()
 
 func test_ranged_milestones_apply_to_attack_input() -> void:

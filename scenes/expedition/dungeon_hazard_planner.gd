@@ -28,6 +28,8 @@ func plan(layout: DungeonLayout) -> void:
 	if layout.is_empty():
 		return
 	var used_cells: Array[Vector2i] = []
+	var rng := RandomNumberGenerator.new()
+	rng.seed = layout.seed ^ 0x48415A
 	# 关键点禁放区：出生格、撤离格、宝箱格、boss 格（安全先就）
 	var forbidden := _collect_forbidden_cells(layout)
 	# 喘息房：最靠近出生点的若干普通房设为无陷阱（按房间 index 存），制造节奏对比
@@ -43,7 +45,7 @@ func plan(layout: DungeonLayout) -> void:
 		var candidates := _collect_hazard_candidates_for_room(layout, room)
 		if candidates.is_empty():
 			continue
-		candidates.shuffle()
+		_shuffle_with_rng(candidates, rng)
 		var room_target_count := _get_hazard_anchor_count_for_room(room, candidates.size())
 		var room_spawned := 0
 		var room_index := _find_room_index(layout, room)
@@ -126,6 +128,13 @@ func _collect_hazard_candidates_for_room(layout: DungeonLayout, room: Rect2i) ->
 			if lane_dir != Vector2i.ZERO:
 				candidates.append({"cell": cell, "dir": lane_dir})
 	return candidates
+
+func _shuffle_with_rng(values: Array, rng: RandomNumberGenerator) -> void:
+	for index in range(values.size() - 1, 0, -1):
+		var swap_index := rng.randi_range(0, index)
+		var value: Variant = values[index]
+		values[index] = values[swap_index]
+		values[swap_index] = value
 
 func _get_hazard_anchor_count_for_room(room: Rect2i, candidate_count: int) -> int:
 	if candidate_count <= 0:

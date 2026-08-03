@@ -396,8 +396,9 @@ func test_minotaur_rig_source_locks_unique_armature_17_bones_and_20_actions() ->
 	var source := FileAccess.get_file_as_string(GENERATOR_PATH)
 	assert_str(source).contains('create_voxel_humanoid_armature(height_px=72.0, name="Armature")')
 	assert_str(source).contains("parent_parts_by_bone(parts_by_bone, armature)")
-	assert_str(source).contains("build_all_actions(armature)")
-	assert_str(source).contains("build_weapon_actions(armature)")
+	assert_str(source).contains("MOTION_PROFILE = HumanoidMotionProfile(")
+	assert_str(source).contains("build_all_actions(armature, MOTION_PROFILE)")
+	assert_str(source).contains("build_weapon_actions(armature, MOTION_PROFILE)")
 	assert_str(source).contains("bpy.data.objects.remove(root, do_unlink=True)")
 	assert_str(source).not_contains("armature.parent = root")
 	assert_bool(source.find("bpy.data.objects.remove(root, do_unlink=True)") < source.find("export_rig_glb(RIG_OUTPUT)")) \

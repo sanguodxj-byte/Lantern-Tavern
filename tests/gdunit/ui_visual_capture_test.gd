@@ -5,6 +5,8 @@ const TAVERN_UI_SCENE := preload("res://scenes/ui/tavern_ui.tscn")
 const EQUIPMENT_SCENE := preload("res://scenes/ui/tavern_equipment_panel.tscn")
 const COMBAT_HUD_SCENE := preload("res://scenes/ui/combat_hud.tscn")
 const EXPEDITION_HUD_SCENE := preload("res://scenes/ui/expedition_hud.tscn")
+const ATTR_PANEL_SCRIPT := preload("res://globals/combat/attr_panel.gd")
+const GAME_STATE_SCRIPT := preload("res://globals/core/game_state.gd")
 const DETAIL_POPUP_SCRIPT := preload("res://scenes/ui/equipment_detail_popup.gd")
 const CAPTURE_DIR := "res://reports/ui_audit"
 const CAPTURE_PREFIX := "after"
@@ -34,6 +36,7 @@ func test_capture_current_project_ui() -> void:
 	await _capture_equipment(false)
 	await _capture_equipment(true)
 	await _capture_combat_hud()
+	await _capture_level_up_panel()
 
 
 func _capture_main_menu() -> void:
@@ -137,6 +140,42 @@ func _capture_combat_hud() -> void:
 	remove_child(combat_hud)
 	combat_hud.queue_free()
 	await _remove_capture_node(stage)
+
+
+func _capture_level_up_panel() -> void:
+	var stage := _create_stage(Color(0.035, 0.037, 0.043, 1.0))
+	var backdrop := MAIN_MENU_SCENE.instantiate() as Control
+	stage.add_child(backdrop)
+	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for hidden_path in ["SidePanel", "Subtitle", "VersionLabel", "Title"]:
+		(backdrop.get_node(hidden_path) as Control).visible = false
+	var combat_hud := COMBAT_HUD_SCENE.instantiate() as CanvasLayer
+	add_child(combat_hud)
+	await _wait_frames(12)
+	combat_hud.hp_bar.set_values(78, 100)
+	combat_hud.mp_bar.set_values(42, 70)
+	combat_hud.update_pressure({
+		"clock_minutes": 17 * 60 + 24,
+		"threat_level": 64.0,
+		"pressure_band": "leave_soon",
+	})
+	combat_hud.combat_log.push_entry("升级奖励已就绪", Color(1.0, 0.76, 0.32))
+	var attrs: Node = ATTR_PANEL_SCRIPT.new()
+	var game_state: Node = GAME_STATE_SCRIPT.new()
+	var panel: LevelUpPanel = combat_hud.level_up_panel
+	panel.configure(attrs, game_state)
+	attrs.accumulate_level_exp(100)
+	await _wait_frames(8)
+	_save_viewport("level_up_attribute")
+	attrs.begin_level_up_rune_choice()
+	panel.refresh()
+	await _wait_frames(6)
+	_save_viewport("level_up_runes")
+	remove_child(combat_hud)
+	combat_hud.queue_free()
+	await _remove_capture_node(stage)
+	attrs.free()
+	game_state.free()
 
 
 func _seed_equipment_panel(panel: Control) -> void:

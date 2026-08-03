@@ -16,6 +16,7 @@ func test_model_primitives_are_mechanical_and_have_no_authored_body_or_registry(
 		"def reset_scene(",
 		"def face_attachment_center(",
 		"def make_material(",
+		"def make_pixel_material(",
 		"def cube_px(",
 		"def make_root(",
 		"def validate_face_attached_assembly(",
@@ -53,6 +54,32 @@ func test_real_3d_render_names_cannot_overwrite_structural_projections() -> void
 	assert_str(source).not_contains('f"{stem}_{view}.png"')
 	for view in ["preview", "front", "side", "top"]:
 		assert_str(source).contains('"%s"' % view)
+
+
+func test_pixel_material_helper_is_mechanical_and_caller_driven() -> void:
+	# make_pixel_material must take a caller-supplied palette + seed (no baked
+	# model identity table) and emit nearest-filtered textures.
+	var source := _source(PRIMITIVES_PATH)
+	assert_str(source).contains("def make_pixel_material(")
+	assert_str(source).contains("palette:")
+	assert_str(source).contains("seed:")
+	assert_str(source).contains("pixel_size:")
+	assert_str(source).contains("Closest")
+	# cube_px must remap each face to the full 0..1 UV square so procedural
+	# pixel-art textures are sampled across the whole face, not a 0.25 corner.
+	assert_str(source).contains("_face_corners")
+	assert_str(source).contains("uv_layers")
+	# No model identity may leak into the mechanical helper.
+	for forbidden_marker in ["soul_gem", "dragon_scale", "glowshroom", "SG_PALETTE"]:
+		assert_str(source) \
+			.override_failure_message("pixel helper leaked model identity: %s" % forbidden_marker) \
+			.not_contains(forbidden_marker)
+
+
+func test_cube_px_uv_mapping_comment_documents_full_face_coverage() -> void:
+	var source := _source(PRIMITIVES_PATH)
+	# The UV remap must be documented as full 0..1 coverage per face.
+	assert_str(source).contains("full 0..1 UV square")
 
 
 func test_humanoid_action_module_has_no_model_paths_import_rebuilder_or_mixed_species() -> void:

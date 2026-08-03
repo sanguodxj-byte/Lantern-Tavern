@@ -23,6 +23,7 @@ const CMD_INPUT := "input_frame"
 const CMD_INTERACT := "request_interact"
 const CMD_ATTACK := "request_attack"
 const CMD_SKILL := "request_skill"
+const CMD_CAST_SPELL := "request_cast_spell"
 const CMD_EQUIP := "request_equip"
 const CMD_DROP := "request_drop_item"
 const CMD_PICKUP := "request_pickup"
@@ -32,6 +33,8 @@ const CMD_EXTRACT := "request_extract"
 const CMD_SAVE := "request_save"
 const CMD_LEAVE := "request_leave"
 const CMD_RESUME := "request_resume"
+const CMD_LEVEL_UP_CHOICE := "request_level_up_choice"
+const CMD_LEVEL_UP_RUNE_CANDIDATES := "request_level_up_rune_candidates"
 
 ## ---- 服务器事件类型（§12.3）----
 const EVT_SESSION_READY := "session_ready"
@@ -47,6 +50,7 @@ const EVT_COMBAT_RESOLVED := "combat_resolved"
 const EVT_INVENTORY_CHANGED := "inventory_changed"
 const EVT_EQUIPMENT_CHANGED := "equipment_changed"
 const EVT_SKILL_STATE_CHANGED := "skill_state_changed"
+const EVT_SPELL_RESOLVED := "spell_resolved"
 const EVT_SPACE_SNAPSHOT := "space_snapshot"
 const EVT_SESSION_SNAPSHOT := "session_snapshot"
 const EVT_DUNGEON_LAYOUT := "dungeon_layout"
@@ -54,6 +58,8 @@ const EVT_WORLD_REVISION_CHANGED := "world_revision_changed"
 const EVT_COMMAND_REJECTED := "command_rejected"
 const EVT_SERVER_MESSAGE := "server_message"
 const EVT_EXTRACTION_RESULT := "extraction_result"
+const EVT_PROGRESSION_CHANGED := "progression_changed"
+const EVT_PROGRESSION_RUNE_CANDIDATES := "progression_rune_candidates"
 
 ## ---- 统一错误码（§12.4）----
 const ERR_INVALID_PROTOCOL := "INVALID_PROTOCOL"
@@ -78,20 +84,24 @@ const ERR_RECONNECT_TOKEN_EXPIRED := "RECONNECT_TOKEN_EXPIRED"
 const ERR_RECONNECT_PEER_UNKNOWN := "RECONNECT_PEER_UNKNOWN"
 const ERR_RECONNECT_GUID_NOT_FOUND := "RECONNECT_GUID_NOT_FOUND"
 const ERR_ATTACK_NOT_FACING := "ATTACK_NOT_FACING"
+## P0-1：在线重复身份（两个 ONLINE peer 使用同一 player_guid）必须拒绝。
+const ERR_DUPLICATE_IDENTITY := "DUPLICATE_IDENTITY"
 
 ## 是否为合法客户端命令类型
 static func is_valid_command(cmd: String) -> bool:
 	return cmd in [CMD_JOIN, CMD_READY, CMD_SPAWN, CMD_INPUT, CMD_INTERACT, CMD_ATTACK,
-		CMD_SKILL, CMD_EQUIP, CMD_DROP, CMD_PICKUP,
-		CMD_EXPEDITION, CMD_REQUEST_LAYOUT, CMD_EXTRACT, CMD_SAVE, CMD_LEAVE, CMD_RESUME]
+		CMD_SKILL, CMD_CAST_SPELL, CMD_EQUIP, CMD_DROP, CMD_PICKUP,
+		CMD_EXPEDITION, CMD_REQUEST_LAYOUT, CMD_EXTRACT, CMD_SAVE, CMD_LEAVE, CMD_RESUME,
+		CMD_LEVEL_UP_CHOICE, CMD_LEVEL_UP_RUNE_CANDIDATES]
 
 ## 是否为合法服务器事件类型
 static func is_valid_event(evt: String) -> bool:
 	return evt in [EVT_SESSION_READY, EVT_PLAYER_JOINED, EVT_PLAYER_SPAWNED, EVT_PLAYER_DESPAWNED,
 		EVT_PLAYER_SNAPSHOT, EVT_ENTITY_SPAWNED, EVT_ENTITY_DESPAWNED, EVT_ENTITY_SNAPSHOT,
 		EVT_INTERACTION_RESULT, EVT_COMBAT_RESOLVED, EVT_INVENTORY_CHANGED, EVT_EQUIPMENT_CHANGED,
-		EVT_SKILL_STATE_CHANGED,
-		EVT_SPACE_SNAPSHOT, EVT_SESSION_SNAPSHOT, EVT_DUNGEON_LAYOUT, EVT_WORLD_REVISION_CHANGED, EVT_COMMAND_REJECTED, EVT_SERVER_MESSAGE, EVT_EXTRACTION_RESULT]
+		EVT_SKILL_STATE_CHANGED, EVT_SPELL_RESOLVED,
+		EVT_SPACE_SNAPSHOT, EVT_SESSION_SNAPSHOT, EVT_DUNGEON_LAYOUT, EVT_WORLD_REVISION_CHANGED, EVT_COMMAND_REJECTED, EVT_SERVER_MESSAGE, EVT_EXTRACTION_RESULT,
+		EVT_PROGRESSION_CHANGED, EVT_PROGRESSION_RUNE_CANDIDATES]
 
 ## 构造协议头（§12.1）
 static func make_header(protocol_version: int, world_revision: int, client_tick: int, sequence: int) -> Dictionary:

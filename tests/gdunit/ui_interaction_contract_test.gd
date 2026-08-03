@@ -63,6 +63,7 @@ func test_page_base_closes_on_escape_and_tab_before_child_focus_navigation() -> 
 		if not OS.has_feature("web") and DisplayServer.get_name() != "headless":
 			assert_int(Input.get_mouse_mode()).is_equal(Input.MOUSE_MODE_CAPTURED)
 	screen.queue_free()
+	await await_idle_frame()
 
 
 func test_clickable_overlay_sources_restore_captured_mouse_on_exit() -> void:
@@ -164,6 +165,7 @@ func test_character_name_prompt_can_cancel_with_escape_or_tab() -> void:
 
 
 func test_equipment_hover_exit_hides_detail_popup_at_runtime() -> void:
+	get_tree().root.set_meta("equipment_capture_mode", true)
 	var host := Control.new()
 	host.size = Vector2(1920, 1080)
 	add_child(host)
@@ -185,9 +187,12 @@ func test_equipment_hover_exit_hides_detail_popup_at_runtime() -> void:
 	equipment_slot.call("_on_mouse_exited")
 	assert_bool(popup.visible).is_false()
 	host.queue_free()
+	await await_idle_frame()
+	get_tree().root.remove_meta("equipment_capture_mode")
 
 
 func test_equipment_escape_and_tab_close_and_recapture_mouse() -> void:
+	get_tree().root.set_meta("equipment_capture_mode", true)
 	var host := Control.new()
 	host.size = Vector2(1920, 1080)
 	add_child(host)
@@ -205,6 +210,8 @@ func test_equipment_escape_and_tab_close_and_recapture_mouse() -> void:
 		if DisplayServer.get_name() != "headless" and not OS.has_feature("web"):
 			assert_int(Input.get_mouse_mode()).is_equal(Input.MOUSE_MODE_CAPTURED)
 	host.queue_free()
+	await await_idle_frame()
+	get_tree().root.remove_meta("equipment_capture_mode")
 
 
 func test_check_for_selection_hides_popup_when_character_panel_visible() -> void:

@@ -47,6 +47,11 @@ func _fire_projectile() -> void:
 	if projectile == null:
 		push_warning("PlayerStateShooting: 投射物生成失败（weapon_class=%s）" % weapon.weapon_class)
 		return
+	# 符文之语「回响之语」：额外发射一枚投射物（轻微偏角）
+	if player.has_mechanism_passive("rune_word_extra_projectile"):
+		var extra_transform := spawn_transform
+		extra_transform.basis = extra_transform.basis.rotated(Vector3.UP, deg_to_rad(5.0))
+		ps.spawn_for_weapon(weapon, extra_transform, player)
 	# 武器耐久磨损（射击时消耗，非命中时）
 	player.equipment.apply_weapon_damage(WEAPON_CONDITION_WEAR)
 	# 射击音效：区分弓和弩

@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scenes/ui/combat_hud.gd" id="1_hud"]
 [ext_resource type="Script" path="res://scenes/ui/minimap.gd" id="2_mini"]
@@ -11,6 +11,8 @@
 [ext_resource type="Texture2D" uid="uid://b28rngnslxysr" path="res://assets/textures/tick.png" id="10_tick"]
 [ext_resource type="Script" path="res://scenes/ui/shield_bar.gd" id="12_shield"]
 [ext_resource type="Theme" path="res://scenes/ui/lantern_theme.tres" id="13_theme"]
+[ext_resource type="Script" path="res://scenes/ui/large_map.gd" id="14_lmap"]
+[ext_resource type="PackedScene" path="res://scenes/ui/level_up_panel.tscn" id="15_level_up"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_time_panel"]
 bg_color = Color(0.03529412, 0.0372549, 0.04313725, 0.88)
@@ -189,16 +191,17 @@ anchors_preset = 0
 offset_left = 0.0
 offset_top = 106.0
 offset_right = 320.0
-offset_bottom = 142.0
+offset_bottom = 146.0
 script = ExtResource("3_pbar")
-bar_color = Color(0.85, 0.15, 0.12, 1)
+bar_kind = 0
+bar_color = Color(0.827451, 0.227451, 0.196078, 1)
 
 [node name="Label" type="Label" parent="BottomLeft/HPBar"]
 layout_mode = 0
-offset_left = 10.0
-offset_top = 8.0
-offset_right = 310.0
-offset_bottom = 32.0
+offset_left = 58.0
+offset_top = 9.0
+offset_right = 306.0
+offset_bottom = 33.0
 theme_override_fonts/font = ExtResource("7_font")
 theme_override_font_sizes/font_size = 18
 text = "HP  100 / 100"
@@ -210,16 +213,17 @@ anchors_preset = 0
 offset_left = 0.0
 offset_top = 64.0
 offset_right = 320.0
-offset_bottom = 100.0
+offset_bottom = 104.0
 script = ExtResource("3_pbar")
-bar_color = Color(0.2, 0.35, 0.9, 1)
+bar_kind = 1
+bar_color = Color(0.145098, 0.521569, 0.847059, 1)
 
 [node name="Label" type="Label" parent="BottomLeft/MPBar"]
 layout_mode = 0
-offset_left = 10.0
-offset_top = 8.0
-offset_right = 310.0
-offset_bottom = 32.0
+offset_left = 58.0
+offset_top = 9.0
+offset_right = 306.0
+offset_bottom = 33.0
 theme_override_fonts/font = ExtResource("7_font")
 theme_override_font_sizes/font_size = 18
 text = "MP  100 / 100"
@@ -231,9 +235,9 @@ unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 0
 offset_left = 0.0
-offset_top = 22.0
+offset_top = 20.0
 offset_right = 320.0
-offset_bottom = 58.0
+offset_bottom = 60.0
 script = ExtResource("12_shield")
 shield_type = 1
 
@@ -243,19 +247,15 @@ unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 0
 offset_left = 0.0
-offset_top = -20.0
+offset_top = -24.0
 offset_right = 320.0
 offset_bottom = 16.0
 script = ExtResource("12_shield")
 shield_type = 0
 
 ; ============================================================================
-; BottomLeftExtras：远端旧版 (commit 77a30b1b) 的耐久度容器。
-; 整块上移到 BuffContainer 上方,避免耐久度与 Buff 倒数文字/盾条重合。
-;   BuffContainer 顶 ≈ 屏幕高-260, 底 ≈ 屏幕高-176(包含 20 像素计时条 + 文字)
-;   BottomLeftExtras 顶 = 屏幕高-500, 底 = 屏幕高-432
-;   两者间距 = (屏幕高-260) - (屏幕高-432) = 172px gap(充足分离)
-; 武器图标 y=0..32，耐久 y=8..24；盾牌图标 y=36..68，耐久 y=44..60。
+; 耐久状态组：作为左下状态轨的一部分，紧凑排列在 Buff 行上方。
+; 默认安全区：底部 18px、左侧 20px；不再使用远离主状态区的 -500px 偏移。
 ; ============================================================================
 [node name="BottomLeftExtras" type="Control" parent="."]
 layout_mode = 3
@@ -263,10 +263,11 @@ anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 20.0
-offset_top = -500.0
+offset_top = -416.0
 offset_right = 240.0
-offset_bottom = -432.0
+offset_bottom = -348.0
 grow_vertical = 0
+mouse_filter = 2
 theme = ExtResource("13_theme")
 texture_filter = 1
 
@@ -301,19 +302,86 @@ offset_right = 208.0
 offset_bottom = 60.0
 
 ; ============================================================================
-; Buff 容器：耐久度下方,法术护盾上方,作为状态显示行。
-;   顶端 = BottomLeft 顶 - 148 = 屏幕高-160 + (-148) = 屏幕高-308
-;   底端 = BottomLeft 顶 - 64  = 屏幕高-160 + (-64)  = 屏幕高-224
-;   BuffContainer 实际高度 84 = 64(图标) + 20(计时文字)
-;   与 MagicShieldBar 顶端(屏幕高-180)间距 44 像素,倒数文字与盾条不再重叠。
-; 与 BottomLeftExtras 底端(屏幕高-432)间距 124 像素,耐久度与 Buff 不再重叠。
+; Buff 状态组：耐久度下方、法术护盾上方，保持 24px 以上安全间距。
 ; ============================================================================
-[node name="BuffContainer" type="HBoxContainer" parent="BottomLeft" unique_name_in_owner = true]
-unique_name_in_owner = true
+[node name="BuffPanel" type="PanelContainer" parent="BottomLeft"]
 layout_mode = 1
 anchors_preset = 0
 offset_left = 0.0
 offset_top = -148.0
 offset_right = 320.0
 offset_bottom = -64.0
+mouse_filter = 2
+theme_type_variation = &"HUDGroup"
+
+[node name="BuffContainer" type="HBoxContainer" parent="BottomLeft/BuffPanel" unique_name_in_owner = true]
+unique_name_in_owner = true
+layout_mode = 2
 theme_override_constants/separation = 8
+
+; 角色等级经验：位于底部技能栏正上方，不与左下生命/护盾状态轨重叠。
+[node name="BottomCenterExperience" type="PanelContainer" parent="."]
+layout_mode = 3
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -220.0
+offset_top = -160.0
+offset_right = 220.0
+offset_bottom = -128.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme = ExtResource("13_theme")
+theme_type_variation = &"HUDGroup"
+
+[node name="ContentRow" type="HBoxContainer" parent="BottomCenterExperience"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="LevelLabel" type="Label" parent="BottomCenterExperience/ContentRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(86, 28)
+theme_type_variation = &"StatusBadge"
+text = "等级 1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ExperienceBar" type="ProgressBar" parent="BottomCenterExperience/ContentRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(338, 28)
+size_flags_horizontal = 3
+mouse_filter = 2
+max_value = 100.0
+show_percentage = false
+
+[node name="ExperienceLabel" type="Label" parent="BottomCenterExperience/ContentRow/ExperienceBar"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+text = "经验 0 / 100"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+; ============================================================================
+; LargeMap：M键大地图——小地图的放大版本，显示整个已探索地牢。
+; 全屏覆盖层，默认隐藏，mouse_filter=IGNORE 不拦截游戏鼠标输入。
+; 放在最后确保绘制于所有战斗 HUD 元素之上。
+; ============================================================================
+[node name="LargeMap" type="Control" parent="."]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("14_lmap")
+
+[node name="LevelUpPanel" parent="." instance=ExtResource("15_level_up")]

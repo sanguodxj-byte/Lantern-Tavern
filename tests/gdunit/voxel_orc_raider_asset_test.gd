@@ -53,10 +53,10 @@ func test_voxel_orc_raider_static_and_rig_exist() -> void:
 	assert_bool(FileAccess.file_exists(RIG_PATH)) \
 		.override_failure_message("missing orc rig glb").is_true()
 	for image_name in [
-		"voxel_orc_raider_preview.png",
-		"voxel_orc_raider_front.png",
-		"voxel_orc_raider_side.png",
-		"voxel_orc_raider_top.png",
+		"voxel_orc_raider_render_preview.png",
+		"voxel_orc_raider_render_front.png",
+		"voxel_orc_raider_render_side.png",
+		"voxel_orc_raider_render_top.png",
 	]:
 		assert_bool(FileAccess.file_exists("res://reports/characters_preview/%s" % image_name)) \
 			.override_failure_message("missing orc preview: " + image_name).is_true()
@@ -106,6 +106,20 @@ func test_voxel_orc_raider_rig_validates_and_keeps_semantic_parts() -> void:
 	inst.free()
 
 
+func test_voxel_orc_raider_rig_faces_godot_forward() -> void:
+	var inst := (load(RIG_PATH) as PackedScene).instantiate() as Node3D
+	assert_object(inst).is_not_null()
+	var head := inst.find_child("head_main", true, false) as Node3D
+	var nose := inst.find_child("nose_bridge", true, false) as Node3D
+	assert_object(head).is_not_null()
+	assert_object(nose).is_not_null()
+	var facial_forward := _relative_position(nose, inst) - _relative_position(head, inst)
+	assert_float(facial_forward.normalized().z) \
+		.override_failure_message("orc face must point toward Godot -Z") \
+		.is_less(-0.5)
+	inst.free()
+
+
 func test_orc_raider_generator_script_documents_scale_and_workflow() -> void:
 	var source := FileAccess.get_file_as_string("res://tools/generate_voxel_orc_raider.py")
 	assert_bool(source.is_empty()).is_false()
@@ -131,3 +145,12 @@ func _collect_names(node: Node, names: Array[String]) -> void:
 	names.append(node.name)
 	for child in node.get_children():
 		_collect_names(child, names)
+
+
+func _relative_position(node: Node3D, root: Node) -> Vector3:
+	var transform := Transform3D.IDENTITY
+	var current: Node = node
+	while current != root and current is Node3D:
+		transform = (current as Node3D).transform * transform
+		current = current.get_parent()
+	return transform.origin

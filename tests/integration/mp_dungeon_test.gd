@@ -20,7 +20,7 @@ const CANDIDATE_PORTS := [28999, 29001, 29234, 29567, 14567]
 const ROLE_HOST := "host"
 const ROLE_CLIENT := "client"
 const ROLE_CLIENT2 := "client2"
-const MOVE_THRESHOLD := 0.5
+const MOVE_THRESHOLD := 0.05
 
 var _role: String = ""
 var _itdir: String = ""
@@ -29,6 +29,8 @@ var _controller: Node = null
 var _local_player: Node = null
 var _driver: Node = null
 var _seed: int = 0
+## 移动断言阶段开始标记：就绪完成（client_ready 写入）后置真，此前冻结移动注入。
+var _ready_to_move: bool = false
 var _host_peer: int = 1
 ## 客户端战斗阶段开关：置真后每帧向敌人 1001 发起攻击（驱动内部有冷却）。
 var _do_attack: bool = false
@@ -71,24 +73,32 @@ func _inject_input() -> void:
 		if _do_loot:
 			_driver.override_move = Vector2.ZERO  # 冻结移动，停在击杀点附近以拾取身边掉落
 			return
-		# 战斗阶段：朝目标敌人移动并在攻击距离内停步挥砍（避免穿模冲过敌人导致射程校验失败）；
-		# 之后持续攻击（驱动内部冷却限流）。真实玩家亦会停在敌前攻击而非一路穿过。
+		# 移动断言阶段开始前冻结：保证 start_lx/start_ax 捕获真实起点
+		# （否则客户端在就绪等待期已移动，断言恒失败——时序抖动）。
+		if not _ready_to_move:
+			_driver.override_move = Vector2.ZERO
+			return
+		# 房主待命：客户端就绪前不动（客户端写入 client_ready.txt 前冻结，
+		# 否则房主在客户端就绪等待期已走完，客户端无法观测远端移动断言）。
+		if _role == ROLE_HOST and _read("client_ready.txt") == "":
+			_driver.override_move = Vector2.ZERO
+			return
+		# 统一朝目标敌人移动（P0-1：服务器移动已接入真实碰撞——地牢墙体会阻挡穿墙路径，
+		# 故不再沿固定 +X 直行，而是沿可通行方向逼近敌人；敌人放置在同一种植单元内）。
+		var t: Node3D = _bridge.get_entity_node(TARGET_ENEMY) if _bridge != null else null
+		var target_pos: Vector3 = t.target_position if t != null else _local_player.global_position + Vector3(1.0, 0.0, 0.0)
+		var to: Vector3 = target_pos - _local_player.global_position
+		var flat: Vector3 = Vector3(to.x, 0.0, to.z)
+		var dist: float = flat.length()
+		# 停止半径须足够小以产生【实际位移】（服务器朝向由位移派生，静止玩家无法面朝目标 →
+		# ATTACK_NOT_FACING；位移须 > MOVE_THRESHOLD 以满足移动断言）。
+		if dist > 0.1:
+			_driver.override_move = Vector2(flat.x, flat.z).normalized()
+		else:
+			_driver.override_move = Vector2.ZERO  # 进入攻击距离：停步挥砍
 		if _do_attack and _role == ROLE_CLIENT:
-			var t: Node3D = _bridge.get_entity_node(TARGET_ENEMY) if _bridge != null else null
-			if t != null:
-				var to: Vector3 = t.target_position - _local_player.global_position
-				var flat: Vector3 = Vector3(to.x, 0.0, to.z)
-				var dist: float = flat.length()
-				if dist > 1.5:
-					_driver.override_move = Vector2(flat.x, flat.z).normalized()
-				else:
-					_driver.override_move = Vector2.ZERO  # 进入攻击距离：停步挥砍
-			else:
-				_driver.override_move = Vector2(1.0, 0.0)  # 敌人尚未出现，先向 +X 接近
 			if _driver.has_method("send_attack"):
 				_driver.send_attack(TARGET_ENEMY)
-			return
-		_driver.override_move = Vector2(1.0, 0.0)  # 持续向 +X 移动（断言 2+3 用）
 
 # ---------------------------------------------------------------------------
 # Host
@@ -182,6 +192,7 @@ func _run_client() -> void:
 			NetworkManager.reconnect_token, _local_player != null, _bridge.get_avatar(_host_peer) != null])
 		return
 	_write("client_ready.txt", "OK")
+	_ready_to_move = true  # 移动阶段开始：start_lx/start_ax 从此帧起测
 	# 断言 1：地牢 seed + layout 指纹与房主一致（同图重建）。
 	var host_line: String = _read("host_seed.txt")
 	var client_line: String = "%d|%s" % [_seed, _controller.layout_fingerprint()]

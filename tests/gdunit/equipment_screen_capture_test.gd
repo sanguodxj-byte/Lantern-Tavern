@@ -41,16 +41,18 @@ func test_capture_mode_avoids_full_player_runtime_bootstrap() -> void:
 	assert_bool(capture_source.contains('panel.call("_refresh_equipment_slots")')).is_true()
 
 
-func test_capture_uses_fixed_left_column_layout() -> void:
+func test_capture_uses_responsive_left_column_layout() -> void:
 	var scene_source := FileAccess.get_file_as_string("res://scenes/ui/tavern_equipment_panel.tscn")
 	var panel_source := FileAccess.get_file_as_string("res://scenes/ui/tavern_equipment_panel.gd")
 	assert_bool(scene_source.contains("custom_minimum_size = Vector2(640, 0)")).is_true()
 	assert_bool(scene_source.contains("size_flags_horizontal = 0")).is_true()
 	assert_bool(panel_source.contains("const LEFT_COLUMN_WIDTH := 640.0")).is_true()
+	assert_bool(panel_source.contains("const COMPACT_LEFT_COLUMN_WIDTH := 560.0")).is_true()
 	assert_bool(panel_source.contains("left_column.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN")).is_true()
+	assert_bool(panel_source.contains("COMPACT_LAYOUT_WIDTH")).is_true()
 	var capture_source := FileAccess.get_file_as_string("res://tools/equipment_screen_capture.gd")
 	assert_bool(capture_source.contains("Control.PRESET_TOP_LEFT")).is_true()
 	assert_bool(capture_source.contains("panel.size = Vector2(SIZE)")).is_true()
 	assert_bool(panel_source.contains("func _lock_panel_frame_layout() -> void:")).is_true()
-	assert_bool(panel_source.contains("panel_frame.position = Vector2(20.0, 20.0)")).is_true()
+	assert_bool(panel_source.contains("var safe_margin := 12.0")).is_true()
 	assert_bool(panel_source.contains("func _on_right_tab_changed(_tab_index: int) -> void:")).is_true()

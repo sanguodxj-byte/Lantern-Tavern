@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,11 +34,26 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "murky greenish puddle with scum film and bubble nubs"
 
+# Each material owns its own seed/pattern; no shared identity table.
+# Accent swatches: deep purple shadow on green water, warm amber.
+_DEEP_PURPLE_SHADOW = (0.14, 0.08, 0.20, 1.0)
+_WARM_AMBER = (0.80, 0.50, 0.18, 1.0)
+PALETTE = (
+    (0.28, 0.38, 0.22, 1.0),  # murky green water
+    (0.14, 0.22, 0.12, 1.0),  # dark water deep
+    (0.45, 0.52, 0.28, 1.0),  # scum yellow-green
+    (0.55, 0.62, 0.40, 1.0),  # pale bubble yellow-green
+    (0.20, 0.30, 0.18, 1.0),  # murky green shade
+    (0.38, 0.44, 0.22, 1.0),  # scum yellow mid
+    _DEEP_PURPLE_SHADOW,
+    _WARM_AMBER,
+)
+
 def build_model():
-    water = make_material("sw_water", (0.28, 0.38, 0.22, 1.0), roughness=0.35)
-    deep = make_material("sw_deep", (0.14, 0.22, 0.12, 1.0), roughness=0.42)
-    scum = make_material("sw_scum", (0.45, 0.52, 0.28, 1.0), roughness=0.70)
-    bubble = make_material("sw_bubble", (0.55, 0.62, 0.40, 1.0), roughness=0.30)
+    water = make_pixel_material("sw_water", (0.28, 0.38, 0.22, 1.0), roughness=0.35, palette=PALETTE, pixel_size=48, variation=0.40, seed=1801, pattern="speckle", normal_strength=1.0, edge_darken=0.30, highlight=0.45, detail_noise=0.15)
+    deep = make_pixel_material("sw_deep", (0.14, 0.22, 0.12, 1.0), roughness=0.42, palette=PALETTE, pixel_size=48, variation=0.41, seed=1813, pattern="speckle", normal_strength=1.1, edge_darken=0.35, highlight=0.35, detail_noise=0.15)
+    scum = make_pixel_material("sw_scum", (0.45, 0.52, 0.28, 1.0), roughness=0.70, palette=PALETTE, pixel_size=48, variation=0.39, seed=1825, pattern="speckle", normal_strength=1.2, edge_darken=0.38, highlight=0.30, detail_noise=0.15)
+    bubble = make_pixel_material("sw_bubble", (0.55, 0.62, 0.40, 1.0), roughness=0.30, palette=PALETTE, pixel_size=48, variation=0.40, seed=1837, pattern="speckle", normal_strength=0.8, edge_darken=0.25, highlight=0.50, detail_noise=0.15)
 
     root = make_root(f"materials_{MODEL_ID}")
     def add(name, center, size, material):

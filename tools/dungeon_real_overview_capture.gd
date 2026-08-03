@@ -2,6 +2,7 @@ extends Node3D
 
 const DUNGEON_SCENE := preload("res://scenes/expedition/procedural_dungeon.tscn")
 const OUTPUT_PATH := "res://reports/dungeon_real_overview.png"
+const EXPLORATION_OUTPUT_PATH := "res://reports/dungeon_real_exploration.png"
 const DEFAULT_SEED := 94021
 const IMAGE_SIZE := Vector2i(1600, 1000)
 
@@ -11,241 +12,283 @@ var _had_error := false
 var _capture_room := Rect2i()
 
 func _ready() -> void:
-	call_deferred("_capture")
+vcall_deferred("_capture")
 
 func _capture() -> void:
-	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
-	get_window().size = IMAGE_SIZE
-	var seed_value := _get_int_arg("--seed=", DEFAULT_SEED)
-	_dungeon = DUNGEON_SCENE.instantiate() as ProceduralDungeon
-	if _dungeon == null:
-		_fail("无法实例化生产地牢")
-		_finish(1)
-		return
-	_dungeon.generation_seed = seed_value
-	_dungeon.spawn_population_enabled = true
-	add_child(_dungeon)
-	await _wait_frames(72)
-	if _dungeon.layout == null or _dungeon.build_result == null:
-		_fail("生产地牢未完成生成")
-		_finish(1)
-		return
-	_hide_material_items()
-	_hide_ceilings()
-	_hide_game_hud()
-	_configure_capture_lighting()
-	_disable_game_cameras()
-	var target := _pick_capture_target()
-	var room_span := _pick_capture_span()
-	if not _activate_capture_room(target):
-		_finish(1)
-		return
-	await _wait_frames(8)
-	_hide_ceilings()
-	_force_enemy_visuals()
-	_camera = Camera3D.new()
-	_camera.name = "DungeonCaptureCamera"
-	add_child(_camera)
-	_camera.current = true
-	_camera.cull_mask = 0xFFFFF
-	_camera.projection = Camera3D.PROJECTION_PERSPECTIVE
-	_camera.fov = 58.0
-	_camera.near = 0.05
-	_camera.far = 180.0
-	_camera.global_position = target + Vector3(room_span * 0.72, room_span * 0.62, room_span * 0.86)
-	_camera.look_at(target + Vector3(0.0, 0.25, 0.0), Vector3.UP)
-	await _wait_frames(18)
-	_force_enemy_visuals()
-	if not _save_viewport(OUTPUT_PATH):
-		_finish(1)
-		return
-	print("[DungeonRealOverviewCapture] saved=%s seed=%d enemies=%d hazards=%d focus=%d" % [
-		OUTPUT_PATH,
-		seed_value,
-		_count_nodes_with_meta("enemy_type"),
-		_count_nodes_with_meta("hazard_anchor"),
-		_count_nodes_with_meta("room_focus"),
-	])
-	_finish(0)
+vDisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+vget_window().size = IMAGE_SIZE
+vvar seed_value := _get_int_arg("--seed=", DEFAULT_SEED)
+v_dungeon = DUNGEON_SCENE.instantiate() as ProceduralDungeon
+vif _dungeon == null:
+vv_fail("无法实例化生产地牢")
+vv_finish(1)
+vvreturn
+v_dungeon.generation_seed = seed_value
+v_dungeon.spawn_population_enabled = true
+vadd_child(_dungeon)
+vawait _wait_frames(72)
+vif _dungeon.layout == null or _dungeon.build_result == null:
+vv_fail("生产地牢未完成生成")
+vv_finish(1)
+vvreturn
+v_hide_material_items()
+v_hide_ceilings()
+v_hide_game_hud()
+v_disable_game_cameras()
+vvar target := _pick_capture_target()
+vvar room_span := _pick_capture_span()
+vif not _activate_capture_room(target):
+vv_finish(1)
+vvreturn
+vawait _wait_frames(8)
+v_hide_ceilings()
+v_force_enemy_visuals()
+v_camera = Camera3D.new()
+v_camera.name = "DungeonCaptureCamera"
+vadd_child(_camera)
+v_camera.current = true
+v_camera.cull_mask = 0xFFFFF
+v_camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+v_camera.fov = 58.0
+v_camera.near = 0.05
+v_camera.far = 180.0
+v_camera.global_position = target + Vector3(room_span * 0.72, room_span * 0.62, room_span * 0.86)
+v_camera.look_at(target + Vector3(0.0, 0.25, 0.0), Vector3.UP)
+vawait _wait_frames(18)
+v_force_enemy_visuals()
+vif not _save_viewport(OUTPUT_PATH):
+vv_finish(1)
+vvreturn
+vif not await _save_exploration_view():
+vv_finish(1)
+vvreturn
+vprint("[DungeonRealOverviewCapture] saved=%s exploration=%s seed=%d enemies=%d hazards=%d focus=%d" % [
+vvOUTPUT_PATH,
+vvEXPLORATION_OUTPUT_PATH,
+vvseed_value,
+vv_count_nodes_with_meta("enemy_type"),
+vv_count_nodes_with_meta("hazard_anchor"),
+vv_count_nodes_with_meta("room_focus"),
+v])
+v_finish(0)
+
+func _save_exploration_view() -> bool:
+vvar wall_bay := _find_capture_room_wall_bay()
+vif wall_bay == null:
+vv_fail("截图目标房间没有墙龛，无法生成探索视角")
+vvreturn false
+vvar cell: Vector2i = wall_bay.get_meta("wall_cell", Vector2i(-1, -1))
+vvar direction: Vector2i = wall_bay.get_meta("wall_direction", Vector2i.ZERO)
+vif cell.x < 0 or direction == Vector2i.ZERO:
+vv_fail("墙龛缺少有效的格坐标或朝向元数据")
+vvreturn false
+vvar wall_plane := _cell_to_world(cell) + Vector3(float(direction.x), 0.0, float(direction.y)) * _dungeon.layout.tile_size * 0.5
+vvar inward := -Vector3(float(direction.x), 0.0, float(direction.y))
+vvar tangent := Vector3(float(-direction.y), 0.0, float(direction.x))
+v_camera.fov = 64.0
+v_camera.global_position = wall_plane + inward * 6.2 + tangent * 1.35 + Vector3.UP * 1.55
+v_camera.look_at(wall_plane + inward * 0.72 + Vector3.UP * 1.28, Vector3.UP)
+vawait _wait_frames(18)
+vreturn _save_viewport(EXPLORATION_OUTPUT_PATH)
+
+func _find_capture_room_wall_bay() -> Node3D:
+vvar anchor_cell := Vector2i(-1, -1)
+vfor node in _walk(_dungeon):
+vvif bool(node.get_meta("room_light_anchor", false)) \
+vvvvand int(node.get_meta("room_index", -1)) == _capture_room_index():
+vvvanchor_cell = node.get_meta("wall_cell", Vector2i(-1, -1))
+vvvbreak
+vvar best_bay: Node3D = null
+vvar best_distance := INF
+vfor node in _walk(_dungeon):
+vvif not node is Node3D or not bool(node.get_meta("wall_architecture", false)):
+vvvcontinue
+vvvar cell: Vector2i = node.get_meta("wall_cell", Vector2i(-1, -1))
+vvif not _capture_room.has_point(cell):
+vvvcontinue
+vvvar distance := 0.0 if anchor_cell.x < 0 else float(abs(cell.x - anchor_cell.x) + abs(cell.y - anchor_cell.y))
+vvif distance < best_distance:
+vvvbest_distance = distance
+vvvbest_bay = node as Node3D
+vreturn best_bay
+
+func _capture_room_index() -> int:
+vfor room_index in range(_dungeon.layout.rooms.size()):
+vvif _dungeon.layout.rooms[room_index] == _capture_room:
+vvvreturn room_index
+vreturn -1
 
 func _activate_capture_room(target: Vector3) -> bool:
-	var player := GameState.current_player as Node3D
-	if player == null or not is_instance_valid(player):
-		_fail("生产地牢没有有效的当前玩家，无法激活截图目标 chunk")
-		return false
-	player.global_position = target + Vector3(0.0, 0.85, 0.0)
-	if player is CharacterBody3D:
-		(player as CharacterBody3D).velocity = Vector3.ZERO
-	if _dungeon.streaming_controller == null or not is_instance_valid(_dungeon.streaming_controller):
-		_fail("生产地牢没有流送控制器，无法激活截图目标 chunk")
-		return false
-	_dungeon.streaming_controller.set_player(player)
-	_dungeon.streaming_controller.update_streaming(true)
-	return true
+vvar player := GameState.resolve_player_node(0) as Node3D
+vif player == null or not is_instance_valid(player):
+vv_fail("生产地牢没有有效的当前玩家，无法激活截图目标 chunk")
+vvreturn false
+vplayer.global_position = target + Vector3(0.0, 0.85, 0.0)
+vif player is CharacterBody3D:
+vv(player as CharacterBody3D).velocity = Vector3.ZERO
+vif _dungeon.streaming_controller == null or not is_instance_valid(_dungeon.streaming_controller):
+vv_fail("生产地牢没有流送控制器，无法激活截图目标 chunk")
+vvreturn false
+v_dungeon.streaming_controller.set_player(player)
+v_dungeon.streaming_controller.update_streaming(true)
+vreturn true
 
 func _disable_game_cameras() -> void:
-	for node in _walk(_dungeon):
-		if node is Camera3D:
-			(node as Camera3D).current = false
+vfor node in _walk(_dungeon):
+vvif node is Camera3D:
+vvv(node as Camera3D).current = false
 
 func _hide_game_hud() -> void:
-	for node in _walk(_dungeon):
-		if node is CanvasLayer:
-			(node as CanvasLayer).visible = false
-
-func _configure_capture_lighting() -> void:
-	var world_environment := WorldEnvironment.new()
-	var environment := Environment.new()
-	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = Color(0.015, 0.018, 0.025)
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color(0.48, 0.52, 0.60)
-	environment.ambient_light_energy = 0.72
-	world_environment.environment = environment
-	add_child(world_environment)
-	var fill := DirectionalLight3D.new()
-	fill.name = "DungeonCaptureFill"
-	fill.light_color = Color(0.74, 0.82, 0.98)
-	fill.light_energy = 0.85
-	fill.shadow_enabled = false
-	fill.rotation_degrees = Vector3(-54.0, 28.0, 0.0)
-	add_child(fill)
+vfor node in _walk(_dungeon):
+vvif node is CanvasLayer:
+vvv(node as CanvasLayer).visible = false
 
 func _hide_material_items() -> void:
-	for node in _walk(_dungeon):
-		if not node.has_meta("item_tag") or String(node.get_meta("item_tag")) != "material":
-			continue
-		if node is Node3D:
-			(node as Node3D).visible = false
+vfor node in _walk(_dungeon):
+vvif not node.has_meta("item_tag") or String(node.get_meta("item_tag")) != "material":
+vvvcontinue
+vvif node is Node3D:
+vvv(node as Node3D).visible = false
 
 func _force_enemy_visuals() -> void:
-	var player := GameState.current_player as Node3D
-	if player != null and is_instance_valid(player):
-		var player_model := player.get_node_or_null("character") as Node3D
-		if player_model != null:
-			player_model.visible = false
-	for node in _walk(_dungeon):
-		if not node.has_meta("enemy_type"):
-			continue
-		var enemy := node as Node3D
-		if enemy == null:
-			continue
-		enemy.visible = true
-		for mesh in enemy.find_children("*", "MeshInstance3D", true, false):
-			(mesh as MeshInstance3D).visible = true
-		var imposter := enemy.get_node_or_null("ImposterSprite") as Sprite3D
-		if imposter != null:
-			imposter.visible = false
+vvar player := GameState.resolve_player_node(0) as Node3D
+vif player != null and is_instance_valid(player):
+vvvar player_model := player.get_node_or_null("character") as Node3D
+vvif player_model != null:
+vvvplayer_model.visible = false
+vfor node in _walk(_dungeon):
+vvif not node.has_meta("enemy_type"):
+vvvcontinue
+vvvar enemy := node as Node3D
+vvif enemy == null:
+vvvcontinue
+vvenemy.visible = true
+vvfor mesh in enemy.find_children("*", "MeshInstance3D", true, false):
+vvv(mesh as MeshInstance3D).visible = true
+vvvar imposter := enemy.get_node_or_null("ImposterSprite") as Sprite3D
+vvif imposter != null:
+vvvimposter.visible = false
 
 func _hide_ceilings() -> void:
-	for node in _walk(_dungeon):
-		if not node is MultiMeshInstance3D:
-			continue
-		var node_name := String(node.name).to_lower()
-		if node_name.contains("ceiling") or node_name.contains("lintel"):
-			(node as Node3D).visible = false
+vfor node in _walk(_dungeon):
+vvif not node is MultiMeshInstance3D:
+vvvcontinue
+vvvar node_name := String(node.name).to_lower()
+vvif node_name.contains("ceiling") or node_name.contains("lintel"):
+vvv(node as Node3D).visible = false
 
 func _pick_capture_target() -> Vector3:
-	var best_room := Rect2i()
-	var best_score := -1.0
-	for room_index in range(_dungeon.layout.rooms.size()):
-		var room: Rect2i = _dungeon.layout.rooms[room_index]
-		if _dungeon.layout.room_roles.has("start") and room == _dungeon.layout.room_roles["start"]:
-			continue
-		var enemy_count := _count_specs_in_room(_dungeon.layout.enemy_spawn_specs, room_index)
-		var hazard_count := _count_specs_in_room(_dungeon.layout.hazard_anchors, room_index)
-		var focus_count := _count_specs_in_room(_dungeon.layout.room_focus_specs, room_index)
-		var door_count := _count_door_specs_in_room(room)
-		var score := float(enemy_count * 12 + hazard_count * 5 + focus_count * 8 + door_count * 2)
-		if enemy_count > 0:
-			score += 20.0
-		score += minf(float(room.size.x * room.size.y), 100.0) * 0.04
-		if score > best_score:
-			best_score = score
-			best_room = room
-	_capture_room = best_room
-	if best_score < 0.0:
-		return Vector3.ZERO
-	var cell := best_room.position + Vector2i(best_room.size.x / 2, best_room.size.y / 2)
-	return _cell_to_world(cell)
+vvar best_room := Rect2i()
+vvar best_score := -1.0
+vfor room_index in range(_dungeon.layout.rooms.size()):
+vvvar room: Rect2i = _dungeon.layout.rooms[room_index]
+vvif _dungeon.layout.room_roles.has("start") and room == _dungeon.layout.room_roles["start"]:
+vvvcontinue
+vvvar enemy_count := _count_specs_in_room(_dungeon.layout.enemy_spawn_specs, room_index)
+vvvar hazard_count := _count_specs_in_room(_dungeon.layout.hazard_anchors, room_index)
+vvvar focus_count := _count_specs_in_room(_dungeon.layout.room_focus_specs, room_index)
+vvvar composition := _composition_for_room(room_index)
+vvvar door_count := _count_door_specs_in_room(room)
+vvvar score := float(enemy_count * 12 + hazard_count * 5 + focus_count * 8 + door_count * 2)
+vvscore += float(composition.get("cover_cells", []).size() * 4)
+vvscore += float(composition.get("platform_cells", []).size() * 10)
+vvscore += float(composition.get("ramp_specs", []).size() * 8)
+vvscore += float(composition.get("boundary_edges", []).size() * 2)
+vvif enemy_count > 0:
+vvvscore += 20.0
+vvscore += minf(float(room.size.x * room.size.y), 100.0) * 0.04
+vvif score > best_score:
+vvvbest_score = score
+vvvbest_room = room
+v_capture_room = best_room
+vif best_score < 0.0:
+vvreturn Vector3.ZERO
+vvar cell := best_room.position + Vector2i(best_room.size.x / 2, best_room.size.y / 2)
+vreturn _cell_to_world(cell)
 
 func _pick_capture_span() -> float:
-	var room_area := maxi(1, _capture_room.size.x * _capture_room.size.y)
-	return clampf(sqrt(float(room_area)) * _dungeon.layout.tile_size, 10.0, 22.0)
+vvar room_area := maxi(1, _capture_room.size.x * _capture_room.size.y)
+vreturn clampf(sqrt(float(room_area)) * _dungeon.layout.tile_size, 10.0, 22.0)
 
 func _count_specs_in_room(specs: Array, room_index: int) -> int:
-	var count := 0
-	for spec in specs:
-		if int(spec.get("room_index", -1)) == room_index:
-			count += 1
-	return count
+vvar count := 0
+vfor spec in specs:
+vvif int(spec.get("room_index", -1)) == room_index:
+vvvcount += 1
+vreturn count
 
 func _count_door_specs_in_room(room: Rect2i) -> int:
-	var count := 0
-	for spec in _dungeon.layout.door_specs:
-		var inside: Vector2i = spec.get("inside", Vector2i(-1, -1))
-		if room.has_point(inside):
-			count += 1
-	return count
+vvar count := 0
+vfor spec in _dungeon.layout.door_specs:
+vvvar inside: Vector2i = spec.get("inside", Vector2i(-1, -1))
+vvif room.has_point(inside):
+vvvcount += 1
+vreturn count
 
 func _cell_to_world(cell: Vector2i) -> Vector3:
-	var offset_x := -float(_dungeon.layout.width * _dungeon.layout.tile_size) / 2.0
-	var offset_z := -float(_dungeon.layout.height * _dungeon.layout.tile_size) / 2.0
-	return Vector3(offset_x + cell.x * _dungeon.layout.tile_size, 0.0, offset_z + cell.y * _dungeon.layout.tile_size)
+vvar offset_x := -float(_dungeon.layout.width * _dungeon.layout.tile_size) / 2.0
+vvar offset_z := -float(_dungeon.layout.height * _dungeon.layout.tile_size) / 2.0
+vreturn Vector3(offset_x + cell.x * _dungeon.layout.tile_size, _dungeon.layout.floor_height_at(cell), offset_z + cell.y * _dungeon.layout.tile_size)
+
+func _composition_for_room(room_index: int) -> Dictionary:
+vfor composition in _dungeon.layout.room_composition_specs:
+vvif int(composition.get("room_index", -1)) == room_index:
+vvvreturn composition
+vreturn {}
 
 func _count_nodes_with_meta(meta_name: String) -> int:
-	var count := 0
-	for node in _walk(_dungeon):
-		if node.has_meta(meta_name):
-			count += 1
-	return count
+vvar count := 0
+vfor node in _walk(_dungeon):
+vvif node.has_meta(meta_name):
+vvvcount += 1
+vreturn count
 
 func _save_viewport(path: String) -> bool:
-	var texture := get_viewport().get_texture()
-	if texture == null:
-		_fail("viewport texture 为空")
-		return false
-	var image := texture.get_image()
-	if image == null:
-		_fail("viewport image 为空")
-		return false
-	var lit_pixels := 0
-	var step_x := maxi(1, image.get_width() / 40)
-	var step_y := maxi(1, image.get_height() / 40)
-	for y in range(0, image.get_height(), step_y):
-		for x in range(0, image.get_width(), step_x):
-			var color := image.get_pixel(x, y)
-			if color.a > 0.05 and color.r + color.g + color.b > 0.08:
-				lit_pixels += 1
-	if lit_pixels < 50:
-		_fail("截图过暗或为空: lit_pixels=%d" % lit_pixels)
-		return false
-	return image.save_png(path) == OK
+vvar texture := get_viewport().get_texture()
+vif texture == null:
+vv_fail("viewport texture 为空")
+vvreturn false
+vvar image := texture.get_image()
+vif image == null:
+vv_fail("viewport image 为空")
+vvreturn false
+vvar lit_pixels := 0
+vvar step_x := maxi(1, image.get_width() / 40)
+vvar step_y := maxi(1, image.get_height() / 40)
+vfor y in range(0, image.get_height(), step_y):
+vvfor x in range(0, image.get_width(), step_x):
+vvvvar color := image.get_pixel(x, y)
+vvvif color.a > 0.05 and color.r + color.g + color.b > 0.08:
+vvvvlit_pixels += 1
+vif lit_pixels < 50:
+vv_fail("截图过暗或为空: lit_pixels=%d" % lit_pixels)
+vvreturn false
+vreturn image.save_png(path) == OK
 
 func _walk(root: Node) -> Array[Node]:
-	var nodes: Array[Node] = [root]
-	var index := 0
-	while index < nodes.size():
-		for child in nodes[index].get_children():
-			nodes.append(child)
-		index += 1
-	return nodes
+vvar nodes: Array[Node] = [root]
+vvar index := 0
+vwhile index < nodes.size():
+vvfor child in nodes[index].get_children():
+vvvnodes.append(child)
+vvindex += 1
+vreturn nodes
 
 func _wait_frames(count: int) -> void:
-	for _index in range(count):
-		await get_tree().process_frame
+vfor _index in range(count):
+vvawait get_tree().process_frame
 
 func _finish(exit_code: int) -> void:
-	await get_tree().process_frame
-	get_tree().quit(exit_code)
+vawait get_tree().process_frame
+vget_tree().quit(exit_code)
 
 func _fail(message: String) -> void:
-	_had_error = true
-	push_error("[DungeonRealOverviewCapture] " + message)
+v_had_error = true
+vpush_error("[DungeonRealOverviewCapture] " + message)
 
 func _get_int_arg(prefix: String, fallback: int) -> int:
-	for arg in OS.get_cmdline_user_args():
-		var value := String(arg)
-		if value.begins_with(prefix) and value.substr(prefix.length()).is_valid_int():
-			return int(value.substr(prefix.length()))
-	return fallback
+vfor arg in OS.get_cmdline_user_args():
+vvvar value := String(arg)
+vvif value.begins_with(prefix) and value.substr(prefix.length()).is_valid_int():
+vvvreturn int(value.substr(prefix.length()))
+vreturn fallback

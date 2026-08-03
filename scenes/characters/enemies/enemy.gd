@@ -4,7 +4,6 @@ extends CharacterBody3D
 signal dead(death_transform: Transform3D)
 signal screamed
 
-const AIR_FRICTION := 20.0
 const DURATION_RAGDOLL_SIMULATION := 3.0
 const GRAVITY := 20.0
 const HITBOX_BUILDER := preload("res://globals/combat/combat_hitbox_builder.gd")
@@ -13,15 +12,20 @@ const VOXEL_LIGHTING := preload("res://globals/visual/voxel_lighting_adapter.gd"
 const VOXEL_RAGDOLL := preload("res://scenes/characters/component/voxel_ragdoll.gd")
 const ENEMY_TARGETING := preload("res://scenes/characters/enemies/behavior/enemy_targeting.gd")
 const ENEMY_MOVEMENT_CONTROLLER := preload("res://scenes/characters/enemies/behavior/enemy_movement_controller.gd")
+const SES := preload("res://globals/combat/status_effect_system.gd")
+const Service := preload("res://globals/core/service.gd")
+const COMBAT_PROGRESSION := preload("res://globals/combat/combat_progression.gd")
 const DEFAULT_DETECTION_RANGE := 5.0
 ## 满暗蚀全图追击倍率：补偿远距出生点与低速敌人的长距离追击时间。
 const DARK_EROSION_HUNT_SPEED_MULTIPLIER := 4.0
 ## 视野射线高度（米）：从角色中心质量发射，避免贴地射线漏检矮墙
 const LOS_RAY_HEIGHT := 0.85
 ## 怪物渲染优化：网格最远可见距离（米）。配合既有 24m 流式半径进一步远裁剪，避免远处怪物空耗 draw call。
-const ENEMY_VISIBILITY_RANGE_END := 60.0
+const ENEMY_VISIBILITY_RANGE_END := 36.0
+## 怪物独立视觉层（第 2 层）：主相机可见，但玩家视野补光只作用于第 1 层地形。
+const ENEMY_RENDER_LAYER := 1 << 1
 ## 近距离阈值（米）：此距离内的怪物无视视锥始终渲染并播放动画，避免屏幕边缘近怪闪烁。
-const ENEMY_NEAR_ANIM_DISTANCE := 12.0
+const ENEMY_NEAR_ANIM_DISTANCE := 8.0
 ## 离屏/远距优化轮询间隔（秒），避免每帧对每个怪物做视锥检测。
 const RENDER_OPT_INTERVAL := 0.2
 ## 视野射线检测节流间隔（秒）：物理射线较贵，缓存结果，最多每 0.2s 重测一次。
@@ -29,13 +33,17 @@ const RENDER_OPT_INTERVAL := 0.2
 const LOS_INTERVAL := 0.2
 ## 敌人 imposter LOD 距离（米）：超过此距离且处于 MOVING 状态则隐藏蒙皮网格、改用 Sprite3D billboard 替身，
 ## 省 CPU 蒙皮 + draw call（对齐 Barony 远敌换贴片）。近处/攻击等非 MOVING 状态仍用完整骨架网格以保留可读招式。
-const ENEMY_IMPOSTER_LOD_DISTANCE := 18.0
+const ENEMY_IMPOSTER_LOD_DISTANCE := 12.0
 ## AI 模拟半径（米）：与 imposter LOD 边界对齐。超过此距离且未与玩家交战（未登记）的敌人
 ## 视为"远距替身带"，跳过巡逻/索敌等寻路 AI，仅保留物理静止。避免对玩家看不见的 18–36m 敌人
 ## 空算 A* 与导航查询（P-C：把 AI 半径从 ~36m 物理激活半径解耦到 LOD 边界）。
 const AI_SIM_RADIUS_M := 18.0
 ## imposter 截图分辨率（正方形像素）
 const ENEMY_IMPOSTER_CAPTURE_SIZE := 256
+## 已生成的 billboard 纸片优先于运行时 3D 截图；角色素材按敌人基础类型独立注册。
+const AUTHORED_IMPOSTER_TEXTURES := {
+	"goblin": "res://assets/textures/enemies/goblin_billboard_4x4.png",
+}
 
 ## 每种敌人只捕获一次 imposter；同批刷新的同类实例等待首个捕获任务并共享贴图。
 static var _imposter_texture_cache: Dictionary = {}
@@ -60,6 +68,8 @@ var voxel_ragdoll: VoxelRagdoll = null
 
 @export var duration_between_attacks: int
 @export var duration_stun : int
+## Attack telegraph duration before the weapon hit window starts.
+@export_range(0.0, 2.0, 0.05) var attack_windup_seconds: float = 0.5
 var _player: Player = null
 @export var player: Player:
 	get:
@@ -71,6 +81,8 @@ var _player: Player = null
 @export var speed: float
 @export var is_elite: bool = false
 @export var is_boss_type: bool = false
+## 0 表示按最终最大生命值自动计算；正数用于特殊怪物显式覆写。
+@export_range(0, 100000, 1) var experience_reward: int = 0
 @export_enum("small", "medium", "large", "huge") var body_size: String = "medium"
 ## 巡逻半径（米），无玩家时在此范围内随机巡逻
 @export var patrol_radius: float = 5.0
@@ -114,8 +126,9 @@ var _visual_meshes: Array[MeshInstance3D] = []
 var _render_opt_timer := 0.0
 var _los_cache_timer := 0.0
 var _los_cache_result := false
-## imposter 替身 Sprite3D（运行时 Viewport 截图生成贴图，billboard）。仅在出生时可空（headless 跳过截图）。
+## imposter 替身 Sprite3D（优先使用 authored billboard，缺少时才运行时截图）。
 var _imposter_sprite: Sprite3D = null
+var _imposter_texture_ready := false
 ## 是否已切到远处 LOD（隐藏蒙皮、显示替身）
 var _lod_is_far := false
 ## 死亡碎裂已激活：激活后 LOD 系统不再修改原始网格可见性，避免碎裂后原模型重新显示。
@@ -124,12 +137,31 @@ var _normal_collision_mask := 0
 ## Multiple hitbox/physics callbacks can request the same death in one frame.
 ## Keep the transition deferred and idempotent so DYING is entered once.
 var _death_transition_queued := false
+## 与 AI 当前追击目标分离，只记录最近一次有效玩家伤害来源。
+var kill_credit_player: Player = null
+var _experience_awarded := false
 
 func _find_physical_bone_simulator() -> PhysicalBoneSimulator3D:
 	return find_child("PhysicalBoneSimulator3D", true, false) as PhysicalBoneSimulator3D
 
 func _find_physical_bone(node_name: String) -> PhysicalBone3D:
 	return find_child(node_name, true, false) as PhysicalBone3D
+
+func _remove_unused_physical_bones() -> void:
+	if skeleton_simulator == null:
+		return
+	# 所有敌人死亡表现都由 VoxelRagdoll 负责；遗留物理骨没有任何运行时用途。
+	# 仅设 active=false/layer=0 仍会为每只继承 goblin 场景的敌人保留 10 个 Body RID
+	# 和 10 个 Joint RID。立即 detach + free 才能从 PhysicsServer 彻底移除这些资源。
+	var obsolete_simulator := skeleton_simulator
+	skeleton_simulator = null
+	physical_bone_head = null
+	physical_bone_torso = null
+	obsolete_simulator.active = false
+	var parent := obsolete_simulator.get_parent()
+	if parent != null:
+		parent.remove_child(obsolete_simulator)
+	obsolete_simulator.free()
 
 func _ready() -> void:
 	_targeting = ENEMY_TARGETING.new(self)
@@ -139,19 +171,17 @@ func _ready() -> void:
 	VOXEL_LIGHTING.apply_to_tree(self, true)
 	add_to_group("enemies")
 	_configure_detection_range()
-	player_detection_area.body_entered.connect(on_player_detected)
-	player_detection_area.body_exited.connect(on_player_lost)
 	_apply_spawner_multipliers()
+	_ensure_weapon_loadout()
 	# 移除 3D 血条后，屏幕顶部 EnemyHealthBar HUD 已直接读取 enemy.health 显示血量，
 	# 此处不再驱动 3D 血条刷新。
 	_collect_visual_meshes()
 	_apply_visibility_range()
 	_build_imposter_sprite()
 	_update_render_optimization()
-	# 所有敌人均挂载死亡碎裂（伪布娃娃）组件。
-	# 体素怪物使用 _rig.glb（Blender 合并的单蒙皮网格 + 骨架），skeleton_simulator 非 null 但
-	# PhysicalBone3D 的 collision_layer=0 且蒙皮网格不跟随骨骼 → 骨骼布娃娃无效，怪物原样留在原地。
-	# VoxelRagdoll 优先用于所有敌人的死亡碎裂效果；skeleton_simulator 仅作回退。
+	# 所有敌人均挂载死亡碎裂（伪布娃娃）组件。场景中的遗留 PhysicalBone 节点
+	# 不参与动画或死亡表现，进入树后立即释放其 Body/Joint RID。
+	_remove_unused_physical_bones()
 	voxel_ragdoll = VOXEL_RAGDOLL.new()
 	add_child(voxel_ragdoll)
 	spawn_position = global_position
@@ -160,6 +190,12 @@ func _ready() -> void:
 		if configured_spawn is Vector3:
 			spawn_position = configured_spawn
 			global_position = configured_spawn
+	if has_meta("patrol_center"):
+		var configured_patrol_center: Variant = get_meta("patrol_center")
+		if configured_patrol_center is Vector3:
+			spawn_position = configured_patrol_center
+	if has_meta("patrol_radius"):
+		patrol_radius = maxf(float(get_meta("patrol_radius", patrol_radius)), 1.0)
 	switch_state(State.MOVING)
 
 func _configure_navigation_agent() -> void:
@@ -180,23 +216,30 @@ func _configure_navigation_agent() -> void:
 	nav_agent.path_height_offset = 0.5
 	movement_controller = ENEMY_MOVEMENT_CONTROLLER.new(self, nav_agent)
 	movement_controller.configure()
+	# 流式注册可能发生在 _ready 之前；此时 controller 已把 meta 设为 false，
+	# 但 movement_controller 尚不存在。创建后必须补同步，避免远敌重新以默认 true 注册 RVO。
+	movement_controller.set_streaming_active(bool(get_meta("stream_physics_active")) \
+		if has_meta("stream_physics_active") else true)
 
 func _configure_detection_range() -> void:
-	if player_detection_shape == null:
-		return
-	var sphere := player_detection_shape.shape as SphereShape3D
-	if sphere == null:
-		return
-	sphere = sphere.duplicate() as SphereShape3D
-	sphere.radius = detection_range
-	player_detection_shape.shape = sphere
+	if player_detection_shape != null:
+		var sphere := player_detection_shape.shape as SphereShape3D
+		if sphere != null:
+			sphere = sphere.duplicate() as SphereShape3D
+			sphere.radius = detection_range
+			player_detection_shape.shape = sphere
+	if player_detection_area != null:
+		# MOVING 状态已用距离、视野锥和节流 LOS 主动感知玩家。保留节点供场景和
+		# 测试兼容，但退出 PhysicsServer broadphase，避免每只活跃敌人常驻一个 Area3D。
+		player_detection_area.monitoring = false
+		player_detection_area.monitorable = false
+		player_detection_area.collision_layer = 0
+		player_detection_area.collision_mask = 0
 
 ## 应用 DungeonSpawner 通过 meta 注入的属性倍率（hp_mult / speed_mult / dmg_mult）
 func _apply_spawner_multipliers() -> void:
-	if has_meta("player_ref"):
-		_player = get_meta("player_ref") as Player
-		if _targeting != null:
-			_targeting.observe_external_target(_player)
+	# player_ref 仅是生成器提供的候选玩家引用，不代表敌人已经看见或交战。
+	# 真正目标由 should_chase_player 的距离/视野/LOS 或受击/满暗蚀路径登记。
 	if has_meta("hp_mult"):
 		var hp_mult: float = float(get_meta("hp_mult", 1.0))
 		health.max_life = int(health.max_life * hp_mult)
@@ -215,6 +258,24 @@ func _apply_spawner_multipliers() -> void:
 		if configured_attack_mode in [ATTACK_MODE_WEAPON, ATTACK_MODE_BODY]:
 			attack_mode = configured_attack_mode
 
+func _ensure_weapon_loadout() -> void:
+	if attack_mode != ATTACK_MODE_WEAPON or equipment == null:
+		return
+	var current_data: WeaponData = equipment.weapon_data
+	var configured_id := String(get_meta("weapon_id", ""))
+	var data: WeaponData = null
+	if not configured_id.is_empty():
+		data = WeaponRegistry.get_weapon_data(configured_id)
+	elif current_data != null:
+		data = WeaponRegistry.resolve_weapon_data(current_data)
+	if data == null:
+		data = WeaponRegistry.get_weapon_data("shortsword")
+	if data == null:
+		return
+	var current_id := String(current_data.id) if current_data != null else ""
+	if current_data == null or current_id != String(data.id) or not equipment.has_weapon():
+		equipment.configure_weapon_slot(0, data, true)
+
 ## 收集角色可视网格，供离屏剔除与远距冻结使用。
 ## 不再覆写 material_override：GLB 内嵌纹理由 VOXEL_LIGHTING.apply_to_tree 统一适配
 ## （toon 着色 + vertex_color_use_as_albedo），保留原始纹理外观。
@@ -223,7 +284,9 @@ func _collect_visual_meshes() -> void:
 	var root := get_node_or_null("character")
 	var base: Node = root if root != null else self
 	for child in base.find_children("*", "MeshInstance3D", true, false):
-		_visual_meshes.append(child as MeshInstance3D)
+		var mesh := child as MeshInstance3D
+		mesh.layers = ENEMY_RENDER_LAYER
+		_visual_meshes.append(mesh)
 
 
 ## 设置网格最远可见距离，配合既有 24m 流式半径进一步远裁剪，避免远处怪物空耗 draw call。
@@ -240,7 +303,8 @@ func _update_render_optimization() -> void:
 		_set_animation_paused(false)
 		_set_lod_far(false)
 		return
-	var target: Node = player if has_registered_player() else GameState.current_player
+	# P1-5：统一目标解析（已登记玩家 → 会话注册表 → player_ref → 单机全局）。
+	var target: Node = _resolve_target_player()
 	if target == null or not is_instance_valid(target) or not target is Node3D or not target.is_inside_tree():
 		_set_animation_paused(false)
 		_set_lod_far(false)
@@ -255,7 +319,7 @@ func _update_render_optimization() -> void:
 	_set_animation_paused(not should_animate)
 	# P3 距离 LOD：仅 MOVING 状态的远处敌人隐藏蒙皮网格、显示 imposter 替身（省 CPU 蒙皮 + draw call）。
 	# 攻击/受击等非 MOVING 状态始终用完整骨架网格，保留可读招式；近处敌人同样用完整网格。
-	var lod_far := dist > ENEMY_IMPOSTER_LOD_DISTANCE and state == State.MOVING
+	var lod_far := _imposter_texture_ready and dist > ENEMY_IMPOSTER_LOD_DISTANCE and state == State.MOVING
 	_set_lod_far(lod_far)
 
 func _set_animation_paused(paused: bool) -> void:
@@ -275,28 +339,37 @@ func _set_lod_far(far: bool) -> void:
 			if is_instance_valid(m):
 				m.visible = not far
 	if _imposter_sprite != null:
-		_imposter_sprite.visible = far
+		_imposter_sprite.visible = far and _imposter_texture_ready
 
-## 创建 imposter 替身 Sprite3D（billboard）。贴图在 _build_imposter_texture 内运行时截图生成。
-## 节点本身始终创建（便于 LOD 切换在 headless 测试下也可断言），仅截图步骤在 headless 跳过。
+## 创建 imposter 替身 Sprite3D（billboard）。
+## 节点本身始终创建（便于 LOD 切换在 headless 测试下也可断言）。
 func _build_imposter_sprite() -> void:
 	_imposter_sprite = Sprite3D.new()
 	_imposter_sprite.name = "ImposterSprite"
 	_imposter_sprite.billboard = 1  # Sprite3D.BillboardMode.ENABLED (Godot 4.7 不暴露该枚举常量名，0=Disabled/1=Enabled/2=Y-Billboard)
 	_imposter_sprite.centered = true
-	_imposter_sprite.position = Vector3(0.0, 0.9, 0.0)
+	_imposter_sprite.position = Vector3(0.0, 1.15, 0.0)
 	_imposter_sprite.pixel_size = 0.009
+	_imposter_sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	_imposter_sprite.shaded = true
+	_imposter_sprite.layers = ENEMY_RENDER_LAYER
 	_imposter_sprite.visibility_range_end = 120.0
 	_imposter_sprite.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	_imposter_sprite.visible = false
 	add_child(_imposter_sprite)
 	_build_imposter_texture()
 
-## 运行时用子 Viewport 从前视角渲染自身蒙皮网格一帧，生成贴图赋给 imposter。
-## headless 无 GPU 截图，直接跳过（imposter 仍按 LOD 切换，只是无贴图）。
+## 优先加载 authored 纸片素材；没有素材时才用子 Viewport 从前视角生成运行时回退贴图。
+## headless 无 GPU 截图时只跳过运行时回退，已注册的 authored 贴片仍可正常加载。
 func _build_imposter_texture() -> void:
 	if _imposter_sprite == null:
 		return
+	var authored_path := String(AUTHORED_IMPOSTER_TEXTURES.get(_imposter_cache_key(), ""))
+	if not authored_path.is_empty():
+		var authored_texture := load(authored_path) as Texture2D
+		if authored_texture != null:
+			_set_imposter_texture(authored_texture, 4, 4)
+			return
 	# headless 检测：--headless 会被引擎从 OS.get_cmdline_args() 消费掉，
 	# OS.has_feature("headless") 在 gdUnit 上下文也不可靠，唯有 DisplayServer 名称可靠。
 	if OS.has_feature("headless") or DisplayServer.get_name() == "headless":
@@ -306,7 +379,7 @@ func _build_imposter_texture() -> void:
 	var cache_key := _imposter_cache_key()
 	var cached_texture = _imposter_texture_cache.get(cache_key)
 	if cached_texture is Texture2D:
-		_imposter_sprite.texture = cached_texture
+		_set_imposter_texture(cached_texture)
 		return
 	if _imposter_capture_in_flight.has(cache_key):
 		await _wait_for_shared_imposter(cache_key)
@@ -314,16 +387,32 @@ func _build_imposter_texture() -> void:
 	_imposter_capture_in_flight[cache_key] = true
 	var vp := SubViewport.new()
 	vp.size = Vector2(ENEMY_IMPOSTER_CAPTURE_SIZE, ENEMY_IMPOSTER_CAPTURE_SIZE)
+	vp.own_world_3d = true
 	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	vp.render_target_clear_mode = SubViewport.CLEAR_MODE_ONCE
 	vp.transparent_bg = true
+	var capture_environment := Environment.new()
+	capture_environment.background_mode = Environment.BG_COLOR
+	capture_environment.background_color = Color(0.0, 0.0, 0.0, 0.0)
+	capture_environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	capture_environment.ambient_light_color = Color(0.65, 0.7, 0.78)
+	capture_environment.ambient_light_energy = 0.9
+	var capture_world_environment := WorldEnvironment.new()
+	capture_world_environment.environment = capture_environment
+	vp.add_child(capture_world_environment)
+	var capture_light := DirectionalLight3D.new()
+	capture_light.light_energy = 1.3
+	capture_light.look_at_from_position(Vector3(-3.0, 5.0, -4.0), Vector3(0.0, 0.8, 0.0), Vector3.UP)
+	vp.add_child(capture_light)
 	var cam := Camera3D.new()
+	cam.cull_mask = ENEMY_RENDER_LAYER
 	cam.projection = Camera3D.PROJECTION_PERSPECTIVE
 	cam.fov = 35.0
-	cam.position = Vector3(0.0, 1.0, 2.6)
+	cam.position = Vector3(0.0, 1.0, -2.6)
 	# 相机尚未加入 SubViewport 场景树；使用 position 版本避免 Node3D.look_at 的入树要求。
 	cam.look_at_from_position(cam.position, Vector3(0.0, 0.9, 0.0), Vector3(0, 1, 0))
 	vp.add_child(cam)
+	cam.make_current()
 	var src := get_node_or_null("character")
 	if src != null:
 		var clone := src.duplicate()
@@ -365,14 +454,33 @@ func _wait_for_shared_imposter(cache_key: String) -> void:
 		await get_tree().process_frame
 	var cached_texture = _imposter_texture_cache.get(cache_key)
 	if cached_texture is Texture2D and _imposter_sprite != null:
-		_imposter_sprite.texture = cached_texture
+		_set_imposter_texture(cached_texture)
 
 func _finish_imposter_capture(cache_key: String, texture: ImageTexture) -> void:
+	_imposter_capture_in_flight.erase(cache_key)
 	if texture != null:
 		_imposter_texture_cache[cache_key] = texture
-	_imposter_capture_in_flight.erase(cache_key)
-	if texture != null and _imposter_sprite != null:
-		_imposter_sprite.texture = texture
+		_set_imposter_texture(texture)
+
+func _set_imposter_texture(texture: Texture2D, hframes: int = 1, vframes: int = 1) -> void:
+	if texture == null or _imposter_sprite == null:
+		return
+	_imposter_sprite.texture = texture
+	_imposter_sprite.hframes = hframes
+	_imposter_sprite.vframes = vframes
+	_imposter_sprite.frame = 0
+	var frame_height := float(texture.get_height()) / float(maxi(vframes, 1))
+	var target_height := 1.7
+	match body_size:
+		"small":
+			target_height = 0.85
+		"large":
+			target_height = 2.21
+		"huge":
+			target_height = 2.72
+	_imposter_sprite.pixel_size = target_height / frame_height
+	_imposter_sprite.position.y = target_height * 0.5
+	_imposter_texture_ready = true
 
 ## 截图用的克隆体只保留骨架 + 蒙皮网格，移除灯光/粒子/音频/碰撞/物理骨等无关节点，得到干净剪影。
 func _strip_clone_for_capture(node: Node) -> void:
@@ -385,8 +493,12 @@ func _strip_clone_for_capture(node: Node) -> void:
 			_strip_clone_for_capture(child)
 
 func _process(delta: float) -> void:
-	_tick_combat_debuffs(delta)
-	if _targeting != null:
+	# 无状态效果时跳过两次空 Dictionary keys() 扫描。远距休眠敌人仍会由
+	# streaming 停止 _process；已激活但无 debuff 的常态敌人也不再承担空状态开销。
+	if not combat_debuffs.is_empty():
+		_tick_combat_debuffs(delta)
+		SES.process_tick(self, delta)
+	if _targeting != null and _targeting.has_pending_memory():
 		_targeting.tick(delta)
 	_render_opt_timer -= delta
 	if _render_opt_timer <= 0.0:
@@ -418,6 +530,17 @@ func _get_active_attack_reach() -> float:
 
 func uses_weapon_attack() -> bool:
 	return attack_mode == ATTACK_MODE_WEAPON and equipment != null and equipment.has_weapon()
+
+## 敌人类型 id（供攻击招式档案/图鉴查询）：
+## 生成器注入的 enemy_base_type 优先（精英带 elite_ 前缀），回退到场景文件名。
+func get_enemy_type_id() -> String:
+	if has_meta("enemy_base_type"):
+		var base_type := String(get_meta("enemy_base_type"))
+		if not base_type.is_empty():
+			return base_type
+	if not scene_file_path.is_empty():
+		return scene_file_path.get_file().get_basename()
+	return ""
 
 func get_attack_weapon() -> WeaponData:
 	return equipment.weapon_data if uses_weapon_attack() else null
@@ -468,12 +591,59 @@ func request_death(data: EnemyStateData = EnemyStateData.new(), bypass_can_die: 
 		return
 	if not bypass_can_die and (state_node.is_queued_for_deletion() or not state_node.can_die()):
 		return
+	# 经验结算不能依赖 DYING 状态节点的延迟副作用：chunk 流送可能在同一窗口
+	# 暂停状态节点的 process，导致死亡特效/掉落尚未执行时奖励丢失。此处只会
+	# 为已登记且仍是本机当前玩家的有效击杀结算一次；死亡状态保留幂等兜底调用。
+	award_kill_experience()
 	_death_transition_queued = true
 	call_deferred("_deferred_switch_to_dying", data, bypass_can_die)
 
+func register_kill_credit(source_player: Player, damage_applied: bool = true) -> void:
+	if damage_applied and source_player != null and is_instance_valid(source_player):
+		kill_credit_player = source_player
+
+## 默认经验随怪物最终生命成长；精英 1.5 倍，Boss 3 倍。
+func get_experience_reward() -> int:
+	if experience_reward > 0:
+		return experience_reward
+	var max_life := health.max_life if health != null else 1
+	var reward := maxi(10, max_life * 2)
+	if is_boss_type or bool(get_meta("is_boss_type", false)) or bool(get_meta("is_boss", false)):
+		reward = int(ceil(float(reward) * 3.0))
+	elif is_elite or bool(get_meta("is_elite", false)):
+		reward = int(ceil(float(reward) * 1.5))
+	return reward
+
+## 只向本机当前玩家的属性上下文结算一次；联机权威击杀由服务器会话处理。
+func award_kill_experience() -> int:
+	if _experience_awarded or kill_credit_player == null or not is_instance_valid(kill_credit_player):
+		return 0
+	var gs := Service.game_state()
+	if gs == null or gs.current_player != kill_credit_player:
+		return 0
+	var context = gs.player_context() if gs.has_method("player_context") else null
+	var attributes: Node = context.attributes if context != null else Service.attr_panel()
+	if attributes == null or not attributes.has_method("accumulate_level_exp"):
+		return 0
+	_experience_awarded = true
+	var reward := get_experience_reward()
+	attributes.accumulate_level_exp(reward)
+	return reward
+
 func impale(thrown_item: ThrownItem, item_basis: Basis) -> void:
+	var can_be_impaled := state_node.can_get_hurt()
+	if thrown_item != null and thrown_item.source is Player:
+		register_kill_credit(thrown_item.source as Player, can_be_impaled)
+		if can_be_impaled and thrown_item.weapon_data != null:
+			var effective_damage := health.current_life if health != null else 0
+			COMBAT_PROGRESSION.award_player_damage(
+				thrown_item.source,
+				thrown_item.weapon_data.proficiency_key,
+				"ranged",
+				effective_damage
+			)
 	var state_data := EnemyStateData.new().set_thrown_item(thrown_item).set_thrown_item_basis(item_basis)
-	if state_node.can_get_hurt():
+	if can_be_impaled:
 		switch_state(State.IMPALING, state_data)
 	else:
 		var hit_direction := thrown_item.global_position.direction_to(global_position)
@@ -482,7 +652,10 @@ func impale(thrown_item: ThrownItem, item_basis: Basis) -> void:
 	screamed.emit()
 
 func try_receive_furniture_impact(thrown_item: ThrownItem) -> void:
-	if equipment.has_shield():
+	var blocked_by_shield := equipment.has_shield()
+	if thrown_item != null and thrown_item.source is Player:
+		register_kill_credit(thrown_item.source as Player, not blocked_by_shield)
+	if blocked_by_shield:
 		equipment.drop_shield()
 		var hit_direction := thrown_item.global_position.direction_to(global_position)
 		var data := EnemyStateData.new().set_impact_direction(hit_direction).set_knockback_force(2.5)
@@ -491,12 +664,14 @@ func try_receive_furniture_impact(thrown_item: ThrownItem) -> void:
 		request_death()
 
 func try_receive_thrown_enemy_impact(source_enemy: Enemy, source_player: Player = null) -> void:
+	var blocked_by_shield := equipment.has_shield()
 	if source_player != null:
 		player = source_player
+		register_kill_credit(source_player, not blocked_by_shield)
 	screamed.emit()
 	var hit_direction := source_enemy.global_position.direction_to(global_position) if source_enemy != null else Vector3.ZERO
 	var data := EnemyStateData.new().set_damage(6).set_impact_direction(hit_direction).set_knockback_force(5.0)
-	if equipment.has_shield():
+	if blocked_by_shield:
 		equipment.drop_shield()
 		switch_state(State.STUNNED, data)
 	else:
@@ -505,6 +680,23 @@ func try_receive_thrown_enemy_impact(source_enemy: Enemy, source_player: Player 
 func has_registered_player() -> bool:
 	return player != null and is_instance_valid(player)
 
+## P1-5：目标玩家唯一解析（替代裸读 GameState.current_player）。
+## 优先级：已登记交战玩家 player → 会话注册表（player_peer_id 锚定，联机 per-peer）→
+## 生成器候选 player_ref → 单机全局 current_player（resolve_player_node(0)）。
+func _resolve_target_player() -> Node:
+	if has_registered_player():
+		return player
+	var peer_id: int = int(get_meta("player_peer_id", 0))
+	if peer_id > 0:
+		var resolved: Node = GameState.resolve_player_node(peer_id)
+		if resolved != null and is_instance_valid(resolved):
+			return resolved
+	if has_meta("player_ref"):
+		var ref := get_meta("player_ref") as Node
+		if ref != null and is_instance_valid(ref):
+			return ref
+	return GameState.resolve_player_node(0)
+
 ## 是否应运行完整 AI（索敌/巡逻/寻路）本帧。
 ## 已与玩家交战（已登记 player）、或受暗蚀强制追击、或玩家进入 AI_SIM_RADIUS_M 内的敌人返回 true；
 ## 远距未交战的替身带敌人返回 false，其 MOVING 状态将跳过寻路 AI 仅保持物理静止（P-C）。
@@ -512,11 +704,14 @@ func is_ai_active() -> bool:
 	_sync_dark_erosion_collision_mode()
 	if bool(get_meta("dark_erosion_hunt", false)):
 		return true
+	# 受击或实际发现后登记的目标在短时离开 AI 半径时仍保持追击；生成器的
+	# player_ref 不写入 player，因此不会让全地图敌人从出生起永久运行 AI。
 	if has_registered_player():
 		return true
-	var target: Node = GameState.current_player
+	# P1-5：统一目标解析（会话注册表 / player_ref / 单机全局）。
+	var target: Node = _resolve_target_player()
 	if target != null and is_instance_valid(target):
-		return global_position.distance_to(target.global_position) <= AI_SIM_RADIUS_M
+		return global_position.distance_squared_to(target.global_position) <= AI_SIM_RADIUS_M * AI_SIM_RADIUS_M
 	return false
 
 func is_target_in_facing_cone(target: Node3D) -> bool:
@@ -559,6 +754,10 @@ func refresh_navigation_avoidance() -> void:
 	if movement_controller != null:
 		movement_controller.refresh_navigation_avoidance()
 
+func set_streaming_physics_active(active: bool) -> void:
+	if movement_controller != null:
+		movement_controller.set_streaming_active(active)
+
 func set_navigation_max_speed(value: float) -> void:
 	if movement_controller != null:
 		movement_controller.set_max_speed(value)
@@ -569,7 +768,8 @@ func get_local_separation_velocity() -> Vector3:
 func should_chase_player() -> bool:
 	_sync_dark_erosion_collision_mode()
 	var forced_hunt := bool(get_meta("dark_erosion_hunt", false))
-	var target: Node = player if has_registered_player() else GameState.current_player
+	# P1-5：统一目标解析（已登记玩家 → 会话注册表 → player_ref → 单机全局）。
+	var target: Node = _resolve_target_player()
 	if target == null or not is_instance_valid(target):
 		_player = null
 		if _targeting != null:
@@ -595,7 +795,17 @@ func set_dark_erosion_hunt(active: bool) -> void:
 	set_meta("dark_erosion_hunt", active)
 	if movement_controller != null:
 		movement_controller.set_dark_erosion_hunt(active)
+	_notify_streaming_forced_hunt(active)
 	_sync_dark_erosion_collision_mode()
+
+func _notify_streaming_forced_hunt(active: bool) -> void:
+	var level := GameState.current_level
+	if level == null or not is_instance_valid(level):
+		return
+	var controller: Variant = level.get("streaming_controller")
+	if controller != null and is_instance_valid(controller) \
+			and controller.has_method("notify_forced_hunt_changed"):
+		controller.notify_forced_hunt_changed(self, active)
 
 func _sync_dark_erosion_collision_mode() -> void:
 	var forced_hunt := bool(get_meta("dark_erosion_hunt", false))
@@ -654,7 +864,9 @@ func try_receive_hit(source_player: Player, damage: int) -> void:
 		return
 	if state == State.HURT or state == State.DYING or state == State.DEAD:
 		return
+	var damage_applied: bool = state_node.can_get_hurt()
 	_player = source_player
+	register_kill_credit(source_player, damage_applied)
 	if _targeting != null:
 		_targeting.mark_engaged_target(source_player)
 	screamed.emit()
@@ -667,7 +879,7 @@ func try_receive_hit(source_player: Player, damage: int) -> void:
 			"is_crit": false,
 			"position": global_position,
 		})
-	if state_node.can_get_hurt():
+	if damage_applied:
 		switch_state(State.HURT, data)
 	else:
 		switch_state(State.BLOCKING, data)
@@ -679,7 +891,17 @@ func try_receive_hit_result(source_player: Player, result) -> void:
 		return
 	if state == State.HURT or state == State.DYING or state == State.DEAD:
 		return
+	var damage_applied: bool = state_node.can_get_hurt() or bool(result.ignores_block)
 	_player = source_player
+	register_kill_credit(source_player, damage_applied)
+	if damage_applied:
+		var proficiency_key := String(result.proficiency_key) if "proficiency_key" in result else ""
+		COMBAT_PROGRESSION.award_player_damage(
+			source_player,
+			proficiency_key,
+			String(result.attack_type),
+			int(result.final_damage)
+		)
 	if _targeting != null:
 		_targeting.mark_engaged_target(source_player)
 	screamed.emit()
@@ -710,7 +932,7 @@ func try_receive_hit_result(source_player: Player, result) -> void:
 	# 不再有概率格挡投骰。格挡反馈由 EnemyStateBlocking._enter_tree 播放。
 	# 穿透格挡的攻击（ignores_block）无视格挡状态，直接造成伤害。
 	# ARPG 秒数眩晕：若 result.stun_duration > 0，进入 STUNNED 状态
-	if state_node.can_get_hurt() or result.ignores_block:
+	if damage_applied:
 		if result.stun_duration > 0.0 and state_node.can_get_stunned():
 			# 临时改写 duration_stun 为秒数对应的毫秒（EnemyStateStunned 用 Time.get_ticks_msec 比对）
 			# 策划案 ARPG 化：stun_duration 单位为秒，转毫秒供现有计时逻辑使用
@@ -723,6 +945,7 @@ func try_receive_hit_result(source_player: Player, result) -> void:
 
 func try_receive_kick(source_player: Player) -> void:
 	_player = source_player
+	register_kill_credit(source_player)
 	if _targeting != null:
 		_targeting.mark_engaged_target(source_player)
 	screamed.emit()
@@ -751,9 +974,13 @@ func process_gravity(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y -= GRAVITY * delta
 
-func process_pushback(delta: float) -> void:
-	pushback_force = pushback_force.move_toward(Vector3.ZERO, delta * AIR_FRICTION)
+func process_pushback(_delta: float) -> void:
+	if pushback_force.is_zero_approx():
+		return
+	# DamageResult.knockback_force is a velocity impulse, not a per-frame force.
+	# Applying it more than once integrated kick/charge into an unbounded speed boost.
 	velocity += pushback_force
+	pushback_force = Vector3.ZERO
 
 func _check_thrown_enemy_collision() -> void:
 	if not has_meta("is_thrown") or bool(get_meta("thrown_enemy_collision_resolved", false)):
@@ -847,17 +1074,25 @@ func get_combat_speed_multiplier() -> float:
 			"root_and_dmg_down":
 				if typeof(value) == TYPE_DICTIONARY and bool(value.get("root", false)):
 					mult = 0.0
+	# 符文状态效果速度修正（se_ 前缀：定身/束缚/减速/窒息/震颤/恐惧等）
+	mult *= SES.get_speed_multiplier(self)
 	return maxf(mult, 0.0)
 
 func get_combat_defense_penalty() -> int:
-	if not combat_debuffs.has("def_down"):
-		return 0
-	return int(combat_debuffs["def_down"].get("value", 0))
+	var penalty := 0
+	if combat_debuffs.has("def_down"):
+		penalty += int(combat_debuffs["def_down"].get("value", 0))
+	# 符文状态效果：破甲/粉碎
+	penalty += SES.get_defense_penalty(self)
+	return penalty
 
 func get_combat_evade_penalty() -> float:
-	if not combat_debuffs.has("evade_down"):
-		return 0.0
-	return float(combat_debuffs["evade_down"].get("value", 0.0))
+	var penalty := 0.0
+	if combat_debuffs.has("evade_down"):
+		penalty += float(combat_debuffs["evade_down"].get("value", 0.0))
+	# 符文状态效果：致盲（闪避归零）
+	penalty += SES.get_evade_penalty(self)
+	return penalty
 
 func _tick_combat_debuffs(delta: float) -> void:
 	for debuff_type in combat_debuffs.keys():

@@ -74,3 +74,4 @@ func test_slashing_state_still_samples_combat_authoritative_progress() -> void:
 	assert_str(source).contains("sample_action")
 	assert_str(source).contains("CombatSlashAnimator")
 	assert_str(source).contains("is_player_hit_active")
+	assert_str(source).contains("time_start_slash = Time.get_ticks_msec()")

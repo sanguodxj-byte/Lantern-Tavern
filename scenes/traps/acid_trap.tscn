@@ -1,25 +1,11 @@
-[gd_scene format=3 uid="uid://cgacgosoajhu4"]
+[gd_scene load_steps=12 format=3 uid="uid://cgacgosoajhu4"]
 
 [ext_resource type="Script" path="res://scenes/traps/acid_trap.gd" id="1_eld0c"]
-[ext_resource type="Shader" path="res://shaders/liquid.gdshader" id="2_eld0c"]
+[ext_resource type="PackedScene" path="res://assets/meshes/traps/traps_acid_trap.glb" id="2_glb"]
 [ext_resource type="AudioStream" uid="uid://ronjbgv5vj8n" path="res://assets/sounds/boil.wav" id="5_k5f3n"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_qdvwo"]
-render_priority = 0
-shader = ExtResource("2_eld0c")
-shader_parameter/liquid_texture = null
-shader_parameter/texture_scroll_speed = Vector2(0.05, 0.03)
-shader_parameter/wave_amplitude = 0.05000000167648
-shader_parameter/wave_frequency = 2.0
-shader_parameter/wave_speed = 1.00000004424012
-
-[sub_resource type="QuadMesh" id="QuadMesh_1ulyj"]
-material = SubResource("ShaderMaterial_qdvwo")
-subdivide_width = 16
-subdivide_depth = 16
-orientation = 1
-
 [sub_resource type="BoxShape3D" id="BoxShape3D_dhc81"]
+size = Vector3(1, 0.3, 1)
 
 [sub_resource type="Curve" id="Curve_k5f3n"]
 _data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
@@ -38,7 +24,7 @@ curve = SubResource("Curve_buh4x")
 [sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_wlsgo"]
 lifetime_randomness = 0.7
 emission_shape = 3
-emission_box_extents = Vector3(0.5, 0.2, 0.5)
+emission_box_extents = Vector3(0.4, 0.1, 0.4)
 gravity = Vector3(0, 1, 0)
 scale_curve = SubResource("CurveTexture_kws40")
 alpha_curve = SubResource("CurveTexture_1bc20")
@@ -49,6 +35,9 @@ blend_mode = 1
 shading_mode = 0
 vertex_color_use_as_albedo = true
 albedo_color = Color(0.05882353, 0.83137256, 0.07450981, 0.85)
+emission_enabled = true
+emission = Color(0.05882353, 0.83137256, 0.07450981, 1)
+emission_energy_multiplier = 1.2
 texture_filter = 0
 billboard_mode = 1
 billboard_keep_scale = true
@@ -57,40 +46,20 @@ billboard_keep_scale = true
 material = SubResource("StandardMaterial3D_mve47")
 size = Vector2(0.2, 0.2)
 
-[sub_resource type="CylinderMesh" id="CylinderMesh_acid_pit"]
-top_radius = 0.95
-bottom_radius = 1.05
-height = 0.12
-radial_segments = 16
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_acid_pit"]
-albedo_color = Color(0.04, 0.32, 0.025, 1)
-emission_enabled = true
-emission = Color(0.0, 0.2, 0.01, 1)
-emission_energy_multiplier = 1.4
-roughness = 0.95
-
-[node name="AcidTrap" type="Area3D" unique_id=857759605]
+[node name="AcidTrap" type="Area3D"]
 collision_layer = 0
 collision_mask = 6
 monitorable = false
 script = ExtResource("1_eld0c")
 
-[node name="AcidPit" type="MeshInstance3D" parent="." unique_id=1313857114]
-position = Vector3(0.5, -0.08, 0.5)
-mesh = SubResource("CylinderMesh_acid_pit")
-material_override = SubResource("StandardMaterial3D_acid_pit")
+[node name="VoxelModel" parent="." instance=ExtResource("2_glb")]
 
-[node name="Mesh" type="MeshInstance3D" parent="." unique_id=367200440]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, -0.2, 0.5)
-mesh = SubResource("QuadMesh_1ulyj")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=747465431]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, -0.8359643, 0.5)
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
 shape = SubResource("BoxShape3D_dhc81")
 
-[node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=851366085]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.5, 0.5)
+[node name="OmniLight3D" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
 light_color = Color(0.21960784, 0.79607844, 0, 1)
 light_energy = 1.5
 light_specular = 0.0
@@ -100,8 +69,8 @@ distance_fade_length = 8.0
 omni_range = 2.0
 omni_attenuation = 2.0
 
-[node name="Bubbles" type="GPUParticles3D" parent="." unique_id=393508275]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, -0.4, 0.5)
+[node name="Bubbles" type="GPUParticles3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.12, 0)
 amount = 20
 lifetime = 1.5
 randomness = 0.5
@@ -109,7 +78,7 @@ fixed_fps = 60
 process_material = SubResource("ParticleProcessMaterial_wlsgo")
 draw_pass_1 = SubResource("QuadMesh_rewge")
 
-[node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="." unique_id=187933994]
+[node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="."]
 stream = ExtResource("5_k5f3n")
 volume_db = -10.0
 unit_size = 1.0

@@ -60,6 +60,52 @@ func test_navigation_source_contains_hazard_footprint_faces() -> void:
 	if faces_variant is PackedVector3Array:
 		assert_int((faces_variant as PackedVector3Array).size()).is_equal(36)
 
+func test_navigation_excludes_hazard_and_cliff_cells_from_walkable_source() -> void:
+	var layout := _make_layout([
+		[1, 1, 1, 1, 1, 1],
+		[1, 1, 1, 1, 1, 1],
+		[1, 1, 1, 1, 1, 1],
+	])
+	var cliff_cells: Array[Vector2i] = [
+		Vector2i(1, 1), Vector2i(2, 1), Vector2i(3, 1), Vector2i(4, 1),
+	]
+	layout.hazard_anchors.append({"hazard_type": "spikes", "anchor_cell": Vector2i(0, 2)})
+	layout.room_composition_specs.append({
+		"composition_kind": "cliff",
+		"cliff_cells": cliff_cells,
+		"platform_cells": cliff_cells,
+		"ramp_specs": [{"cell": Vector2i(2, 0), "dir": Vector2i(0, 1)}],
+	})
+	var builder := DungeonSceneBuilder.new()
+	var excluded_variant: Variant = builder.call("_collect_navigation_excluded_cells", layout)
+	assert_bool(excluded_variant is Dictionary).is_true()
+	if excluded_variant is Dictionary:
+		var excluded: Dictionary = excluded_variant
+		assert_bool(excluded.has(Vector2i(0, 2))).is_true()
+		for cell in cliff_cells:
+			assert_bool(excluded.has(cell)).is_true()
+		assert_bool(excluded.has(Vector2i(2, 0))).is_true()
+		assert_bool(not excluded.has(Vector2i(5, 2))).is_true()
+
+func test_navigation_skips_cliff_elevation_links() -> void:
+	var layout := _make_layout([[1, 1, 1, 1], [1, 1, 1, 1]])
+	layout.room_composition_specs.append({
+		"composition_kind": "cliff",
+		"ramp_specs": [{"cell": Vector2i(1, 0), "dir": Vector2i(0, 1)}],
+	})
+	layout.room_composition_specs.append({
+		"composition_kind": "elevation",
+		"ramp_specs": [{"cell": Vector2i(2, 1), "dir": Vector2i(1, 0)}],
+		"elevation_m": 1.0,
+	})
+	var stage := Node3D.new()
+	add_child(stage)
+	var builder := DungeonSceneBuilder.new()
+	builder.call("_build_elevation_navigation_links", layout, stage)
+	assert_int(stage.get_child_count()).is_equal(1)
+	assert_str(String(stage.get_child(0).name)).contains("ElevationLink_1")
+	stage.queue_free()
+
 func test_hazard_navigation_footprint_matches_trap_scale() -> void:
 	var builder := DungeonSceneBuilder.new()
 	var spikes := float(builder.call("_hazard_navigation_footprint", "spikes", 3.0))

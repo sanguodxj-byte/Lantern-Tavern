@@ -74,9 +74,20 @@ func test_moving_state_uses_detection_gate_before_chasing() -> void:
 		.override_failure_message("移动状态不能只因登记过玩家就无限追击").is_false()
 
 func test_inactive_chase_ai_still_runs_patrol() -> void:
+	# WIP 重构（should_chase_player 统一索敌门禁）后 _patrol 为单调用点：
+	# chase 分支失败（远距/无玩家）必须走 else 分支继续巡逻。
 	var script: GDScript = load("res://scenes/characters/enemies/state/enemy_state_moving.gd") as GDScript
-	assert_int(script.source_code.count("_patrol(delta)")) \
-		.override_failure_message("远距或无玩家时应跳过追击，但不能跳过自动巡逻").is_greater_equal(2)
+	var source := script.source_code
+	assert_int(source.count("_patrol(delta)")).is_greater_equal(1) \
+		.override_failure_message("移动状态必须调用自动巡逻")
+	assert_bool(source.contains("if enemy.should_chase_player():")) \
+		.override_failure_message("追击必须经统一索敌门禁")
+	assert_bool(source.contains("_chase_player(delta)")) \
+		.override_failure_message("门禁命中分支必须进入追击")
+	assert_bool(source.contains("else:")) \
+		.override_failure_message("远距或无玩家时跳过追击")
+	assert_bool(source.contains("_patrol(delta)")) \
+		.override_failure_message("远距或无玩家时应跳过追击，但不能跳过自动巡逻")
 
 func test_chase_stops_without_navigation_path_instead_of_steering_through_walls() -> void:
 	var enemy := _new_enemy()

@@ -64,6 +64,12 @@ static func projectile_service() -> Node:
 	var r := _root()
 	return r.get_node_or_null("ProjectileService") if r != null else null
 
+static func spell_authority() -> Object:
+	return load("res://globals/combat/spell_authority.gd").new()
+
+static func spell_runtime() -> Object:
+	return load("res://globals/combat/spell_runtime.gd").new()
+
 static func armor_proficiency() -> Node:
 	var r := _root()
 	return r.get_node_or_null("ArmorProficiency") if r != null else null
@@ -84,6 +90,10 @@ static func brewing_data() -> Node:
 static func fermentation_system() -> Node:
 	var r := _root()
 	return r.get_node_or_null("FermentationSystem") if r != null else null
+
+static func brew_flow_system() -> Node:
+	var r := _root()
+	return r.get_node_or_null("BrewFlowSystem") if r != null else null
 
 static func loot_table() -> Node:
 	var r := _root()

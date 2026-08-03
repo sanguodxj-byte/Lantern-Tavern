@@ -28,8 +28,13 @@ const VOXEL_PROP_SCENES := [
 	"res://scenes/props/decor/plank.tscn",
 	"res://scenes/props/crates/small_crate.tscn",
 	"res://scenes/props/crates/large_crate.tscn",
-	"res://scenes/props/structures/pillar.tscn",
+	"res://scenes/props/dungeon/pillar.tscn",
 	"res://scenes/props/decor/weapon_rack.tscn",
+	"res://scenes/props/decor/stalagmite_cluster.tscn",
+	"res://scenes/props/decor/sarcophagus.tscn",
+	"res://scenes/props/decor/wall_chain.tscn",
+	"res://scenes/props/decor/fungus_patch.tscn",
+	"res://scenes/props/decor/brew_cauldron.tscn",
 ]
 const VOXEL_VISUAL_SCENES := [
 	"res://scenes/props/barrel/barrel.tscn",
@@ -131,6 +136,10 @@ func test_voxel_prop_material_atlas_defines_pixel_style_tiles() -> void:
 	var atlas := load(VOXEL_PROP_ATLAS) as Texture2D
 	assert_object(atlas).is_not_null()
 	var image := atlas.get_image()
+	if image.is_compressed():
+		assert_int(image.decompress()) \
+			.override_failure_message("体素道具材质图集必须能解压为可读像素") \
+			.is_equal(OK)
 	assert_int(image.get_width()).is_equal(256)
 	assert_int(image.get_height()).is_equal(128)
 	var meta: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(VOXEL_PROP_META))
@@ -196,6 +205,9 @@ func test_voxel_prop_scenes_generate_one_pixel_aligned_box_meshes() -> void:
 				.is_not_null()
 			assert_str((material.get_shader_parameter("atlas") as Texture2D).resource_path) \
 				.is_equal(VOXEL_PROP_ATLAS)
+			assert_float(material.get_shader_parameter("world_aligned_uv_enabled")) \
+				.override_failure_message("%s/%s 合并体素网格必须使用世界米制图集采样" % [scene_path, box_data["name"]]) \
+				.is_equal(1.0)
 		inst.free()
 
 
@@ -211,7 +223,7 @@ func test_voxel_props_keep_odd_width_centerline_details() -> void:
 				continue
 			var size_px: Vector3 = box_data["max"] - box_data["min"]
 			for size in [size_px.x, size_px.y, size_px.z]:
-				if int(roundf(size * 32.0)) % 2 == 1:
+				if int(roundf(size)) % 2 == 1:
 					found_odd_detail = true
 					break
 		assert_bool(found_odd_detail) \
@@ -776,7 +788,7 @@ func _is_voxel_aligned(value: float) -> bool:
 
 
 func _is_centerline_detail(node_name: String) -> bool:
-	for marker in ["Leg", "Bar", "Post", "Candle", "Flame", "Rail", "Band", "Crate", "Chest", "Lock", "Pillar", "Jamb", "Banner", "Bone", "Stone", "Plank"]:
+	for marker in ["Leg", "Bar", "Post", "Candle", "Flame", "Rail", "Band", "Crate", "Chest", "Lock", "Pillar", "Jamb", "Banner", "Bone", "Stone", "Plank", "Stalagmite", "Sarcophagus", "Chain", "Fungus"]:
 		if node_name.contains(marker):
 			return true
 	return false

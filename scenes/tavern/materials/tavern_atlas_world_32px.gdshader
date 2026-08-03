@@ -4,19 +4,25 @@ render_mode diffuse_burley, specular_disabled;
 
 uniform sampler2D atlas_texture : source_color, filter_nearest, repeat_disable;
 uniform vec4 atlas_region_tiles = vec4(0.0, 0.0, 32.0, 8.0);
-uniform float meters_per_tile = 1.0;
+uniform vec2 atlas_grid = vec2(32.0, 32.0);
+// 注意：hint_range 仅支持 float/int uniform，vec2/vec4 图集参数不支持范围提示。
+uniform float atlas_tile_size_px : hint_range(1.0, 128.0, 1.0) = 32.0;
+uniform float atlas_inset_px : hint_range(0.0, 16.0, 0.5) = 0.0;
+uniform float atlas_continuous_region : hint_range(0.0, 1.0, 1.0) = 0.0;
+uniform float atlas_mirror_repeat : hint_range(0.0, 1.0, 1.0) = 0.0;
+uniform float meters_per_tile : hint_range(0.125, 8.0, 0.125) = 1.0;
 uniform vec4 albedo_tint : source_color = vec4(1.0, 1.0, 1.0, 1.0);
-uniform float material_roughness = 0.85;
-uniform float material_metallic = 0.0;
+uniform float material_roughness : hint_range(0.0, 1.0, 0.01) = 0.85;
+uniform float material_metallic : hint_range(0.0, 1.0, 0.01) = 0.0;
 // Subtle deterministic variation keeps the pixel atlas crisp while breaking up large repeated surfaces.
-uniform float noise_strength = 0.06;
-uniform float noise_scale = 0.9;
+uniform float noise_strength : hint_range(0.0, 0.5, 0.01) = 0.06;
+uniform float noise_scale : hint_range(0.1, 4.0, 0.1) = 0.9;
 // Procedural decal stains act as a material-specific overlay without requiring a tavern atlas rewrite.
 uniform vec4 decal_tint : source_color = vec4(0.62, 0.44, 0.28, 1.0);
-uniform float decal_strength = 0.12;
-uniform float decal_scale = 0.8;
-uniform float decal_threshold = 0.74;
-uniform float roughness_variation = 0.08;
+uniform float decal_strength : hint_range(0.0, 1.0, 0.01) = 0.12;
+uniform float decal_scale : hint_range(0.1, 4.0, 0.1) = 0.8;
+uniform float decal_threshold : hint_range(0.0, 1.0, 0.01) = 0.74;
+uniform float roughness_variation : hint_range(0.0, 0.5, 0.01) = 0.08;
 
 varying vec3 world_pos;
 varying vec3 world_normal;
@@ -29,10 +35,25 @@ void vertex() {
 vec4 sample_atlas(vec2 meter_coord) {
 	vec2 scaled = meter_coord / max(meters_per_tile, 0.0001);
 	vec2 region_size = max(atlas_region_tiles.zw, vec2(1.0, 1.0));
+	if (atlas_continuous_region > 0.5) {
+		vec2 region_coord = mod(scaled, region_size);
+		if (atlas_mirror_repeat > 0.5) {
+			vec2 period = region_size * 2.0;
+			vec2 wrapped = mod(scaled, period);
+			region_coord = region_size - abs(wrapped - region_size);
+		}
+		vec2 half_texel = vec2(0.5 / max(atlas_tile_size_px, 1.0));
+		region_coord = clamp(region_coord, half_texel, region_size - half_texel);
+		vec2 continuous_uv = (atlas_region_tiles.xy + region_coord) / max(atlas_grid, vec2(1.0));
+		return texture(atlas_texture, continuous_uv);
+	}
 	vec2 tile = mod(floor(scaled), region_size);
 	tile = mod(tile + region_size, region_size);
 	vec2 tile_uv = clamp(fract(scaled), vec2(0.015625), vec2(0.984375));
-	vec2 atlas_uv = (atlas_region_tiles.xy + tile + tile_uv) / vec2(32.0, 32.0);
+	float tile_size = max(atlas_tile_size_px, 1.0);
+	float inset = clamp(atlas_inset_px, 0.0, tile_size * 0.45);
+	tile_uv = (tile_uv * (tile_size - inset * 2.0) + inset) / tile_size;
+	vec2 atlas_uv = (atlas_region_tiles.xy + tile + tile_uv) / max(atlas_grid, vec2(1.0));
 	return texture(atlas_texture, atlas_uv);
 }
 

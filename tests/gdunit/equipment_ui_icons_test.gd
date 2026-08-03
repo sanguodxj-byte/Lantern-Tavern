@@ -70,10 +70,14 @@ func test_equipment_icon_files_are_readable_images() -> void:
 		var abs_path := ProjectSettings.globalize_path(path)
 		assert_bool(FileAccess.file_exists(abs_path)) \
 			.override_failure_message("图标文件不存在: %s" % path).is_true()
-		var img := Image.new()
-		var err := img.load(path)
-		assert_int(err).override_failure_message("无法解码图标: %s err=%d" % [path, err]).is_equal(OK)
-		assert_int(img.get_width()).is_greater_equal(32)
+		var texture := ResourceLoader.load(path, "Texture2D") as Texture2D
+		assert_object(texture) \
+			.override_failure_message("无法加载已导入图标: %s" % path).is_not_null()
+		assert_int(texture.get_width()).is_greater_equal(32)
+		assert_int(texture.get_height()).is_greater_equal(32)
+		var img := texture.get_image()
+		assert_object(img) \
+			.override_failure_message("无法读取已导入图标像素: %s" % path).is_not_null()
 		# not blank: sample some non-zero alpha pixels
 		var visible := false
 		for y in range(0, img.get_height(), maxi(1, img.get_height() / 8)):

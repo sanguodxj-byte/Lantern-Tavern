@@ -31,35 +31,45 @@ const AR := preload("res://globals/combat/armor_resolver.gd")
 enum Style { ONE_HAND, ONE_HAND_SHIELD, TWO_HAND, DUAL_WIELD, UNARMED, RANGED, SPELL }
 
 const STYLE_META: Dictionary = {
+	# damage_mult：流派武器伤害倍率（架构审查 P1-3 单一真相，只乘武器伤害，法术卡不乘）。
+	# 数值来源 docs/战斗数值体系.md §2.5【✅ 已决定】：单手 1.00 / 持盾 0.80 / 双手 1.35 /
+	# 双持 主手 1.00（副手 0.60 由 offhand_damage_pct 承载）/ 徒手 0.80 / 远程 1.00 / 法系 0.50。
+	# 调整数值只改本表，由七流派契约测试锁定。
 	Style.ONE_HAND: {
 		"name": "单手风格",
+		"damage_mult": 1.0,
 		"attack_speed_mult": 1.0, "move_speed_mult": 1.0,
 	},
 	Style.ONE_HAND_SHIELD: {
 		"name": "单手持盾风格",
 		"block_damage_reduce": 0.15,
+		"damage_mult": 0.8,
 		"attack_speed_mult": 0.95, "move_speed_mult": 0.95,
 	},
 	Style.TWO_HAND: {
 		"name": "双手风格",
-		"damage_mult": 1.0, "knockback_force": 4.0,  # 米/秒
+		"damage_mult": 1.35, "knockback_force": 4.0,  # 米/秒
 		"attack_speed_mult": 0.85, "move_speed_mult": 0.9,
 	},
 	Style.DUAL_WIELD: {
 		"name": "双持风格",
 		"offhand_damage_pct": 0.6,
+		"damage_mult": 1.0,
 		"attack_speed_mult": 1.2, "move_speed_mult": 1.0,
 	},
 	Style.UNARMED: {
 		"name": "徒手风格",
+		"damage_mult": 0.8,
 		"attack_speed_mult": 1.3, "move_speed_mult": 1.1,
 	},
 	Style.RANGED: {
 		"name": "远程风格",
+		"damage_mult": 1.0,
 		"attack_speed_mult": 0.9, "move_speed_mult": 0.95,
 	},
 	Style.SPELL: {
 		"name": "法术风格",
+		"damage_mult": 0.5,
 		"attack_speed_mult": 0.9, "move_speed_mult": 0.95,
 	},
 }
@@ -148,6 +158,12 @@ class AttackInput:
 	var element_type: String = ""
 	# 里程碑绝对减免（厚实皮肤 −2、元素护壳 −4 等的叠加值）
 	var flat_reduce: int = 0
+	# ---- 熟练度阶梯加成（docs/36-出身系统与涌现式Build.md §3）----
+	# 由 CombatBridge 从 AttrPanel.get_proficiency_bonus() 注入。
+	# damage_mult: 熟练度 20→+5%, 100→+10%（叠乘在 weapon_damage_mult 之上）
+	var proficiency_damage_mult: float = 1.0
+	# crit_bonus: 熟练度 60→+3% 暴击率
+	var proficiency_crit_bonus: float = 0.0
 
 class Defender:
 	var con: int = 10
@@ -173,6 +189,8 @@ class DamageResult:
 	var raw_damage: float = 0.0
 	var final_damage: int = 0
 	var attack_type: String = "melee"
+	## 造成该次伤害的武器类别成长键；由 CombatBridge 随武器快照写入。
+	var proficiency_key: String = ""
 	# blocked / block_reduced 保留用于受击方状态机判定（由 try_receive_hit_result 设置）
 	var blocked: bool = false
 	var block_reduced: float = 0.0
@@ -224,6 +242,8 @@ static func resolve_attack(attack: AttackInput, defender: Defender, attacker_for
 	result.hit = true
 	# 阶段一：暴击判定
 	var crit_rate: float = 5.0 + attack.attacker_per * 0.5 - defender.per * 0.5 + attack.crit_bonus
+	# 熟练度阶梯 60：暴击率 +3%
+	crit_rate += attack.proficiency_crit_bonus
 	# 轻甲熟练度 T3 疾风闪跃：被暴击率 −5%
 	crit_rate = maxf(crit_rate - defender.prof_crit_rate_reduction, 0.0)
 	result.crit_roll = randi_range(1, 100)
@@ -231,6 +251,8 @@ static func resolve_attack(attack: AttackInput, defender: Defender, attacker_for
 		result.crit = true
 	# 阶段二：风格与武器基础伤害计算
 	var base_damage: float = _compute_base_damage(attack)
+	# 熟练度阶梯 20/100：伤害加成 +5%/+10%（叠乘在武器伤害倍率之上）
+	base_damage *= attack.proficiency_damage_mult
 	if result.crit:
 		var crit_mult: float = 1.5 + attack.attacker_per * 0.01 - defender.per * 0.01 + attack.crit_damage_bonus
 		crit_mult = maxf(crit_mult, 1.1)

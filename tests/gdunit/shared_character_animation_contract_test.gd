@@ -9,8 +9,9 @@ func test_production_player_does_not_bind_first_person_to_third_person_player() 
 	var view_model_source := FileAccess.get_file_as_string(VIEW_MODEL_SCRIPT)
 	assert_str(player_source).not_contains("bind_shared_character_animation(")
 	assert_str(player_source).contains("view_model.set_weapon")
-	assert_str(view_model_source).contains("first_person_arm_animator")
-	assert_str(view_model_source).contains("_configure_first_person_arms")
+	assert_str(view_model_source).contains("first_person_equipment_motion.gd")
+	assert_str(view_model_source).not_contains("first_person_arm_animator")
+	assert_str(view_model_source).not_contains("_configure_first_person_arms")
 	assert_str(view_model_source).contains("visual_only")
 
 func test_view_model_owns_an_independent_animation_player_and_complete_style_library() -> void:
@@ -63,7 +64,8 @@ func test_legacy_shared_bind_cannot_disable_local_first_person_library() -> void
 func test_first_person_state_cleanup_stops_only_local_visual_action() -> void:
 	var source := FileAccess.get_file_as_string(VIEW_MODEL_SCRIPT)
 	assert_str(source).contains("func finish_weapon_release()")
-	assert_str(source).contains("first_person_arm_animator.reset_pose()")
+	assert_str(source).contains("animator.stop_action(reset_pose)")
+	assert_str(source).contains("shield_action_pivot.transform = Transform3D.IDENTITY")
 	assert_str(source).contains("func finish_weapon_defense")
 
 func _create_view_model() -> ViewModel:

@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,13 +34,51 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "curved ridged crimson scale plate with horn tip and underbelly"
 
+# Dragon-scale pixel palette: ember reds, char black, gold horn, ash underbelly.
+# Each material owns its own seed/pattern; no shared identity table.
+_EMBER = (0.85, 0.32, 0.12, 1.0)
+_CHAR = (0.15, 0.05, 0.05, 1.0)
+_GOLD = (0.95, 0.78, 0.35, 1.0)
+_ASH = (0.40, 0.22, 0.16, 1.0)
+_COOL_BLUE = (0.10, 0.18, 0.42, 1.0)
+
 def build_model():
-    scale_mid = make_material("ds_mid", (0.62, 0.18, 0.14, 1.0), roughness=0.55)
-    scale_dark = make_material("ds_dark", (0.32, 0.08, 0.08, 1.0), roughness=0.62)
-    scale_hot = make_material("ds_hot", (0.85, 0.32, 0.12, 1.0), roughness=0.48)
-    ridge = make_material("ds_ridge", (0.92, 0.55, 0.18, 1.0), roughness=0.40, metallic=0.2)
-    belly = make_material("ds_belly", (0.55, 0.28, 0.18, 1.0), roughness=0.70)
-    tip = make_material("ds_tip", (0.95, 0.78, 0.35, 1.0), roughness=0.35, metallic=0.25)
+    scale_mid = make_pixel_material(
+        "ds_mid", (0.62, 0.18, 0.14, 1.0),
+        roughness=0.50, metallic=0.10, palette=(_EMBER, _CHAR, _GOLD, _COOL_BLUE),
+        pixel_size=48, variation=0.40, seed=101, pattern="scales",
+        normal_strength=1.3, edge_darken=0.35, highlight=0.40, detail_noise=0.15,
+    )
+    scale_dark = make_pixel_material(
+        "ds_dark", (0.32, 0.08, 0.08, 1.0),
+        roughness=0.58, metallic=0.12, palette=(_CHAR, _EMBER, _COOL_BLUE),
+        pixel_size=48, variation=0.38, seed=113, pattern="scales",
+        normal_strength=1.2, edge_darken=0.40, highlight=0.30, detail_noise=0.15,
+    )
+    scale_hot = make_pixel_material(
+        "ds_hot", (0.85, 0.32, 0.12, 1.0),
+        roughness=0.42, metallic=0.15, palette=(_EMBER, _GOLD, _CHAR),
+        pixel_size=48, variation=0.42, seed=127, pattern="scales",
+        normal_strength=1.3, edge_darken=0.30, highlight=0.50, detail_noise=0.15,
+    )
+    ridge = make_pixel_material(
+        "ds_ridge", (0.92, 0.55, 0.18, 1.0),
+        roughness=0.35, metallic=0.35, palette=(_GOLD, _EMBER, _COOL_BLUE),
+        pixel_size=48, variation=0.38, seed=131, pattern="cracks",
+        normal_strength=1.1, edge_darken=0.38, highlight=0.35, detail_noise=0.15,
+    )
+    belly = make_pixel_material(
+        "ds_belly", (0.55, 0.28, 0.18, 1.0),
+        roughness=0.68, metallic=0.08, palette=(_ASH, _CHAR, _COOL_BLUE),
+        pixel_size=48, variation=0.38, seed=149, pattern="banded",
+        normal_strength=1.0, edge_darken=0.35, highlight=0.20, detail_noise=0.15,
+    )
+    tip = make_pixel_material(
+        "ds_tip", (0.95, 0.78, 0.35, 1.0),
+        roughness=0.30, metallic=0.40, palette=(_GOLD, _EMBER),
+        pixel_size=48, variation=0.40, seed=157, pattern="speckle",
+        normal_strength=1.1, edge_darken=0.25, highlight=0.60, detail_noise=0.12,
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
     def add(name, center, size, material):

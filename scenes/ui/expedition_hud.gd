@@ -9,9 +9,21 @@ class_name ExpeditionHUD
 @onready var joystick: TouchScreenButton = $MobileHUD/Joystick
 @onready var interact_btn: Button = $MobileHUD/InteractButton
 @onready var alert_label: Label = $BottomHUD/AlertLabel
+@onready var extraction_panel: Panel = $ExtractionPanel
+@onready var extraction_label: Label = $ExtractionPanel/ExtractionLabel
+@onready var extraction_bar: ProgressBar = $ExtractionPanel/ExtractionBar
+@onready var floor_indicator: Label = $FloorIndicator
+@onready var floor_arrival_label: Label = $FloorArrival/FloorArrivalLabel
 
 var collected_materials: Dictionary = {}
 var latest_pressure_snapshot: Dictionary = {}
+var _extraction_feedback_token := 0
+var _floor_arrival_tween: Tween = null
+var _floor_arrival_token := 0
+
+const FLOOR_FADE_IN_DURATION := 0.24
+const FLOOR_HOLD_DURATION := 1.0
+const FLOOR_FADE_OUT_DURATION := 0.34
 
 func _ready() -> void:
 	# Hide mobile controls on desktop, show only on Android/iOS
@@ -39,8 +51,44 @@ func _ready() -> void:
 
 	# Connect local signals
 	interact_btn.pressed.connect(_on_mobile_interact)
+	extraction_panel.visible = false
+	if GameState != null and GameState.has_method("get_dungeon_floor_label"):
+		set_floor_label(String(GameState.get_dungeon_floor_label()))
 
 	_update_hud()
+
+func set_floor_label(floor_label: String) -> void:
+	if floor_indicator == null:
+		return
+	floor_indicator.text = floor_label if not floor_label.is_empty() else "L1"
+
+## 显示一次“区域名称 · 楼层”的到达提示：淡入、保持 1 秒、淡出。
+func show_floor_arrival(zone_name: String, floor_label: String) -> void:
+	if floor_arrival_label == null:
+		return
+	_floor_arrival_token += 1
+	var token := _floor_arrival_token
+	if _floor_arrival_tween != null and _floor_arrival_tween.is_valid():
+		_floor_arrival_tween.kill()
+	floor_arrival_label.text = "%s · %s" % [zone_name, floor_label]
+	floor_arrival_label.visible = true
+	floor_arrival_label.modulate.a = 0.0
+	if not is_inside_tree():
+		floor_arrival_label.modulate.a = 1.0
+		return
+	_floor_arrival_tween = create_tween()
+	_floor_arrival_tween.tween_property(floor_arrival_label, "modulate:a", 1.0, FLOOR_FADE_IN_DURATION)
+	_floor_arrival_tween.tween_interval(FLOOR_HOLD_DURATION)
+	_floor_arrival_tween.tween_property(floor_arrival_label, "modulate:a", 0.0, FLOOR_FADE_OUT_DURATION)
+	_floor_arrival_tween.tween_callback(func() -> void:
+		if token == _floor_arrival_token and is_instance_valid(floor_arrival_label):
+			floor_arrival_label.visible = false
+	)
+
+func _exit_tree() -> void:
+	_floor_arrival_token += 1
+	if _floor_arrival_tween != null and _floor_arrival_tween.is_valid():
+		_floor_arrival_tween.kill()
 
 func update_player_hp(current_hp: float, max_hp: float) -> void:
 	hp_bar.max_value = max_hp
@@ -99,6 +147,52 @@ func trigger_extraction_available() -> void:
 	var timer = get_tree().create_timer(4.0)
 	await timer.timeout
 	alert_label.visible = false
+
+
+func begin_extraction(duration: float) -> void:
+	_extraction_feedback_token += 1
+	extraction_panel.visible = true
+	extraction_bar.value = 0.0
+	extraction_label.text = tr("撤离引导  %.1f 秒") % maxf(duration, 0.0)
+
+
+func update_extraction_progress(progress: float, remaining: float) -> void:
+	_extraction_feedback_token += 1
+	extraction_panel.visible = true
+	extraction_bar.value = clampf(progress, 0.0, 1.0)
+	extraction_label.text = tr("保持警戒  %.1f 秒") % maxf(remaining, 0.0)
+
+
+func cancel_extraction(reason: String) -> void:
+	_extraction_feedback_token += 1
+	var token := _extraction_feedback_token
+	extraction_panel.visible = true
+	extraction_bar.value = 0.0
+	match reason:
+		"hurt":
+			extraction_label.text = tr("受到攻击，撤离中断")
+		"left_area", "moved":
+			extraction_label.text = tr("离开引导区域，撤离中断")
+		"not_inside":
+			extraction_label.text = tr("进入符文中心后才能撤离")
+		_:
+			extraction_label.text = tr("撤离已取消")
+	_hide_extraction_feedback_later(token)
+
+
+func complete_extraction() -> void:
+	_extraction_feedback_token += 1
+	extraction_panel.visible = true
+	extraction_bar.value = 1.0
+	extraction_label.text = tr("撤离完成")
+
+
+func _hide_extraction_feedback_later(token: int) -> void:
+	if not is_inside_tree():
+		return
+	await get_tree().create_timer(1.2).timeout
+	if token == _extraction_feedback_token and is_instance_valid(extraction_panel):
+		extraction_panel.visible = false
 
 func _on_mobile_interact() -> void:
 	# Emulate "E" key press for mobile Touch interactions

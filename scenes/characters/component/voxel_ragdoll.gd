@@ -163,6 +163,7 @@ func _fragment_from_grid(meshes: Array[MeshInstance3D], parent: Node, dir: Vecto
 ## 创建一个碎片刚体：碰撞盒 + 可视网格 + 材质。
 func _create_fragment_body(mesh: Mesh, shape: Shape3D, mat: Material) -> RigidBody3D:
 	var body := RigidBody3D.new()
+	body.set_meta("voxel_ragdoll_fragment", true)
 	# 死亡体素碎片：仅与地面（LAYER_ENVIRONMENT）碰撞，使碎片落到地面停留；
 	# 碎片层 LAYER_DEBRIS 不在玩家/敌人/投掷物/可拾取物/投射物的 mask 中，故
 	# 不会与玩家模型或其他游戏物体互相碰撞。碎片之间也不互相碰撞（mask 不含

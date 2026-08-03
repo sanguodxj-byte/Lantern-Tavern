@@ -14,6 +14,54 @@ theme = ExtResource("3_theme")
 texture_filter = 1
 script = ExtResource("1_hud")
 
+[node name="FloorIndicator" type="Label" parent="."]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 22.0
+offset_right = 136.0
+offset_bottom = 62.0
+mouse_filter = 2
+theme_type_variation = &"CrystalLabel"
+theme_override_colors/font_color = Color(1, 0.84, 0.48, 1)
+theme_override_colors/font_outline_color = Color(0.08, 0.05, 0.03, 0.95)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 28
+text = "L1"
+horizontal_alignment = 0
+vertical_alignment = 1
+
+[node name="FloorArrival" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="FloorArrivalLabel" type="Label" parent="FloorArrival"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -360.0
+offset_top = -42.0
+offset_right = 360.0
+offset_bottom = 42.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_type_variation = &"CrystalLabel"
+theme_override_colors/font_color = Color(1, 0.9, 0.64, 1)
+theme_override_colors/font_outline_color = Color(0.04, 0.025, 0.02, 0.98)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 46
+text = "幽暗地牢 · L1"
+horizontal_alignment = 1
+vertical_alignment = 1
+visible = false
+modulate = Color(1, 1, 1, 0)
+
 [node name="TopHUD" type="Panel" parent="."]
 layout_mode = 1
 anchors_preset = 1
@@ -112,6 +160,45 @@ theme_type_variation = &"CrystalLabel"
 theme_override_font_sizes/font_size = 28
 text = "EXTRACTION READY"
 horizontal_alignment = 1
+
+[node name="ExtractionPanel" type="Panel" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -180.0
+offset_top = -210.0
+offset_right = 180.0
+offset_bottom = -144.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_type_variation = &"HUDPanel"
+
+[node name="ExtractionLabel" type="Label" parent="ExtractionPanel"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 8.0
+offset_right = 348.0
+offset_bottom = 34.0
+mouse_filter = 2
+theme_type_variation = &"SectionTitle"
+text = "撤离引导"
+horizontal_alignment = 1
+
+[node name="ExtractionBar" type="ProgressBar" parent="ExtractionPanel"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 40.0
+offset_right = 348.0
+offset_bottom = 56.0
+mouse_filter = 2
+max_value = 1.0
+step = 0.01
+show_percentage = false
 
 [node name="MobileHUD" type="Control" parent="."]
 visible = false

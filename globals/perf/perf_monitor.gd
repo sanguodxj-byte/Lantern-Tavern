@@ -70,6 +70,11 @@ func _process(delta: float) -> void:
 
 	var lines := PackedStringArray()
 	lines.append("FPS: %.0f  (%.1f ms)" % [fps, frame_ms])
+	var budget := get_node_or_null("/root/PerformanceBudget")
+	if budget != null:
+		lines.append("Adaptive: tier %d  scale %.2f" % [
+			int(budget.get("quality_tier")), float(budget.call("get_render_scale"))
+		])
 	lines.append("RenderObjs: %d" % _render_objects())
 	lines.append("Primitives: %d" % _render_primitives())
 	lines.append("Net: %.0f msg/s  (total %d)" % [_net_rate, _net_total])

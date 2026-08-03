@@ -44,6 +44,14 @@ func test_level0_dungeon_atlas_metadata_defines_required_tiles() -> void:
 		"overlay_grime",
 		"overlay_blood",
 		"overlay_torch_scorch",
+		"barony_wall_stone",
+		"barony_floor_rough",
+		"barony_platform_cut",
+		"barony_threshold_iron",
+		"barony_ceiling_slab",
+		"barony_moss_floor",
+		"barony_broken_wall",
+		"barony_boss_slab",
 	]:
 		assert_bool(tiles.has(tile_name)) \
 			.override_failure_message("level0 atlas metadata 缺少 tile: %s" % tile_name) \
@@ -63,6 +71,14 @@ func test_level0_dungeon_source_tiles_have_locked_sizes() -> void:
 		"door_edge_top": Vector2i(32, 32),
 		"decor_iron_grate": Vector2i(32, 32),
 		"decor_rubble": Vector2i(32, 32),
+		"barony_wall_stone": Vector2i(32, 32),
+		"barony_floor_rough": Vector2i(32, 32),
+		"barony_platform_cut": Vector2i(32, 32),
+		"barony_threshold_iron": Vector2i(32, 32),
+		"barony_ceiling_slab": Vector2i(32, 32),
+		"barony_moss_floor": Vector2i(32, 32),
+		"barony_broken_wall": Vector2i(32, 32),
+		"barony_boss_slab": Vector2i(32, 32),
 	}
 	for tile_name in expected_sizes.keys():
 		var image := Image.load_from_file(SOURCE_DIR + tile_name + ".png")
@@ -220,11 +236,27 @@ func test_level0_dungeon_overlay_tiles_are_transparent_layers() -> void:
 
 
 func test_level0_dungeon_base_tiles_are_seam_friendly() -> void:
-	for tile_name in ["wall_stone_brick", "floor_rough_stone", "ceiling_stone_slab"]:
+	for tile_name in ["wall_stone_brick", "floor_rough_stone", "ceiling_stone_slab", "barony_wall_stone", "barony_floor_rough", "barony_ceiling_slab", "barony_moss_floor"]:
 		var image := Image.load_from_file(SOURCE_DIR + tile_name + ".png")
 		assert_int(_edge_delta(image, true)) \
 			.override_failure_message("%s 左右边缘亮度差过大，会出现接缝" % tile_name) \
-			.is_less(48)
+		.is_less(48)
+
+
+func test_generated_barony_tiles_are_opaque_and_not_green_keyed() -> void:
+	for tile_name in ["barony_wall_stone", "barony_floor_rough", "barony_platform_cut", "barony_threshold_iron", "barony_ceiling_slab", "barony_moss_floor", "barony_broken_wall", "barony_boss_slab"]:
+		var image := Image.load_from_file(SOURCE_DIR + tile_name + ".png")
+		var non_opaque := 0
+		var pure_green := 0
+		for y in range(image.get_height()):
+			for x in range(image.get_width()):
+				var color := image.get_pixel(x, y)
+				if color.a < 0.99:
+					non_opaque += 1
+				if color.r < 0.02 and color.g > 0.98 and color.b < 0.02:
+					pure_green += 1
+		assert_int(non_opaque).is_equal(0)
+		assert_int(pure_green).is_equal(0)
 		assert_int(_edge_delta(image, false)) \
 			.override_failure_message("%s 上下边缘亮度差过大，会出现接缝" % tile_name) \
 			.is_less(48)
@@ -248,13 +280,13 @@ func test_procedural_dungeon_uses_level0_dungeon_atlas_for_base_terrain() -> voi
 				continue
 			if String(child.name).begins_with("WallMultiMesh"):
 				assert_object(mat.get_shader_parameter("atlas")).is_equal(expected_tex)
-				assert_object(mat.get_shader_parameter("tile_col_row")).is_equal(Vector2(0, 0))
+				assert_object(mat.get_shader_parameter("tile_col_row")).is_equal(Vector2(4, 2))
 				assert_object(mat.get_shader_parameter("tile_span")).is_equal(Vector2(1, 1))
 				assert_object(mat.get_shader_parameter("atlas_grid")).is_equal(Vector2(8, 4))
 				wall_tested = true
 			elif child.name == "FloorMultiMesh":
 				assert_object(mat.get_shader_parameter("atlas")).is_equal(expected_tex)
-				assert_object(mat.get_shader_parameter("tile_col_row")).is_equal(Vector2(1, 0))
+				assert_object(mat.get_shader_parameter("tile_col_row")).is_equal(Vector2(5, 2))
 				assert_object(mat.get_shader_parameter("tile_span")).is_equal(Vector2(1, 1))
 				assert_object(mat.get_shader_parameter("tile_repeat")).is_equal(Vector2(3.0, 3.0))
 				floor_tested = true

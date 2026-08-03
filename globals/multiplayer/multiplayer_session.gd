@@ -15,6 +15,7 @@ extends Node
 const DungeonSessionControllerClass := preload("res://scenes/multiplayer/dungeon_session_controller.gd")
 const BridgeScene := preload("res://globals/multiplayer/multiplayer_scene_bridge.tscn")
 const NP := preload("res://globals/multiplayer/network_protocol.gd")
+const ClientIdentity := preload("res://globals/multiplayer/client_identity.gd")
 
 var controller: Node = null          ## DungeonSessionController 实例（真实地牢 + 本地 Player）
 var bridge: Node = null              ## MultiplayerSceneBridge 实例（表现层）
@@ -44,13 +45,21 @@ func _ensure_bridge() -> void:
 # ---------------------------------------------------------------------------
 # 房主：创建房间（不立即出征，等待玩家加入）
 # ---------------------------------------------------------------------------
-func host_room(port: int, max_players: int = 8, player_guid: String = "host") -> void:
+## 房主：创建房间（不立即出征，等待玩家加入）
+## player_guid：空时使用本机持久化稳定身份（P0-1：禁止固定默认值）。
+func host_room(port: int, max_players: int = 8, player_guid: String = "") -> void:
+	if player_guid.is_empty():
+		player_guid = ClientIdentity.load_or_create()
 	var err := NetworkManager.host(port, max_players)
 	if err != OK:
 		host_failed.emit("创建房间失败 (端口 %d: %d)" % [port, err])
 		return
 	is_host_mode = true
-	NetworkManager.spawn_self({}, player_guid)
+	# P0-5：房主以【单人存档摘要】（materials/loadout/spell_state）建立权威 PlayerContext，
+	# 使房主在联机地牢中拥有服务器权威法术装配（不再默认空 SpellLoadout）。
+	var gs: Node = get_node_or_null("/root/GameState")
+	var save_state: Dictionary = gs.build_network_save_state() if gs != null and gs.has_method("build_network_save_state") else {}
+	NetworkManager.spawn_self(save_state, player_guid)
 	if not NetworkManager.peer_authorized.is_connected(_on_peer_authorized):
 		NetworkManager.peer_authorized.connect(_on_peer_authorized)
 	_emit_room()
@@ -72,7 +81,9 @@ func start_expedition(seed_hint: int = -1) -> void:
 # ---------------------------------------------------------------------------
 # 客户端：加入房间
 # ---------------------------------------------------------------------------
-func join_room(address: String, port: int, player_guid: String = "client") -> void:
+func join_room(address: String, port: int, player_guid: String = "") -> void:
+	if player_guid.is_empty():
+		player_guid = ClientIdentity.load_or_create()
 	is_host_mode = false
 	NetworkManager.join(address, port)
 	# 等待连接建立（local_peer_id 由 0 变为非 0）再 send_spawn，避免竞态。

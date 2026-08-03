@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,11 +34,41 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "tall pale grass blades with silver tips"
 
+# Moongrass pixel palette: tall pale grass - pale greens, silver-white,
+# moonlight blue.
+# Each material owns its own seed/pattern; no shared identity table.
+_BLADE_PALE = (0.55, 0.72, 0.58, 1.0)
+_BLADE_DARK = (0.28, 0.42, 0.30, 1.0)
+_SILVER_WHITE = (0.78, 0.88, 0.92, 1.0)
+_MOON_BLUE = (0.55, 0.68, 0.82, 1.0)
+_ROOT_BROWN = (0.35, 0.28, 0.16, 1.0)
+
+
 def build_model():
-    blade = make_material("mg_blade", (0.55, 0.72, 0.58, 1.0), roughness=0.82)
-    blade_dark = make_material("mg_dark", (0.28, 0.42, 0.30, 1.0), roughness=0.85)
-    silver = make_material("mg_silver", (0.78, 0.88, 0.92, 1.0), roughness=0.45, emission=0.2)
-    root_m = make_material("mg_root", (0.35, 0.28, 0.16, 1.0), roughness=0.90)
+    blade = make_pixel_material(
+        "mg_blade", (0.55, 0.72, 0.58, 1.0),
+        roughness=0.82, palette=(_BLADE_PALE, _MOON_BLUE, _SILVER_WHITE),
+        pixel_size=48, variation=0.40, seed=1401, pattern="vein", normal_strength=0.9,
+        edge_darken=0.35, highlight=0.35, detail_noise=0.15,
+    )
+    blade_dark = make_pixel_material(
+        "mg_dark", (0.28, 0.42, 0.30, 1.0),
+        roughness=0.85, palette=(_BLADE_DARK, _BLADE_PALE, _MOON_BLUE),
+        pixel_size=48, variation=0.41, seed=1407, pattern="vein", normal_strength=1.0,
+        edge_darken=0.35, highlight=0.35, detail_noise=0.15,
+    )
+    silver = make_pixel_material(
+        "mg_silver", (0.78, 0.88, 0.92, 1.0),
+        roughness=0.45, palette=(_SILVER_WHITE, _MOON_BLUE),
+        pixel_size=48, variation=0.41, seed=1413, pattern="speckle", normal_strength=1.1,
+        edge_darken=0.35, highlight=0.35, detail_noise=0.15,
+    )
+    root_m = make_pixel_material(
+        "mg_root", (0.35, 0.28, 0.16, 1.0),
+        roughness=0.90, palette=(_ROOT_BROWN, _BLADE_DARK),
+        pixel_size=48, variation=0.42, seed=1419, pattern="vein", normal_strength=1.2,
+        edge_darken=0.35, highlight=0.35, detail_noise=0.15,
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
     def add(name, center, size, material):

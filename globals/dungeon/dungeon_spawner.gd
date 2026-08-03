@@ -220,16 +220,27 @@ func build_enemy_spawn_plan(layout: DungeonLayout, player: Node) -> Array:
 	var plan: Array = []
 	if layout == null or layout.is_empty() or player == null:
 		return plan
-	for spec in layout.enemy_spawn_specs:
+	for spawn_index in range(layout.enemy_spawn_specs.size()):
+		var spec: Dictionary = layout.enemy_spawn_specs[spawn_index]
 		var enemy_type: String = spec["enemy_type"]
 		var cell: Vector2i = spec["cell"]
-		var offset_x: float = -(float(layout.width) * layout.tile_size) / 2.0
-		var offset_z: float = -(float(layout.height) * layout.tile_size) / 2.0
-		var pos: Vector3 = Vector3(offset_x, 0.5, offset_z) + Vector3(cell.x * layout.tile_size, 0.0, cell.y * layout.tile_size)
+		var floor_y := layout.floor_height_at(cell)
+		var pos: Vector3 = layout.cell_to_world(cell, 0.5, "enemy", spawn_index)
+		var patrol_cell: Vector2i = spec.get("patrol_center_cell", cell)
+		var patrol_center: Vector3 = layout.cell_to_world(patrol_cell, 0.5)
 		var instantiate_type: String = enemy_type
 		if bool(spec.get("is_elite", false)) and not enemy_type.begins_with("elite_"):
 			instantiate_type = "elite_" + enemy_type
-		plan.append({"enemy_type": instantiate_type, "pos": pos})
+		plan.append({
+			"enemy_type": instantiate_type,
+			"pos": pos,
+			"combat_role": String(spec.get("combat_role", "melee_flank")),
+			"sector": String(spec.get("sector", "default")),
+			"formation": String(spec.get("formation", "default")),
+			"patrol_center": patrol_center,
+			"patrol_radius": maxf(layout.tile_size, float(spec.get("patrol_radius_cells", 2)) * layout.tile_size * 0.65),
+			"is_elevated": bool(spec.get("is_elevated", floor_y > 0.1)),
+		})
 	return plan
 
 
@@ -238,7 +249,7 @@ func instantiate_enemy_descriptor(desc: Dictionary, spawn_root: Node, player: No
 	if desc.is_empty() or spawn_root == null or not is_instance_valid(spawn_root) or player == null or layout == null:
 		return null
 	var zone_cfg: Dictionary = ZONE_ENEMY_CONFIG.get(layout.zone, ZONE_ENEMY_CONFIG.get(0, {}))
-	var enemy: Node = _instantiate_enemy(desc["enemy_type"], desc["pos"], player, zone_cfg)
+	var enemy: Node = _instantiate_enemy(desc["enemy_type"], desc["pos"], player, zone_cfg, desc)
 	if enemy == null:
 		return null
 	spawn_root.add_child(enemy)
@@ -371,7 +382,7 @@ func _pick_boss_type(config: Dictionary) -> String:
 	return "elite_" + String(accepted_weights.keys()[0])
 
 
-func _instantiate_enemy(enemy_type: String, pos: Vector3, player: Node, config: Dictionary) -> Node:
+func _instantiate_enemy(enemy_type: String, pos: Vector3, player: Node, config: Dictionary, spawn_descriptor: Dictionary = {}) -> Node:
 	var is_elite := enemy_type.begins_with("elite_")
 	var base_type := enemy_type.trim_prefix("elite_")
 	if not MODEL_TIERS.is_accepted(base_type) or not _enemies_by_id.has(base_type):
@@ -395,8 +406,17 @@ func _instantiate_enemy(enemy_type: String, pos: Vector3, player: Node, config: 
 	enemy.set_meta("enemy_rank", "boss" if BOSS_TYPES.has(base_type) else ("elite" if is_elite else "normal"))
 	enemy.set_meta("body_size", get_body_size(base_type))
 	enemy.set_meta("attack_mode", get_attack_mode(base_type))
+	enemy.set_meta("weapon_id", get_weapon_id(base_type))
 	enemy.set_meta("player_ref", player)
 	enemy.set_meta("spawn_pos", pos)
+	if not spawn_descriptor.is_empty():
+		enemy.set_meta("combat_role", String(spawn_descriptor.get("combat_role", "melee_flank")))
+		enemy.set_meta("combat_sector", String(spawn_descriptor.get("sector", "default")))
+		enemy.set_meta("formation", String(spawn_descriptor.get("formation", "default")))
+		if spawn_descriptor.get("patrol_center", null) is Vector3:
+			enemy.set_meta("patrol_center", spawn_descriptor["patrol_center"])
+		enemy.set_meta("patrol_radius", float(spawn_descriptor.get("patrol_radius", 5.0)))
+		enemy.set_meta("is_elevated_spawn", bool(spawn_descriptor.get("is_elevated", false)))
 	var zone_hp_mult: float = float(config.get("hp_mult", 1.0))
 	var zone_spd_mult: float = float(config.get("speed_mult", 1.0))
 	if is_elite:
@@ -472,6 +492,16 @@ func get_attack_mode(enemy_type: String) -> String:
 		return configured
 	# 兼容尚未补充 attack_mode 的旧条目：claw 表示天然攻击，其余默认为持械。
 	return "body" if String(entry.get("weapon", "")).to_lower() == "claw" else "weapon"
+
+
+func get_weapon_id(enemy_type: String) -> String:
+	if _enemies_by_id.is_empty():
+		_load_roster()
+	var base_type := enemy_type.trim_prefix("elite_")
+	if not _enemies_by_id.has(base_type):
+		return "shortsword"
+	var weapon_id := String(_enemies_by_id[base_type].get("weapon", ""))
+	return weapon_id if not weapon_id.is_empty() else "shortsword"
 
 
 func is_boss_type(enemy_type: String) -> bool:

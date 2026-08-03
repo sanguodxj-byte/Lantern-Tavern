@@ -1,9 +1,10 @@
 extends BaseLevel
 class_name WFCVisualTest
 
-const PILLAR_PREFAB := preload("res://scenes/props/structures/pillar.tscn")
-const CRATE_PREFAB := preload("res://scenes/props/crates/small_crate.tscn")
-const BARREL_PREFAB := preload("res://scenes/props/barrel/barrel.tscn")
+const DungeonRuntimeConfig := preload("res://scenes/expedition/dungeon_runtime_config.gd")
+const PILLAR_PREFAB := preload("res://scenes/props/dungeon/pillar.tscn")
+const CRATE_PREFAB := preload("res://scenes/props/dungeon/dungeon_crate.tscn")
+const BARREL_PREFAB := preload("res://scenes/props/dungeon/dungeon_barrel.tscn")
 const TORCH_PREFAB := preload("res://scenes/props/torch/torch.tscn")
 const CHEST_PREFAB := preload("res://scenes/props/chest/chest.tscn")
 const PICKABLE_ITEM_PREFAB := preload("res://scenes/equipment/pickable_item.tscn")
@@ -13,10 +14,10 @@ const TILE_PIXEL_SIZE := 32.0
 const DUNGEON_TEXTURE_SIZE := 256.0
 const DUNGEON_ATLAS_GRID := Vector2(8, 4)
 const TERRAIN_TILE_LAYOUT := {
-	"WALL": Vector2(0, 0),
-	"FLOOR": Vector2(1, 0),
-	"CEILING": Vector2(2, 0),
-	"LINTEL": Vector2(3, 0),
+	"WALL": Vector2(4, 2),
+	"FLOOR": Vector2(5, 2),
+	"CEILING": Vector2(2, 3),
+	"LINTEL": Vector2(6, 2),
 }
 
 const ZONE_TEXTURES := {
@@ -58,20 +59,10 @@ const MATERIALS_CONFIG = {
 	"mountain_barley": 15
 }
 
-const DECOR_CONFIG = {
-	"res://scenes/props/decor/bones.tscn": 20,
-	"res://scenes/props/decor/lit_candles.tscn": 15,
-	"res://scenes/props/decor/spiderweb.tscn": 15,
-	"res://scenes/props/decor/bench.tscn": 10,
-	"res://scenes/props/decor/chair.tscn": 10,
-	"res://scenes/props/decor/table.tscn": 10,
-	"res://scenes/props/crates/small_crate.tscn": 10,
-	"res://scenes/props/barrel/barrel.tscn": 10
-}
-
 var _grid: Array = []
 var player_spawn_pos := Vector3.ZERO
 var _heights: Array = []
+var _decor_config: Dictionary = DungeonRuntimeConfig.default().decor_config
 
 func is_procedural() -> bool:
 	return true
@@ -455,7 +446,7 @@ func _spawn_random_material(pos: Vector3) -> void:
 		add_child(item)
 
 func _spawn_random_decor(pos: Vector3) -> void:
-	var path = _pick_weighted(DECOR_CONFIG)
+	var path = _pick_weighted(_decor_config)
 	if path != "":
 		var prefab = load(path)
 		if prefab:

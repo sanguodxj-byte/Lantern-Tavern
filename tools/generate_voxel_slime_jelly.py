@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,12 +34,63 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "wobbly translucent green jelly blob with drip lobes"
 
+# Each material owns its own seed/pattern; no shared identity table.
+# Slime-jelly palette swatches: greens, teal, pale yellow, translucent white.
+PAL_SLIME_GREEN = (0.28, 0.78, 0.32, 1.0)
+PAL_DEEP_GREEN = (0.10, 0.42, 0.18, 1.0)
+PAL_MID_GREEN = (0.18, 0.58, 0.28, 1.0)
+PAL_DARK_GREEN = (0.06, 0.30, 0.12, 1.0)
+PAL_BRIGHT_GREEN = (0.30, 0.70, 0.35, 1.0)
+PAL_TEAL = (0.20, 0.72, 0.55, 1.0)
+PAL_DEEP_TEAL = (0.12, 0.38, 0.30, 1.0)
+PAL_GREEN_TEAL = (0.22, 0.55, 0.40, 1.0)
+PAL_LIT_GREEN = (0.55, 0.92, 0.48, 1.0)
+PAL_LIGHT_GREEN = (0.40, 0.80, 0.45, 1.0)
+PAL_PALE_YELLOW_GREEN = (0.75, 1.0, 0.55, 1.0)
+PAL_PALE_YELLOW = (0.90, 1.0, 0.70, 1.0)
+PAL_WARM_WHITE = (1.0, 1.0, 0.90, 1.0)
+PAL_TRANS_WHITE = (0.85, 0.95, 0.80, 1.0)
+# Accent swatches: deep purple shadow and warm amber on green slime.
+PAL_DEEP_PURPLE_SHADOW = (0.15, 0.08, 0.25, 1.0)
+PAL_WARM_AMBER = (0.85, 0.55, 0.20, 1.0)
+
+
 def build_model():
-    jelly = make_material("sj_jelly", (0.28, 0.78, 0.32, 1.0), roughness=0.35, emission=0.25)
-    jelly_deep = make_material("sj_deep", (0.10, 0.42, 0.18, 1.0), roughness=0.40, emission=0.1)
-    jelly_lit = make_material("sj_lit", (0.55, 0.92, 0.48, 1.0), roughness=0.28, emission=0.55)
-    core = make_material("sj_core", (0.75, 1.0, 0.55, 1.0), roughness=0.22, emission=1.2)
-    drip = make_material("sj_drip", (0.18, 0.58, 0.28, 1.0), roughness=0.45)
+    jelly = make_pixel_material(
+        "sj_jelly", PAL_SLIME_GREEN,
+        roughness=0.35, pixel_size=48, variation=0.40, seed=601,
+        pattern="crystal", normal_strength=0.9,
+        edge_darken=0.25, highlight=0.55, detail_noise=0.15,
+        palette=(PAL_DARK_GREEN, PAL_TEAL, PAL_TRANS_WHITE, PAL_DEEP_PURPLE_SHADOW, PAL_WARM_AMBER),
+    )
+    jelly_deep = make_pixel_material(
+        "sj_deep", PAL_DEEP_GREEN,
+        roughness=0.40, pixel_size=48, variation=0.41, seed=613,
+        pattern="crystal", normal_strength=1.0,
+        edge_darken=0.30, highlight=0.45, detail_noise=0.15,
+        palette=(PAL_DARK_GREEN, PAL_DEEP_TEAL, PAL_MID_GREEN, PAL_DEEP_PURPLE_SHADOW, PAL_WARM_AMBER),
+    )
+    jelly_lit = make_pixel_material(
+        "sj_lit", PAL_LIT_GREEN,
+        roughness=0.28, pixel_size=48, variation=0.40, seed=627,
+        pattern="crystal", normal_strength=0.9,
+        edge_darken=0.25, highlight=0.60, detail_noise=0.15,
+        palette=(PAL_PALE_YELLOW_GREEN, PAL_TRANS_WHITE, PAL_LIGHT_GREEN, PAL_DEEP_PURPLE_SHADOW, PAL_WARM_AMBER),
+    )
+    core = make_pixel_material(
+        "sj_core", PAL_PALE_YELLOW_GREEN,
+        roughness=0.22, pixel_size=48, variation=0.40, seed=641,
+        pattern="speckle", normal_strength=1.1,
+        edge_darken=0.25, highlight=0.65, detail_noise=0.15,
+        palette=(PAL_PALE_YELLOW, PAL_WARM_WHITE, PAL_LIGHT_GREEN, PAL_DEEP_PURPLE_SHADOW, PAL_WARM_AMBER),
+    )
+    drip = make_pixel_material(
+        "sj_drip", PAL_MID_GREEN,
+        roughness=0.45, pixel_size=48, variation=0.38, seed=653,
+        pattern="speckle", normal_strength=0.8,
+        edge_darken=0.30, highlight=0.40, detail_noise=0.15,
+        palette=(PAL_DEEP_GREEN, PAL_GREEN_TEAL, PAL_BRIGHT_GREEN, PAL_DEEP_PURPLE_SHADOW, PAL_WARM_AMBER),
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
     def add(name, center, size, material):

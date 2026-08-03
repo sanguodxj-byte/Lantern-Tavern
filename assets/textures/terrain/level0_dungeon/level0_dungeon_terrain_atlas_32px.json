@@ -148,6 +148,126 @@
         32
       ]
     },
+    "barony_wall_stone": {
+      "source": "source_tiles/barony_wall_stone.png",
+      "col": 4,
+      "row": 2,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        128,
+        64,
+        32,
+        32
+      ]
+    },
+    "barony_floor_rough": {
+      "source": "source_tiles/barony_floor_rough.png",
+      "col": 5,
+      "row": 2,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        160,
+        64,
+        32,
+        32
+      ]
+    },
+    "barony_platform_cut": {
+      "source": "source_tiles/barony_platform_cut.png",
+      "col": 6,
+      "row": 2,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        192,
+        64,
+        32,
+        32
+      ]
+    },
+    "barony_threshold_iron": {
+      "source": "source_tiles/barony_threshold_iron.png",
+      "col": 7,
+      "row": 2,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        224,
+        64,
+        32,
+        32
+      ]
+    },
+    "barony_ceiling_slab": {
+      "source": "source_tiles/barony_ceiling_slab.png",
+      "col": 2,
+      "row": 3,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        64,
+        96,
+        32,
+        32
+      ]
+    },
+    "barony_moss_floor": {
+      "source": "source_tiles/barony_moss_floor.png",
+      "col": 3,
+      "row": 3,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        96,
+        96,
+        32,
+        32
+      ]
+    },
+    "barony_broken_wall": {
+      "source": "source_tiles/barony_broken_wall.png",
+      "col": 4,
+      "row": 3,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        128,
+        96,
+        32,
+        32
+      ]
+    },
+    "barony_boss_slab": {
+      "source": "source_tiles/barony_boss_slab.png",
+      "col": 5,
+      "row": 3,
+      "span": [
+        1,
+        1
+      ],
+      "pixel_rect": [
+        160,
+        96,
+        32,
+        32
+      ]
+    },
     "door_edge_side": {
       "source": "source_tiles/door_edge_side.png",
       "col": 2,

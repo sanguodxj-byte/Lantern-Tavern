@@ -23,7 +23,10 @@ const DedicatedServerScene := preload("res://scenes/multiplayer/dedicated_server
 
 const ROLE_SERVER := "server"
 const ROLE_CLIENT := "client"
-const MOVE_THRESHOLD := 0.5
+## P0-2：专用服务器已生成真实墙体碰撞，客户端不能裸走 +X（会撞墙、位移不足）。
+## 改为朝同一种植单元内的权威敌人实体（出生点 +0.8m 子格偏移）移动——直线在单元内，
+## 碰撞约束下可稳定产生权威位移；阈值取 0.1（≈单元内 0.8m 目标的 1/4 以上）。
+const MOVE_THRESHOLD := 0.1
 const CANDIDATE_PORTS := [30021, 30023, 30027, 30101, 30137]
 
 var _role: String = ""
@@ -134,26 +137,39 @@ func _run_client() -> void:
 	var ent_ok := _bridge.get_entity_node(1001) != null and _bridge.get_entity_node(1002) != null
 	var ent_count: int = _bridge.entity_count() if _bridge.has_method("entity_count") else 0
 	_write("client_entities.txt", "ent_ok=%s count=%d" % [ent_ok, ent_count])
-	# 断言 5：客户端持续向 +X 移动（override_move），服务器积分并经 player_snapshot 回传驱动本地 Player。
-	# 注意：不因为“已移动”就提前 break——须持续计数玩家快照，证明专用服务器的下发循环稳定。
+	# 断言 5：客户端持续朝权威敌人实体（同单元内，碰撞不阻挡）移动，服务器经权威马达
+	# 积分并经 player_snapshot 回传驱动本地 Player（证明专用服务器的“输入→权威→广播”闭环成立）。
+	# 不因为“已移动”就提前 break——须持续计数玩家快照，证明专用服务器的下发循环稳定。
 	var local_moved := false
-	var moved_x: float = 0.0
-	if _driver != null and is_instance_valid(_driver):
-		_driver.override_move = Vector2(1.0, 0.0)
+	var start_pos: Vector3 = _local_player.global_position if _local_player != null else Vector3.ZERO
 	for i in range(400):
 		await get_tree().process_frame
-		moved_x = _local_player.global_position.x if _local_player != null else 0.0
-		if moved_x > MOVE_THRESHOLD:
-			local_moved = true
+		var target: Node3D = _bridge.get_entity_node(1001) if _bridge != null else null
+		if target != null and _local_player != null and _driver != null and is_instance_valid(_driver):
+			var flat: Vector3 = target.global_position - _local_player.global_position
+			flat.y = 0.0
+			if flat.length() > 0.1:
+				_driver.override_move = Vector2(flat.x, flat.z).normalized()
+			else:
+				_driver.override_move = Vector2.ZERO
+		if _local_player != null:
+			var traveled: Vector3 = _local_player.global_position - start_pos
+			traveled.y = 0.0
+			if traveled.length() > MOVE_THRESHOLD:
+				local_moved = true
 	if _driver != null:
 		_driver.override_move = Vector2.ZERO
 	# 断言 5b：专用服务器把 player_snapshot 下发给了客户端（闭环核心证据）。
 	var snapshot_ok := _snapshot_count > 5
 	var ok_all := ent_ok and fp_match and local_moved and snapshot_ok
-	_write("client_move.txt", "local_x=%.3f moved=%s snapshots=%d" % [moved_x, local_moved, _snapshot_count])
+	var traveled_dist: float = 0.0
+	if _local_player != null:
+		var t: Vector3 = _local_player.global_position - start_pos
+		traveled_dist = Vector3(t.x, 0.0, t.z).length()
+	_write("client_move.txt", "dist=%.3f moved=%s snapshots=%d" % [traveled_dist, local_moved, _snapshot_count])
 	if ok_all:
-		_write("client_ok.txt", "OK local_x=%.3f fp_match=%s entities=%d snapshots=%d" % [
-			moved_x, fp_match, ent_count, _snapshot_count])
+		_write("client_ok.txt", "OK dist=%.3f fp_match=%s entities=%d snapshots=%d" % [
+			traveled_dist, fp_match, ent_count, _snapshot_count])
 	else:
 		_write("client_fail.txt", "FAIL local_moved=%s fp_match=%s ent_ok=%s snapshots=%d" % [
 			local_moved, fp_match, ent_ok, _snapshot_count])

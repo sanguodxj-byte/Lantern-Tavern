@@ -110,6 +110,16 @@ text = ""
 horizontal_alignment = 2
 vertical_alignment = 1
 
+[node name="StatusLabel" type="Label" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/Header/HeaderRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+theme_type_variation = &"StatusBadge"
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+clip_text = true
+
 [node name="CloseBtn" type="Button" parent="Root/LootFrame/Margin/LootBody/Margin2/VBox/Header/HeaderRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 38)

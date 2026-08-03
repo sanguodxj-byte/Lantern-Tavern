@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,11 +34,39 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "hanging amber sap drop with crystal skin"
 
+# Stalactite sap pixel palette: amber yellows, orange ambers, crystal whites.
+# Each material owns its own seed/pattern; no shared identity table.
+_AMBER_YELLOW = (0.85, 0.55, 0.18, 1.0)
+_ORANGE_AMBER = (0.55, 0.28, 0.08, 1.0)
+_CRYSTAL_WHITE = (0.95, 0.78, 0.45, 1.0)
+_TIP_GOLD = (0.98, 0.88, 0.55, 1.0)
+
+
 def build_model():
-    sap = make_material("ss_sap", (0.85, 0.55, 0.18, 1.0), roughness=0.35, emission=0.3)
-    deep = make_material("ss_deep", (0.55, 0.28, 0.08, 1.0), roughness=0.42)
-    skin = make_material("ss_skin", (0.95, 0.78, 0.45, 1.0), roughness=0.28, emission=0.5)
-    tip = make_material("ss_tip", (0.98, 0.88, 0.55, 1.0), roughness=0.22, emission=0.8)
+    sap = make_pixel_material(
+        "ss_sap", (0.85, 0.55, 0.18, 1.0),
+        roughness=0.35, palette=(_AMBER_YELLOW, _TIP_GOLD, _CRYSTAL_WHITE),
+        pixel_size=48, variation=0.40, seed=2201, pattern="crystal", normal_strength=0.9,
+        edge_darken=0.3, highlight=0.5, detail_noise=0.15,
+    )
+    deep = make_pixel_material(
+        "ss_deep", (0.55, 0.28, 0.08, 1.0),
+        roughness=0.42, palette=(_ORANGE_AMBER, _AMBER_YELLOW),
+        pixel_size=48, variation=0.41, seed=2213, pattern="crystal", normal_strength=1.0,
+        edge_darken=0.3, highlight=0.5, detail_noise=0.15,
+    )
+    skin = make_pixel_material(
+        "ss_skin", (0.95, 0.78, 0.45, 1.0),
+        roughness=0.28, palette=(_CRYSTAL_WHITE, _TIP_GOLD, _AMBER_YELLOW),
+        pixel_size=48, variation=0.41, seed=2225, pattern="cracks", normal_strength=1.1,
+        edge_darken=0.3, highlight=0.5, detail_noise=0.15,
+    )
+    tip = make_pixel_material(
+        "ss_tip", (0.98, 0.88, 0.55, 1.0),
+        roughness=0.22, palette=(_TIP_GOLD, _CRYSTAL_WHITE),
+        pixel_size=48, variation=0.42, seed=2237, pattern="crystal", normal_strength=1.2,
+        edge_darken=0.3, highlight=0.5, detail_noise=0.15,
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
     def add(name, center, size, material):

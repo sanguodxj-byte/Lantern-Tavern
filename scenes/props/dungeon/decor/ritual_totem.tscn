@@ -1,0 +1,20 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/models/props/props_ritual_totem.glb" id="1_model"]
+
+[sub_resource type="BoxShape3D" id="BoxShape_totem"]
+size = Vector3(0.71875, 1.125, 0.53125)
+
+[node name="RitualTotem" type="StaticBody3D"]
+metadata/dungeon_only = true
+metadata/topdown_kind = "terrain_feature"
+metadata/decor_kind = "ritual_totem"
+metadata/voxel_style = "one_px_32px_per_meter"
+metadata/voxel_px_per_meter = 32
+metadata/blocks_navigation = true
+
+[node name="VoxelModel" parent="." instance=ExtResource("1_model")]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+position = Vector3(0, 0.5625, 0)
+shape = SubResource("BoxShape_totem")

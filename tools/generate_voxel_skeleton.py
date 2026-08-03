@@ -18,7 +18,7 @@ from mathutils import Vector
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
-from voxel_character_rig import build_all_actions, build_weapon_actions, export_glb as export_rig_glb
+from voxel_character_rig import HumanoidMotionProfile, build_all_actions, build_weapon_actions, export_glb as export_rig_glb
 from voxel_humanoid_rig import create_voxel_humanoid_armature, parent_parts_by_bone
 from voxel_model_primitives import (
     bounds_center_scale,
@@ -39,6 +39,17 @@ TARGET_ENVELOPE_PX = (28.0, 48.0, 11.0)
 STATIC_OUTPUT = ROOT / "assets" / "meshes" / "characters" / "voxel_skeleton_48px.glb"
 RIG_OUTPUT = ROOT / "assets" / "meshes" / "characters" / "voxel_skeleton_48px_rig.glb"
 PREVIEW_DIR = ROOT / "reports" / "characters_preview"
+MOTION_PROFILE = HumanoidMotionProfile(
+    stride_scale=0.96,
+    arm_swing_scale=0.88,
+    weight_scale=0.78,
+    agility_scale=0.96,
+    torso_scale=0.82,
+    swing_lift_scale=1.15,
+    contact_foot_pitch_scale=0.55,
+    contact_height_offset_m=0.014,
+    passing_height_offset_m=0.005,
+)
 
 
 def build_skeleton() -> tuple[bpy.types.Object, list[bpy.types.Object], dict[str, list[bpy.types.Object]]]:
@@ -49,7 +60,7 @@ def build_skeleton() -> tuple[bpy.types.Object, list[bpy.types.Object], dict[str
     bone_dark = make_material("Bone_Dark", (0.27, 0.25, 0.20, 1.0))
     socket_dark = make_material("Socket_Dark", (0.035, 0.045, 0.044, 1.0))
     soul_glow = make_material(
-        "Soul_Glow", (0.10, 0.80, 0.95, 1.0), roughness=0.2, emission=3.5
+        "Soul_Glow", (0.10, 0.80, 0.95, 1.0), roughness=0.2
     )
     cloth_high = make_material("Grave_Cloth_High", (0.42, 0.16, 0.12, 1.0))
     cloth_mid = make_material("Grave_Cloth_Mid", (0.25, 0.085, 0.075, 1.0))
@@ -193,8 +204,8 @@ def main() -> None:
     armature = create_voxel_humanoid_armature(height_px=48.0, name="SkeletonRig")
     armature.parent = root
     parent_parts_by_bone(parts_by_bone, armature)
-    build_all_actions(armature)
-    build_weapon_actions(armature)
+    build_all_actions(armature, MOTION_PROFILE)
+    build_weapon_actions(armature, MOTION_PROFILE)
     root.rotation_euler.z = math.pi
     bpy.context.view_layer.update()
     export_rig_glb(RIG_OUTPUT)

@@ -2,6 +2,7 @@ extends GdUnitTestSuite
 
 const MODEL_TIERS := preload("res://data/character_model_tiers.gd")
 const ROSTER_PATH := "res://data/enemy_roster.json"
+const ROOM_FOCUS_PLANNER := preload("res://scenes/expedition/dungeon_room_focus_planner.gd")
 
 # 阶段 6 测试：DungeonSpawnPlanner 只规划 spec、不实例化。
 # 覆盖：起始房无普通敌、Boss 房二选一、敌人不在墙内/不在陷阱、Boss 只在 Boss 房、
@@ -425,6 +426,49 @@ func test_planned_enemies_are_spread_in_generated_rooms() -> void:
 			.is_greater_equal(2)
 	assert_bool(inspected_room) \
 		.override_failure_message("测试布局没有生成可检查的多敌人房间").is_true()
+
+func test_planned_enemies_encode_combat_sectors_and_patrol_centers() -> void:
+	var config := DungeonGenerationConfig.new()
+	config.algorithm = "isaac"
+	config.zone = 0
+	config.seed = 94021
+	var layout := DungeonGenerator.new().generate(config)
+	DungeonHazardPlanner.new().plan(layout)
+	ROOM_FOCUS_PLANNER.new().plan(layout)
+	DungeonSpawnPlanner.new().plan_enemy_spawns(layout)
+	var roles := {}
+	for spec in layout.enemy_spawn_specs:
+		assert_bool(spec.has("combat_role")).is_true()
+		assert_bool(spec.has("sector")).is_true()
+		assert_bool(spec.has("patrol_center_cell")).is_true()
+		assert_int(int(spec.get("patrol_radius_cells", 0))).is_greater_equal(1)
+		roles[String(spec["combat_role"])] = true
+	assert_bool(roles.has("melee_flank")).is_true()
+	assert_bool(roles.has("rear_guard") or roles.has("elevated_guard") or roles.has("elite_focus")).is_true()
+
+func test_population_and_decor_specs_never_share_a_cell() -> void:
+	var layout := _make_8x8_two_room_layout()
+	layout.room_roles["start"] = Rect2i(0, 0, 3, 3)
+	# Keep the second room as a normal room and add a separate one-cell boss room.
+	layout.room_roles["boss"] = Rect2i(7, 7, 1, 1)
+	layout.rooms.append(Rect2i(7, 7, 1, 1))
+	layout.player_spawn_cell = Vector2i(1, 1)
+	layout.reward_cell = Vector2i(7, 7)
+	layout.grid[5][5] = 3 # A normal LOOT cell; old planner reused it for item + chest.
+	DungeonHazardPlanner.new().plan(layout)
+	ROOM_FOCUS_PLANNER.new().plan(layout)
+	var planner := DungeonSpawnPlanner.new()
+	planner.plan_enemy_spawns(layout)
+	planner.plan_item_spawns(layout)
+	planner.plan_chest_spawns(layout)
+	var occupied: Dictionary = {}
+	for spec in layout.enemy_spawn_specs + layout.item_spawn_specs + layout.chest_spawn_specs + layout.decor_specs:
+		var cell: Vector2i = spec.get("cell", Vector2i(-1, -1))
+		assert_bool(not occupied.has(cell)) \
+			.override_failure_message("实体规划发生同格重叠: %s" % str(cell)).is_true()
+		occupied[cell] = true
+	var validation := planner.validate_plan(layout)
+	assert_bool(validation["valid"]).override_failure_message(str(validation["errors"])).is_true()
 
 func test_calc_room_enemy_count_depth_ramp() -> void:
 	var planner := DungeonSpawnPlanner.new()

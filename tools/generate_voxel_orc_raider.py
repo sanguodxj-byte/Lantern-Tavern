@@ -23,6 +23,11 @@ from mathutils import Vector
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from voxel_humanoid_rig import PX, REFERENCE_HEIGHT_PX, create_voxel_humanoid_armature, parent_parts_by_bone
+from voxel_character_rig import HumanoidMotionProfile, build_all_actions, build_weapon_actions, export_glb as export_rig_glb
+from voxel_overlap_guard import (
+    assert_parts_no_positive_volume_overlap,
+    assert_parts_single_face_connected_component,
+)
 from voxel_single_model_cli import reject_target_override
 
 # 兽人掠夺者：粗壮中型人形，略高于哥布林（42px 体高），标准 48px 人形槽位
@@ -33,6 +38,17 @@ RIG_OUTPUT = ROOT / "assets" / "meshes" / "characters" / "voxel_orc_raider_48px_
 OUT_GLB = STATIC_OUTPUT
 PREVIEW_DIR = ROOT / "reports" / "characters_preview"
 GROUND_OFFSET_PX = 1.0
+MOTION_PROFILE = HumanoidMotionProfile(
+    stride_scale=0.84,
+    arm_swing_scale=0.82,
+    weight_scale=1.16,
+    agility_scale=0.90,
+    torso_scale=0.92,
+    swing_lift_scale=1.15,
+    # 厚重体型：死亡倒地时主体最低点会低于默认 Root 抬升，需额外抬升
+    # 使倒地姿态贴合地面（humanoid_animation_quality_test 接地断言）。
+    death_height_offset_m=0.09,
+)
 
 
 def reset_scene() -> None:
@@ -175,66 +191,66 @@ def build_orc_raider() -> bpy.types.Object:
     # ------------------------------------------------------------------
     # 1. 头：宽下颌、粗眉、獠牙、尖耳
     # ------------------------------------------------------------------
-    parts.append(cube_ref("head_main", (0.0, 0.0, 36.5), (11.0, 9.0, 10.0), height_px, skin_mid))
-    parts.append(cube_ref("head_left_highlight", (-4.0, -4.4, 37.2), (2.2, 1.0, 7.0), height_px, skin_light))
-    parts.append(cube_ref("head_right_shadow", (4.2, 3.8, 36.5), (2.2, 1.0, 7.5), height_px, skin_shadow))
-    parts.append(cube_ref("head_jaw", (0.0, -1.5, 32.2), (10.0, 7.0, 3.5), height_px, skin_shadow))
-    parts.append(cube_ref("brow_ridge", (0.0, -4.6, 39.0), (9.5, 1.2, 2.2), height_px, skin_shadow))
-    parts.append(cube_ref("nose_bridge", (0.0, -5.0, 36.0), (2.8, 1.6, 2.6), height_px, skin_shadow))
-    parts.append(cube_ref("nose_tip", (0.0, -5.8, 34.8), (2.2, 1.2, 1.8), height_px, skin_mid))
+    parts.append(cube_ref("head_main", (0.0, 0.0, 35.1), (11.0, 9.0, 8.0), height_px, skin_mid))
+    parts.append(cube_ref("head_left_highlight", (-5.3, -5.0, 36.0), (1.6, 1.0, 6.0), height_px, skin_light))
+    parts.append(cube_ref("head_right_shadow", (6.3, 3.8, 36.0), (1.6, 1.0, 6.5), height_px, skin_shadow))
+    parts.append(cube_ref("head_jaw", (0.0, -6.25, 31.5), (10.0, 3.5, 3.0), height_px, skin_shadow))
+    parts.append(cube_ref("brow_ridge", (0.0, -5.1, 38.5), (9.5, 1.2, 2.0), height_px, skin_shadow))
+    parts.append(cube_ref("nose_bridge", (0.0, -5.3, 34.2), (2.8, 1.6, 2.6), height_px, skin_shadow))
+    parts.append(cube_ref("nose_tip", (0.0, -6.7, 34.2), (2.2, 1.2, 1.8), height_px, skin_mid))
 
-    parts.append(cube_ref("eye_left", (-2.6, -4.75, 37.4), (2.0, 0.4, 1.5), height_px, eye))
-    parts.append(cube_ref("eye_right", (2.6, -4.75, 37.4), (2.0, 0.4, 1.5), height_px, eye))
-    parts.append(cube_ref("eye_left_pupil", (-2.6, -4.95, 37.4), (0.7, 0.2, 1.0), height_px, pupil))
-    parts.append(cube_ref("eye_right_pupil", (2.6, -4.95, 37.4), (0.7, 0.2, 1.0), height_px, pupil))
+    parts.append(cube_ref("eye_left", (-2.6, -4.7, 35.75), (2.0, 0.4, 1.5), height_px, eye))
+    parts.append(cube_ref("eye_right", (2.6, -4.7, 35.75), (2.0, 0.4, 1.5), height_px, eye))
+    parts.append(cube_ref("eye_left_pupil", (-2.6, -5.0, 35.75), (0.7, 0.2, 1.0), height_px, pupil))
+    parts.append(cube_ref("eye_right_pupil", (2.6, -5.0, 35.75), (0.7, 0.2, 1.0), height_px, pupil))
 
-    parts.append(cube_ref("mouth_line", (0.0, -4.9, 33.0), (5.5, 0.35, 1.2), height_px, pupil))
+    parts.append(cube_ref("mouth_line", (0.0, -8.175, 31.0), (5.5, 0.35, 1.2), height_px, pupil))
     # 上翘獠牙（面接触下颌前缘）
-    parts.append(cube_ref("tusk_left", (-2.0, -5.2, 31.6), (1.2, 1.0, 2.4), height_px, bone))
-    parts.append(cube_ref("tusk_right", (2.0, -5.2, 31.6), (1.2, 1.0, 2.4), height_px, bone))
-    parts.append(cube_ref("tusk_left_tip", (-2.0, -5.5, 33.0), (0.8, 0.7, 1.2), height_px, bone))
-    parts.append(cube_ref("tusk_right_tip", (2.0, -5.5, 33.0), (0.8, 0.7, 1.2), height_px, bone))
+    parts.append(cube_ref("tusk_left", (-3.4, -8.5, 30.0), (1.2, 1.0, 2.4), height_px, bone))
+    parts.append(cube_ref("tusk_right", (3.4, -8.5, 30.0), (1.2, 1.0, 2.4), height_px, bone))
+    parts.append(cube_ref("tusk_left_tip", (-3.4, -9.35, 30.0), (0.8, 0.7, 1.2), height_px, bone))
+    parts.append(cube_ref("tusk_right_tip", (3.4, -9.35, 30.0), (0.8, 0.7, 1.2), height_px, bone))
 
     # 尖耳（面接触头侧）
-    parts.append(cube_ref("ear_left_base", (-7.0, 0.2, 37.0), (3.5, 2.2, 3.5), height_px, skin_mid))
-    parts.append(cube_ref("ear_left_tip", (-9.2, 0.0, 38.0), (2.0, 1.6, 2.2), height_px, skin_shadow))
-    parts.append(cube_ref("ear_right_base", (7.0, 0.2, 37.0), (3.5, 2.2, 3.5), height_px, skin_mid))
-    parts.append(cube_ref("ear_right_tip", (9.2, 0.0, 38.0), (2.0, 1.6, 2.2), height_px, skin_shadow))
+    parts.append(cube_ref("ear_left_base", (-7.25, 0.2, 35.5), (3.5, 2.2, 3.5), height_px, skin_mid))
+    parts.append(cube_ref("ear_left_tip", (-10.0, 0.0, 36.0), (2.0, 1.6, 2.2), height_px, skin_shadow))
+    parts.append(cube_ref("ear_right_base", (7.25, 0.2, 35.5), (3.5, 2.2, 3.5), height_px, skin_mid))
+    parts.append(cube_ref("ear_right_tip", (10.0, 0.0, 36.0), (2.0, 1.6, 2.2), height_px, skin_shadow))
 
     # 顶发/鬃毛
-    parts.append(cube_ref("hair_top", (0.0, 0.5, 42.0), (8.0, 7.0, 2.5), height_px, cloth))
-    parts.append(cube_ref("hair_spike_mid", (0.0, -0.5, 44.0), (3.0, 3.5, 2.5), height_px, cloth))
-    parts.append(cube_ref("hair_spike_left", (-2.5, 0.5, 43.5), (2.2, 2.8, 2.0), height_px, pupil))
-    parts.append(cube_ref("hair_spike_right", (2.5, 0.2, 43.2), (2.0, 2.6, 1.8), height_px, pupil))
+    parts.append(cube_ref("hair_top", (0.0, 0.5, 40.1), (8.0, 7.0, 2.0), height_px, cloth))
+    parts.append(cube_ref("hair_spike_mid", (0.0, -0.5, 42.35), (3.0, 3.5, 2.5), height_px, cloth))
+    parts.append(cube_ref("hair_spike_left", (-2.5, 0.5, 42.1), (2.2, 2.8, 2.0), height_px, pupil))
+    parts.append(cube_ref("hair_spike_right", (2.5, 0.2, 42.0), (2.0, 2.6, 1.8), height_px, pupil))
 
     # 面疤（左颊）
-    parts.append(cube_ref("scar_cheek", (-3.5, -4.7, 35.2), (0.5, 0.3, 2.8), height_px, rust))
+    parts.append(cube_ref("scar_cheek", (-3.8, -4.65, 34.5), (0.5, 0.3, 2.8), height_px, rust))
 
     # ------------------------------------------------------------------
     # 2. 躯干：厚胸甲 + 肩甲 + 皮带
     # ------------------------------------------------------------------
-    parts.append(cube_ref("torso_main", (0.0, 0.3, 24.5), (14.0, 8.5, 14.0), height_px, skin_mid))
-    parts.append(cube_ref("torso_left_highlight", (-5.2, -4.0, 25.5), (2.4, 1.0, 10.0), height_px, skin_light))
-    parts.append(cube_ref("torso_right_shadow", (5.4, 3.6, 24.5), (2.2, 1.0, 10.5), height_px, skin_shadow))
-    parts.append(cube_ref("chest_plate", (0.0, -4.6, 26.5), (11.0, 1.4, 9.0), height_px, iron))
-    parts.append(cube_ref("chest_plate_ridge", (0.0, -5.2, 28.0), (8.0, 0.6, 2.0), height_px, iron_dark))
-    parts.append(cube_ref("chest_strap_l", (-3.5, -4.9, 24.0), (2.0, 0.7, 10.0), height_px, leather))
-    parts.append(cube_ref("chest_strap_r", (3.5, -4.9, 24.0), (2.0, 0.7, 10.0), height_px, leather))
-    parts.append(cube_ref("pauldron_left", (-8.5, 0.5, 30.5), (5.5, 5.5, 4.0), height_px, iron_dark))
-    parts.append(cube_ref("pauldron_right", (8.5, 0.5, 30.5), (5.5, 5.5, 4.0), height_px, iron))
-    parts.append(cube_ref("pauldron_left_spike", (-9.5, -1.0, 32.5), (2.0, 2.0, 2.5), height_px, rust))
-    parts.append(cube_ref("pauldron_right_spike", (9.5, -1.0, 32.5), (2.0, 2.0, 2.5), height_px, rust))
-    parts.append(cube_ref("belt_main", (0.0, -0.2, 17.0), (14.5, 8.8, 2.2), height_px, leather))
-    parts.append(cube_ref("belt_buckle", (0.0, -4.7, 17.0), (2.6, 0.8, 1.6), height_px, iron))
+    parts.append(cube_ref("torso_main", (0.0, 0.3, 25.1), (14.0, 8.5, 12.0), height_px, skin_mid))
+    parts.append(cube_ref("torso_left_highlight", (-8.2, -4.0, 25.5), (2.4, 1.0, 10.0), height_px, skin_light))
+    parts.append(cube_ref("torso_right_shadow", (8.2, 3.6, 25.5), (2.2, 1.0, 10.5), height_px, skin_shadow))
+    parts.append(cube_ref("chest_plate", (0.0, -4.65, 26.5), (11.0, 1.4, 7.0), height_px, iron))
+    parts.append(cube_ref("chest_plate_ridge", (0.0, -5.65, 28.0), (8.0, 0.6, 2.0), height_px, iron_dark))
+    parts.append(cube_ref("chest_strap_l", (-3.5, -4.3, 20.5), (2.0, 0.7, 4.0), height_px, leather))
+    parts.append(cube_ref("chest_strap_r", (3.5, -4.3, 20.5), (2.0, 0.7, 4.0), height_px, leather))
+    parts.append(cube_ref("pauldron_left", (-9.75, 0.5, 29.5), (5.5, 5.5, 4.0), height_px, iron_dark))
+    parts.append(cube_ref("pauldron_right", (9.75, 0.5, 29.5), (5.5, 5.5, 4.0), height_px, iron))
+    parts.append(cube_ref("pauldron_left_spike", (-9.5, -3.25, 31.5), (2.0, 2.0, 2.5), height_px, rust))
+    parts.append(cube_ref("pauldron_right_spike", (9.5, -3.25, 31.5), (2.0, 2.0, 2.5), height_px, rust))
+    parts.append(cube_ref("belt_main", (0.0, -4.85, 17.0), (14.5, 2.2, 2.2), height_px, leather))
+    parts.append(cube_ref("belt_buckle", (0.0, -6.35, 17.0), (2.6, 0.8, 1.6), height_px, iron))
 
     # ------------------------------------------------------------------
     # 3. 骨盆 / 腰布
     # ------------------------------------------------------------------
-    parts.append(cube_ref("pelvis_main", (0.0, 0.0, 14.0), (12.0, 7.5, 5.0), height_px, leather))
-    parts.append(cube_ref("hip_cloth_front", (0.0, -3.8, 12.0), (8.0, 1.0, 6.0), height_px, cloth))
-    parts.append(cube_ref("hip_cloth_back", (0.0, 3.6, 12.0), (9.0, 1.0, 6.0), height_px, leather_light))
-    parts.append(cube_ref("loin_tassel_l", (-3.0, -4.0, 9.5), (2.0, 0.8, 3.0), height_px, leather_light))
-    parts.append(cube_ref("loin_tassel_r", (3.0, -4.0, 9.5), (2.0, 0.8, 3.0), height_px, leather_light))
+    parts.append(cube_ref("pelvis_main", (0.0, 0.0, 16.85), (12.0, 7.5, 4.5), height_px, leather))
+    parts.append(cube_ref("hip_cloth_front", (0.0, -4.25, 12.5), (8.0, 1.0, 6.0), height_px, cloth))
+    parts.append(cube_ref("hip_cloth_back", (0.0, 4.25, 12.5), (9.0, 1.0, 6.0), height_px, leather_light))
+    parts.append(cube_ref("loin_tassel_l", (-2.5, -4.25, 8.0), (2.0, 0.8, 3.0), height_px, leather_light))
+    parts.append(cube_ref("loin_tassel_r", (2.5, -4.25, 8.0), (2.0, 0.8, 3.0), height_px, leather_light))
 
     # ------------------------------------------------------------------
     # 4. 手臂（粗壮 + 护腕）
@@ -244,7 +260,7 @@ def build_orc_raider() -> bpy.types.Object:
         parts.append(
             cube_ref(
                 f"{side}_upper_arm_main",
-                (sx * 10.5, 0.4, 24.5),
+                (sx * 9.5, 0.4, 20.0),
                 (5.0, 5.0, 11.0),
                 height_px,
                 arm_mat,
@@ -253,7 +269,7 @@ def build_orc_raider() -> bpy.types.Object:
         parts.append(
             cube_ref(
                 f"{side}_forearm_main",
-                (sx * 11.5, -0.4, 16.0),
+                (sx * 10.5, -0.4, 10.0),
                 (4.5, 4.5, 9.0),
                 height_px,
                 skin_mid if side == "left" else skin_shadow,
@@ -262,7 +278,7 @@ def build_orc_raider() -> bpy.types.Object:
         parts.append(
             cube_ref(
                 f"{side}_bracer",
-                (sx * 11.5, -0.2, 17.5),
+                (sx * 11.5, -5.15, 8.0),
                 (5.0, 5.0, 3.5),
                 height_px,
                 iron_dark if side == "left" else iron,
@@ -271,14 +287,14 @@ def build_orc_raider() -> bpy.types.Object:
         parts.append(
             cube_ref(
                 f"{side}_hand_fist",
-                (sx * 11.8, -1.8, 10.5),
+                (sx * 11.8, -1.8, 3.75),
                 (4.5, 4.2, 3.5),
                 height_px,
                 skin_shadow,
             )
         )
-    parts.append(cube_ref("left_arm_highlight", (-12.0, -2.4, 24.0), (1.0, 0.8, 8.0), height_px, skin_light))
-    parts.append(cube_ref("right_arm_shadow", (12.0, 2.4, 24.0), (1.0, 0.8, 8.0), height_px, skin_shadow))
+    parts.append(cube_ref("left_arm_highlight", (-12.5, -1.5, 20.0), (1.0, 0.8, 8.0), height_px, skin_light))
+    parts.append(cube_ref("right_arm_shadow", (12.5, 1.5, 20.0), (1.0, 0.8, 8.0), height_px, skin_shadow))
     # weaponless: axe is separate GLB (weapons_voxel_axe.glb)
 
     # ------------------------------------------------------------------
@@ -289,8 +305,8 @@ def build_orc_raider() -> bpy.types.Object:
         parts.append(
             cube_ref(
                 f"{side}_thigh_main",
-                (sx * 3.5, 0.0, 9.5),
-                (5.0, 5.0, 10.0),
+                (sx * 3.5, 0.0, 11.1),
+                (5.0, 5.0, 7.0),
                 height_px,
                 leg_mat,
             )
@@ -298,8 +314,8 @@ def build_orc_raider() -> bpy.types.Object:
         parts.append(
             cube_ref(
                 f"{side}_shin_main",
-                (sx * 3.6, -0.2, 3.8),
-                (4.2, 4.2, 7.5),
+                (sx * 3.6, -0.2, 4.85),
+                (4.2, 4.2, 5.5),
                 height_px,
                 skin_mid,
             )
@@ -307,7 +323,7 @@ def build_orc_raider() -> bpy.types.Object:
         parts.append(
             cube_ref(
                 f"{side}_greave",
-                (sx * 3.6, -0.2, 5.0),
+                (sx * 3.6, -4.7, 5.0),
                 (4.8, 4.8, 3.0),
                 height_px,
                 iron_dark if side == "left" else leather,
@@ -325,7 +341,7 @@ def build_orc_raider() -> bpy.types.Object:
         parts.append(
             cube_ref(
                 f"{side}_toe_claw",
-                (sx * 3.8, -5.2, 1.0),
+                (sx * 3.8, -6.7, 1.0),
                 (3.5, 2.0, 1.4),
                 height_px,
                 bone,
@@ -333,7 +349,7 @@ def build_orc_raider() -> bpy.types.Object:
         )
 
     parent_humanoid_parts(parts, armature)
-    return root
+    return root, parts
 
 
 def select_tree(root: bpy.types.Object) -> None:
@@ -414,28 +430,40 @@ def render_to(path: Path) -> None:
 def render_previews(camera: bpy.types.Object, target_px: tuple[float, float, float], scale: float) -> None:
     target = Vector((px(target_px[0]), px(target_px[1]), px(target_px[2])))
     aim_camera(camera, (1.6, -3.8, 1.5), target, scale)
-    render_to(PREVIEW_DIR / "voxel_orc_raider_preview.png")
+    render_to(PREVIEW_DIR / "voxel_orc_raider_render_preview.png")
 
     aim_camera(camera, (0.0, -3.8, target.z), target, scale)
-    render_to(PREVIEW_DIR / "voxel_orc_raider_front.png")
+    render_to(PREVIEW_DIR / "voxel_orc_raider_render_front.png")
 
     aim_camera(camera, (3.8, 0.0, target.z), target, scale)
-    render_to(PREVIEW_DIR / "voxel_orc_raider_side.png")
+    render_to(PREVIEW_DIR / "voxel_orc_raider_render_side.png")
 
     aim_camera(camera, (0.0, 0.0, 4.8), target, scale)
-    render_to(PREVIEW_DIR / "voxel_orc_raider_top.png")
+    render_to(PREVIEW_DIR / "voxel_orc_raider_render_top.png")
 
 
 def main() -> None:
     reject_target_override(MODEL_ID)
     reset_scene()
-    root = build_orc_raider()
+    root, parts = build_orc_raider()
+    assert_parts_no_positive_volume_overlap(parts, label=MODEL_ID)
+    assert_parts_single_face_connected_component(parts, label=MODEL_ID)
     root.location.z += px(GROUND_OFFSET_PX)
 
     target_px = (0.0, 0.0, 26.0)
     preview_scale = 2.6
 
+    # Blender authors the face toward -Y; rotate exported assets so Godot's
+    # runtime forward is -Z, matching every other accepted humanoid rig.
+    root.rotation_euler.z = math.pi
+    bpy.context.view_layer.update()
     export_glb(root)
+    armature = next(child for child in root.children_recursive if child.type == "ARMATURE")
+    build_all_actions(armature, MOTION_PROFILE)
+    build_weapon_actions(armature, MOTION_PROFILE)
+    export_rig_glb(RIG_OUTPUT)
+    root.rotation_euler.z = 0.0
+    bpy.context.view_layer.update()
     camera = add_lights_and_camera(target_px, preview_scale)
     configure_render()
     render_previews(camera, target_px, preview_scale)

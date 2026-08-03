@@ -26,6 +26,8 @@ var quality_report: Dictionary = {}
 var grid: Array = []
 # heights: Array<Array<float>>，每格天花板高度（米），以 float 存储但严格为整数米层，与 grid 同形
 var heights: Array = []
+# floor_elevations: Array<Array<float>>，每格可行走地面高度（米）；未配置时默认为 0
+var floor_elevations: Array = []
 # rooms: Array[Rect2i]，所有房间矩形
 var rooms: Array[Rect2i] = []
 var room_metadata: Array[Dictionary] = []
@@ -46,12 +48,16 @@ var door_specs: Array[Dictionary] = []
 var hazard_anchors: Array[Dictionary] = []
 # kick_lanes: Array<Dictionary>，每项 {start:Vector2i, end:Vector2i, length_cells:int, hazard_index:int}
 var kick_lanes: Array[Dictionary] = []
-# terrain_features: Array<Dictionary>，大型房间地形特征（pillar_hall/great_hall 等）
+# terrain_features: Array<Dictionary>，大型房间地形特征（pillar_hall/great_hall/cliff 等）
 var terrain_features: Array[Dictionary] = []
+# decor_specs: 单格体素道具规划；只含稳定 prefab ID/路径与格坐标，不含 Node/资源实例
+var decor_specs: Array[Dictionary] = []
 var room_focus_specs: Array[Dictionary] = []
+# room_composition_specs: 房间主题、掩体、高低差、悬崖、门前过渡和战斗扇区的纯数据描述
+var room_composition_specs: Array[Dictionary] = []
 
 # ── 生规划产物（阶段 6 填充）────────────────────────────────
-# enemy_spawn_specs: Array<Dictionary>，每项 {enemy_type:String, cell:Vector2i, room_index:int, is_elite:bool, zone:int}
+# enemy_spawn_specs: Array<Dictionary>，附带 combat_role/sector/patrol_center_cell 等编排字段
 var enemy_spawn_specs: Array[Dictionary] = []
 # item_spawn_specs: Array<Dictionary>，每项 {item_type:String, item_id:String, cell:Vector2i, room_index:int}
 var item_spawn_specs: Array[Dictionary] = []
@@ -87,6 +93,21 @@ func calc_player_spawn_pos() -> Vector3:
 		return Vector3(offset_x + center.x * tile_size, 0.5, offset_z + center.y * tile_size)
 	return Vector3(0, 0.5, 0)
 
+## 将格坐标转换为以地牢中心为原点的世界坐标。
+## category 非空时，为实体应用稳定的格内偏移；空 category 保留地形格中心。
+## 所有运行时生成器都应通过此入口计算位置，避免各自复制 OFFSET 公式。
+func cell_to_world(cell: Vector2i, vertical_offset: float = 0.0,
+		category: String = "", variant_index: int = 0) -> Vector3:
+	var offset_x: float = -(float(width) * tile_size) / 2.0
+	var offset_z: float = -(float(height) * tile_size) / 2.0
+	var subcell := Vector2.ZERO
+	if not category.is_empty():
+		subcell = subcell_offset_for(category, cell, variant_index)
+	return Vector3(
+		offset_x + cell.x * tile_size + subcell.x,
+		floor_height_at(cell) + vertical_offset,
+		offset_z + cell.y * tile_size + subcell.y)
+
 ## 网格在 (x,y) 是否为可走格。
 ## 与 isaac `_is_walkable_grid_cell` 一致：FLOOR/LOOT/RESOURCE/PILLAR 均可走，
 ## 仅 EMPTY/WALL 不可走。旧实现只认 FLOOR==1，会导致 LOOT/RESOURCE 关键点“缺失”
@@ -100,6 +121,41 @@ func is_floor_at(x: int, y: int) -> bool:
 ## 网格在 cell 是否为可走格
 func is_floor_cell(cell: Vector2i) -> bool:
 	return is_floor_at(cell.x, cell.y)
+
+func floor_height_at(cell: Vector2i) -> float:
+	if cell.y < 0 or cell.y >= floor_elevations.size():
+		return 0.0
+	if cell.x < 0 or cell.x >= floor_elevations[cell.y].size():
+		return 0.0
+	return float(floor_elevations[cell.y][cell.x])
+
+## 返回实体在所属格内的确定性水平偏移（米）。
+##
+## 地图格的原点仍是地形盒体中心；只有可移动/可拾取/装饰实体使用该偏移，
+## 从而保留网格拓扑，同时避免敌人、材料、宝箱和装饰全部叠在格中心。
+## 偏移只依赖布局种子、类别、格坐标和同类序号，不读取全局 RNG，保证重放/联机一致。
+func subcell_offset_for(category: String, cell: Vector2i, variant_index: int = 0) -> Vector2:
+	var radius := minf(maxf(tile_size * 0.12, 0.08), 0.34)
+	var hash_value := _subcell_hash(category, cell, variant_index)
+	# 四个对角锚点让同一格内的不同类别自然分散；哈希只决定该类别的朝向。
+	var anchors: Array[Vector2] = [
+		Vector2(-1.0, -1.0),
+		Vector2(1.0, -1.0),
+		Vector2(1.0, 1.0),
+		Vector2(-1.0, 1.0),
+	]
+	var category_phase := absi(category.hash()) % anchors.size()
+	var anchor: Vector2 = anchors[(hash_value + category_phase) % anchors.size()]
+	# 轻微轴向变化避免连续房间出现完全相同的棋盘纹理。
+	if ((hash_value >> 2) & 1) == 1:
+		anchor = Vector2(anchor.y, anchor.x)
+	return anchor * radius
+
+func _subcell_hash(category: String, cell: Vector2i, variant_index: int) -> int:
+	var value: int = int(seed) & 0x7fffffff
+	value = int((value * 1103515245 + cell.x * 374761393 + cell.y * 668265263) & 0x7fffffff)
+	value = int((value + variant_index * 214013 + category.hash()) & 0x7fffffff)
+	return value
 
 ## 关键点是否已命中（未被设置）
 func is_key_cell_missing(cell: Vector2i) -> bool:
@@ -189,6 +245,7 @@ func duplicate_layout() -> DungeonLayout:
 	copy.quality_report = quality_report.duplicate(true)
 	copy.grid = grid.duplicate(true)
 	copy.heights = heights.duplicate(true)
+	copy.floor_elevations = floor_elevations.duplicate(true)
 	copy.rooms = rooms.duplicate()
 	copy.room_metadata = room_metadata.duplicate(true)
 	copy.room_roles = {}
@@ -203,7 +260,9 @@ func duplicate_layout() -> DungeonLayout:
 	copy.hazard_anchors = hazard_anchors.duplicate(true)
 	copy.kick_lanes = kick_lanes.duplicate(true)
 	copy.terrain_features = terrain_features.duplicate(true)
+	copy.decor_specs = decor_specs.duplicate(true)
 	copy.room_focus_specs = room_focus_specs.duplicate(true)
+	copy.room_composition_specs = room_composition_specs.duplicate(true)
 	copy.enemy_spawn_specs = enemy_spawn_specs.duplicate(true)
 	copy.item_spawn_specs = item_spawn_specs.duplicate(true)
 	copy.chest_spawn_specs = chest_spawn_specs.duplicate(true)
@@ -236,6 +295,9 @@ func validate() -> Dictionary:
 				if not DungeonGenerationConfig.is_integer_height(float(heights[y][x])):
 					report["valid"] = false
 					errors.append("height at (%d,%d) is not an integer meter layer: %s" % [x, y, heights[y][x]])
+	if not floor_elevations.is_empty() and (floor_elevations.size() != height or floor_elevations[0].size() != width):
+		report["valid"] = false
+		errors.append("floor_elevations shape mismatch grid")
 	# 关键点要么 (-1,-1) 未命中，要么必须落在网格内且为地板
 	for label in ["player_spawn_cell", "extraction_cell", "boss_cell", "stairs_cell", "reward_cell"]:
 		var cell: Vector2i = get(label)
@@ -274,6 +336,22 @@ func validate() -> Dictionary:
 		if _spec_contains_node_ref(spec):
 			report["valid"] = false
 			errors.append("hazard_anchor contains Node/PackedScene reference")
+	for spec in room_composition_specs:
+		if _spec_contains_node_ref(spec):
+			report["valid"] = false
+			errors.append("room_composition_spec contains Node/PackedScene reference")
+	for spec in terrain_features:
+		if _spec_contains_node_ref(spec):
+			report["valid"] = false
+			errors.append("terrain_feature contains Node/PackedScene reference")
+	for spec in decor_specs:
+		var decor_err := _check_spawn_spec(spec, ["decor_kind", "scene_path", "cell", "room_index", "blocks_navigation"])
+		if not decor_err.is_empty():
+			report["valid"] = false
+			errors.append("decor_spec: %s" % decor_err)
+		elif not String(spec.get("scene_path", "")).begins_with("res://scenes/props/"):
+			report["valid"] = false
+			errors.append("decor_spec scene_path must be a voxel prop scene")
 	# 阶段 9 条 8：spawn spec 完整性校验（字段完备、cell 在格内、不含 Node/PackedScene 引用）
 	for spec in enemy_spawn_specs:
 		var es_err := _check_spawn_spec(spec, ["enemy_type", "cell", "room_index", "is_elite", "zone"])

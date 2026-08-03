@@ -46,6 +46,9 @@ extends Resource
 ## 命中特效场景（PackedScene），可选
 @export var impact_scene: PackedScene
 
+## 符文粒子命中爆发类型；-1 表示不生成 RuneHitBurst。
+@export var impact_burst_type: int = -1
+
 ## 拖尾特效场景（PackedScene），可选
 @export var trail_scene: PackedScene
 

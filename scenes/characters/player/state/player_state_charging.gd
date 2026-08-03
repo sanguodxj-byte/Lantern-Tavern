@@ -37,8 +37,8 @@ func _physics_process(delta: float) -> void:
 	player.velocity.x = charge_direction.x * charge_speed_mps
 	player.velocity.z = charge_direction.z * charge_speed_mps
 	player.velocity.y = 0.0  # 冲撞期间禁用跳跃/重力影响
-	player.pushback_force = charge_direction * charge_speed_mps
-	player.move_and_slide()
+	# Player 根节点统一调用 move_and_slide；这里不能再施加一份 pushback 或移动一次，
+	# 否则冲撞会在同一个物理帧叠加两次位移。
 	# 检测前方敌人碰撞
 	_check_charge_collision()
 	# 检测撞墙（前方非敌人障碍）

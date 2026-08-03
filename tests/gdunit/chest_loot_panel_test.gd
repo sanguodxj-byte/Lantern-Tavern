@@ -48,6 +48,25 @@ func test_chest_loot_panel_has_required_nodes() -> void:
 	assert_object(panel.get_node("%WeightBar")).is_not_null()
 	assert_object(panel.get_node("%WeightLabel")).is_not_null()
 	assert_object(panel.get_node("%EquipLabel")).is_not_null()
+	assert_object(panel.get_node("%StatusLabel")).is_not_null()
+	panel.queue_free()
+
+
+func test_chest_loot_panel_applies_compact_safe_margins() -> void:
+	var panel: ChestLootPanel = load("res://scenes/ui/chest_loot_panel.tscn").instantiate()
+	add_child(panel)
+	await await_idle_frame()
+	panel.root_control.size = Vector2(1280, 720)
+	panel._apply_responsive_layout()
+	assert_float(panel.loot_frame.offset_left).is_equal(12.0)
+	assert_float(panel.loot_frame.offset_top).is_equal(12.0)
+	assert_float(panel.loot_frame.offset_right).is_equal(-12.0)
+	assert_bool(panel.detail_hint.visible).is_false()
+	panel.root_control.size = Vector2(1920, 1080)
+	panel._apply_responsive_layout()
+	assert_float(panel.loot_frame.offset_left).is_equal(24.0)
+	assert_float(panel.loot_frame.offset_top).is_equal(32.0)
+	assert_bool(panel.detail_hint.visible).is_true()
 	panel.queue_free()
 
 
@@ -597,11 +616,11 @@ func test_chest_loot_panel_gd_uses_tr_for_dynamic_strings() -> void:
 	# 验证动态字符串使用 tr() 而非硬编码
 	var source := (load("res://scenes/ui/chest_loot_panel.gd") as GDScript).source_code
 	# item_count_label 应使用 tr()
-	assert_bool(source.contains("tr(\"items  chest %d  /  bag %d    weight  %.2fkg\")")) \
-		.override_failure_message("item_count 应使用 tr() 本地化").is_true()
-	# weight_label 应使用 tr()
-	assert_bool(source.contains("tr(\"BAG  %d / %d  (%d%%)\")")) \
-		.override_failure_message("weight_label 应使用 tr() 本地化").is_true()
+	assert_bool(source.contains("tr(\"ITEMS  CHEST %d  /  BAG %d\")")) \
+		.override_failure_message("item_count 应使用 tr() 本地化并表达真实计数").is_true()
+	# capacity_label 应使用 tr()
+	assert_bool(source.contains("tr(\"CAPACITY  %d / %d  (%d%%)\")")) \
+		.override_failure_message("容量标签应使用 tr() 本地化").is_true()
 	# tooltip 应使用 tr()
 	assert_bool(source.contains("tr(\"click to unequip\")")) \
 		.override_failure_message("卸下 tooltip 应使用 tr() 本地化").is_true()
@@ -634,8 +653,14 @@ func test_chest_loot_panel_translation_keys_exist_in_csv() -> void:
 		"double-click to loot", "double-click to store",
 		"hover items to inspect", "click to unequip", "Empty slot",
 		"[Empty]",
-		"items  chest %d  /  bag %d    weight  %.2fkg",
-		"BAG  %d / %d  (%d%%)",
+		"ITEMS  CHEST %d  /  BAG %d",
+		"CAPACITY  %d / %d  (%d%%)",
+		"Drag or double-click items to transfer.",
+		"Item transferred to backpack.", "Equipment moved to backpack.",
+		"Item transferred.", "All chest items transferred.",
+		"Backpack capacity reached.",
+		"Some items remain because the backpack is full.",
+		"Item transfer failed.", "Equipment transfer failed.",
 		"EQ_SLOT_HEAD", "EQ_SLOT_CHEST", "EQ_SLOT_HANDS", "EQ_SLOT_FEET",
 		"EQ_SLOT_MAIN", "EQ_SLOT_OFF", "EQ_SLOT_BACK", "EQ_SLOT_ACC",
 	]
@@ -1059,12 +1084,15 @@ func test_panel_drop_to_equipment_equips_from_backpack() -> void:
 func test_panel_drop_to_backpack_unequips_from_equipment() -> void:
 	var source := (load("res://scenes/ui/chest_loot_panel.gd") as GDScript).source_code
 	var fn_start := source.find("func drop_to_zone")
-	var fn_block := source.substr(fn_start, 600)
+	var fn_end := source.find("\nfunc ", fn_start + 1)
+	if fn_end < 0:
+		fn_end = source.length()
+	var fn_block := source.substr(fn_start, fn_end - fn_start)
 	assert_bool(fn_block.contains("_unequip_slot_to_backpack")) \
 		.override_failure_message("从装备槽拖放到背包应调 _unequip_slot_to_backpack").is_true()
 
 
-func test_panel_drop_to_chest_returns_from_backpack() -> void:
+func test_panel_drop_to_chest_routes_backpack_items_by_type() -> void:
 	var source := (load("res://scenes/ui/chest_loot_panel.gd") as GDScript).source_code
 	var fn_start := source.find("func drop_to_zone")
 	# 抓取整个 drop_to_zone 函数体（直到下一个顶层 func），避免固定窗口因函数变长而截断
@@ -1072,5 +1100,34 @@ func test_panel_drop_to_chest_returns_from_backpack() -> void:
 	if fn_end < 0:
 		fn_end = source.length()
 	var fn_block := source.substr(fn_start, fn_end - fn_start)
-	assert_bool(fn_block.contains("_return_equipment_to_chest_by_id")) \
-		.override_failure_message("从背包拖放到宝箱应调 _return_equipment_to_chest_by_id").is_true()
+	assert_bool(fn_block.contains("match item_type")) \
+		.override_failure_message("从背包回存宝箱必须按物品类型分流").is_true()
+	assert_bool(fn_block.contains("_return_equipment_to_chest(gs, item_id, audio_mgr)")) \
+		.override_failure_message("装备必须走装备实例回存路径").is_true()
+	assert_bool(fn_block.contains("_return_material_to_chest(gs, item_id, audio_mgr)")) \
+		.override_failure_message("材料必须走材料回存路径").is_true()
+	assert_bool(fn_block.contains("_return_rune_to_chest(gs, item_id, audio_mgr)")) \
+		.override_failure_message("符文必须走符文回存路径").is_true()
+
+
+func test_drop_zone_has_accept_reject_feedback_and_drag_cleanup() -> void:
+	var source := (load("res://scenes/ui/loot_drop_zone.gd") as GDScript).source_code
+	assert_bool(source.contains("_show_drop_feedback(accepted)")) \
+		.override_failure_message("拖放目标必须显示接受或拒绝状态").is_true()
+	assert_bool(source.contains("NOTIFICATION_DRAG_END")) \
+		.override_failure_message("拖放结束必须清理高亮状态").is_true()
+	assert_bool(source.contains("_clear_drop_feedback()")) \
+		.override_failure_message("拖放反馈必须有统一清理入口").is_true()
+
+
+func test_panel_uses_themed_drag_preview_and_capacity_styles() -> void:
+	var source := (load("res://scenes/ui/chest_loot_panel.gd") as GDScript).source_code
+	var theme_text := FileAccess.get_file_as_string("res://scenes/ui/lantern_theme.tres")
+	assert_bool(source.contains("func _build_drag_preview")) \
+		.override_failure_message("拖动预览必须使用统一构建入口").is_true()
+	assert_bool(source.contains("&\"LootDragPreview\"")) \
+		.override_failure_message("拖动预览必须使用主题变体").is_true()
+	assert_bool(source.contains("&\"LootCapacityWarning\"")) \
+		.override_failure_message("容量接近上限时必须使用警告变体").is_true()
+	assert_str(theme_text).contains("LootDragPreview/base_type")
+	assert_str(theme_text).contains("LootCapacityWarning/base_type")

@@ -10,14 +10,24 @@ extends Node
 ## 关键约束：截图 = 真实游戏运行画面，UI 代码和截图必须一一对应。
 ## ============================================================================
 
-const SIZE := Vector2i(1920, 1080)
+const DEFAULT_SIZE := Vector2i(1920, 1080)
+const DEFAULT_LOCALE := "zh"
 const OUT_DIR := "res://reports/ui_runtime"
 const OUT_ABS := "D:/123/Lantern Tavern/reports/ui_runtime"
-const LOG_ABS := "D:/123/Lantern Tavern/reports/ui_runtime/driver_stderr.log"
+const LOG_DIR_ABS := "D:/123/Lantern Tavern/reports/ui_runtime"
+
+var _capture_size := DEFAULT_SIZE
+var _capture_locale := DEFAULT_LOCALE
+var _capture_pass := "all"
+var _capture_suffix := "1920x1080_zh"
 
 const GOBLIN_SCENE := preload("res://scenes/characters/enemies/goblin.tscn")
 const CHEST_SCENE := preload("res://scenes/props/chest/chest.tscn")
 const CHEST_LOOT_PANEL_SCENE := preload("res://scenes/ui/chest_loot_panel.tscn")
+const SPELL_INTERFACE_SCENE := preload("res://scenes/ui/spell_interface.tscn")
+const EQUIPMENT_PANEL_SCENE := preload("res://scenes/ui/tavern_equipment_panel.tscn")
+const MAIN_MENU_SCENE := preload("res://scenes/ui/main_menu.tscn")
+const SPELL_LOADOUT_SCRIPT := preload("res://globals/combat/spell_loadout.gd")
 const DETAIL_POPUP_SCRIPT := preload("res://scenes/ui/equipment_detail_popup.gd")
 
 const Service := preload("res://globals/core/service.gd")
@@ -33,19 +43,54 @@ var _saved_main_scene: String = ""
 var _log_file: FileAccess = null
 
 func _log(msg: String) -> void:
-	# 同时写 printerr 和文件，避免只走 stdout 看不到诊断。
+	# 同时写 printerr 和按截图参数分离的文件，避免多次验收互相覆盖诊断。
 	if _log_file == null:
-		_log_file = FileAccess.open(LOG_ABS, FileAccess.WRITE)
+		var log_name := "driver_%dx%d_%s_%s.log" % [
+			int(_capture_size.x), int(_capture_size.y), _capture_locale, _capture_pass,
+		]
+		_log_file = FileAccess.open(LOG_DIR_ABS.path_join(log_name), FileAccess.WRITE)
 	printerr(msg)
 	if _log_file != null:
 		_log_file.store_line(msg)
 		_log_file.flush()
 
+func _parse_capture_args() -> void:
+	var width := DEFAULT_SIZE.x
+	var height := DEFAULT_SIZE.y
+	for raw_arg in OS.get_cmdline_user_args():
+		var arg := String(raw_arg)
+		if arg.begins_with("--width="):
+			var value := arg.trim_prefix("--width=")
+			if value.is_valid_int():
+				width = maxi(640, int(value))
+		elif arg.begins_with("--height="):
+			var value := arg.trim_prefix("--height=")
+			if value.is_valid_int():
+				height = maxi(360, int(value))
+		elif arg.begins_with("--locale="):
+			var locale := arg.trim_prefix("--locale=").strip_edges()
+			if locale in ["en", "zh"]:
+				_capture_locale = locale
+		elif arg.begins_with("--pass="):
+			var pass_name := arg.trim_prefix("--pass=").strip_edges()
+			if pass_name in ["all", "combat", "tooltips", "chest", "main_menu", "spell", "equipment", "pages"]:
+				_capture_pass = pass_name
+	_capture_size = Vector2i(width, height)
+	_capture_suffix = "%dx%d_%s" % [width, height, _capture_locale]
+
+func _capture_name(order: String, label: String) -> String:
+	return "%s_%s_%s.png" % [order, label, _capture_suffix]
+
 func _ready() -> void:
-	_log("[UIDriver] _ready enter")
+	_parse_capture_args()
+	TranslationServer.set_locale(_capture_locale)
+	_log("[UIDriver] _ready enter size=%s locale=%s pass=%s" % [
+		str(_capture_size), _capture_locale, _capture_pass
+	])
 	_saved_main_scene = ProjectSettings.get_setting("application/run/main_scene", "")
 	# 主 Viewport 大小（用于让 view_model 之类的基于屏幕的逻辑有正确 viewport）
-	get_window().size = SIZE
+	get_window().size = _capture_size
+	get_window().content_scale_size = _capture_size
 	DirAccess.make_dir_recursive_absolute(OUT_DIR)
 	DirAccess.make_dir_recursive_absolute(OUT_ABS)
 	# 1) 等 World 自身把 space 切到 dungeon（player 出生 + UI 挂上 + CombatHUD ready）
@@ -153,16 +198,36 @@ func _find_child_recursive(node: Node, name: String) -> Node:
 
 func _run_all() -> void:
 	_log("[UIDriver] === _run_all start ===")
-	await _pass_combat_hud()
-	_log("[UIDriver] combat HUD done")
-	await _pass_tooltips()
-	_log("[UIDriver] tooltips done")
-	await _pass_chest()
-	_log("[UIDriver] chest done")
+	if _capture_pass in ["all", "combat"]:
+		await _pass_combat_hud()
+		_log("[UIDriver] combat HUD done")
+	if _capture_pass in ["all", "tooltips"]:
+		await _pass_tooltips()
+		_log("[UIDriver] tooltips done")
+	if _capture_pass in ["all", "chest"]:
+		await _pass_chest()
+		_log("[UIDriver] chest done")
+	if _capture_pass in ["main_menu", "pages"]:
+		await _pass_main_menu()
+		_log("[UIDriver] main menu done")
+	if _capture_pass in ["spell", "pages"]:
+		await _pass_spell_interface()
+		_log("[UIDriver] spell interface done")
+	if _capture_pass in ["equipment", "pages"]:
+		await _pass_equipment_panel()
+		_log("[UIDriver] equipment panel done")
 	# 恢复 main_scene 设定
 	if not _saved_main_scene.is_empty():
 		ProjectSettings.set_setting("application/run/main_scene", _saved_main_scene)
-	_log("[UIDriver] === all done, quit ===")
+	_log("[UIDriver] === all done, cleanup ===")
+	await _cleanup_spawned()
+	if _world != null and is_instance_valid(_world):
+		_world.queue_free()
+		_world = null
+	for i in range(8):
+		await get_tree().process_frame
+	RenderingServer.force_sync()
+	_log("[UIDriver] === cleanup done, quit ===")
 	get_tree().quit(0)
 
 # ── 公共：截图 ─────────────────────────────────────────
@@ -386,11 +451,11 @@ func _pass_combat_hud() -> void:
 			enemy_hp_bar.modulate.a = 1.0
 	# 5.6) 诊断：把 CombatHUD 关键子节点状态打出来
 	if _combat_hud != null:
-		var bcon := _combat_hud.get_node_or_null("BottomLeft/BuffContainer")
+		var bcon := _combat_hud.get_node_or_null("BottomLeft/BuffPanel/BuffContainer")
 		var msb := _combat_hud.get_node_or_null("BottomLeft/MagicShieldBar")
 		var psb := _combat_hud.get_node_or_null("BottomLeft/PhysicalShieldBar")
-		var wi := _combat_hud.get_node_or_null("BottomLeft/WeaponIndicator")
-		var si := _combat_hud.get_node_or_null("BottomLeft/ShieldIndicator")
+		var wi := _combat_hud.get_node_or_null("BottomLeftExtras/WeaponIndicator")
+		var si := _combat_hud.get_node_or_null("BottomLeftExtras/ShieldIndicator")
 		var ch_player = _combat_hud.get("_player")
 		var ch_buffs = null
 		var ch_buff_keys: Array = []
@@ -440,7 +505,7 @@ func _pass_combat_hud() -> void:
 					str(sb.get_node_or_null("ActiveRow/SlotF/SkillName").text) if sb.get_node_or_null("ActiveRow/SlotF/SkillName") else "null",
 					str(sb.get_node_or_null("ActiveRow/SlotG/SkillName").text) if sb.get_node_or_null("ActiveRow/SlotG/SkillName") else "null"
 				])
-	await _save_main_viewport("01_combat_hud.png")
+	await _save_main_viewport(_capture_name("01", "combat_hud"))
 	# 恢复
 	Input.action_release("block")
 	for i in range(5):
@@ -583,7 +648,7 @@ func _pass_tooltips() -> void:
 		])
 	else:
 		_log("[UIDriver] DIAG SkillBar STILL NOT FOUND after ensure_expedition_hud_mounted")
-	await _save_main_viewport("02_tooltip_overlay.png")
+	await _save_main_viewport(_capture_name("02", "tooltip_overlay"))
 
 func _ensure_expedition_hud_mounted() -> void:
 	# 头无或重入保护：检查是否已经挂上。
@@ -734,7 +799,7 @@ func _pass_chest() -> void:
 			cl.item_count if cl else -1, bl.item_count if bl else -1
 		])
 	# 5.4) 存一张主 viewport 截图
-	await _save_main_viewport("03_chest_interaction.png")
+	await _save_main_viewport(_capture_name("03", "chest_interaction"))
 	# 5.5) 强制让 panel 可见（_ready 中 visible = false，show_for_chest 应该设为 true）
 	_log("[UIDriver] pass 3 BEFORE panel.visible=true")
 	panel.visible = true
@@ -786,13 +851,137 @@ func _pass_chest() -> void:
 		])
 
 
+# ============================================================================
+# Pass 4-6：独立页面（主菜单 / 法术界面 / 装备界面）
+# ============================================================================
+func _prepare_page_capture() -> void:
+	await _cleanup_spawned()
+	if _world != null and is_instance_valid(_world):
+		_world.visible = false
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+
+
+func _pass_main_menu() -> void:
+	await _prepare_page_capture()
+	var menu := MAIN_MENU_SCENE.instantiate() as Control
+	menu.name = "MainMenuCapture"
+	get_tree().root.add_child(menu)
+	menu.set_anchors_preset(Control.PRESET_FULL_RECT)
+	menu.position = Vector2.ZERO
+	menu.size = Vector2(_capture_size)
+	for i in range(45):
+		await get_tree().process_frame
+	var side_panel := menu.get_node_or_null("SidePanel") as Control
+	var menu_box := menu.get_node_or_null("SidePanel/MenuVBox") as Control
+	_log("[UIDriver] main menu size=%s locale=%s side_panel=%s menu_box=%s" % [
+		str(menu.size),
+		_capture_locale,
+		_rect_summary(side_panel),
+		_rect_summary(menu_box),
+	])
+	await _save_main_viewport(_capture_name("04", "main_menu"))
+	menu.queue_free()
+	await get_tree().process_frame
+
+
+func _pass_spell_interface() -> void:
+	await _prepare_page_capture()
+	var rune_inventory: Dictionary = {
+		"ember": 2,
+		"force": 2,
+		"launch": 2,
+		"hima": 1,
+		"guardian": 1,
+		"vajra": 1,
+		"surge": 1,
+		"echo": 1,
+	}
+	var spell_loadout: RefCounted = SPELL_LOADOUT_SCRIPT.new()
+	spell_loadout.set_rune_inventory(rune_inventory)
+	spell_loadout.set_rune(0, 0, "ember")
+	spell_loadout.set_rune(0, 1, "force")
+	spell_loadout.set_rune(0, 2, "launch")
+	spell_loadout.set_rune(1, 0, "hima")
+	spell_loadout.set_rune(1, 1, "force")
+	spell_loadout.set_rune(1, 2, "guardian")
+	spell_loadout.set_rune(2, 0, "vajra")
+	spell_loadout.set_rune(2, 1, "surge")
+	spell_loadout.set_rune(2, 2, "echo")
+	var spell_ui := SPELL_INTERFACE_SCENE.instantiate() as SpellInterface
+	spell_ui.name = "SpellInterfaceCapture"
+	var rune_ids: Array[String] = ["ember", "force", "launch", "hima", "guardian", "vajra", "surge", "echo"]
+	spell_ui.loadout = spell_loadout
+	spell_ui.available_runes = rune_ids
+	get_tree().root.add_child(spell_ui)
+	spell_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
+	spell_ui.position = Vector2.ZERO
+	spell_ui.size = Vector2(_capture_size)
+	for i in range(12):
+		await get_tree().process_frame
+	spell_ui._apply_responsive_layout()
+	await get_tree().process_frame
+	var safe_margin := _find_child_recursive(spell_ui, "SafeMargin") as Control
+	var spell_frame := _find_child_recursive(spell_ui, "SpellFrame") as Control
+	var rune_panel := spell_ui._rune_panel as Control
+	_log("[UIDriver] spell interface size=%s vertical=%s clip=%s frame=%s rune_panel=%s" % [
+		str(spell_ui.size),
+		str(spell_ui._body.vertical if spell_ui._body else false),
+		_rect_summary(safe_margin),
+		_rect_summary(spell_frame),
+		_rect_summary(rune_panel),
+	])
+	await _save_main_viewport(_capture_name("05", "spell_interface"))
+	spell_ui.queue_free()
+	await get_tree().process_frame
+
+
+func _pass_equipment_panel() -> void:
+	await _prepare_page_capture()
+	get_tree().root.set_meta("equipment_capture_mode", true)
+	var panel := EQUIPMENT_PANEL_SCENE.instantiate() as TavernEquipmentPanel
+	panel.name = "EquipmentPanelCapture"
+	get_tree().root.add_child(panel)
+	panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	panel.position = Vector2.ZERO
+	panel.size = Vector2(_capture_size)
+	panel.show_panel()
+	for i in range(20):
+		await get_tree().process_frame
+	panel._lock_left_column_layout()
+	panel._lock_panel_frame_layout()
+	_log("[UIDriver] equipment panel size=%s frame=%s left_column=%s right_tabs=%s clipped=%s" % [
+		str(panel.size),
+		_rect_summary(panel.panel_frame),
+		_rect_summary(panel.left_column),
+		_rect_summary(panel.right_tabs),
+		str(panel.right_tabs.clip_contents),
+	])
+	await _save_main_viewport(_capture_name("06", "equipment_panel"))
+	panel.queue_free()
+	await get_tree().process_frame
+	get_tree().root.remove_meta("equipment_capture_mode")
+
+
+func _rect_summary(control: Control) -> String:
+	if control == null or not is_instance_valid(control):
+		return "null"
+	var end := control.global_position + control.size
+	var within_view := control.global_position.x >= -0.5 \
+		and control.global_position.y >= -0.5 \
+		and end.x <= _capture_size.x + 0.5 \
+		and end.y <= _capture_size.y + 0.5
+	return "pos=%s size=%s end=%s within=%s" % [
+		str(control.global_position), str(control.size), str(end), str(within_view),
+	]
+
+
 func _render_panel_to_subviewport(panel: CanvasLayer, basename: String) -> bool:
 	# 用独立的 SubViewport 把 panel 渲染一次,绕开主 viewport 的
 	# CanvasLayer 合成问题。这能告诉我们 panel 本身是否正常。
 	# 注意：不要 duplicate panel(深复制会丢失 theme 引用),
 	# 直接 instantiate 新的并 show_for_chest 同样的数据。
 	var sv := SubViewport.new()
-	sv.size = SIZE
+	sv.size = _capture_size
 	sv.transparent_bg = false
 	sv.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	sv.handle_input_locally = false

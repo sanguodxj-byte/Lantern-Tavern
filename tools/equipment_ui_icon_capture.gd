@@ -4,7 +4,10 @@ extends SceneTree
 
 const OUT_DIR := "res://reports/ui_preview"
 const DETAIL := preload("res://scenes/ui/equipment_detail_popup.gd")
+const RD := preload("res://globals/combat/rune_data.gd")
+const RWD := preload("res://globals/combat/rune_word_data.gd")
 const ICON_SIZE := 72
+const RUNE_ICON_SIZE := 128
 const PAD := 10
 const COLS := 6
 
@@ -22,6 +25,8 @@ func _run() -> void:
 
 	await _capture_equipment_icons()
 	await _capture_material_icons()
+	await _capture_rune_codex_sheet()
+	await _capture_rune_word_codex_sheet()
 	await _capture_loot_panel_like_grid()
 
 	if _had_error:
@@ -80,6 +85,38 @@ func _capture_material_icons() -> void:
 		print("[UIIconCapture] wrote %s" % path)
 
 
+func _capture_rune_codex_sheet() -> void:
+	var ids: Array = RD.get_all_rune_ids()
+	ids.sort()
+	var cells: Array = []
+	for rune_id in ids:
+		var id := String(rune_id)
+		cells.append({"id": id, "label": id, "tex": DETAIL.icon_for_rune(id)})
+	var img := _compose_sheet(cells, "Rune Codex 128px", RUNE_ICON_SIZE)
+	var path := "%s/rune_codex_128px.png" % OUT_DIR
+	var err := img.save_png(path)
+	if err != OK:
+		_fail("save failed %s" % path)
+	else:
+		print("[UIIconCapture] wrote %s cells=%d" % [path, cells.size()])
+
+
+func _capture_rune_word_codex_sheet() -> void:
+	var ids: Array = RWD.get_all_rune_word_ids()
+	ids.sort()
+	var cells: Array = []
+	for word_id in ids:
+		var id := String(word_id)
+		cells.append({"id": id, "label": id, "tex": DETAIL.icon_for_rune_word(id)})
+	var img := _compose_sheet(cells, "Rune Word Codex 128px", RUNE_ICON_SIZE)
+	var path := "%s/rune_word_codex_128px.png" % OUT_DIR
+	var err := img.save_png(path)
+	if err != OK:
+		_fail("save failed %s" % path)
+	else:
+		print("[UIIconCapture] wrote %s cells=%d" % [path, cells.size()])
+
+
 func _capture_loot_panel_like_grid() -> void:
 	## Simulate chest loot row: mix of weapons + materials + runes
 	var cells: Array = []
@@ -103,10 +140,10 @@ func _capture_loot_panel_like_grid() -> void:
 		print("[UIIconCapture] wrote %s" % path)
 
 
-func _compose_sheet(cells: Array, title: String) -> Image:
+func _compose_sheet(cells: Array, title: String, icon_size: int = ICON_SIZE) -> Image:
 	var rows := ceili(float(cells.size()) / float(COLS))
-	var cell_w := ICON_SIZE + PAD * 2
-	var cell_h := ICON_SIZE + 28
+	var cell_w := icon_size + PAD * 2
+	var cell_h := icon_size + 28
 	var width := COLS * cell_w + PAD * 2
 	var height := rows * cell_h + 40 + PAD
 	var img := Image.create(width, height, false, Image.FORMAT_RGBA8)
@@ -129,12 +166,12 @@ func _compose_sheet(cells: Array, title: String) -> Image:
 				if src.get_format() != Image.FORMAT_RGBA8:
 					src.convert(Image.FORMAT_RGBA8)
 				var scaled := src.duplicate()
-				scaled.resize(ICON_SIZE, ICON_SIZE, Image.INTERPOLATE_LANCZOS)
-				var ix := x + (cell_w - PAD - ICON_SIZE) / 2
+				scaled.resize(icon_size, icon_size, Image.INTERPOLATE_NEAREST)
+				var ix := x + (cell_w - PAD - icon_size) / 2
 				var iy := y + 4
-				img.blit_rect(scaled, Rect2i(0, 0, ICON_SIZE, ICON_SIZE), Vector2i(ix, iy))
+				img.blit_rect(scaled, Rect2i(0, 0, icon_size, icon_size), Vector2i(ix, iy))
 		else:
-			_fill_rect(img, Rect2i(x + 12, y + 12, ICON_SIZE - 8, ICON_SIZE - 8), Color(0.5, 0.15, 0.15, 1.0))
+			_fill_rect(img, Rect2i(x + 12, y + 12, icon_size - 8, icon_size - 8), Color(0.5, 0.15, 0.15, 1.0))
 		i += 1
 	# note: Godot Image has no text draw; titles are in filename. Mark non-null count via corner pixel pattern
 	img.set_pixel(2, 2, Color(0.2, 0.9, 0.4, 1.0) if cells.size() > 0 else Color(0.9, 0.2, 0.2, 1.0))

@@ -152,7 +152,7 @@ func test_weapon_mode_grip_stays_matte() -> void:
 	assert_int(adapted.specular_mode).is_equal(BaseMaterial3D.SPECULAR_DISABLED)
 
 
-func test_weapon_mode_preserves_emissive_crystal_texture_and_low_roughness() -> void:
+func test_weapon_mode_disables_emission_but_preserves_crystal_albedo_texture() -> void:
 	var crystal := StandardMaterial3D.new()
 	crystal.resource_name = "staff_magic_core_runes"
 	crystal.albedo_texture = ImageTexture.new()
@@ -166,12 +166,13 @@ func test_weapon_mode_preserves_emissive_crystal_texture_and_low_roughness() -> 
 		VOXEL_LIGHTING.MODE_WEAPON,
 	)
 	assert_object(adapted.albedo_texture).is_not_null()
-	assert_bool(adapted.emission_enabled).is_true()
-	assert_object(adapted.emission_texture).is_not_null()
-	assert_float(adapted.emission_energy_multiplier).is_equal_approx(1.8, 0.01)
-	assert_float(adapted.roughness).is_equal_approx(0.22, 0.01)
+	assert_bool(adapted.emission_enabled).is_false()
+	assert_object(adapted.emission_texture).is_null()
+	assert_float(adapted.emission_energy_multiplier).is_equal_approx(0.0, 0.01)
+	assert_float(adapted.roughness).is_greater_equal(0.62)
 	assert_float(adapted.metallic).is_equal_approx(0.0, 0.01)
-	assert_int(adapted.specular_mode).is_equal(BaseMaterial3D.SPECULAR_TOON)
+	assert_int(adapted.specular_mode).is_equal(BaseMaterial3D.SPECULAR_DISABLED)
+	assert_int(adapted.shading_mode).is_equal(BaseMaterial3D.SHADING_MODE_PER_PIXEL)
 
 
 func test_weapon_material_cache_reuses_instance() -> void:

@@ -47,6 +47,30 @@ func test_pixel_bar_label_update() -> void:
 	bar.queue_free()
 
 
+func test_resource_bars_use_new_pixel_instrument_contract() -> void:
+	var pixel_source: String = (load("res://scenes/ui/pixel_bar.gd") as GDScript).source_code
+	var shield_source: String = (load("res://scenes/ui/shield_bar.gd") as GDScript).source_code
+	for token in ["PLATE_WIDTH", "draw_colored_polygon", "_draw_kind_glyph", "segment_step"]:
+		assert_bool(pixel_source.contains(token)) \
+			.override_failure_message("生命/蓝量条缺少新像素仪表结构: %s" % token).is_true()
+	for token in ["PLATE_WIDTH", "draw_colored_polygon", "_draw_shield_glyph", "A.SHIELD", "P.SHIELD"]:
+		assert_bool(shield_source.contains(token)) \
+			.override_failure_message("护盾条缺少新像素仪表结构: %s" % token).is_true()
+	assert_bool(not pixel_source.contains("Gradient")).is_true()
+	assert_bool(not shield_source.contains("Gradient")).is_true()
+
+
+func test_combat_hud_configures_health_and_mana_kinds() -> void:
+	var hud: CombatHUD = load("res://scenes/ui/combat_hud.tscn").instantiate()
+	add_child(hud)
+	await await_idle_frame()
+	assert_int(hud.hp_bar.bar_kind).is_equal(PixelBar.BarKind.HEALTH)
+	assert_int(hud.mp_bar.bar_kind).is_equal(PixelBar.BarKind.MANA)
+	assert_int(int(hud.hp_bar.custom_minimum_size.y)).is_equal(40)
+	assert_int(int(hud.mp_bar.custom_minimum_size.y)).is_equal(40)
+	hud.queue_free()
+
+
 # ── CombatLog ────────────────────────────────────────────
 
 func test_combat_log_push_entry() -> void:
@@ -593,6 +617,30 @@ func test_combat_hud_buff_container_is_above_bars() -> void:
 	hud.queue_free()
 
 
+func test_combat_hud_has_level_experience_bar_and_upgrade_panel() -> void:
+	var hud: CombatHUD = load("res://scenes/ui/combat_hud.tscn").instantiate()
+	add_child(hud)
+	await await_idle_frame()
+	assert_object(hud.experience_bar).is_instanceof(ProgressBar)
+	assert_object(hud.level_up_panel).is_instanceof(LevelUpPanel)
+	assert_object(hud.level_up_panel.get_parent()).is_same(hud)
+	var upgrade_backdrop := hud.level_up_panel.get_node("Backdrop") as ColorRect
+	assert_float(upgrade_backdrop.color.a).is_less(0.5)
+	assert_str(hud.level_label.text).contains(str(AttrPanel.get_level()))
+	assert_float(hud.experience_bar.max_value).is_equal(float(AttrPanel.get_level_upgrade_threshold()))
+	hud.queue_free()
+
+
+func test_combat_hud_experience_bar_stays_above_bottom_skill_bar_area() -> void:
+	var hud: CombatHUD = load("res://scenes/ui/combat_hud.tscn").instantiate()
+	add_child(hud)
+	await await_idle_frame()
+	var container := hud.get_node("BottomCenterExperience") as Control
+	assert_float(container.offset_bottom).is_less_equal(-126.0)
+	assert_float(container.size.x).is_greater_equal(400.0)
+	hud.queue_free()
+
+
 # ── ShieldBar ────────────────────────────────────────────
 
 func test_shield_bar_set_values_activates() -> void:
@@ -656,24 +704,24 @@ func test_shield_bar_fade_out_on_deactivate() -> void:
 
 func test_shield_bar_magic_color_is_blue() -> void:
 	var bar: Node = ShieldBarScript.new()
-	add_child(bar)
 	bar.shield_type = 0  # MAGIC
-	bar._ready()
+	add_child(bar)
 	# 法术护盾颜色应为蓝色调（b > r）
 	assert_float(bar._bar_color.b).is_greater(bar._bar_color.r)
 	bar.queue_free()
 
 
-func test_shield_bar_physical_color_is_gray() -> void:
+func test_shield_bar_physical_color_is_warm_metal_gray() -> void:
 	var bar: Node = ShieldBarScript.new()
-	add_child(bar)
 	bar.shield_type = 1  # PHYSICAL
-	bar._ready()
-	# 物理护盾颜色应为灰白色（r ≈ g ≈ b，且亮度较高）
+	add_child(bar)
+	# 物理护盾是偏暖的金属灰白：亮度高、红绿相近，蓝色略低。
 	var c: Color = bar._bar_color
-	assert_float(c.r).is_equal_approx(c.g, 0.05)
-	assert_float(c.g).is_equal_approx(c.b, 0.05)
-	assert_float(c.r).is_greater(0.5)
+	assert_float(c.r).is_greater_equal(c.g)
+	assert_float(c.g).is_greater(c.b)
+	assert_float(c.r - c.g).is_less_equal(0.05)
+	assert_float(c.r - c.b).is_less_equal(0.2)
+	assert_float(c.b).is_greater(0.5)
 	bar.queue_free()
 
 
@@ -709,6 +757,7 @@ func test_combat_hud_shield_bars_below_buff_container() -> void:
 	var hud: CombatHUD = load("res://scenes/ui/combat_hud.tscn").instantiate()
 	add_child(hud)
 	await await_idle_frame()
-	# 护盾条的原始布局位置 _base_y 应在 buff 容器底部之下
-	assert_float(hud.magic_shield_bar._base_y).is_greater_equal(hud.buff_container.offset_bottom)
+	# 护盾条的原始布局位置 _base_y 应在主题化 BuffPanel 底部之下。
+	var buff_panel := hud.get_node("BottomLeft/BuffPanel") as Control
+	assert_float(hud.magic_shield_bar._base_y).is_greater_equal(buff_panel.offset_bottom)
 	hud.queue_free()

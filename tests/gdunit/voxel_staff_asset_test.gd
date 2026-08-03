@@ -113,11 +113,11 @@ func test_staff_imported_palette_keeps_oak_leather_brass_iron_and_crystal() -> v
 	assert_bool(brass.r > brass.g and brass.g > brass.b).is_true()
 	assert_bool(iron.b >= iron.r and iron.g >= iron.r).is_true()
 	assert_object(crystal.albedo_texture).is_not_null()
-	assert_bool(crystal.emission_enabled).is_true()
+	assert_bool(crystal.emission_enabled).is_false()
 	instance.free()
 
 
-func test_staff_embeds_nearest_pixel_textures_and_emissive_core() -> void:
+func test_staff_embeds_nearest_pixel_textures_and_non_emissive_core() -> void:
 	var instance := _instantiate()
 	var wood := _mesh_material(instance, "a_staff_spine_core")
 	var leather := _mesh_material(instance, "grip_wrap_upper_front")
@@ -129,12 +129,10 @@ func test_staff_embeds_nearest_pixel_textures_and_emissive_core() -> void:
 		assert_int(material.albedo_texture.get_height()).is_equal(8)
 		assert_float(_texture_max_channel(material)).is_greater(0.20)
 		assert_float(_texture_color_range(material)).is_greater(0.05)
-	assert_bool(core.emission_enabled).is_true()
-	assert_bool(crown.emission_enabled).is_true()
-	assert_object(core.emission_texture).is_not_null()
-	assert_object(crown.emission_texture).is_not_null()
-	assert_float(core.emission_energy_multiplier).is_greater(1.0)
-	assert_float(crown.emission_energy_multiplier).is_greater(core.emission_energy_multiplier)
+	assert_bool(core.emission_enabled).is_false()
+	assert_bool(crown.emission_enabled).is_false()
+	assert_object(core.emission_texture).is_null()
+	assert_object(crown.emission_texture).is_null()
 	var glb_text := _glb_ascii()
 	assert_str(glb_text).contains("TEXCOORD_0")
 	assert_str(glb_text).contains("staff_oak_grain_albedo")

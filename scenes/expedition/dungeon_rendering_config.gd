@@ -18,8 +18,10 @@ var ceiling_thickness: float = 0.1
 var ceiling_transition_gap: float = 0.015
 
 # 玩家视野基础能量/范围（runtime 范畴，暂收拢供统一引用）
-var player_vision_base_energy: float = 2.4
-var player_vision_base_range: float = 10.0
+var player_vision_base_energy: float = 2.2
+var player_vision_base_range: float = 10.5
+var player_vision_color := Color(0.88, 0.90, 0.94, 1.0)
+var player_vision_attenuation: float = 1.15
 
 ## 默认配置（与 procedural 旧 const 值一致，保旧行为）
 static func default() -> DungeonRenderingConfig:
@@ -28,6 +30,8 @@ static func default() -> DungeonRenderingConfig:
 	cfg.door_surround_thickness = 0.2
 	cfg.ceiling_thickness = 0.1
 	cfg.ceiling_transition_gap = 0.015
-	cfg.player_vision_base_energy = 2.4
-	cfg.player_vision_base_range = 10.0
+	cfg.player_vision_base_energy = 2.2
+	cfg.player_vision_base_range = 10.5
+	cfg.player_vision_color = Color(0.88, 0.90, 0.94, 1.0)
+	cfg.player_vision_attenuation = 1.15
 	return cfg

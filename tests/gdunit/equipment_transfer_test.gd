@@ -8,6 +8,8 @@ extends GdUnitTestSuite
 ## 5. 验证 Player B 上的装备正确
 
 const PLAYER_SCENE := preload("res://scenes/characters/player/player.tscn")
+const PANEL_INVENTORY := preload("res://scenes/ui/equipment_panel_inventory.gd")
+const EQUIPMENT_PANEL_SCENE := preload("res://scenes/ui/tavern_equipment_panel.tscn")
 
 var _old_weapon_slot_ids: Array[String]
 var _old_armor_slot_ids: Dictionary
@@ -272,6 +274,95 @@ func test_apply_equipment_preserves_all_four_weapon_slots() -> void:
 	
 	player_a.queue_free()
 	player_b.queue_free()
+
+
+func test_carried_equipment_instance_round_trip_preserves_armor_runtime_data() -> void:
+	var gs: Node = Engine.get_main_loop().root.get_node("GameState")
+	var inventory = gs.expedition_inventory
+	var old_equipment: Dictionary = inventory.equipment.duplicate()
+	var old_instances: Dictionary = inventory.equipment_instances.duplicate(true)
+	inventory.clear()
+	inventory.space_limit = 30
+
+	var armor: WeaponData = WeaponRegistry.build_weapon_data_with_tier("plate_armor", 0)
+	armor.condition = 321
+	armor.affixes = ["armor_phys_def_add"]
+	assert_bool(gs.add_carried_equipment_instance(armor)).is_true()
+
+	var carried: WeaponData = PANEL_INVENTORY.take_carried_equipment_instance("plate_armor")
+	assert_object(carried).is_not_null()
+	assert_int(carried.condition).is_equal(321)
+	assert_array(carried.affixes).has_size(1)
+	assert_bool(PANEL_INVENTORY.return_carried_equipment_instance(carried)).is_true()
+
+	var restored: WeaponData = gs.get_carried_equipment_instance("plate_armor")
+	assert_object(restored).is_not_null()
+	assert_int(restored.condition).is_equal(321)
+	assert_array(restored.affixes).has_size(1)
+
+	inventory.equipment = old_equipment
+	inventory.equipment_instances = old_instances
+
+
+func test_equipment_panel_drag_keeps_instance_and_uses_declared_armor_slot() -> void:
+	var source: String = FileAccess.get_file_as_string("res://scenes/ui/tavern_equipment_panel.gd")
+	var collect_start := source.find("func collect_drag_payload")
+	var collect_end := source.find("func can_drop_inventory_data")
+	var collect_body := source.substr(collect_start, collect_end - collect_start)
+	assert_bool(collect_body.contains('"data": meta.get("data", null)')).is_true()
+
+	var drop_start := source.find("func drop_equipment_slot_data")
+	var drop_end := source.find("func _swap_equipment_slots")
+	var drop_body := source.substr(drop_start, drop_end - drop_start)
+	assert_bool(drop_body.contains("target_armor_slot = equipment_data.armor_slot")).is_true()
+	assert_bool(drop_body.contains("configure_armor_slot(target_armor_slot, equipment_id, equipment_data)")).is_true()
+
+
+func test_tavern_equipment_panel_equips_armor_instance() -> void:
+	var gs: Node = Engine.get_main_loop().root.get_node("GameState")
+	var inventory = gs.expedition_inventory
+	var old_equipment: Dictionary = inventory.equipment.duplicate()
+	var old_instances: Dictionary = inventory.equipment_instances.duplicate(true)
+	inventory.clear()
+	inventory.space_limit = 30
+
+	var armor: WeaponData = WeaponRegistry.build_weapon_data_with_tier("plate_armor", 0)
+	armor.condition = 321
+	assert_bool(gs.add_carried_equipment_instance(armor)).is_true()
+	var player := _create_real_player()
+	var panel := EQUIPMENT_PANEL_SCENE.instantiate()
+	add_child(panel)
+
+	var equipped: bool = panel.configure_armor_slot("body", "plate_armor")
+	assert_bool(equipped).is_true()
+	var equipped_armor: WeaponData = player.equipment.get_armor_slot_data("body")
+	assert_object(equipped_armor).is_not_null()
+	assert_int(equipped_armor.condition).is_equal(321)
+	assert_bool(inventory.equipment.get("plate_armor", 0) == 0).is_true()
+
+	panel.queue_free()
+	player.queue_free()
+	inventory.equipment = old_equipment
+	inventory.equipment_instances = old_instances
+
+
+func test_equipment_panel_reuses_preview_for_equipment_changes() -> void:
+	var source: String = FileAccess.get_file_as_string("res://scenes/ui/tavern_equipment_panel.gd")
+	var refresh_start := source.find("func _refresh_preview")
+	var refresh_end := source.find("func _clear_preview")
+	var refresh_body := source.substr(refresh_start, refresh_end - refresh_start)
+	assert_bool(refresh_body.contains("current_preview_node.get(\"equipment\")")).is_true()
+	assert_bool(refresh_body.contains("preview_equipment.configure_weapon_slot(0, preview_hand_data, true)")).is_true()
+
+
+func test_equipment_panel_right_click_equips_inventory_item() -> void:
+	var source: String = FileAccess.get_file_as_string("res://scenes/ui/tavern_equipment_panel.gd")
+	assert_bool(source.contains("gear_list.gui_input.connect(_on_gear_list_gui_input)")).is_true()
+	var handler_start := source.find("func _on_gear_list_gui_input")
+	var handler_end := source.find("func _on_gear_item_selected")
+	var handler_body := source.substr(handler_start, handler_end - handler_start)
+	assert_bool(handler_body.contains("MOUSE_BUTTON_RIGHT")).is_true()
+	assert_bool(handler_body.contains("_equip_gear_metadata(gear_list.get_item_metadata(index))")).is_true()
 
 
 # ============================================================================

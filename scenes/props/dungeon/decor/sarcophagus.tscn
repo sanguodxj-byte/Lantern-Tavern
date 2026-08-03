@@ -1,0 +1,17 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/props/voxel_prop.gd" id="1_voxel"]
+
+[node name="DungeonSarcophagus" type="StaticBody3D"]
+collision_layer = 64
+collision_mask = 0
+script = ExtResource("1_voxel")
+prop_kind = "sarcophagus"
+metadata/dungeon_only = true
+metadata/topdown_kind = "terrain_feature"
+metadata/decor_kind = "sarcophagus"
+metadata/voxel_style = "one_px_32px_per_meter"
+metadata/voxel_unit_px = 1
+metadata/voxel_px_per_meter = 32
+metadata/blocks_navigation = true
+

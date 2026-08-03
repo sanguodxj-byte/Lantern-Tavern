@@ -23,7 +23,12 @@ from voxel_humanoid_rig import (  # noqa: E402
     create_voxel_humanoid_armature,
     parent_parts_by_bone,
 )
-from voxel_character_rig import build_all_actions, build_weapon_actions, export_glb as export_rig_glb  # noqa: E402
+from voxel_character_rig import (  # noqa: E402
+    HumanoidMotionProfile,
+    build_all_actions,
+    build_weapon_actions,
+    export_glb as export_rig_glb,
+)
 from voxel_model_primitives import (  # noqa: E402
     bounds_center_scale,
     cube_px,
@@ -48,6 +53,13 @@ MIN_SOLID_ENVELOPE_RATIO = 0.12
 STATIC_OUTPUT = ROOT / "assets" / "meshes" / "characters" / "voxel_goblin_32px.glb"
 RIG_OUTPUT = ROOT / "assets" / "meshes" / "characters" / "voxel_goblin_32px_rig.glb"
 PREVIEW_DIR = ROOT / "reports" / "characters_preview"
+MOTION_PROFILE = HumanoidMotionProfile(
+    stride_scale=0.92,
+    arm_swing_scale=1.08,
+    weight_scale=0.82,
+    agility_scale=1.10,
+    torso_scale=1.12,
+)
 
 
 @dataclass(frozen=True)
@@ -64,56 +76,56 @@ PART_SPECS: tuple[PartSpec, ...] = (
     PartSpec("foot_left_heel", (-4.5, 0.5, 1.5), (4.0, 5.0, 3.0), "skin_green_mid", "Foot.L"),
     PartSpec("foot_left_claw", (-4.5, -3.0, 1.5), (4.0, 2.0, 2.0), "claw_bone", "Foot.L"),
     PartSpec("shin_left", (-4.5, 0.5, 6.0), (4.0, 4.0, 6.0), "skin_green_mid", "LowerLeg.L"),
-    PartSpec("thigh_left", (-4.0, 0.5, 11.5), (4.0, 5.0, 5.0), "skin_green_dark", "UpperLeg.L"),
+    PartSpec("thigh_left", (-4.0, 0.5, 11.0), (4.0, 5.0, 4.0), "skin_green_dark", "UpperLeg.L"),
 
     PartSpec("foot_right_heel", (4.5, 0.5, 1.5), (4.0, 5.0, 3.0), "skin_green_mid", "Foot.R"),
     PartSpec("foot_right_claw", (4.5, -3.0, 1.5), (4.0, 2.0, 2.0), "claw_bone", "Foot.R"),
     PartSpec("shin_right", (4.5, 0.5, 6.0), (4.0, 4.0, 6.0), "skin_green_dark", "LowerLeg.R"),
-    PartSpec("thigh_right", (4.0, 0.5, 11.5), (4.0, 5.0, 5.0), "skin_green_mid", "UpperLeg.R"),
+    PartSpec("thigh_right", (4.0, 0.5, 11.0), (4.0, 5.0, 4.0), "skin_green_mid", "UpperLeg.R"),
 
     # Pelvis, tattered loincloth & side pouches.
     PartSpec("pelvis_core", (0.0, 0.5, 15.0), (9.0, 6.0, 4.0), "skin_green_dark", "Pelvis"),
     PartSpec("loincloth_front", (0.0, -3.0, 13.5), (6.0, 1.0, 5.0), "cloth_red", "Pelvis"),
-    PartSpec("belt_harness", (0.0, -3.5, 15.5), (9.0, 1.0, 2.0), "leather_dark", "Pelvis"),
-    PartSpec("side_pouch_left", (-5.0, -2.5, 14.5), (2.0, 2.0, 3.0), "leather_harness", "Pelvis"),
+    PartSpec("belt_harness", (0.0, -4.0, 15.5), (9.0, 1.0, 2.0), "leather_dark", "Pelvis"),
+    PartSpec("side_pouch_left", (-5.5, 0.0, 15.0), (2.0, 2.0, 3.0), "leather_harness", "Pelvis"),
 
     # Hunched Torso with back fur mantle & leather chest harness.
     PartSpec("torso_core", (0.0, 0.5, 21.0), (10.0, 6.0, 8.0), "skin_green_mid", "Torso"),
-    PartSpec("torso_hunch_back", (0.0, 3.5, 23.0), (10.0, 2.0, 8.0), "fur_mantle", "Torso"),
+    PartSpec("torso_hunch_back", (0.0, 4.0, 23.0), (10.0, 1.0, 8.0), "fur_mantle", "Torso"),
     PartSpec("chest_harness_strap", (0.0, -3.0, 22.0), (8.0, 1.0, 6.0), "leather_harness", "Torso"),
     PartSpec("harness_buckle", (0.0, -4.0, 23.0), (2.0, 1.0, 2.0), "claw_bone", "Torso"),
 
     # Thin arms & clawed hands.
     PartSpec("shoulder_left", (-6.5, 0.5, 23.0), (3.0, 4.0, 4.0), "skin_green_mid", "UpperArm.L"),
     PartSpec("forearm_left", (-7.0, -1.5, 19.0), (3.0, 4.0, 4.0), "skin_green_dark", "LowerArm.L"),
-    PartSpec("hand_left", (-7.0, -4.5, 18.0), (3.0, 3.0, 3.0), "skin_green_mid", "Hand.L"),
+    PartSpec("hand_left", (-7.0, -5.0, 18.0), (3.0, 3.0, 3.0), "skin_green_mid", "Hand.L"),
 
     PartSpec("shoulder_right", (6.5, 0.5, 23.0), (3.0, 4.0, 4.0), "skin_green_dark", "UpperArm.R"),
     PartSpec("forearm_right", (7.0, -1.5, 19.0), (3.0, 4.0, 4.0), "skin_green_mid", "LowerArm.R"),
-    PartSpec("hand_right", (7.0, -4.5, 18.0), (3.0, 3.0, 3.0), "skin_green_dark", "Hand.R"),
+    PartSpec("hand_right", (7.0, -5.0, 18.0), (3.0, 3.0, 3.0), "skin_green_dark", "Hand.R"),
 
     # Neck and forward-leaning Goblin Head.
     PartSpec("neck_core", (0.0, 0.5, 26.0), (4.0, 4.0, 2.0), "skin_green_dark", "Neck"),
     PartSpec("head_cranium", (0.0, -1.0, 31.0), (9.0, 8.0, 8.0), "skin_green_mid", "Head"),
-    PartSpec("head_brow", (0.0, -4.5, 33.0), (9.0, 2.0, 2.0), "skin_green_dark", "Head"),
+    PartSpec("head_brow", (0.0, -5.5, 34.5), (9.0, 1.0, 1.0), "skin_green_dark", "Head"),
 
     # Expressive Goblin Face: Hooked Nose, Tusks, Glowing Yellow Eyes.
-    PartSpec("nose_hook_base", (0.0, -5.5, 31.5), (3.0, 2.0, 3.0), "skin_green_mid", "Head"),
-    PartSpec("nose_hook_tip", (0.0, -7.5, 30.5), (2.0, 2.0, 2.0), "skin_green_dark", "Head"),
-    PartSpec("mouth_cavity", (0.0, -5.0, 28.5), (6.0, 1.0, 2.0), "skin_green_dark", "Head"),
-    PartSpec("tusk_left", (-2.0, -5.5, 29.0), (1.0, 1.0, 2.0), "claw_bone", "Head"),
-    PartSpec("tusk_right", (2.0, -5.5, 29.0), (1.0, 1.0, 2.0), "claw_bone", "Head"),
-    PartSpec("eye_left", (-2.5, -4.5, 32.5), (2.0, 1.0, 2.0), "eye_yellow", "Head"),
-    PartSpec("eye_right", (2.5, -4.5, 32.5), (2.0, 1.0, 2.0), "eye_yellow", "Head"),
+    PartSpec("nose_hook_base", (0.0, -6.0, 31.5), (3.0, 2.0, 3.0), "skin_green_mid", "Head"),
+    PartSpec("nose_hook_tip", (0.0, -7.75, 30.5), (2.0, 1.5, 2.0), "skin_green_dark", "Head"),
+    PartSpec("mouth_cavity", (0.0, -5.5, 28.5), (6.0, 1.0, 2.0), "skin_green_dark", "Head"),
+    PartSpec("tusk_left", (-2.0, -6.5, 29.0), (1.0, 1.0, 2.0), "claw_bone", "Head"),
+    PartSpec("tusk_right", (2.0, -6.5, 29.0), (1.0, 1.0, 2.0), "claw_bone", "Head"),
+    PartSpec("eye_left", (-2.5, -5.5, 32.5), (2.0, 1.0, 2.0), "eye_yellow", "Head"),
+    PartSpec("eye_right", (2.5, -5.5, 32.5), (2.0, 1.0, 2.0), "eye_yellow", "Head"),
 
     # Giant Pointed Ears (reaching X = 20.0 envelope).
-    PartSpec("ear_base_left", (-5.0, 0.5, 32.0), (2.0, 3.0, 4.0), "skin_green_dark", "Head"),
-    PartSpec("ear_mid_left", (-7.5, 1.5, 33.0), (3.0, 3.0, 3.0), "skin_green_mid", "Head"),
-    PartSpec("ear_tip_left", (-9.5, 2.5, 34.0), (2.0, 2.0, 2.0), "skin_green_dark", "Head"),
+    PartSpec("ear_base_left", (-5.5, 0.5, 32.0), (2.0, 3.0, 4.0), "skin_green_dark", "Head"),
+    PartSpec("ear_mid_left", (-8.0, 1.5, 33.0), (3.0, 3.0, 3.0), "skin_green_mid", "Head"),
+    PartSpec("ear_tip_left", (-10.0, 2.5, 34.0), (1.0, 2.0, 2.0), "skin_green_dark", "Head"),
 
-    PartSpec("ear_base_right", (5.0, 0.5, 32.0), (2.0, 3.0, 4.0), "skin_green_mid", "Head"),
-    PartSpec("ear_mid_right", (7.5, 1.5, 33.0), (3.0, 3.0, 3.0), "skin_green_dark", "Head"),
-    PartSpec("ear_tip_right", (9.5, 2.5, 34.0), (2.0, 2.0, 2.0), "skin_green_mid", "Head"),
+    PartSpec("ear_base_right", (5.5, 0.5, 32.0), (2.0, 3.0, 4.0), "skin_green_mid", "Head"),
+    PartSpec("ear_mid_right", (8.0, 1.5, 33.0), (3.0, 3.0, 3.0), "skin_green_dark", "Head"),
+    PartSpec("ear_tip_right", (10.0, 2.5, 34.0), (1.0, 2.0, 2.0), "skin_green_mid", "Head"),
 )
 
 
@@ -125,7 +137,7 @@ def _build_palette() -> dict[str, bpy.types.Material]:
         "leather_dark": make_material("leather_dark", (0.16, 0.10, 0.05, 1.0), roughness=0.7),
         "leather_harness": make_material("leather_harness", (0.28, 0.18, 0.10, 1.0), roughness=0.6),
         "fur_mantle": make_material("fur_mantle", (0.22, 0.18, 0.15, 1.0), roughness=0.9),
-        "eye_yellow": make_material("eye_yellow", (1.00, 0.85, 0.15, 1.0), roughness=0.1, metallic=0.1, emission=2.0),
+        "eye_yellow": make_material("eye_yellow", (1.00, 0.85, 0.15, 1.0), roughness=0.1, metallic=0.1),
         "claw_bone": make_material("claw_bone", (0.85, 0.80, 0.65, 1.0), roughness=0.6),
     }
 
@@ -181,17 +193,10 @@ def build_goblin_mesh() -> tuple[bpy.types.Object, list[bpy.types.Object], dict[
 def main() -> None:
     reject_target_override(MODEL_ID)
     _assert_authored_contract()
-    parts = tuple({
-        "name": p.name,
-        "center_px": p.center_px,
-        "size_px": p.size_px,
-    } for p in PART_SPECS)
-
-    assert_parts_no_positive_volume_overlap(parts, label=MODEL_ID)
-    assert_parts_single_face_connected_component(parts, label=MODEL_ID)
-
     # 1. 导出静态 GLB
     root, parts_objs, parts_by_bone = build_goblin_mesh()
+    assert_parts_no_positive_volume_overlap(parts_objs, label=MODEL_ID)
+    assert_parts_single_face_connected_component(parts_objs, label=MODEL_ID)
     root.rotation_euler.z = math.pi
     bpy.context.view_layer.update()
     STATIC_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
@@ -201,8 +206,8 @@ def main() -> None:
     root, parts_objs, parts_by_bone = build_goblin_mesh()
     armature = create_voxel_humanoid_armature(height_px=42.0, name="Armature")
     parent_parts_by_bone(parts_by_bone, armature)
-    build_all_actions(armature)
-    build_weapon_actions(armature)
+    build_all_actions(armature, MOTION_PROFILE)
+    build_weapon_actions(armature, MOTION_PROFILE)
     armature.rotation_euler.z = math.pi
     bpy.context.view_layer.update()
     RIG_OUTPUT.parent.mkdir(parents=True, exist_ok=True)

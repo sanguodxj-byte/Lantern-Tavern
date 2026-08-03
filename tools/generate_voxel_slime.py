@@ -48,6 +48,8 @@ STATIC_OUTPUT = ROOT / "assets" / "meshes" / "characters" / "voxel_slime_24px.gl
 RIG_OUTPUT = ROOT / "assets" / "meshes" / "characters" / "voxel_slime_24px_rig.glb"
 PREVIEW_DIR = ROOT / "reports" / "characters_preview"
 PX = 1.0 / 32.0
+SLIME_JUMP_HEIGHT_M = 0.60
+SLIME_RUN_FRAME_COUNT = 24
 
 
 @dataclass(frozen=True)
@@ -63,11 +65,11 @@ class PartSpec:
 # The one-line format lets gdUnit validate authored dimensions without Blender.
 PART_SPECS: tuple[PartSpec, ...] = (
     # Wide uneven puddle skirt, already larger than the contaminated 18px body.
-    PartSpec("puddle_center", (0.0, 0.0, 2.0), (18.0, 16.0, 4.0), "gel_deep", "Torso"),
+    PartSpec("puddle_center", (0.0, 0.0, 2.0), (18.0, 16.0, 4.0), "gel_deep", "GelBase"),
     PartSpec("puddle_left_lobe", (-13.0, -1.0, 2.0), (8.0, 14.0, 4.0), "gel_mid", "Pseudopod.L"),
     PartSpec("puddle_right_lobe", (13.0, 1.0, 2.0), (8.0, 14.0, 4.0), "gel_deep", "Pseudopod.R"),
-    PartSpec("puddle_front_lip", (0.0, -11.0, 2.0), (18.0, 6.0, 4.0), "gel_high", "Torso"),
-    PartSpec("puddle_back_shelf", (1.0, 11.0, 2.0), (16.0, 6.0, 4.0), "gel_deep", "Torso"),
+    PartSpec("puddle_front_lip", (0.0, -11.0, 2.0), (18.0, 6.0, 4.0), "gel_high", "GelBase"),
+    PartSpec("puddle_back_shelf", (1.0, 11.0, 2.0), (16.0, 6.0, 4.0), "gel_deep", "GelBase"),
 
     # Lower compression ring keeps the silhouette thick in front and side.
     PartSpec("lower_belly_center", (0.0, 0.0, 6.0), (20.0, 18.0, 4.0), "gel_mid", "Torso"),
@@ -117,9 +119,9 @@ PART_SPECS: tuple[PartSpec, ...] = (
     PartSpec("eye_glint_right", (4.5, -13.5, 19.5), (1.0, 1.0, 1.0), "eye_high", "Face"),
 
     # Offset cap and left-only droop prevent a generic symmetric hemisphere.
-    PartSpec("cap_center_offset", (-1.0, 2.0, 22.0), (12.0, 10.0, 4.0), "gel_high", "Head"),
-    PartSpec("cap_left_step", (-8.0, 2.0, 21.0), (2.0, 6.0, 2.0), "gel_mid", "Head"),
-    PartSpec("cap_right_step", (7.0, 3.0, 21.0), (4.0, 6.0, 2.0), "gel_deep", "Head"),
+    PartSpec("cap_center_offset", (-1.0, 2.0, 22.0), (12.0, 10.0, 4.0), "gel_high", "Crown"),
+    PartSpec("cap_left_step", (-8.0, 2.0, 21.0), (2.0, 6.0, 2.0), "gel_mid", "Crown"),
+    PartSpec("cap_right_step", (7.0, 3.0, 21.0), (4.0, 6.0, 2.0), "gel_deep", "Crown"),
     PartSpec("crown_droop_left", (-16.0, 2.0, 17.0), (2.0, 6.0, 4.0), "gel_mid", "Pseudopod.L"),
     PartSpec("droop_tip_left", (-16.0, 2.0, 13.5), (2.0, 4.0, 3.0), "gel_high", "Pseudopod.L"),
 
@@ -139,12 +141,12 @@ def _build_materials() -> dict[str, bpy.types.Material]:
         "wet_high": make_material("Slime_Wet_High", (0.360, 0.760, 0.520, 1.0), roughness=0.28),
         "shadow_deep": make_material("Slime_CoreShadow_Deep", (0.018, 0.045, 0.042, 1.0), roughness=0.94),
         "shadow_mid": make_material("Slime_CoreShadow_Mid", (0.035, 0.095, 0.080, 1.0), roughness=0.90),
-        "core_deep": make_material("Slime_Core_Deep", (0.290, 0.075, 0.020, 1.0), emission=0.2),
-        "core_mid": make_material("Slime_Core_Mid", (0.800, 0.275, 0.035, 1.0), emission=0.8),
-        "core_high": make_material("Slime_Core_High", (1.000, 0.660, 0.110, 1.0), emission=2.0),
+        "core_deep": make_material("Slime_Core_Deep", (0.290, 0.075, 0.020, 1.0)),
+        "core_mid": make_material("Slime_Core_Mid", (0.800, 0.275, 0.035, 1.0)),
+        "core_high": make_material("Slime_Core_High", (1.000, 0.660, 0.110, 1.0)),
         "eye_deep": make_material("Slime_Eye_Deep", (0.008, 0.015, 0.012, 1.0), roughness=0.96),
-        "eye_mid": make_material("Slime_Eye_Mid", (0.520, 0.720, 0.140, 1.0), emission=0.5),
-        "eye_high": make_material("Slime_Eye_High", (0.940, 1.000, 0.500, 1.0), emission=1.8),
+        "eye_mid": make_material("Slime_Eye_Mid", (0.520, 0.720, 0.140, 1.0)),
+        "eye_high": make_material("Slime_Eye_High", (0.940, 1.000, 0.500, 1.0)),
     }
 
 
@@ -187,11 +189,26 @@ def _point_to_m(point_px: tuple[float, float, float]) -> Vector:
     return Vector(tuple(value * PX for value in point_px))
 
 
+def _pose_offset_from_blender_world(
+    armature: bpy.types.Object,
+    bone_name: str,
+    world_offset: tuple[float, float, float],
+) -> tuple[float, float, float]:
+    """Convert a Blender-world offset to PoseBone.location local coordinates."""
+    rest_basis = armature.data.bones[bone_name].matrix_local.to_3x3()
+    local_offset = rest_basis.inverted() @ Vector(world_offset)
+    return tuple(local_offset)
+
+
 def _create_slime_armature() -> bpy.types.Object:
     bone_defs = (
-        ("Root", (0.0, 0.0, 0.0), (0.0, 0.0, 4.0), ""),
-        ("Torso", (0.0, 0.0, 4.0), (0.0, 0.0, 16.0), "Root"),
+        # Authored in Blender Z-up. glTF export_yup converts this vertical axis
+        # to Godot +Y; pose translation must therefore stay on Blender Z here.
+        ("Root", (0.0, 0.0, 0.0), (0.0, 0.0, 2.0), ""),
+        ("GelBase", (0.0, 0.0, 1.0), (0.0, 0.0, 6.0), "Root"),
+        ("Torso", (0.0, 0.0, 4.0), (0.0, 0.0, 16.0), "GelBase"),
         ("Head", (0.0, 0.0, 16.0), (0.0, 0.0, 23.0), "Torso"),
+        ("Crown", (-1.0, 1.0, 19.0), (-1.0, 1.0, 24.0), "Head"),
         ("Face", (0.0, -6.0, 14.0), (0.0, -10.0, 19.0), "Head"),
         ("Core", (0.0, -8.0, 8.0), (0.0, -8.0, 16.0), "Torso"),
         ("Pseudopod.L", (-9.0, 0.0, 5.0), (-16.0, 0.0, 8.0), "Torso"),
@@ -234,15 +251,25 @@ def _parent_parts_to_slime_bones(
 
 
 def _build_slime_actions(armature: bpy.types.Object) -> None:
+    def world_loc(bone_name: str, offset: tuple[float, float, float]) -> tuple[float, float, float]:
+        return _pose_offset_from_blender_world(armature, bone_name, offset)
+
     make_action(armature, "idle", 29, [
         (1, {}),
-        (15, {"Torso": {"rot": (0, 0, 2), "loc": (0.0, 0.0, 0.025)}, "Head": {"rot": (0, 3, 0)}, "Core": {"rot": (0, 0, 8)}}),
+        (15, {"Torso": {"rot": (0, 0, 1.5), "loc": world_loc("Torso", (0.0, 0.0, 0.006))}, "Head": {"rot": (0, 2, 0)}, "Crown": {"rot": (0, -2, -2)}, "Core": {"rot": (0, 0, 5), "loc": world_loc("Core", (0.0, 0.0, -0.004))}}),
         (29, {}),
     ])
-    make_action(armature, "run", 12, [
-        (1, {"Torso": {"rot": (0, -5, -4), "loc": (0.0, 0.0, 0.04)}, "Pseudopod.L": {"rot": (0, 0, 18)}, "Pseudopod.R": {"rot": (0, 0, -12)}}),
-        (6, {"Torso": {"rot": (0, 5, 4)}, "Pseudopod.L": {"rot": (0, 0, -12)}, "Pseudopod.R": {"rot": (0, 0, 18)}}),
-        (12, {"Torso": {"rot": (0, -5, -4), "loc": (0.0, 0.0, 0.04)}, "Pseudopod.L": {"rot": (0, 0, 18)}, "Pseudopod.R": {"rot": (0, 0, -12)}}),
+    # One locomotion cycle is a full slime hop. Root Z reaches 0.60m in
+    # Blender, which becomes Godot +Y after export. Sub-bone offsets remain
+    # sub-pixel-small so the face-attached gel strata wobble without separating.
+    make_action(armature, "run", SLIME_RUN_FRAME_COUNT, [
+        (1, {"Root": {"loc": world_loc("Root", (0.0, 0.0, 0.0))}, "Torso": {"loc": world_loc("Torso", (0.0, 0.0, -0.010)), "rot": (0, -2, -2)}, "Head": {"rot": (0, 2, 0)}, "Crown": {"rot": (0, 2, -3)}, "Core": {"loc": world_loc("Core", (0.0, 0.0, -0.006))}, "Pseudopod.L": {"rot": (0, 0, 8)}, "Pseudopod.R": {"rot": (0, 0, -7)}}),
+        (4, {"Root": {"loc": world_loc("Root", (0.0, 0.0, 0.18))}, "Torso": {"loc": world_loc("Torso", (0.0, 0.0, 0.010)), "rot": (0, 3, 2)}, "Head": {"loc": world_loc("Head", (0.0, 0.0, 0.005))}, "Crown": {"rot": (0, -3, 3)}, "Core": {"loc": world_loc("Core", (0.0, 0.0, -0.006))}, "Pseudopod.L": {"rot": (0, 0, -6)}, "Pseudopod.R": {"rot": (0, 0, 7)}}),
+        (8, {"Root": {"loc": world_loc("Root", (0.0, 0.0, SLIME_JUMP_HEIGHT_M))}, "Torso": {"loc": world_loc("Torso", (0.0, 0.0, 0.015)), "rot": (0, 2, 3)}, "Head": {"loc": world_loc("Head", (0.0, 0.0, 0.008)), "rot": (0, -3, 0)}, "Crown": {"rot": (0, 4, 5)}, "Core": {"loc": world_loc("Core", (0.0, 0.0, -0.008)), "rot": (0, 0, -7)}, "Pseudopod.L": {"rot": (0, 0, -8)}, "Pseudopod.R": {"rot": (0, 0, 9)}}),
+        (12, {"Root": {"loc": world_loc("Root", (0.0, 0.0, 0.36))}, "Torso": {"loc": world_loc("Torso", (0.0, 0.0, 0.005)), "rot": (0, -2, -2)}, "Head": {"rot": (0, 2, 0)}, "Crown": {"rot": (0, -3, -4)}, "Core": {"loc": world_loc("Core", (0.0, 0.0, 0.006)), "rot": (0, 0, 8)}, "Pseudopod.L": {"rot": (0, 0, 7)}, "Pseudopod.R": {"rot": (0, 0, -6)}}),
+        (16, {"Root": {"loc": world_loc("Root", (0.0, 0.0, 0.0))}, "Torso": {"loc": world_loc("Torso", (0.0, 0.0, -0.012)), "rot": (0, 3, 3)}, "Head": {"loc": world_loc("Head", (0.0, 0.0, -0.006))}, "Crown": {"rot": (0, 3, 5)}, "Core": {"loc": world_loc("Core", (0.0, 0.0, 0.008)), "rot": (0, 0, -9)}, "Pseudopod.L": {"rot": (0, 0, 10)}, "Pseudopod.R": {"rot": (0, 0, -9)}}),
+        (20, {"Root": {"loc": world_loc("Root", (0.0, 0.0, 0.12))}, "Torso": {"loc": world_loc("Torso", (0.0, 0.0, 0.006)), "rot": (0, -1, -1)}, "Head": {"loc": world_loc("Head", (0.0, 0.0, 0.003))}, "Crown": {"rot": (0, -2, -3)}, "Core": {"loc": world_loc("Core", (0.0, 0.0, -0.004))}, "Pseudopod.L": {"rot": (0, 0, -5)}, "Pseudopod.R": {"rot": (0, 0, 6)}}),
+        (24, {"Root": {"loc": world_loc("Root", (0.0, 0.0, 0.0))}, "Torso": {"loc": world_loc("Torso", (0.0, 0.0, -0.010)), "rot": (0, -2, -2)}, "Head": {"rot": (0, 2, 0)}, "Crown": {"rot": (0, 2, -3)}, "Core": {"loc": world_loc("Core", (0.0, 0.0, -0.006))}, "Pseudopod.L": {"rot": (0, 0, 8)}, "Pseudopod.R": {"rot": (0, 0, -7)}}),
     ])
     swipe = [
         (1, {"Torso": {"rot": (0, -8, 0)}, "Pseudopod.R": {"rot": (0, -10, -35)}, "Face": {"rot": (0, -4, 0)}}),

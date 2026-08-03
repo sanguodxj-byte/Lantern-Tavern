@@ -23,13 +23,28 @@ const AttrPanelClass := preload("res://globals/combat/attr_panel.gd")
 const SkillRuntimeClass := preload("res://globals/combat/skill_runtime.gd")
 const ExpeditionInventoryClass := preload("res://globals/core/state/expedition_inventory.gd")
 const EquipmentLoadoutClass := preload("res://globals/core/state/equipment_loadout.gd")
+const SpellLoadoutClass := preload("res://globals/combat/spell_loadout.gd")
+const SpellRuntimeClass := preload("res://globals/combat/spell_runtime.gd")
 
 var player_node: Node3D = null            ## 运行时 Player 节点（可选）
 var attributes: AttrPanelClass = null      ## 该玩家的属性/派生率容器
 var skills: SkillRuntimeClass = null       ## 该玩家的技能状态
 var inventory: ExpeditionInventoryClass = null
 var loadout: EquipmentLoadoutClass = null
+var spell_loadout: SpellLoadoutClass = SpellLoadoutClass.new()
+var spell_runtime: SpellRuntimeClass = SpellRuntimeClass.new()
+var spell_mana: int = 100
+var spell_max_mana: int = 100
 var player_guid: String = ""               ## 稳定身份（§14.2，不随 peer_id 变化），用于重连锚定
+
+func serialize_spell_state() -> Dictionary:
+	return {"spell_loadout": spell_loadout.serialize(), "spell_mana": spell_mana, "spell_max_mana": spell_max_mana, "spell_runtime": spell_runtime.serialize()}
+
+func deserialize_spell_state(data: Dictionary) -> void:
+	spell_max_mana = maxi(1, int(data.get("spell_max_mana", spell_max_mana)))
+	spell_mana = clampi(int(data.get("spell_mana", spell_max_mana)), 0, spell_max_mana)
+	if data.has("spell_loadout"): spell_loadout.deserialize(Dictionary(data.spell_loadout))
+	if data.has("spell_runtime"): spell_runtime.deserialize(Dictionary(data.spell_runtime))
 
 func _init(attrs: AttrPanelClass, sk: SkillRuntimeClass, inv: ExpeditionInventoryClass, lo: EquipmentLoadoutClass, player: Node3D = null, guid: String = "") -> void:
 	attributes = attrs
@@ -38,6 +53,13 @@ func _init(attrs: AttrPanelClass, sk: SkillRuntimeClass, inv: ExpeditionInventor
 	loadout = lo
 	player_node = player
 	player_guid = guid
+	if player != null and player.get_node_or_null("/root/GameState") != null:
+		var gs := player.get_node_or_null("/root/GameState")
+		if "spell_loadout" in gs:
+			spell_loadout = gs.spell_loadout
+		if "mana" in player and player.mana != null:
+			spell_mana = int(player.mana.current_mana)
+			spell_max_mana = int(player.mana.max_mana)
 
 ## 迁移桥接（过渡期）：绑定到当前单机全局单例。行为等价于现状。
 ## 仅在运行时（所有 autoload 就绪后）调用，避免 autoload 初始化顺序问题。

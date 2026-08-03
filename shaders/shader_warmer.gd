@@ -53,12 +53,8 @@ func _spawn_warmup_objects() -> void:
 		_spawn_material(mat, slot)
 		slot += 1
 
-	# 3. A representative emissive StandardMaterial3D. Keys and doors build these
-	#    at runtime; the compiled pipeline depends on the enabled FEATURES
-	#    (emission on), not the specific color, so one instance covers them all.
-	var emissive := StandardMaterial3D.new()
-	emissive.emission_enabled = true
-	_spawn_material(emissive, slot)
+	# Static assets and gameplay effects use lit materials; no emissive pipeline
+	# warm-up is needed. Actual flame fixtures compile through their own scenes.
 
 func _spawn_material(material: Material, slot: int) -> void:
 	var mi := MeshInstance3D.new()

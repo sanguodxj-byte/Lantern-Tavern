@@ -1,4 +1,4 @@
-﻿[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scenes/ui/tavern_equipment_panel.gd" id="1_panel"]
 [ext_resource type="Theme" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
@@ -316,9 +316,8 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="BottomInfo" type="HBoxContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn"]
-custom_minimum_size = Vector2(0, 460)
 layout_mode = 2
-size_flags_vertical = 0
+size_flags_vertical = 3
 theme_override_constants/separation = 12
 
 [node name="StatsPanel" type="TabContainer" parent="PanelContainer/VBoxContainer/MainLayout/LeftColumn/BottomInfo"]

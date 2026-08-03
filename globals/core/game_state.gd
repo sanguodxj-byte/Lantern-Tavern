@@ -5,16 +5,37 @@ const Service := preload("res://globals/core/service.gd")
 var current_level : Node3D
 var current_player : Player
 
+## 当前远征所在楼层。每次新远征从 L1 开始，向下楼梯递增。
+const INITIAL_DUNGEON_FLOOR := 1
+var dungeon_floor: int = INITIAL_DUNGEON_FLOOR
+
+func reset_dungeon_floor() -> void:
+	dungeon_floor = INITIAL_DUNGEON_FLOOR
+
+func set_dungeon_floor(floor: int) -> void:
+	dungeon_floor = maxi(floor, INITIAL_DUNGEON_FLOOR)
+
+func get_dungeon_floor() -> int:
+	return maxi(dungeon_floor, INITIAL_DUNGEON_FLOOR)
+
+func advance_dungeon_floor() -> int:
+	set_dungeon_floor(get_dungeon_floor() + 1)
+	return dungeon_floor
+
+func get_dungeon_floor_label() -> String:
+	return "L%d" % get_dungeon_floor()
+
 ## 每玩家上下文（联机保险层）。单机下绑定到全局单例；详见 globals/core/player_context.gd。
 ## 通过 player_context() 惰性获取，避免 autoload 初始化顺序问题。
 var _player_context: PlayerContext = null
 
-const DEFAULT_CARRIED_SPACE_LIMIT := 30
 const ExpeditionInventoryClass := preload("res://globals/core/state/expedition_inventory.gd")
 const EquipmentLoadoutClass := preload("res://globals/core/state/equipment_loadout.gd")
+const SpellLoadoutClass := preload("res://globals/combat/spell_loadout.gd")
 
 var expedition_inventory := ExpeditionInventoryClass.new()
 var equipment_loadout := EquipmentLoadoutClass.new()
+var spell_loadout := SpellLoadoutClass.new()
 
 var carried_materials: Dictionary:
 	get: return expedition_inventory.materials
@@ -81,6 +102,19 @@ func unregister_player(player: Player) -> void:
 	if _player_context != null and _player_context.player_node == player:
 		_player_context.player_node = null
 
+## P1-5：单玩家全局引用的统一解析入口。
+## 地牢压力/撤离/交互/敌人目标等路径一律经此取玩家节点，不再裸读 current_player。
+## peer_id=0 → 单机全局 current_player（行为不变）；peer_id>0 且联机会话注册表已注入
+## 解析器 → 按 peer 解析（房主视角的远端玩家/自身）。解析失败回退 current_player。
+var player_resolver: Callable = Callable()
+
+func resolve_player_node(peer_id: int = 0) -> Node:
+	if peer_id > 0 and player_resolver.is_valid():
+		var node = player_resolver.call(peer_id)
+		if node != null and is_instance_valid(node):
+			return node
+	return current_player
+
 ## 每玩家上下文（联机保险层）。
 ## 惰性创建并绑定到当前单机全局单例；后续联机改为 per-peer 实例。
 func player_context() -> PlayerContext:
@@ -93,7 +127,10 @@ func add_carried_material(material_id: String, amount: int = 1) -> bool:
 	return expedition_inventory.add_material(material_id, amount)
 
 func add_carried_rune(rune_id: String, amount: int = 1) -> bool:
-	return expedition_inventory.add_rune(rune_id, amount)
+	var added := expedition_inventory.add_rune(rune_id, amount)
+	if added:
+		refresh_spell_rune_inventory()
+	return added
 
 ## 记录未装备的背包装备
 func add_carried_equipment(equipment_id: String, amount: int = 1) -> bool:
@@ -115,7 +152,14 @@ func remove_carried_material(material_id: String, amount: int = 1) -> bool:
 	return expedition_inventory.remove_material(material_id, amount)
 
 func remove_carried_rune(rune_id: String, amount: int = 1) -> bool:
-	return expedition_inventory.remove_rune(rune_id, amount)
+	var removed := expedition_inventory.remove_rune(rune_id, amount)
+	if removed:
+		refresh_spell_rune_inventory()
+	return removed
+
+
+func refresh_spell_rune_inventory() -> void:
+	spell_loadout.set_rune_inventory(carried_runes)
 
 func get_carried_equipment_dict() -> Dictionary:
 	return expedition_inventory.equipment.duplicate()
@@ -348,14 +392,43 @@ func damage_random_equipped_item(player_node: Node = null) -> Dictionary:
 ## 序列化为字典（供 SaveManager 存档）。
 func serialize() -> Dictionary:
 	return {
+		"dungeon_floor": get_dungeon_floor(),
 		"expedition_inventory": expedition_inventory.to_dict(),
 		"equipment_loadout": equipment_loadout.to_dict(),
+		"spell_loadout": spell_loadout.serialize(),
 		"carried_weapons": carried_weapons,
 		"carried_shields": carried_shields,
 	}
 
+## 构建联机出征存档摘要（P0-5/P1-4）：房主/玩家进入联机地牢时经 SessionRoot.handle_spawn_request
+## 继承的单人存档状态——materials/loadout/spell_state/attributes/skills。
+## 服务器只信任此摘要，绝不接受客户端自报字段（on_command 的 forbidden-fields 守卫兜底）。
+func build_network_save_state() -> Dictionary:
+	var attributes: Dictionary = {}
+	var skills: Dictionary = {}
+	var ap: Node = Service.attr_panel()
+	if ap != null and ap.has_method("serialize"):
+		attributes = ap.serialize()
+	var sr: Node = Service.skill_runtime()
+	if sr != null and sr.has_method("serialize"):
+		skills = sr.serialize()
+	return {
+		"materials": expedition_inventory.materials.duplicate(),
+		"loadout": equipment_loadout.to_dict(),
+		"spell_state": {
+			"spell_loadout": spell_loadout.serialize(),
+			"spell_mana": 100,
+			"spell_max_mana": 100,
+			"spell_runtime": {},
+		},
+		"attributes": attributes,
+		"skills": skills,
+	}
+
 ## 从字典恢复
 func deserialize(data: Dictionary) -> void:
+	if data.has("dungeon_floor"):
+		set_dungeon_floor(int(data["dungeon_floor"]))
 	if data.has("expedition_inventory") and data["expedition_inventory"] is Dictionary:
 		expedition_inventory.from_dict(data["expedition_inventory"])
 	else:
@@ -368,6 +441,10 @@ func deserialize(data: Dictionary) -> void:
 			expedition_inventory.equipment = (data["carried_equipment"] as Dictionary).duplicate()
 		if data.has("carried_space_limit"):
 			expedition_inventory.space_limit = int(data["carried_space_limit"])
+
+	refresh_spell_rune_inventory()
+	if data.has("spell_loadout") and data["spell_loadout"] is Dictionary:
+		spell_loadout.deserialize(data["spell_loadout"])
 
 	if data.has("equipment_loadout") and data["equipment_loadout"] is Dictionary:
 		equipment_loadout.from_dict(data["equipment_loadout"])
@@ -395,10 +472,14 @@ func deserialize(data: Dictionary) -> void:
 
 ## 重置为初始状态
 func reset_state() -> void:
+	reset_dungeon_floor()
 	expedition_inventory.clear()
-	expedition_inventory.space_limit = DEFAULT_CARRIED_SPACE_LIMIT
+	# P1-3：默认容量唯一真相由库存模型独占（ExpeditionInventory.DEFAULT_LIMIT）。
+	expedition_inventory.space_limit = ExpeditionInventoryClass.DEFAULT_LIMIT
 	carried_weapons = 0
 	carried_shields = 0
 	equipment_loadout.weapon_slots = ["", "", "", ""]
 	equipment_loadout.armor_slots = {"head": "", "body": "", "hands": "", "feet": ""}
 	equipment_loadout.active_weapon_slot = 0
+	spell_loadout = SpellLoadoutClass.new()
+	refresh_spell_rune_inventory()

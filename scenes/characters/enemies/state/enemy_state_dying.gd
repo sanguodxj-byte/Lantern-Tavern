@@ -19,10 +19,9 @@ func _enter_tree() -> void:
 	AudioManager.play("orc-die", enemy.vocal_audio_stream_player)
 	if enemy.is_inside_tree():
 		call_deferred("_emit_dead_signal", enemy.global_transform)
-	# 死亡物理副作用（布娃娃模拟启动 / 冲量 / 关闭碰撞 / 掉落物）必须延迟到物理步骤之外执行。
-	# 否则在 _physics_process 内同步进入 DYING（普攻击杀、击飞落地、穿刺、陷阱致死）会
-	# 在物理引擎步进期间执行 physical_bones_start_simulation / apply_impulse / add_child(RigidBody)，
-	# 导致引擎死锁（游戏卡死）。与 enemy.gd 中踢击致死的 call_deferred("_deferred_switch_to_dying") 修复一致。
+	# 死亡物理副作用（碎片刚体、冲量、关闭碰撞、掉落物）必须延迟到物理步骤之外执行。
+	# 否则在 _physics_process 内同步进入 DYING（普攻击杀、击飞落地、穿刺、陷阱致死）时
+	# add_child(RigidBody3D) / apply_impulse 会在物理步进期间改变空间，导致引擎死锁。
 	_death_effects_deferred = true
 	call_deferred("_begin_death_effects")
 	var timer := get_tree().create_timer(DURATION_RAGDOLL_SIMULATION)
@@ -42,9 +41,7 @@ func _begin_death_effects() -> void:
 	if enemy.equipment != null:
 		enemy.equipment.drop_weapon()
 		enemy.equipment.drop_shield()
-	# 死亡碎裂效果：优先使用 VoxelRagdoll（体素碎裂），skeleton_simulator 仅作回退。
-	# 体素怪物使用 _rig.glb（单蒙皮网格），骨骼布娃娃无效（PhysicalBone3D collision_layer=0，
-	# 蒙皮网格不跟随骨骼），故所有敌人均走 VoxelRagdoll 路径。
+	# 所有敌人统一使用 VoxelRagdoll；遗留 PhysicalBone 已在 Enemy._ready() 中释放。
 	# headless 无 GPU/物理上下文，跳过碎裂模拟避免引擎崩溃。
 	if enemy.voxel_ragdoll != null:
 		var dir := state_data.impact_direction if state_data != null else Vector3.ZERO
@@ -54,12 +51,8 @@ func _begin_death_effects() -> void:
 		if not _is_headless():
 			enemy._death_ragdoll_active = true
 			enemy.voxel_ragdoll.activate(enemy.get_node_or_null("character"), dir, strength)
-	elif enemy.skeleton_simulator != null:
-		if not _is_headless():
-			enemy.skeleton_simulator.active = true
-			enemy.skeleton_simulator.physical_bones_start_simulation()
-			if enemy.physical_bone_torso != null and state_data != null and state_data.impulse != Vector3.ZERO:
-				enemy.physical_bone_torso.apply_impulse(state_data.impulse)
+	# 经验与掉落同属死亡副作用，并受 _death_effects_started 的一次性守卫保护。
+	enemy.award_kill_experience()
 	# Spawn dynamic monster drop on death!
 	_spawn_monster_drop()
 

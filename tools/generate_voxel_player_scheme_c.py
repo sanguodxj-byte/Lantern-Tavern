@@ -61,7 +61,7 @@ def build_player_scheme_c() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
     hood_mid = make_material("C_Hood_Mid", (0.12, 0.12, 0.22, 1.0))
     eye_lgt = make_material("C_Eye", (0.55, 0.72, 0.85, 1.0))
     eye_dk = make_material("C_Pupil", (0.08, 0.12, 0.18, 1.0))
-    rune = make_material("C_Rune", (0.45, 0.70, 0.95, 1.0), emission=0.35)
+    rune = make_material("C_Rune", (0.45, 0.70, 0.95, 1.0))
 
     parts: list[bpy.types.Object] = []
 

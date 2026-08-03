@@ -24,11 +24,17 @@ func _init(action_pivot: Node3D = null, animation_player: AnimationPlayer = null
 func bind(action_pivot: Node3D, animation_player: AnimationPlayer, library: AnimationLibrary = null) -> void:
 	_action_pivot = action_pivot
 	_animation_player = animation_player
+	set_library(library if library != null else FIRST_PERSON_LIBRARY.build())
+
+func set_library(library: AnimationLibrary) -> void:
 	_library = library if library != null else FIRST_PERSON_LIBRARY.build()
-	if _animation_player != null and _library != null:
-		if _animation_player.has_animation_library(LIBRARY_KEY):
-			_animation_player.remove_animation_library(LIBRARY_KEY)
-		_animation_player.add_animation_library(LIBRARY_KEY, _library)
+	_sampled_action = &""
+	if _animation_player == null:
+		return
+	_animation_player.stop()
+	if _animation_player.has_animation_library(LIBRARY_KEY):
+		_animation_player.remove_animation_library(LIBRARY_KEY)
+	_animation_player.add_animation_library(LIBRARY_KEY, _library)
 
 func configure(animation_player: AnimationPlayer, action_pivot: Node3D) -> void:
 	bind(action_pivot, animation_player)
@@ -51,9 +57,11 @@ func sample_action(action_name: StringName, normalized_progress: float) -> Strin
 		_animation_player.pause()
 		_sampled_action = resolved
 	var clamped_progress := clampf(normalized_progress, 0.0, 1.0)
-	_animation_player.seek(animation.length * clamped_progress, true)
-	if clamped_progress >= 1.0:
-		restore_action_pose()
+	# Keep the authored recovery key alive through the terminal sample. The
+	# owning ViewModel resets every animated equipment pivot on state exit; doing
+	# it here one frame early caused a visible recovery snap and left socket
+	# tracks at their final rotation while ActionPivot had already reset.
+	_animation_player.seek(animation.length * minf(clamped_progress, 0.999), true)
 	return resolved
 
 

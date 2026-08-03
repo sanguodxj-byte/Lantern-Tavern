@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,11 +34,41 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "paired ear-shaped green leaves on short stem"
 
+# Wolfear herb pixel palette: paired ear-shaped leaves - forest greens, pale
+# yellow-green, brown stem.
+# Each material owns its own seed/pattern; no shared identity table.
+_LEAF_GREEN = (0.28, 0.55, 0.22, 1.0)
+_LEAF_DARK = (0.14, 0.32, 0.14, 1.0)
+_VEIN_PALE = (0.45, 0.68, 0.30, 1.0)
+_YELLOW_GREEN = (0.58, 0.72, 0.28, 1.0)
+_STEM_BROWN = (0.35, 0.28, 0.12, 1.0)
+
+
 def build_model():
-    leaf = make_material("we_leaf", (0.28, 0.55, 0.22, 1.0), roughness=0.82)
-    leaf_dark = make_material("we_dark", (0.14, 0.32, 0.14, 1.0), roughness=0.85)
-    vein = make_material("we_vein", (0.45, 0.68, 0.30, 1.0), roughness=0.75)
-    stem = make_material("we_stem", (0.35, 0.28, 0.12, 1.0), roughness=0.88)
+    leaf = make_pixel_material(
+        "we_leaf", (0.28, 0.55, 0.22, 1.0),
+        roughness=0.82, palette=(_LEAF_GREEN, _VEIN_PALE, _LEAF_DARK),
+        pixel_size=48, variation=0.41, seed=1501, pattern="vein", normal_strength=1.0,
+        edge_darken=0.35, highlight=0.25, detail_noise=0.15,
+    )
+    leaf_dark = make_pixel_material(
+        "we_dark", (0.14, 0.32, 0.14, 1.0),
+        roughness=0.85, palette=(_LEAF_DARK, _LEAF_GREEN, _STEM_BROWN),
+        pixel_size=48, variation=0.41, seed=1507, pattern="vein", normal_strength=1.1,
+        edge_darken=0.35, highlight=0.25, detail_noise=0.15,
+    )
+    vein = make_pixel_material(
+        "we_vein", (0.45, 0.68, 0.30, 1.0),
+        roughness=0.75, palette=(_VEIN_PALE, _YELLOW_GREEN, _LEAF_GREEN),
+        pixel_size=48, variation=0.40, seed=1513, pattern="vein", normal_strength=0.8,
+        edge_darken=0.35, highlight=0.25, detail_noise=0.15,
+    )
+    stem = make_pixel_material(
+        "we_stem", (0.35, 0.28, 0.12, 1.0),
+        roughness=0.88, palette=(_STEM_BROWN, _LEAF_DARK, _YELLOW_GREEN),
+        pixel_size=48, variation=0.42, seed=1519, pattern="cracks", normal_strength=1.2,
+        edge_darken=0.35, highlight=0.25, detail_noise=0.15,
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
     def add(name, center, size, material):

@@ -4,7 +4,10 @@ enum Phase { DAY_EXPEDITION, NIGHT_TAVERN }
 
 const BREWING_DATA := preload("res://globals/tavern/brewing_data.gd")
 const Service := preload("res://globals/core/service.gd")
+const OD := preload("res://globals/combat/origin_data.gd")
+const RUNE_DATA := preload("res://globals/combat/rune_data.gd")
 const WORLD_SCENE_PATH := "res://scenes/world/world.tscn"
+const DEBUG_ALL_RUNES_PER_KIND := 9
 const DEFAULT_EXPEDITION_RETURN := {
 	"arrival_minutes": 0,
 	"deadline_minutes": 18 * 60,
@@ -72,7 +75,28 @@ func add_material(material_id: String, amount: int = 1):
 func _is_known_material(material_id: String) -> bool:
 	return BREWING_DATA.MATERIALS_DB.has(material_id)
 
-func start_new_game(with_tutorial: bool = true) -> void:
+
+## 开发/测试构建：向酒馆仓库补齐全部已登记符文，便于固定法术配方组合测试。
+## 只补足不覆盖已有更多数量；正式非 debug 导出不执行。
+func ensure_debug_all_runes_in_warehouse(amount_per_kind: int = DEBUG_ALL_RUNES_PER_KIND) -> void:
+	if not OS.is_debug_build():
+		return
+	var target_amount := maxi(1, amount_per_kind)
+	for raw_id in RUNE_DATA.get_all_rune_ids():
+		var rune_id := String(raw_id)
+		if int(runes_inventory.get(rune_id, 0)) < target_amount:
+			runes_inventory[rune_id] = target_amount
+
+## 已选出身 id（空字符串 = 未选 = 旧存档兼容）
+var selected_origin_id: String = ""
+
+func start_new_game(with_tutorial: bool = true, origin_id: String = "") -> void:
+	# 先通过 SaveManager 重置全部子系统（AttrPanel/GameState/TavernSettlement 等），
+	# 确保出身效果应用到干净的基础值上，而非上一局残留状态。
+	var sm := get_tree().root.get_node_or_null("SaveManager")
+	if sm != null and sm.has_method("reset_all"):
+		sm.reset_all()
+	# TavernManager 自身状态在 reset_all 中已被 reset_state() 清空，此处设置新游戏参数
 	day = 1
 	tavern_ledger.clear()
 	current_brews.clear()
@@ -84,8 +108,46 @@ func start_new_game(with_tutorial: bool = true) -> void:
 	last_expedition_return = DEFAULT_EXPEDITION_RETURN.duplicate()
 	missed_tavern_income_nights = 0
 	next_day_expedition_motivation = ""
+	selected_origin_id = origin_id
 	current_phase = Phase.DAY_EXPEDITION if with_tutorial else Phase.NIGHT_TAVERN
+	_apply_origin_to_game_state(origin_id)
 	_go_to_world_space("intro" if with_tutorial else "tavern")
+
+## 将出身效果应用到全局状态（AttrPanel 属性偏移 + TavernSettlement 势力加成 + 起始装备）。
+## 在 start_new_game 中调用，reset_all 之后执行。
+func _apply_origin_to_game_state(origin_id: String) -> void:
+	if origin_id == "":
+		return
+	var origin: Dictionary = OD.get_origin(origin_id)
+	if origin.is_empty():
+		return
+	# 应用属性偏移 + 熟练度起跑到 AttrPanel
+	var ap = Service.attr_panel()
+	if ap != null:
+		OD.apply_origin(ap, origin_id)
+	# 应用势力加成到 TavernSettlement
+	var ts = Service.tavern_settlement()
+	if ts != null and ts.has_method("apply_origin_faction"):
+		ts.apply_origin_faction(origin_id)
+	# 授予起始装备（武器装备到主手槽，盾牌加入随身背包）
+	var gs = Service.game_state()
+	if gs != null:
+		_grant_starting_equipment(gs, origin)
+
+## 将出身起始装备授予玩家：武器装备到主手槽(0)，盾牌加入随身背包。
+func _grant_starting_equipment(gs: Node, origin: Dictionary) -> void:
+	var starting_weapon: String = String(origin.get("starting_weapon", ""))
+	var starting_shield: String = String(origin.get("starting_shield", ""))
+	# 武器装备到主手槽
+	if starting_weapon != "" and "equipment_loadout" in gs:
+		var el = gs.equipment_loadout
+		if el != null and el.has_method("set_weapon_slot"):
+			el.set_weapon_slot(0, starting_weapon)
+			if el.has_method("set_active_weapon_slot"):
+				el.set_active_weapon_slot(0)
+	# 盾牌加入随身背包（玩家可在角色面板手动装备）
+	if starting_shield != "" and gs.has_method("add_carried_equipment"):
+		gs.add_carried_equipment(starting_shield, 1)
 
 func complete_intro_and_enter_tavern() -> void:
 	tutorial_active = false
@@ -132,7 +194,26 @@ func extract_to_tavern(expedition_result: Dictionary = {}):
 	print("[TavernManager] Extraction! Day=%d Materials=%d" % [day, mat_count])
 	record_expedition_return(expedition_result)
 	current_phase = Phase.NIGHT_TAVERN
+	# 白天探索结束：注入区域环境共振并推进发酵时序（策划案 11 隔夜发酵）
+	_advance_fermentation_day()
 	_go_to_world_space("tavern")
+
+## 白天探索结束（撤离回酒馆）时推进发酵时序：
+## 1. 注入当日探索区域（ZoneManager.selected_zone）的环境共振口味；
+## 2. 推进所有酒桶：FERMENTING → READY（定型 final_flavors），AGING +1 天。
+## 酒桶状态机本身由 FermentationSystem 维护，本方法只负责在正确时机驱动。
+func _advance_fermentation_day() -> void:
+	var fs: Node = Service.fermentation_system()
+	if fs == null:
+		return
+	var zm: Node = Service.zone_manager()
+	var zone: int = 0
+	if zm != null and "selected_zone" in zm:
+		zone = int(zm.selected_zone)
+	if fs.has_method("apply_environment_resonance"):
+		fs.apply_environment_resonance(zone)
+	if fs.has_method("advance_day"):
+		fs.advance_day()
 
 func record_expedition_return(expedition_result: Dictionary) -> void:
 	var result := DEFAULT_EXPEDITION_RETURN.duplicate()
@@ -166,6 +247,9 @@ func start_next_day():
 	_go_to_world_space("tavern")
 
 func start_expedition() -> void:
+	var gs := _get_game_state()
+	if gs != null and gs.has_method("reset_dungeon_floor"):
+		gs.reset_dungeon_floor()
 	current_phase = Phase.DAY_EXPEDITION
 	_go_to_world_space("dungeon")
 

@@ -13,6 +13,7 @@ var agent: NavigationAgent3D
 var desired_velocity := Vector3.ZERO
 var last_safe_velocity := Vector3.ZERO
 var movement_requested := false
+var streaming_active := true
 
 func _init(source_enemy: Node3D = null, source_agent: NavigationAgent3D = null) -> void:
 	owner = source_enemy
@@ -33,6 +34,14 @@ func configure() -> void:
 	if owner != null:
 		set_max_speed(float(owner.get("speed")))
 
+func set_streaming_active(active: bool) -> void:
+	streaming_active = active
+	if not active:
+		_stop_navigation_request()
+		if agent != null:
+			agent.avoidance_enabled = false
+
+
 func set_dark_erosion_hunt(active: bool) -> void:
 	if agent == null:
 		return
@@ -43,7 +52,7 @@ func set_dark_erosion_hunt(active: bool) -> void:
 		agent.velocity = Vector3.ZERO
 
 func refresh_navigation_avoidance() -> void:
-	if agent == null:
+	if agent == null or not streaming_active:
 		return
 	if owner != null and bool(owner.get_meta("dark_erosion_hunt", false)):
 		agent.avoidance_enabled = false
@@ -71,7 +80,10 @@ func submit_desired_velocity(value: Vector3) -> void:
 		return
 
 	var request := flat
-	if not bool(owner.get_meta("dark_erosion_hunt", false)):
+	# NavigationAgent3D 的 RVO 已处理邻居分离。仅在 RVO 尚未启用/不可用时使用
+	# 本地回退分离，避免密集敌群同时做 enemies group 全表扫描形成 O(N²) Process 尖峰。
+	if not bool(owner.get_meta("dark_erosion_hunt", false)) \
+			and (agent == null or not agent.avoidance_enabled):
 		request += get_local_separation_velocity(flat.length())
 	if request.length_squared() > flat.length_squared() * 1.44:
 		request = request.normalized() * flat.length() * 1.2

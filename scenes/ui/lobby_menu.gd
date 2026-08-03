@@ -206,7 +206,7 @@ func _labeled_line_edit(label_text: String, default: String, parent: Control) ->
 func _on_host_pressed() -> void:
 	var ms := _session()
 	if ms == null:
-		_status_label.text = "MultiplayerSession 未就绪"
+		_status_label.text = tr("MultiplayerSession 未就绪")
 		return
 	var port := int(_port_edit.text) if _port_edit.text.is_valid_int() else DEFAULT_PORT
 	var maxp := int(_max_edit.text) if _max_edit.text.is_valid_int() else 8
@@ -218,7 +218,7 @@ func _on_host_pressed() -> void:
 func _on_join_pressed() -> void:
 	var ms := _session()
 	if ms == null:
-		_status_label.text = "MultiplayerSession 未就绪"
+		_status_label.text = tr("MultiplayerSession 未就绪")
 		return
 	var addr := _addr_edit.text if _addr_edit.text.strip_edges() != "" else DEFAULT_ADDR
 	var port := int(_join_port_edit.text) if _join_port_edit.text.is_valid_int() else DEFAULT_PORT
@@ -278,14 +278,14 @@ func _on_dungeon_entered(_seed_value: int) -> void:
 
 
 func _on_connection_failed(reason: String) -> void:
-	_status_label.text = tr("Connection failed: ") + reason
+	_status_label.text = tr("Connection failed: %s") % reason
 	_host_panel.visible = true
 	_join_panel.visible = true
 	_lobby_panel.visible = false
 
 
 func _on_host_failed(reason: String) -> void:
-	_status_label.text = tr("Failed to create room: ") + reason
+	_status_label.text = tr("Failed to create room: %s") % reason
 	_host_panel.visible = true
 	_join_panel.visible = true
 	_lobby_panel.visible = false

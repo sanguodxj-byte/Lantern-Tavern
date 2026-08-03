@@ -26,7 +26,7 @@ from mathutils import Vector
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from voxel_humanoid_rig import PX, REFERENCE_HEIGHT_PX, create_voxel_humanoid_armature, parent_parts_by_bone
-from voxel_character_rig import build_all_actions, build_weapon_actions, export_glb as export_rig_glb
+from voxel_character_rig import HumanoidMotionProfile, build_all_actions, build_weapon_actions, export_glb as export_rig_glb
 from voxel_overlap_guard import assert_parts_voxel_assembly_valid
 from voxel_single_model_cli import reject_target_override
 
@@ -37,6 +37,15 @@ RIG_OUTPUT = ROOT / "assets" / "meshes" / "characters" / "voxel_drow_blade_48px_
 OUT_GLB = STATIC_OUTPUT
 PREVIEW_DIR = ROOT / "reports" / "characters_preview"
 GROUND_OFFSET_PX = 1.0
+MOTION_PROFILE = HumanoidMotionProfile(
+    stride_scale=1.06,
+    arm_swing_scale=1.02,
+    weight_scale=0.80,
+    agility_scale=1.12,
+    torso_scale=0.92,
+    contact_height_offset_m=-0.006,
+    death_height_offset_m=-0.070,
+)
 
 
 def reset_scene() -> None:
@@ -132,16 +141,16 @@ def build_drow_blade() -> bpy.types.Object:
     # 血红瞳色阶
     eye_dark = make_mat("mat_eye_dark", (0.35, 0.05, 0.10, 1.0), roughness=0.90)
     eye_red = make_mat("mat_eye_red", (0.92, 0.15, 0.28, 1.0), roughness=0.40)
-    eye_glow = make_mat("mat_eye_glow", (1.00, 0.35, 0.50, 1.0), emission=3.2, roughness=0.20)
+    eye_glow = make_mat("mat_eye_glow", (1.00, 0.35, 0.50, 1.0), roughness=0.20)
 
     # 护甲与皮具色阶
     steel_dark = make_mat("mat_steel_dark", (0.15, 0.16, 0.20, 1.0), roughness=0.40, metallic=0.75)
     steel_light = make_mat("mat_steel_light", (0.28, 0.30, 0.38, 1.0), roughness=0.35, metallic=0.85)
     leather = make_mat("mat_leather", (0.16, 0.13, 0.12, 1.0), roughness=0.88)
     leather_light = make_mat("mat_leather_light", (0.26, 0.21, 0.19, 1.0), roughness=0.82)
-    purple_trim = make_mat("mat_purple_trim", (0.46, 0.16, 0.62, 1.0), roughness=0.60, emission=0.3)
+    purple_trim = make_mat("mat_purple_trim", (0.46, 0.16, 0.62, 1.0), roughness=0.60)
     purple_dark = make_mat("mat_purple_dark", (0.26, 0.08, 0.36, 1.0), roughness=0.80)
-    gem_rune = make_mat("mat_gem_rune", (0.65, 0.18, 0.85, 1.0), emission=2.8, roughness=0.15)
+    gem_rune = make_mat("mat_gem_rune", (0.65, 0.18, 0.85, 1.0), roughness=0.15)
 
     parts: list[bpy.types.Object] = []
     parts_by_bone: dict[str, list[bpy.types.Object]] = {}
@@ -280,8 +289,8 @@ def build_drow_blade() -> bpy.types.Object:
 
     # 绑定骨骼
     parent_parts_by_bone(parts_by_bone, armature)
-    build_all_actions(armature)
-    build_weapon_actions(armature)
+    build_all_actions(armature, MOTION_PROFILE)
+    build_weapon_actions(armature, MOTION_PROFILE)
 
     return root
 

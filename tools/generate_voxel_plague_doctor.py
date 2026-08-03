@@ -125,8 +125,8 @@ def _build_palette() -> dict[str, bpy.types.Material]:
         "leather_dark": make_material("leather_dark", (0.15, 0.10, 0.06, 1.0), roughness=0.6),
         "mask_bone": make_material("mask_bone", (0.85, 0.80, 0.70, 1.0), roughness=0.5),
         "brass_frame": make_material("brass_frame", (0.75, 0.60, 0.20, 1.0), roughness=0.3, metallic=0.8),
-        "reagent_green": make_material("reagent_green", (0.10, 0.95, 0.30, 1.0), roughness=0.1, metallic=0.1, emission=2.5),
-        "reagent_yellow": make_material("reagent_yellow", (0.95, 0.85, 0.15, 1.0), roughness=0.1, metallic=0.1, emission=2.5),
+        "reagent_green": make_material("reagent_green", (0.10, 0.95, 0.30, 1.0), roughness=0.1, metallic=0.1),
+        "reagent_yellow": make_material("reagent_yellow", (0.95, 0.85, 0.15, 1.0), roughness=0.1, metallic=0.1),
         "hat_ribbon_red": make_material("hat_ribbon_red", (0.60, 0.10, 0.10, 1.0), roughness=0.6),
     }
 

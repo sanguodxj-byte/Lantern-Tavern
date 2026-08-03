@@ -44,6 +44,13 @@ const WEAPON_PROJECTILE_MAP: Dictionary = {
 }
 
 ## 技能 id → 特殊投射物 id 映射（覆盖武器默认投射物）
+const SPELL_PROJECTILE_MAP: Dictionary = {
+	"spell_ember_bolt": "elemental_bolt",
+	"spell_fire_bolt": "elemental_bolt",
+	"spell_fireball": "elemental_bolt",
+	"spell_chain_lightning": "thunder_bolt",
+}
+
 const SKILL_PROJECTILE_MAP: Dictionary = {
 	"贯穿射击": "piercing_arrow",
 	"双发连射": "arrow",  # 双发由 dispatcher 连续生成两次
@@ -154,6 +161,7 @@ func _register_defaults() -> void:
 	elemental_bolt.lifetime = 3.0
 	elemental_bolt.default_color = Color(1.0, 0.5, 0.1)
 	elemental_bolt.default_emission = 2.0
+	elemental_bolt.impact_burst_type = 0
 	elemental_bolt.impact_sound_key = "sword-hit-wall"
 	register(elemental_bolt)
 
@@ -166,6 +174,7 @@ func _register_defaults() -> void:
 	arcane_bolt.lifetime = 3.0
 	arcane_bolt.default_color = Color(0.4, 0.3, 0.9)
 	arcane_bolt.default_emission = 2.0
+	arcane_bolt.impact_burst_type = 5
 	register(arcane_bolt)
 
 	# ── 寒冰新星弹（命中后 AoE 冰冻）──
@@ -178,6 +187,7 @@ func _register_defaults() -> void:
 	frost_nova.impact_aoe_radius = 2.25
 	frost_nova.default_color = Color(0.3, 0.7, 1.0)
 	frost_nova.default_emission = 2.5
+	frost_nova.impact_burst_type = 1
 	register(frost_nova)
 
 	# ── 雷暴弹（命中后 AoE 眩晕）──
@@ -190,6 +200,7 @@ func _register_defaults() -> void:
 	thunder.impact_aoe_radius = 3.0
 	thunder.default_color = Color(1.0, 1.0, 0.3)
 	thunder.default_emission = 3.0
+	thunder.impact_burst_type = 2
 	register(thunder)
 
 
@@ -230,6 +241,8 @@ func get_projectile_id_for_weapon(weapon) -> String:
 ## 根据技能选择投射物 id（优先技能专属，回退流派默认）
 func get_projectile_id_for_skill(skill: Dictionary, weapon) -> String:
 	var skill_id := String(skill.get("id", ""))
+	if SPELL_PROJECTILE_MAP.has(skill_id):
+		return SPELL_PROJECTILE_MAP[skill_id]
 	if SKILL_PROJECTILE_MAP.has(skill_id):
 		return SKILL_PROJECTILE_MAP[skill_id]
 	var school: int = int(skill.get("school", -1))

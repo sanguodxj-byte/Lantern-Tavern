@@ -74,8 +74,19 @@ func test_enemy_runtime_scripts_do_not_manage_presence_lights() -> void:
 		var source := FileAccess.get_file_as_string(script_path)
 		assert_bool(source.contains("presence_light")).is_false() \
 			.override_failure_message("Enemy runtime script still manages a presence light: %s" % script_path)
-		assert_bool(source.contains("Light3D.new(")).is_false() \
-			.override_failure_message("Enemy runtime script creates a light: %s" % script_path)
+		# 禁止任何游戏内光源创建（Omni/Spot）；仅允许 imposter 贴图捕获视口内的
+		# 临时渲染 DirectionalLight3D（_build_imposter_texture 路径，离屏一次性渲染）。
+		assert_bool(not source.contains("OmniLight3D.new(")).is_true() \
+			.override_failure_message("Enemy runtime script creates a gameplay Omni light: %s" % script_path)
+		assert_bool(not source.contains("SpotLight3D.new(")).is_true() \
+			.override_failure_message("Enemy runtime script creates a gameplay Spot light: %s" % script_path)
+		assert_int(source.count("DirectionalLight3D.new(")) \
+			.override_failure_message("Enemy runtime script creates gameplay lights: %s" % script_path) \
+			.is_less_equal(1)
+		if source.contains("DirectionalLight3D.new("):
+			# 唯一允许的光源必须位于 imposter 贴图捕获路径（离屏渲染，不影响玩法光照）。
+			assert_bool(source.contains("_build_imposter_texture")) \
+				.override_failure_message("Enemy 光源必须限于 imposter 捕获视口: %s" % script_path).is_true()
 
 
 func test_pickable_runtime_has_no_presence_light_contract() -> void:

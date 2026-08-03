@@ -21,9 +21,14 @@ static func player_animation_name(weapon, heavy_swing: bool = false) -> String:
 	return String(PLAYER_ANIMATION_PROFILE.attack_animation(weapon, heavy_swing))
 
 static func enemy_animation_name(weapon) -> String:
-	if weapon == null:
-		return "claw_swipe"
-	return player_animation_name(weapon)
+	var profile := PLAYER_ANIMATION_PROFILE.profile_for_weapon(weapon)
+	match profile:
+		&"unarmed": return "claw_swipe"
+		&"dagger": return "slash_dagger"
+		&"greatsword", &"axe", &"warhammer": return "slash_heavy"
+		&"spear": return "thrust_spear"
+		&"shield": return "bash_shield"
+		_: return "slash_one_hand"
 
 static func play(animation_player: AnimationPlayer, animation_name: String, speed_scale: float) -> int:
 	if animation_player == null:
@@ -41,27 +46,36 @@ static func progress(start_msec: int, duration_msec: int) -> float:
 static func is_player_hit_active(progress_value: float) -> bool:
 	return progress_value >= PLAYER_HIT_START and progress_value <= PLAYER_HIT_END
 
-static func is_enemy_hit_active(progress_value: float) -> bool:
-	return progress_value >= ENEMY_HIT_START and progress_value <= ENEMY_HIT_END
+static func is_enemy_hit_active(progress_value: float, hit_start: float = ENEMY_HIT_START, hit_end: float = ENEMY_HIT_END) -> bool:
+	return progress_value >= hit_start and progress_value <= hit_end
 
-static func apply_weapon_arc(placeholder: Node3D, base_transform: Transform3D, progress_value: float, side: float = 1.0) -> void:
+## 武器弧光：hit_start/hit_end 允许敌人按招式档案同步挥砍视觉与命中窗口
+## （默认 = 玩家窗口，玩家/既有测试行为不变）。
+static func apply_weapon_arc(
+	placeholder: Node3D,
+	base_transform: Transform3D,
+	progress_value: float,
+	side: float = 1.0,
+	hit_start: float = PLAYER_HIT_START,
+	hit_end: float = PLAYER_HIT_END
+) -> void:
 	if placeholder == null:
 		return
-	var windup := clampf(progress_value / PLAYER_HIT_START, 0.0, 1.0)
-	var strike := clampf((progress_value - PLAYER_HIT_START) / maxf(PLAYER_HIT_END - PLAYER_HIT_START, 0.01), 0.0, 1.0)
-	var recover := clampf((progress_value - PLAYER_HIT_END) / maxf(1.0 - PLAYER_HIT_END, 0.01), 0.0, 1.0)
+	var windup := clampf(progress_value / hit_start, 0.0, 1.0)
+	var strike := clampf((progress_value - hit_start) / maxf(hit_end - hit_start, 0.01), 0.0, 1.0)
+	var recover := clampf((progress_value - hit_end) / maxf(1.0 - hit_end, 0.01), 0.0, 1.0)
 	var roll := lerpf(-ARC_ROLL_RAD, ARC_ROLL_RAD, strike) * side
 	var yaw := lerpf(-ARC_YAW_RAD, ARC_YAW_RAD, strike) * side
-	if progress_value < PLAYER_HIT_START:
+	if progress_value < hit_start:
 		roll = lerpf(0.0, -ARC_ROLL_RAD, windup) * side
 		yaw = lerpf(0.0, -ARC_YAW_RAD, windup) * side
-	elif progress_value > PLAYER_HIT_END:
+	elif progress_value > hit_end:
 		roll = lerpf(ARC_ROLL_RAD, 0.0, recover) * side
 		yaw = lerpf(ARC_YAW_RAD, 0.0, recover) * side
 	var offset := Vector3(0.0, 0.0, -sin(progress_value * PI) * ARC_FORWARD_OFFSET)
 	var arc := Transform3D(Basis.from_euler(Vector3(0.0, yaw, roll)), offset)
 	placeholder.transform = base_transform * arc
-	_update_trail(placeholder, progress_value, side)
+	_update_trail(placeholder, progress_value, side, hit_start, hit_end)
 
 static func restore_weapon_arc(placeholder: Node3D, base_transform: Transform3D) -> void:
 	if placeholder != null:
@@ -73,11 +87,11 @@ static func set_trail_visible(placeholder: Node3D, visible: bool) -> void:
 	if trail != null:
 		trail.visible = visible
 
-static func _update_trail(placeholder: Node3D, progress_value: float, side: float) -> void:
+static func _update_trail(placeholder: Node3D, progress_value: float, side: float, hit_start: float = PLAYER_HIT_START, hit_end: float = PLAYER_HIT_END) -> void:
 	var trail := _get_trail(placeholder, true)
 	if trail == null:
 		return
-	var strike := clampf((progress_value - PLAYER_HIT_START) / maxf(PLAYER_HIT_END - PLAYER_HIT_START, 0.01), 0.0, 1.0)
+	var strike := clampf((progress_value - hit_start) / maxf(hit_end - hit_start, 0.01), 0.0, 1.0)
 	var alpha := TRAIL_MAX_ALPHA * sin(strike * PI)
 	if alpha <= 0.01:
 		trail.visible = false

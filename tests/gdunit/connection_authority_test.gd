@@ -41,6 +41,62 @@ func test_unknown_peer_has_empty_status() -> void:
 	assert_bool(ca.is_online(99)).is_false()
 
 # ---------------------------------------------------------------------------
+# P0-1：在线重复 GUID 拒绝（结构化 register_online 结果）
+# ---------------------------------------------------------------------------
+
+func test_register_online_returns_structured_result() -> void:
+	var ca := _make()
+	var res: Dictionary = ca.register_online(1, "player_001", 0.0)
+	assert_bool(res["ok"]).is_true()
+	assert_str(res["error_code"]).is_equal("")
+	assert_int(res["peer_id"]).is_equal(1)
+
+func test_register_online_rejects_duplicate_online_guid() -> void:
+	var ca := _make()
+	ca.register_online(1, "player_shared", 0.0)
+	# 第二个 ONLINE peer 使用相同 GUID → 拒绝（不得覆盖身份索引）。
+	var res: Dictionary = ca.register_online(2, "player_shared", 0.0)
+	assert_bool(res["ok"]).is_false()
+	assert_str(res["error_code"]).is_equal(NP.ERR_DUPLICATE_IDENTITY)
+	assert_int(res["peer_id"]).is_equal(1)
+	# 身份索引未被覆盖；第二个 peer 未登记。
+	assert_int(ca._guid_to_peer.get("player_shared", 0)).is_equal(1)
+	assert_str(ca.get_status(2)).is_equal("")
+
+func test_register_online_same_peer_re_registration_is_idempotent() -> void:
+	var ca := _make()
+	ca.register_online(1, "player_001", 0.0)
+	# 同一 peer 重复注册（重连/测试路径）→ 幂等成功，不判冲突。
+	var res: Dictionary = ca.register_online(1, "player_001", 5.0)
+	assert_bool(res["ok"]).is_true()
+	assert_str(ca.get_status(1)).is_equal(CA.STATUS_ONLINE)
+
+func test_register_online_empty_guid_never_conflicts() -> void:
+	var ca := _make()
+	assert_bool(ca.register_online(1, "", 0.0)["ok"]).is_true()
+	assert_bool(ca.register_online(2, "", 0.0)["ok"]).is_true()
+	assert_str(ca.get_player_guid(1)).is_equal("")
+	# 空 GUID 不登记身份索引（按 peer_id 派生）。
+	assert_bool(ca._guid_to_peer.is_empty()).is_true()
+
+func test_register_online_guid_in_grace_is_not_a_conflict() -> void:
+	var ca := _make()
+	ca.register_online(1, "player_alpha", 0.0)
+	ca.on_disconnect(1, 0.0)  # 进入 GRACE（断线保留）
+	# GRACE 身份允许新 peer 登记：重连路径由调用方完成迁移/接管。
+	var res: Dictionary = ca.register_online(2, "player_alpha", 1.0)
+	assert_bool(res["ok"]).is_true()
+
+func test_has_online_guid_ignores_grace() -> void:
+	var ca := _make()
+	ca.register_online(1, "player_alpha", 0.0)
+	assert_bool(ca.has_online_guid("player_alpha")).is_true()
+	ca.on_disconnect(1, 0.0)
+	# GRACE（断线保留）不计为在线占用——重连接管前的新 spawn 不应被误拒。
+	assert_bool(ca.has_online_guid("player_alpha")).is_false()
+	assert_bool(ca.has_online_guid("nope")).is_false()
+
+# ---------------------------------------------------------------------------
 # 断线 → GRACE
 # ---------------------------------------------------------------------------
 

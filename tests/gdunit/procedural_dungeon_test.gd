@@ -223,13 +223,13 @@ func test_dungeon_streams_physics_by_current_chunk() -> void:
 		.override_failure_message("当前 chunk 内的物品刚体应被唤醒并自然落地") \
 		.is_false()
 	assert_bool(adjacent_body.freeze) \
-		.override_failure_message("3x3 chunk 内的相邻物品刚体应被唤醒，避免近距离交互冻结") \
-		.is_false()
+		.override_failure_message("相邻 chunk 内的动态物品刚体应保持冻结，避免 3x3 区域扩大物理宽相位") \
+		.is_true()
 	assert_bool(far_body.freeze) \
 		.override_failure_message("3x3 chunk 外的物品刚体应保持冻结，避免全图同时模拟") \
 		.is_true()
 	assert_bool(far_enemy.is_physics_processing()) \
-		.override_failure_message("3x3 chunk 外的敌人应暂停 physics process，避免全图 AI 和寻路同时运行") \
+		.override_failure_message("当前 chunk 外的敌人应暂停 physics process，避免全图 AI 和寻路同时运行") \
 		.is_false()
 	assert_int(far_enemy.collision_layer) \
 		.override_failure_message("3x3 chunk 外的敌人应关闭碰撞层，避免远处角色体参与物理宽相位") \
@@ -298,14 +298,14 @@ func test_dungeon_materials() -> void:
 		if mat is ShaderMaterial:
 			if String(child.name).begins_with("WallMultiMesh"):
 				assert_object(mat.get_shader_parameter("atlas")).is_equal(expected_tex)
-				assert_object(mat.get_shader_parameter("tile_col_row")).is_equal(Vector2(0, 0))
+				assert_object(mat.get_shader_parameter("tile_col_row")).is_equal(Vector2(4, 2))
 				assert_object(mat.get_shader_parameter("tile_span")).is_equal(Vector2(1, 1))
 				assert_object(mat.get_shader_parameter("atlas_grid")).is_equal(Vector2(8, 4))
 				assert_bool((mat.get_shader_parameter("tile_repeat") as Vector2).y > 0.0).is_true()
 				wall_mat_tested = true
 			elif child.name == "FloorMultiMesh":
 				assert_object(mat.get_shader_parameter("atlas")).is_equal(expected_tex)
-				assert_object(mat.get_shader_parameter("tile_col_row")).is_equal(Vector2(1, 0))
+				assert_object(mat.get_shader_parameter("tile_col_row")).is_equal(Vector2(5, 2))
 				assert_object(mat.get_shader_parameter("tile_span")).is_equal(Vector2(1, 1))
 				assert_object(mat.get_shader_parameter("atlas_grid")).is_equal(Vector2(8, 4))
 				assert_object(mat.get_shader_parameter("tile_repeat")).is_equal(Vector2(3.0, 3.0))
@@ -402,7 +402,7 @@ func test_dungeon_room_doors_generate_wall_surrounds_at_door_position() -> void:
 				.is_not_null()
 			assert_object(mat.get_shader_parameter("tile_col_row")) \
 				.override_failure_message("门周围补墙必须使用 WALL 纹理，不应使用门纹理: %s" % part.name) \
-				.is_equal(Vector2(0, 0))
+				.is_equal(Vector2(4, 2))
 
 	assert_int(door_count) \
 		.override_failure_message("地牢应生成至少 1 扇门来验证门洞补墙") \
@@ -449,11 +449,29 @@ func test_dungeon_lighting_budget_keeps_player_light_and_limits_local_lights() -
 		.override_failure_message("地牢必须保留玩家主视野灯") \
 		.is_not_null()
 	assert_bool(player_light.visible).is_true()
-	assert_float(player_light.light_energy).is_greater_equal(2.4)
-	assert_float(player_light.omni_range).is_greater_equal(10.0)
+	assert_float(player_light.light_energy).is_equal_approx(2.2, 0.001)
+	assert_float(player_light.omni_range).is_equal_approx(10.5, 0.001)
 	assert_int(visible_local_lights.size()) \
 		.override_failure_message("GL Compatibility 下实时灯过多会导致拾取后灯光选择抖动/黑屏") \
 		.is_less_equal(DungeonStreamingController.DUNGEON_VISIBLE_LOCAL_LIGHT_BUDGET + 1)
+
+
+func test_dungeon_environment_uses_cool_midtones_and_highlight_headroom() -> void:
+	var config := _dungeon._get_zone_ambient_config(0)
+	var world_env := _find_world_environment(_dungeon)
+	var ambient_color: Color = config.ambient_color
+	# 2026-08 视觉调优：zone-0 幽暗地牢环境光整体调暗（light 0.26 / ambient 0.40），
+	# 以火把形成探索节奏；曝光保持 0.96 保留高光余量。
+	assert_float(float(config.light_energy)).is_equal_approx(0.26, 0.001)
+	assert_float(float(config.ambient_energy)).is_equal_approx(0.40, 0.001)
+	assert_float(ambient_color.b) \
+		.override_failure_message("地牢暗部应略偏冷，以抵消暖色火把污染") \
+		.is_greater(ambient_color.r)
+	assert_float(float(config.fog_density)).is_equal_approx(0.006, 0.001)
+	assert_object(world_env).is_not_null()
+	assert_float(world_env.environment.tonemap_exposure) \
+		.override_failure_message("地牢曝光需保留火焰和浅色道具的高光余量") \
+		.is_equal_approx(0.96, 0.001)
 
 
 func test_dungeon_walkable_area_has_baseline_visibility_without_drop_lights() -> void:

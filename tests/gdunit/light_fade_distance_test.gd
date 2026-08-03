@@ -13,11 +13,11 @@ func test_torch_light_fades_late_enough_for_dungeon_visibility() -> void:
 		if omni == null:
 			continue
 		assert_float(omni.light_energy) \
-			.override_failure_message("地牢火把亮度不足，远离掉落物光源后整体会过暗") \
-			.is_greater_equal(3.2)
+			.override_failure_message("地牢火把应形成局部光池，不能以高能量污染整个房间") \
+			.is_equal_approx(1.15, 0.001)
 		assert_float(omni.omni_range) \
-			.override_failure_message("地牢火把照明范围不足，房间中心容易近黑") \
-			.is_greater_equal(10.0)
+			.override_failure_message("地牢火把范围应限制相邻光源大面积重叠") \
+			.is_equal_approx(6.0, 0.001)
 	torch.free()
 
 

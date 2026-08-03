@@ -4,6 +4,7 @@ extends RefCounted
 ## 不持有任何 UI 节点；刷新由面板自身负责。
 
 const Service := preload("res://globals/core/service.gd")
+const InventoryTransferService := preload("res://globals/core/inventory_transfer_service.gd")
 
 # ── 库存字典访问 ─────────────────────────────────────
 
@@ -55,21 +56,16 @@ static func runes_for_source(source: String) -> Dictionary:
 
 # ── 搬运 ─────────────────────────────────────────────
 
-## 在两个库存字典间按 id 列表整堆转移。target_is_carried 时校验随身空间。
-## 返回 {item_id: moved_amount}。
+## 在两个库存字典间按 id 列表整堆转移（委托 InventoryTransferService 原子事务）。
+## 随身容量判定经 GameState.can_add_carried_space 回调注入（无 GameState 时跳过容量校验）。
+## 返回 {item_id: moved_amount}；容量预检失败时整体回滚，返回空字典。
 static func move_items_between(source_inv: Dictionary, target_inv: Dictionary, item_ids: Array, target_is_carried: bool = false, space_per_item: int = 1) -> Dictionary:
-	var moved: Dictionary = {}
-	for raw_id in item_ids:
-		var item_id: String = String(raw_id)
-		var amount: int = int(source_inv.get(item_id, 0))
-		if amount <= 0:
-			continue
-		if target_is_carried and not can_add_carried_stack(amount, space_per_item):
-			continue
-		target_inv[item_id] = int(target_inv.get(item_id, 0)) + amount
-		source_inv.erase(item_id)
-		moved[item_id] = amount
-	return moved
+	var capacity: Callable = Callable()
+	var gs: Node = Service.game_state()
+	if gs != null and gs.has_method("can_add_carried_space"):
+		capacity = func(total_space: int, _per_item: int) -> bool:
+			return gs.can_add_carried_space(total_space)
+	return InventoryTransferService.move_items_between(source_inv, target_inv, item_ids, target_is_carried, space_per_item, capacity)
 
 # ── 随身装备/符文操作 ─────────────────────────────────
 
@@ -90,6 +86,28 @@ static func consume_carried_equipment(equipment_id: String) -> bool:
 	if gs == null or not gs.has_method("remove_carried_equipment"):
 		return false
 	return gs.remove_carried_equipment(equipment_id, 1)
+
+static func take_carried_equipment_instance(equipment_id: String) -> WeaponData:
+	if equipment_id.is_empty():
+		return null
+	var gs: Node = Service.game_state()
+	if gs == null:
+		return null
+	var data: WeaponData = null
+	if gs.has_method("remove_carried_equipment_instance"):
+		data = gs.remove_carried_equipment_instance(equipment_id)
+	if data != null:
+		return data
+	if not gs.has_method("remove_carried_equipment") or not gs.remove_carried_equipment(equipment_id, 1):
+		return null
+	var registry: Node = Service.weapon_registry()
+	return registry.get_weapon_data(equipment_id) if registry != null and registry.has_method("get_weapon_data") else null
+
+static func return_carried_equipment_instance(data: WeaponData) -> bool:
+	if data == null:
+		return false
+	var gs: Node = Service.game_state()
+	return gs != null and gs.has_method("add_carried_equipment_instance") and gs.add_carried_equipment_instance(data)
 
 static func return_carried_equipment(equipment_id: String) -> void:
 	if equipment_id.is_empty():

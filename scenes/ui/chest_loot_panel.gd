@@ -27,8 +27,11 @@ const RD := preload("res://globals/combat/rune_data.gd")
 const DETAIL_POPUP_SCRIPT := preload("res://scenes/ui/equipment_detail_popup.gd")
 const DROP_ZONE_SCRIPT := preload("res://scenes/ui/loot_drop_zone.gd")
 const GRID_ICON_SIZE := 56
+const COMPACT_LAYOUT_WIDTH := 1380.0
+const COMPACT_LAYOUT_HEIGHT := 760.0
 ## 装备槽按钮尺寸(更宽,容下图标 + 名称 + 耐久条)
 const SLOT_BUTTON_SIZE := Vector2(112, 96)
+const COMPACT_SLOT_BUTTON_SIZE := Vector2(96, 72)
 ## 装备槽图标大小
 const SLOT_ICON_SIZE := 48
 ## 拖动阈值(像素):鼠标移动超过此距离才触发拖放
@@ -59,11 +62,6 @@ const COLOR_AFFIX_NEUTRAL := Color(0.86, 0.76, 0.64)
 const COLOR_DUR_HIGH := Color(0.40, 0.85, 0.45)
 const COLOR_DUR_MID := Color(0.94, 0.78, 0.30)
 const COLOR_DUR_LOW := Color(0.92, 0.40, 0.30)
-# 容量条颜色
-const COLOR_WEIGHT_BAR := Color(0.94, 0.62, 0.22)
-const COLOR_WEIGHT_BAR_BG := Color(0.10, 0.08, 0.10)
-const COLOR_WEIGHT_WARN := Color(0.92, 0.40, 0.30)
-
 @onready var chest_list: ItemList = %ChestList
 @onready var backpack_list: ItemList = %BackpackList
 @onready var equip_grid: GridContainer = %EquipGrid
@@ -74,8 +72,18 @@ const COLOR_WEIGHT_WARN := Color(0.92, 0.40, 0.30)
 @onready var backpack_label: Label = %BackpackLabel
 @onready var equip_label: Label = %EquipLabel
 @onready var item_count_label: Label = %ItemCount
+@onready var status_label: Label = %StatusLabel
 @onready var weight_bar: ProgressBar = %WeightBar
 @onready var weight_label: Label = %WeightLabel
+@onready var root_control: Control = $Root
+@onready var loot_frame: PanelContainer = $Root/LootFrame
+@onready var content_row: HBoxContainer = $Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow
+@onready var header_row: HBoxContainer = $Root/LootFrame/Margin/LootBody/Margin2/VBox/Header/HeaderRow
+@onready var footer_row: HBoxContainer = $Root/LootFrame/Margin/LootBody/Margin2/VBox/Footer/FooterRow
+@onready var detail_hint: Label = $Root/LootFrame/Margin/LootBody/Margin2/VBox/Footer/FooterRow/DetailHint
+@onready var equip_hint: Label = $Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow/EquipmentColumn/EquipMargin/EquipVBox/EquipHint
+@onready var chest_hint: Label = $Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow/ChestColumn/ChestMargin/ChestVBox/ChestHint
+@onready var backpack_hint: Label = $Root/LootFrame/Margin/LootBody/Margin2/VBox/ContentRow/BackpackColumn/BackpackMargin/BackpackVBox/BackpackHint
 
 ## 当前关联的宝箱
 var _chest: Node = null
@@ -130,7 +138,68 @@ func _ready() -> void:
 		weight_bar.max_value = 1.0
 		weight_bar.step = 0.0
 		weight_bar.show_percentage = false
+	_refresh_static_texts()
+	_set_status("Drag or double-click items to transfer.")
+	root_control.resized.connect(_apply_responsive_layout)
+	call_deferred("_apply_responsive_layout")
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
+		_refresh_static_texts()
+		_refresh_display()
+
+
+func _apply_responsive_layout() -> void:
+	if root_control == null or loot_frame == null or content_row == null:
+		return
+	var compact := (
+		root_control.size.x < COMPACT_LAYOUT_WIDTH
+		or root_control.size.y < COMPACT_LAYOUT_HEIGHT
+	)
+	content_row.add_theme_constant_override("separation", 4 if compact else 8)
+	loot_frame.offset_left = 12.0 if compact else 24.0
+	loot_frame.offset_top = 12.0 if compact else 32.0
+	loot_frame.offset_right = -12.0 if compact else -24.0
+	loot_frame.offset_bottom = -12.0 if compact else -24.0
+	status_label.custom_minimum_size.x = 160.0 if compact else 260.0
+	header_row.add_theme_constant_override("separation", 6 if compact else 10)
+	footer_row.add_theme_constant_override("separation", 6 if compact else 12)
+	detail_hint.visible = not compact
+	equip_hint.visible = not compact
+	chest_hint.visible = not compact
+	backpack_hint.visible = not compact
+	for button in _equip_slot_buttons.keys():
+		var slot_button := button as Button
+		if slot_button == null:
+			continue
+		slot_button.custom_minimum_size = (
+			COMPACT_SLOT_BUTTON_SIZE if compact else SLOT_BUTTON_SIZE
+		)
+	if compact:
+		status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	else:
+		status_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+
+
+func _refresh_static_texts() -> void:
+	title_label.text = tr("LOOT")
+	close_btn.text = tr("CLOSE")
+	equip_label.text = tr("click slot to unequip")
+	chest_label.text = tr("CHEST")
+	backpack_label.text = tr("BACKPACK")
+	harvest_all_btn.text = tr("HARVEST ALL")
+
+
+func _set_status(message_key: String, is_error: bool = false) -> void:
+	if status_label == null:
+		return
+	status_label.text = tr(message_key)
+	status_label.add_theme_color_override(
+		"font_color",
+		Color(0.96, 0.45, 0.34) if is_error else Color(0.9, 0.71, 0.4)
+	)
 
 
 ## 将节点设置为拖放目标，附加 loot_drop_zone.gd 脚本并记录面板引用
@@ -154,6 +223,8 @@ func show_for_chest(chest: Node, player: Node) -> void:
 	_load_loot_data()
 	_load_backpack()
 	_load_equipment()
+	_refresh_static_texts()
+	_set_status("Drag or double-click items to transfer.")
 	_refresh_display()
 	visible = true
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
@@ -246,6 +317,7 @@ func _refresh_display() -> void:
 	_update_buttons()
 	_update_item_count()
 	_update_weight_bar()
+	_apply_responsive_layout()
 
 func _refresh_equipment_grid() -> void:
 	if equip_grid == null:
@@ -255,13 +327,22 @@ func _refresh_equipment_grid() -> void:
 		child.queue_free()
 	_equip_slot_buttons.clear()
 	# 重新填充
+	var compact := (
+		root_control != null
+		and (
+			root_control.size.x < COMPACT_LAYOUT_WIDTH
+			or root_control.size.y < COMPACT_LAYOUT_HEIGHT
+		)
+	)
 	for slot in _equipment_slots:
 		var slot_key: String = slot["key"]
 		var slot_tr_key: String = slot.get("tr_key", "")
 		var localized_label: String = tr(slot_tr_key) if not slot_tr_key.is_empty() else ""
 		var data = slot.get("data", null)
 		var btn: Button = Button.new()
-		btn.custom_minimum_size = SLOT_BUTTON_SIZE
+		btn.custom_minimum_size = (
+			COMPACT_SLOT_BUTTON_SIZE if compact else SLOT_BUTTON_SIZE
+		)
 		btn.size_flags_horizontal = 3
 		btn.size_flags_vertical = 3
 		btn.clip_text = true
@@ -304,9 +385,11 @@ func _on_equip_slot_pressed(slot_key: String, data) -> void:
 	if data == null:
 		return
 	if _player == null or not is_instance_valid(_player):
+		_set_status("Equipment transfer failed.", true)
 		return
 	var equip: Node = _player.get("equipment") as Node
 	if equip == null:
+		_set_status("Equipment transfer failed.", true)
 		return
 	# 查找槽位定义以获取 kind 和 index
 	var slot_def := _find_slot_def(slot_key)
@@ -318,7 +401,7 @@ func _on_equip_slot_pressed(slot_key: String, data) -> void:
 	if weapon_data == null:
 		return
 	if not _add_equipment_to_backpack(weapon_data):
-		# 背包满,放弃
+		_set_status("Backpack capacity reached.", true)
 		return
 	# 从装备组件中清除对应槽位
 	match kind:
@@ -337,6 +420,7 @@ func _on_equip_slot_pressed(slot_key: String, data) -> void:
 	# 刷新
 	_load_equipment()
 	_load_backpack()
+	_set_status("Equipment moved to backpack.")
 	_refresh_display()
 
 
@@ -429,41 +513,35 @@ func _update_buttons() -> void:
 func _update_item_count() -> void:
 	if item_count_label == null:
 		return
-	var item_total: int = 0
-	item_total += _loot_weapons.size() + _loot_materials.size() + _loot_runes.size()
-	var bp_total: int = _backpack_materials.size() + _backpack_runes.size() + _backpack_equipment.size()
-	var weight: float = 0.0
-	weight += _loot_weapons.size() * 1.0
-	weight += _loot_materials.size() * 0.05
-	weight += _loot_runes.size() * 0.02
-	item_count_label.text = tr("items  chest %d  /  bag %d    weight  %.2fkg") % [item_total, bp_total, weight]
+	var chest_total: int = _loot_weapons.size() + _loot_materials.size() + _loot_runes.size()
+	var bag_total: int = 0
+	for count in _backpack_equipment.values():
+		bag_total += int(count)
+	for count in _backpack_materials.values():
+		bag_total += int(count)
+	for count in _backpack_runes.values():
+		bag_total += int(count)
+	item_count_label.text = tr("ITEMS  CHEST %d  /  BAG %d") % [chest_total, bag_total]
 
 ## 重量/容量条
 func _update_weight_bar() -> void:
 	if weight_bar == null:
 		return
-	# 背包当前占用 = 装备实例数 + 材料 + 符文
-	var used: int = _backpack_equipment.size() + _backpack_materials.size() + _backpack_runes.size()
+	var used: int = 0
 	var limit: int = 30
 	var gs: Node = get_tree().root.get_node_or_null("GameState") if get_tree() != null else null
-	if gs != null and "expedition_inventory" in gs:
-		var inv = gs.expedition_inventory
-		if inv != null and "space_limit" in inv:
-			limit = int(inv.space_limit)
+	if gs != null and gs.has_method("get_carried_space_used"):
+		used = int(gs.get_carried_space_used())
+	if gs != null and gs.has_method("get_carried_space_limit"):
+		limit = int(gs.get_carried_space_limit())
 	if limit <= 0:
 		limit = 30
-	var ratio: float = float(used) / float(limit)
+	var ratio: float = clampf(float(used) / float(limit), 0.0, 1.0)
 	weight_bar.max_value = float(limit)
 	weight_bar.value = float(used)
-	# 警告色
-	var warn := ratio >= 0.9
-	var fill_style := StyleBoxFlat.new()
-	fill_style.bg_color = COLOR_WEIGHT_WARN if warn else COLOR_WEIGHT_BAR
-	fill_style.border_width_top = 1
-	fill_style.border_color = Color(1, 0.78, 0.32, 0.6) if not warn else Color(1, 0.42, 0.32, 0.85)
-	weight_bar.add_theme_stylebox_override("fill", fill_style)
+	weight_bar.theme_type_variation = &"LootCapacityWarning" if ratio >= 0.9 else &"LootCapacity"
 	if weight_label != null:
-		weight_label.text = tr("BAG  %d / %d  (%d%%)") % [used, limit, int(round(ratio * 100.0))]
+		weight_label.text = tr("CAPACITY  %d / %d  (%d%%)") % [used, limit, int(round(ratio * 100.0))]
 
 func _icon_for_weapon_data(data: WeaponData) -> Texture2D:
 	if data == null or data.id.is_empty():
@@ -519,27 +597,33 @@ func _on_harvest_all_pressed() -> void:
 func _on_close_pressed() -> void:
 	_close()
 
-func _take_item(index: int) -> void:
+func _take_item(index: int) -> bool:
 	if index < 0 or index >= chest_list.item_count:
-		return
+		return false
 	var meta = chest_list.get_item_metadata(index)
 	if typeof(meta) != TYPE_DICTIONARY:
-		return
+		return false
 	var item_type: String = meta.get("type", "")
+	var transferred := false
 	if item_type == "equipment":
-		_take_equipment(index, meta)
+		transferred = _take_equipment(index, meta)
 	elif item_type == "material":
-		_take_material(index, meta)
+		transferred = _take_material(index, meta)
 	elif item_type == "rune":
-		_take_rune(index, meta)
+		transferred = _take_rune(index, meta)
+	_set_status(
+		"Item transferred to backpack." if transferred else "Backpack capacity reached.",
+		not transferred
+	)
 	_refresh_display()
+	return transferred
 
-func _take_equipment(index: int, meta: Dictionary) -> void:
+func _take_equipment(index: int, meta: Dictionary) -> bool:
 	var data: WeaponData = meta.get("data", null)
 	if data == null:
-		return
+		return false
 	if not _add_equipment_to_backpack(data):
-		return
+		return false
 	var audio_mgr = get_tree().root.get_node_or_null("AudioManager") if get_tree() != null else null
 	if audio_mgr:
 		audio_mgr.play("sword-pickup", null)
@@ -551,14 +635,15 @@ func _take_equipment(index: int, meta: Dictionary) -> void:
 	if _chest != null and is_instance_valid(_chest):
 		_chest.loot_data["weapons"] = _loot_weapons.duplicate()
 		_chest.loot_data["weapon"] = _loot_weapon
+	return true
 
-func _take_material(index: int, meta: Dictionary) -> void:
+func _take_material(index: int, meta: Dictionary) -> bool:
 	var mat_id: String = meta.get("id", "")
 	if mat_id == "":
-		return
+		return false
 	var gs: Node = get_tree().root.get_node_or_null("GameState")
 	if gs == null or not gs.add_carried_material(mat_id, 1):
-		return
+		return false
 	_backpack_materials[mat_id] = int(_backpack_materials.get(mat_id, 0)) + 1
 	var audio_mgr = get_tree().root.get_node_or_null("AudioManager") if get_tree() != null else null
 	if audio_mgr:
@@ -568,14 +653,15 @@ func _take_material(index: int, meta: Dictionary) -> void:
 		_loot_materials.remove_at(loot_index)
 	if _chest != null and is_instance_valid(_chest):
 		_chest.loot_data["materials"] = _loot_materials.duplicate()
+	return true
 
-func _take_rune(_index: int, meta: Dictionary) -> void:
+func _take_rune(_index: int, meta: Dictionary) -> bool:
 	var rune_id: String = meta.get("id", "")
 	if rune_id == "":
-		return
+		return false
 	var gs: Node = get_tree().root.get_node_or_null("GameState")
 	if gs == null or not gs.has_method("add_carried_rune") or not gs.add_carried_rune(rune_id, 1):
-		return
+		return false
 	_backpack_runes[rune_id] = int(_backpack_runes.get(rune_id, 0)) + 1
 	var audio_mgr = get_tree().root.get_node_or_null("AudioManager") if get_tree() != null else null
 	if audio_mgr:
@@ -585,8 +671,10 @@ func _take_rune(_index: int, meta: Dictionary) -> void:
 		_loot_runes.remove_at(loot_index)
 	if _chest != null and is_instance_valid(_chest):
 		_chest.loot_data["runes"] = _loot_runes.duplicate(true)
+	return true
 
 func _take_all() -> void:
+	var initial_total := _loot_weapons.size() + _loot_materials.size() + _loot_runes.size()
 	var remaining_weapons: Array = []
 	for w in _loot_weapons:
 		if w != null:
@@ -626,7 +714,15 @@ func _take_all() -> void:
 	_loot_runes = remaining_runes
 	if _chest != null and is_instance_valid(_chest):
 		_chest.loot_data["runes"] = _loot_runes.duplicate(true)
-	if audio_mgr:
+	var remaining_total := _loot_weapons.size() + _loot_materials.size() + _loot_runes.size()
+	var transferred_total := initial_total - remaining_total
+	if transferred_total <= 0 and initial_total > 0:
+		_set_status("Backpack capacity reached.", true)
+	elif remaining_total > 0:
+		_set_status("Some items remain because the backpack is full.", true)
+	else:
+		_set_status("All chest items transferred.")
+	if audio_mgr and transferred_total > 0:
 		audio_mgr.play("key-pickup", null)
 	_refresh_display()
 
@@ -679,20 +775,25 @@ func _on_backpack_item_activated(index: int) -> void:
 	if gs == null:
 		return
 	var audio_mgr = get_tree().root.get_node_or_null("AudioManager") if get_tree() != null else null
+	var succeeded := false
 	match item_type:
 		"equipment":
 			# 双击背包装备 → 装备到玩家（护甲走 equip_armor，武器走 equip_weapon）
-			_equip_from_backpack(item_id)
+			succeeded = _equip_from_backpack(item_id)
 		"material":
-			_return_material_to_chest(gs, item_id, audio_mgr)
+			succeeded = _return_material_to_chest(gs, item_id, audio_mgr)
 		"rune":
-			_return_rune_to_chest(gs, item_id, audio_mgr)
+			succeeded = _return_rune_to_chest(gs, item_id, audio_mgr)
+	_set_status(
+		"Item transferred." if succeeded else "Item transfer failed.",
+		not succeeded
+	)
 	_load_backpack()
 	_refresh_display()
 
-func _return_equipment_to_chest(gs: Node, item_id: String, audio_mgr: Node) -> void:
+func _return_equipment_to_chest(gs: Node, item_id: String, audio_mgr: Node) -> bool:
 	if gs == null or not gs.has_method("remove_carried_equipment"):
-		return
+		return false
 	var data: WeaponData = null
 	var removed_instance := false
 	if gs.has_method("remove_carried_equipment_instance"):
@@ -701,12 +802,12 @@ func _return_equipment_to_chest(gs: Node, item_id: String, audio_mgr: Node) -> v
 	if data == null and WeaponRegistry != null:
 		data = WeaponRegistry.get_weapon_data(item_id)
 	if data == null:
-		return
+		return false
 	if data.id != item_id:
-		return
+		return false
 	if not removed_instance:
 		if not gs.remove_carried_equipment(item_id, 1):
-			return
+			return false
 	_loot_weapons.append(data.duplicate() as WeaponData)
 	if _loot_weapon == null:
 		_loot_weapon = data
@@ -715,24 +816,27 @@ func _return_equipment_to_chest(gs: Node, item_id: String, audio_mgr: Node) -> v
 		_chest.loot_data["weapon"] = _loot_weapon
 	if audio_mgr:
 		audio_mgr.play("sword-pickup", null)
+	return true
 
-func _return_material_to_chest(gs: Node, item_id: String, audio_mgr: Node) -> void:
+func _return_material_to_chest(gs: Node, item_id: String, audio_mgr: Node) -> bool:
 	if not gs.has_method("remove_carried_material") or not gs.remove_carried_material(item_id, 1):
-		return
+		return false
 	_loot_materials.append({"material_id": item_id, "name": BD.get_material_name(item_id)})
 	if _chest != null and is_instance_valid(_chest):
 		_chest.loot_data["materials"] = _loot_materials.duplicate()
 	if audio_mgr:
 		audio_mgr.play("key-pickup", null)
+	return true
 
-func _return_rune_to_chest(gs: Node, item_id: String, audio_mgr: Node) -> void:
+func _return_rune_to_chest(gs: Node, item_id: String, audio_mgr: Node) -> bool:
 	if not gs.has_method("remove_carried_rune") or not gs.remove_carried_rune(item_id, 1):
-		return
+		return false
 	_loot_runes.append({"id": item_id})
 	if _chest != null and is_instance_valid(_chest):
 		_chest.loot_data["runes"] = _loot_runes.duplicate(true)
 	if audio_mgr:
 		audio_mgr.play("key-pickup", null)
+	return true
 
 
 # ============================================================================
@@ -925,14 +1029,30 @@ func _start_list_drag(list: ItemList, meta: Dictionary) -> void:
 		"id": String(meta.get("id", "")),
 		"index": int(meta.get("loot_index", -1)),
 	}
-	# 构建拖动预览（装备名或材料名）
-	var preview := Label.new()
-	preview.text = String(meta.get("name", meta.get("id", "")))
+	var preview_text := String(meta.get("name", meta.get("id", "")))
 	if payload.type == "equipment":
 		var data = meta.get("data", null)
 		if data != null and data.has_method("get_full_display_name"):
-			preview.text = String(data.get_full_display_name())
-	list.force_drag(payload, preview)
+			preview_text = String(data.get_full_display_name())
+	elif payload.type == "rune":
+		preview_text = RD.get_rune_name(String(payload.id))
+	elif payload.type == "material" and preview_text.is_empty():
+		preview_text = BD.get_material_name(String(payload.id))
+	list.force_drag(payload, _build_drag_preview(preview_text))
+
+
+func _build_drag_preview(display_text: String) -> Control:
+	var preview := PanelContainer.new()
+	preview.theme = get_node("Root").theme
+	preview.theme_type_variation = &"LootDragPreview"
+	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var label := Label.new()
+	label.text = display_text
+	label.theme_type_variation = &"LootSectionTitle"
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	preview.add_child(label)
+	return preview
 
 
 ## 装备槽 gui_input:检测从装备槽拖出（卸下到拖放目标）
@@ -951,9 +1071,8 @@ func _on_equip_slot_gui_input(event: InputEvent, btn: Button, slot_key: String, 
 				"slot_key": slot_key,
 				"data": data,
 			}
-			var preview := Label.new()
-			preview.text = String(data.get_full_display_name()) if data != null and data.has_method("get_full_display_name") else slot_key
-			btn.force_drag(payload, preview)
+			var preview_text := String(data.get_full_display_name()) if data != null and data.has_method("get_full_display_name") else slot_key
+			btn.force_drag(payload, _build_drag_preview(preview_text))
 			_equip_drag_slot_key = ""
 
 
@@ -978,38 +1097,53 @@ func can_drop_to_zone(zone_id: String, data: Dictionary) -> bool:
 ## drop zone 回调:处理拖放
 func drop_to_zone(zone_id: String, data: Dictionary) -> void:
 	var source := String(data.get("source", ""))
+	var item_type := String(data.get("type", ""))
+	var succeeded := false
 	match zone_id:
 		"equipment":
 			if source == "backpack":
 				var item_id := String(data.get("id", ""))
-				_equip_from_backpack(item_id)
+				succeeded = _equip_from_backpack(item_id)
 			elif source == "chest":
 				var loot_idx := int(data.get("index", -1))
-				_equip_chest_item_to_player(loot_idx)
+				succeeded = _equip_chest_item_to_player(loot_idx)
 		"backpack":
 			if source == "chest":
 				var idx := int(data.get("index", -1))
-				_take_item(idx)
+				succeeded = _take_item(idx)
 			elif source == "equipment":
 				var slot_key := String(data.get("slot_key", ""))
-				_unequip_slot_to_backpack(slot_key)
+				succeeded = _unequip_slot_to_backpack(slot_key)
 		"chest":
 			if source == "backpack":
 				var item_id := String(data.get("id", ""))
-				_return_equipment_to_chest_by_id(item_id)
+				var gs: Node = get_tree().root.get_node_or_null("GameState")
+				var audio_mgr: Node = get_tree().root.get_node_or_null("AudioManager")
+				match item_type:
+					"equipment":
+						succeeded = _return_equipment_to_chest(gs, item_id, audio_mgr)
+					"material":
+						succeeded = _return_material_to_chest(gs, item_id, audio_mgr)
+					"rune":
+						succeeded = _return_rune_to_chest(gs, item_id, audio_mgr)
 			elif source == "equipment":
 				var slot_key := String(data.get("slot_key", ""))
-				_unequip_slot_to_chest(slot_key)
+				succeeded = _unequip_slot_to_chest(slot_key)
+	if not (zone_id == "backpack" and source == "chest"):
+		_set_status(
+			"Item transferred." if succeeded else "Item transfer failed.",
+			not succeeded
+		)
 	_load_backpack()
 	_refresh_display()
 
 
 ## 卸下指定槽位装备到背包（拖放路径）
-func _unequip_slot_to_backpack(slot_key: String) -> void:
+func _unequip_slot_to_backpack(slot_key: String) -> bool:
 	if slot_key.is_empty():
-		return
+		return false
 	if _player == null or not is_instance_valid(_player):
-		return
+		return false
 	# 从 _equipment_slots 缓存中找到对应数据
 	var slot_data = null
 	for slot in _equipment_slots:
@@ -1017,18 +1151,49 @@ func _unequip_slot_to_backpack(slot_key: String) -> void:
 			slot_data = slot.get("data", null)
 			break
 	if slot_data == null:
-		return
-	_on_equip_slot_pressed(slot_key, slot_data)
+		return false
+	var weapon_data := slot_data as WeaponData
+	if weapon_data == null:
+		return false
+	var gs: Node = get_tree().root.get_node_or_null("GameState")
+	if gs == null or not _add_equipment_to_backpack(weapon_data):
+		return false
+	if not _clear_equipment_slot(slot_key):
+		if gs.has_method("remove_carried_equipment_instance"):
+			gs.remove_carried_equipment_instance(weapon_data.id)
+		return false
+	if gs.has_method("save_equipment_from_player"):
+		gs.save_equipment_from_player(_player)
+	_load_equipment()
+	return true
+
+
+func _clear_equipment_slot(slot_key: String) -> bool:
+	if _player == null or not is_instance_valid(_player):
+		return false
+	var equip: Node = _player.get("equipment") as Node
+	if equip == null:
+		return false
+	var slot_def := _find_slot_def(slot_key)
+	if slot_def.is_empty():
+		return false
+	match String(slot_def.get("kind", "")):
+		"armor":
+			return equip.has_method("configure_armor_slot") and equip.configure_armor_slot(slot_key, null)
+		"weapon":
+			var idx := int(slot_def.get("index", -1))
+			return idx >= 0 and equip.has_method("configure_weapon_slot") and equip.configure_weapon_slot(idx, null, false)
+	return false
 
 
 ## 卸下指定槽位装备直接放入宝箱（拖放路径）。
 ## 装备当前在玩家身上（不在背包内），因此直接写入宝箱 loot_data 并清空槽位，
 ## 不经由 GameState 的携带库存（该物品装备时已从携带库存取出）。
-func _unequip_slot_to_chest(slot_key: String) -> void:
+func _unequip_slot_to_chest(slot_key: String) -> bool:
 	if slot_key.is_empty():
-		return
+		return false
 	if _player == null or not is_instance_valid(_player):
-		return
+		return false
 	# 从 _equipment_slots 缓存中找到对应数据
 	var slot_data = null
 	for slot in _equipment_slots:
@@ -1036,35 +1201,20 @@ func _unequip_slot_to_chest(slot_key: String) -> void:
 			slot_data = slot.get("data", null)
 			break
 	if slot_data == null:
-		return
+		return false
 	var weapon_data: WeaponData = slot_data as WeaponData
 	if weapon_data == null:
-		return
-	var equip: Node = _player.get("equipment") as Node
-	if equip == null:
-		return
-	# 查找槽位定义以获取 kind 和 index
-	var slot_def := _find_slot_def(slot_key)
-	if slot_def.is_empty():
-		return
-	var kind: String = String(slot_def.get("kind", ""))
+		return false
+	if not _clear_equipment_slot(slot_key):
+		return false
 	# 写入宝箱 loot_data（保留 affix/tier/durability 实例）
-	_loot_weapons.append(weapon_data.duplicate() as WeaponData)
+	var stored_data := weapon_data.duplicate() as WeaponData
+	_loot_weapons.append(stored_data)
 	if _loot_weapon == null:
-		_loot_weapon = weapon_data
+		_loot_weapon = stored_data
 	if _chest != null and is_instance_valid(_chest):
 		_chest.loot_data["weapons"] = _loot_weapons.duplicate()
 		_chest.loot_data["weapon"] = _loot_weapon
-	# 从装备组件中清除对应槽位
-	match kind:
-		"armor":
-			if equip.has_method("configure_armor_slot"):
-				equip.configure_armor_slot(slot_key, null)
-		"weapon":
-			var idx: int = int(slot_def.get("index", -1))
-			if idx >= 0 and equip.has_method("configure_weapon_slot"):
-				# 不自动激活空槽，避免意外切换武器
-				equip.configure_weapon_slot(idx, null, false)
 	# 持久化装备变更到 GameState（与酒馆面板同源，避免场景重载后丢失）
 	var gs: Node = get_tree().root.get_node_or_null("GameState") if get_tree() != null else null
 	if gs != null and gs.has_method("save_equipment_from_player"):
@@ -1075,14 +1225,15 @@ func _unequip_slot_to_chest(slot_key: String) -> void:
 	_load_equipment()
 	_load_backpack()
 	_refresh_display()
+	return true
 
 
 ## 通过 item_id 将背包装备放回宝箱（拖放路径）
-func _return_equipment_to_chest_by_id(item_id: String) -> void:
+func _return_equipment_to_chest_by_id(item_id: String) -> bool:
 	if item_id.is_empty():
-		return
+		return false
 	var gs: Node = get_tree().root.get_node_or_null("GameState")
 	if gs == null:
-		return
+		return false
 	var audio_mgr = get_tree().root.get_node_or_null("AudioManager") if get_tree() != null else null
-	_return_equipment_to_chest(gs, item_id, audio_mgr)
+	return _return_equipment_to_chest(gs, item_id, audio_mgr)

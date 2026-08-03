@@ -105,7 +105,7 @@ func test_update_physics_chunk_radius_activates_bodies() -> void:
 	add_child(player)
 	ctrl.set_player(player)
 	ctrl.update_streaming(true)
-	# 玩家在 chunk (0,0)，physics radius=1 → body 激活，collision_layer 恢复原始值
+	# 玩家在 chunk (0,0)，静态碰撞保留 radius=1 → 当前 chunk body 激活，collision_layer 恢复原始值
 	assert_int(body.collision_layer).is_equal(original_layer)
 	# 玩家远离，body 停用
 	player.position = Vector3(100, 0, 100)
@@ -122,6 +122,7 @@ func test_dark_erosion_enemy_remains_active_outside_physics_radius() -> void:
 	var enemy := CharacterBody3D.new()
 	enemy.add_to_group("enemies")
 	enemy.set_meta("dark_erosion_hunt", true)
+	ctrl.notify_forced_hunt_changed(enemy, true)
 	enemy.position = Vector3(72.0, 0.0, 0.0) # chunk (3, 0), 远超 physics radius=1
 	add_child(enemy)
 	var remote_floor := StaticBody3D.new()
@@ -149,6 +150,41 @@ func test_dark_erosion_enemy_remains_active_outside_physics_radius() -> void:
 	player.queue_free()
 	remote_floor.queue_free()
 	enemy.queue_free()
+
+func test_forced_hunt_cache_avoids_full_physics_registry_scan() -> void:
+	var ctrl := _make_controller()
+	ctrl.configure(_make_8x8_layout(), DungeonBuildResult.new())
+	var enemy := CharacterBody3D.new()
+	enemy.add_to_group("enemies")
+	enemy.set_meta("dark_erosion_hunt", true)
+	add_child(enemy)
+	ctrl.notify_forced_hunt_changed(enemy, true)
+	assert_bool(ctrl._has_forced_hunt_enemies()).is_true()
+	assert_int(ctrl._forced_hunt_enemies.size()).is_equal(1)
+	enemy.set_meta("dark_erosion_hunt", false)
+	ctrl.notify_forced_hunt_changed(enemy, false)
+	assert_bool(ctrl._has_forced_hunt_enemies()).is_false()
+	assert_int(ctrl._forced_hunt_enemies.size()).is_equal(0)
+	_teardown_controller(ctrl)
+	enemy.queue_free()
+
+func test_forced_hunt_physics_chunk_collection_uses_event_cache() -> void:
+	var source := (load("res://scenes/expedition/dungeon_streaming_controller.gd") as GDScript).source_code
+	var start := source.find("func _collect_forced_hunt_physics_chunks")
+	var finish := source.find("\nfunc ", start + 1)
+	var block := source.substr(start, finish - start)
+	assert_bool(block.contains("_forced_hunt_enemies")).is_true()
+	assert_bool(not block.contains("_physics_chunks.keys()")) \
+		.override_failure_message("强制追击 chunk 收集不得遍历物理注册表").is_true()
+
+
+func test_forced_hunt_cache_contract_does_not_scan_physics_chunks() -> void:
+	var source := (load("res://scenes/expedition/dungeon_streaming_controller.gd") as GDScript).source_code
+	var start := source.find("func _has_forced_hunt_enemies")
+	var finish := source.find("\nfunc ", start + 1)
+	var block := source.substr(start, finish - start)
+	assert_bool(block.contains("_forced_hunt_enemies")).is_true()
+	assert_bool(not block.contains("_physics_chunks")).is_true()
 
 func test_physics_registry_ignores_freed_collision_objects() -> void:
 	# Regression: a picked-up material queues its RigidBody3D for deletion, but

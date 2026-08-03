@@ -11,6 +11,7 @@ const AS := preload("res://globals/combat/action_skills.gd")
 const CE := preload("res://globals/combat/combat_engine.gd")
 const MC := preload("res://globals/combat/momentum_context.gd")
 const RD := preload("res://globals/combat/rune_data.gd")
+const RWD := preload("res://globals/combat/rune_word_data.gd")
 
 # 槽位索引
 const SLOT_F_ACTION: int = 0      # F 键：通用主动技能（保留旧名兼容）
@@ -57,6 +58,7 @@ var casting_slot: int = -1
 var release_slot_context: Dictionary
 var pending_momentum_context = null
 var mechanism_passives: Dictionary
+var active_rune_words: Array
 
 func _init() -> void:
 	slots = ["", "", "", "", "", "", ""]
@@ -67,6 +69,7 @@ func _init() -> void:
 	released_while_casting = {}
 	release_slot_context = {}
 	mechanism_passives = {}
+	active_rune_words = []
 
 signal skill_released(skill_id: String)
 
@@ -159,6 +162,7 @@ func socket_rune(slot_index: int, rune_id: String) -> bool:
 		return false
 	runes.append(rune_id)
 	slot_runes[slot_index] = runes
+	_recompute_after_rune_change()
 	return true
 
 func get_rune_capacity(slot_index: int) -> int:
@@ -172,6 +176,7 @@ func unsocket_rune(slot_index: int, rune_index: int) -> bool:
 		return false
 	runes.remove_at(rune_index)
 	slot_runes[slot_index] = runes
+	_recompute_after_rune_change()
 	return true
 
 func get_slot_runes(slot_index: int) -> Array:
@@ -270,6 +275,30 @@ func recompute_mechanism_passives() -> void:
 
 	if SD.can_unlock(1, prof_xb, dex_v):
 		grant_mechanism_passive("quick_reload")
+
+	# —— 符文之语：按已镶嵌符文序列检测并授予机制被动 ——
+	_apply_rune_word_passives()
+
+## 符文之语机制被动刷新：检测当前 slot_runes 激活的符文之语，授予其机制被动。
+## 设计为幂等：由 recompute_mechanism_passives() 在 clear() 后调用，
+## 也可在镶嵌/卸下符文后独立调用以即时刷新符文之语效果。
+func _apply_rune_word_passives() -> void:
+	active_rune_words = RWD.detect_active_rune_words(slot_runes)
+	for pid in RWD.get_granted_passives(active_rune_words):
+		grant_mechanism_passive(String(pid), 1)
+
+## 镶嵌/卸下符文后触发机制被动重算（含符文之语）。
+## 若属性面板可用则全量幂等重算；否则仅刷新符文之语部分。
+func _recompute_after_rune_change() -> void:
+	var ap = Service.attr_panel()
+	if ap != null:
+		recompute_mechanism_passives()
+	else:
+		_apply_rune_word_passives()
+
+## 当前激活的符文之语 id 列表（副本）
+func get_active_rune_words() -> Array:
+	return active_rune_words.duplicate()
 
 ## 依据玩家当前的握持流派激活 7 大流派的核心纯被动（共 17 项，doc21 §一）。
 ## 徒手流派以 5 项专属被动特别对待（其余 6 流派各 2 项）。
@@ -585,6 +614,9 @@ func deserialize(data: Dictionary) -> void:
 	if data.has("slot_runes"):
 		slot_runes = data["slot_runes"].duplicate(true)
 		_ensure_slot_runes_shape()
+	# 读档后重算机制被动：attr_panel 的重算发生在 SkillRuntime 反序列化之前，
+	# 此时 slot_runes 尚为空，符文之语无法被检测。此处补一次重算以激活已镶嵌的符文之语。
+	_recompute_after_rune_change()
 
 func reset() -> void:
 	slots = ["", "", "", "", "", "", ""]
@@ -598,6 +630,7 @@ func reset() -> void:
 	pending_momentum_context = null
 	release_slot_context.clear()
 	mechanism_passives.clear()
+	active_rune_words.clear()
 
 func _find_slot_for_skill(skill_id: String) -> int:
 	for i in range(TOTAL_SLOTS):

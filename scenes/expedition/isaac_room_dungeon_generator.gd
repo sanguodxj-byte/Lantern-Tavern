@@ -1254,10 +1254,10 @@ func _height_for_room(macro: Vector2i, shape: String = "") -> float:
 	# 房型继续影响平面轮廓；垂直方向只允许固定整数层，避免同一墙体被
 	# 形状小数加成切成不连续的台阶。
 	if dist >= 4:
-		return 5.0
-	if dist >= 2:
 		return 4.0
-	return 3.0
+	if dist >= 2:
+		return 3.0
+	return 2.0
 
 
 func _make_filled_grid(width: int, height: int, cell_type: int) -> Array:

@@ -117,7 +117,7 @@ PART_SPECS: tuple[PartSpec, ...] = (
     PartSpec("helm_dome", (0.0, 0.5, 44.5), (12.0, 9.0, 3.0), "iron_helm", "Head"),
     PartSpec("helm_brim", (0.0, -4.5, 43.5), (12.0, 2.0, 1.0), "iron_helm", "Head"),
     PartSpec("lamp_mount", (0.0, -5.0, 45.0), (4.0, 1.0, 4.0), "iron_helm", "Head"),
-    PartSpec("lamp_lens_glowing", (0.0, -6.0, 45.0), (2.0, 1.0, 2.0), "lamp_light", "Head"),
+    PartSpec("lamp_lens", (0.0, -6.0, 45.0), (2.0, 1.0, 2.0), "lamp_light", "Head"),
 )
 
 
@@ -127,7 +127,7 @@ def _build_palette() -> dict[str, bpy.types.Material]:
         "beard_grey": make_material("beard_grey", (0.65, 0.65, 0.68, 1.0), roughness=0.8),
         "beard_dark_grey": make_material("beard_dark_grey", (0.45, 0.45, 0.48, 1.0), roughness=0.8),
         "iron_helm": make_material("iron_helm", (0.22, 0.22, 0.25, 1.0), roughness=0.4, metallic=0.7),
-        "lamp_light": make_material("lamp_light", (1.00, 0.85, 0.20, 1.0), roughness=0.1, metallic=0.1, emission=2.5),
+        "lamp_light": make_material("lamp_light", (0.62, 0.48, 0.18, 1.0), roughness=0.42, metallic=0.1),
         "leather_heavy": make_material("leather_heavy", (0.20, 0.12, 0.06, 1.0), roughness=0.6),
     }
 

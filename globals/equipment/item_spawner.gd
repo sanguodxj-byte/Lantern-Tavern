@@ -20,18 +20,10 @@ const PICKABLE_ITEM_PREFAB := preload("res://scenes/equipment/pickable_item.tscn
 const PLACEMENT_DATA := preload("res://data/item_placement_data.gd")
 const TAGS := preload("res://data/item_tags.gd")
 const MATERIAL_MODELS := preload("res://data/material_model_registry.gd")
+const DUNGEON_RUNTIME_CONFIG := preload("res://scenes/expedition/dungeon_runtime_config.gd")
+const DUNGEON_SPAWN_FOOTPRINT := preload("res://scenes/expedition/dungeon_spawn_footprint.gd")
 const MATERIAL_SURPLUS_OVER_ENEMIES := 5
 const DECOR_VISIBILITY_RANGE_END := 60.0
-const DECOR_CONFIG_FALLBACK: Dictionary = {
-	"res://scenes/props/decor/bones.tscn": 20,
-	"res://scenes/props/decor/lit_candles.tscn": 15,
-	"res://scenes/props/decor/spiderweb.tscn": 15,
-	"res://scenes/props/decor/bench.tscn": 10,
-	"res://scenes/props/decor/chair.tscn": 10,
-	"res://scenes/props/decor/table.tscn": 10,
-	"res://scenes/props/crates/small_crate.tscn": 10,
-	"res://scenes/props/barrel/barrel.tscn": 10,
-}
 
 const MATERIALS_FALLBACK: Dictionary = {
 	"rat_tail": 15, "moldy_bread": 12, "rusty_nail": 10, "dungeon_moss": 10,
@@ -53,6 +45,7 @@ var _loaded := false
 # 装饰物场景预加载缓存
 var _decor_scenes: Dictionary = {}   # path → PackedScene
 var _decor_total_weight: int = 0
+var _dungeon_runtime_config = DUNGEON_RUNTIME_CONFIG.default()
 
 signal spawner_ready()
 
@@ -97,6 +90,7 @@ func _load_config() -> void:
 		return
 	for entry in data:
 		var placement: Resource = PLACEMENT_DATA.from_dict(entry)
+		_sanitize_dungeon_scene_paths(placement)
 		placement.preload_scenes()
 		_configs[placement.tag] = placement
 
@@ -148,13 +142,25 @@ func _init_default_configs() -> void:
 func _preload_decor_scenes() -> void:
 	_decor_scenes.clear()
 	_decor_total_weight = 0
-	for path in DECOR_CONFIG_FALLBACK:
+	for path in _dungeon_runtime_config.decor_config:
 		var scene: PackedScene = load(path)
 		if scene != null:
 			_decor_scenes[path] = scene
-			_decor_total_weight += DECOR_CONFIG_FALLBACK[path]
+			_decor_total_weight += int(_dungeon_runtime_config.decor_config[path])
 		else:
 			push_warning("[ItemSpawner] Failed to load decor scene: %s" % path)
+
+func _sanitize_dungeon_scene_paths(placement: Resource) -> void:
+	if placement == null or placement.tag not in [TAGS.DECOR, TAGS.CONTAINER]:
+		return
+	var filtered: Array = []
+	for entry in placement.item_scene_paths:
+		var path := String(entry.get("path", ""))
+		if DUNGEON_RUNTIME_CONFIG.is_allowed_dungeon_scene_path(path):
+			filtered.append(entry)
+		else:
+			push_warning("[ItemSpawner] Rejected non-dungeon scene for tag '%s': %s" % [placement.tag, path])
+	placement.item_scene_paths = filtered
 
 # ============================================================================
 # 核心 API
@@ -176,6 +182,7 @@ func get_all_tags() -> Array[String]:
 func register_tag_config(data: Resource) -> void:
 	if data == null or data.tag.is_empty():
 		return
+	_sanitize_dungeon_scene_paths(data)
 	data.preload_scenes()
 	_configs[data.tag] = data
 
@@ -252,15 +259,17 @@ func spawn_items_for_level(grid_data: Array, zone: int, player_spawn_pos: Vector
 ## player: Player 实例（供 proximity/streaming 注册；本接口暂不直接用，预留）
 ## spec 字段：{item_type:"material", item_id:String, cell:Vector2i, room_index:int}
 ## 当前仅处理 item_type=="material"（planner 只规划材料）；其余类型跳过并告警。
-func spawn_items_from_layout(layout: DungeonLayout, spawn_root: Node, player: Node = null) -> Array:
+func spawn_items_from_layout(layout: DungeonLayout, spawn_root: Node, player: Node = null,
+		placement_registry: Variant = null) -> Array:
 	var spawned: Array = []
 	if layout == null or layout.is_empty() or spawn_root == null or not is_instance_valid(spawn_root):
 		return spawned
-	# 重算偏移（与 procedural 的 OFFSET 公式一致：居中）
-	var offset_x: float = -(float(layout.width) * layout.tile_size) / 2.0
-	var offset_z: float = -(float(layout.height) * layout.tile_size) / 2.0
-	var offset: Vector3 = Vector3(offset_x, 0, offset_z)
-	for spec in layout.item_spawn_specs:
+	var registry: Array = []
+	var has_registry := placement_registry is Array
+	if has_registry:
+		registry = placement_registry
+	for item_index in range(layout.item_spawn_specs.size()):
+		var spec: Dictionary = layout.item_spawn_specs[item_index]
 		var item_type: String = spec.get("item_type", "")
 		match item_type:
 			"material":
@@ -268,10 +277,18 @@ func spawn_items_from_layout(layout: DungeonLayout, spawn_root: Node, player: No
 				if mat_id.is_empty():
 					continue
 				var cell: Vector2i = spec["cell"]
-				var cell_pos: Vector3 = offset + Vector3(cell.x * layout.tile_size, 0.5, cell.y * layout.tile_size)
+				var cell_pos: Vector3 = layout.cell_to_world(cell, 0.5, "item", item_index)
+				if has_registry \
+						and not DUNGEON_SPAWN_FOOTPRINT.can_place(registry, cell_pos,
+							DUNGEON_SPAWN_FOOTPRINT.half_extents_for("item", mat_id)):
+					push_warning("[ItemSpawner] skipped overlapping item placement at %s" % str(cell))
+					continue
 				# wall_direction 不从 grid 重推（planner 已选 cell）；用 ZERO 让 _spawn_material_instance 走 random yaw
 				var instance = _spawn_material_instance(mat_id, cell_pos, spawn_root, layout.zone, Vector3.ZERO)
 				if instance != null:
+					if has_registry:
+						DUNGEON_SPAWN_FOOTPRINT.register(registry, cell_pos,
+								DUNGEON_SPAWN_FOOTPRINT.half_extents_for("item", mat_id), "item:%s" % mat_id)
 					spawned.append(instance)
 			_:
 				push_warning("[ItemSpawner] spawn_items_from_layout: unsupported item_type '%s'" % item_type)
@@ -324,7 +341,13 @@ func _spawn_item_internal(tag: String, pos: Vector3, parent: Node, zone: int) ->
 
 	# 取场景实例
 	var prefab: PackedScene = cfg.pick_scene()
-	if prefab == null:
+	if tag == TAGS.DECOR and prefab != null \
+			and _dungeon_runtime_config.dungeon_decor_placement_for_path(prefab.resource_path) in ["wall", "anchor"]:
+		# 旧式按格散布接口没有墙向/房间焦点信息，墙挂物和重型锚点只由
+		# DungeonRoomFocusPlanner + DungeonSceneBuilder 的有上下文路径生成。
+		return _spawn_decor_fallback(pos, parent)
+	if prefab == null or ((tag == TAGS.DECOR or tag == TAGS.CONTAINER) \
+			and not DUNGEON_RUNTIME_CONFIG.is_allowed_dungeon_scene_path(prefab.resource_path)):
 		# 如果没有配置场景，按 tag 类型 fallback
 		match tag:
 			TAGS.MATERIAL:
@@ -577,8 +600,16 @@ func _find_wall_direction(grid: Array, x: int, y: int) -> Vector3:
 
 func _spawn_decor_fallback(pos: Vector3, parent: Node) -> Node:
 	if _decor_scenes.is_empty():
+		_preload_decor_scenes()
+	if _decor_scenes.is_empty():
 		return null
-	var path: String = _pick_weighted_from_dict(DECOR_CONFIG_FALLBACK)
+	var eligible: Dictionary = {}
+	for candidate_path in _dungeon_runtime_config.decor_config.keys():
+		var placement := _dungeon_runtime_config.dungeon_decor_placement_for_path(String(candidate_path))
+		if placement == "wall" or placement == "anchor":
+			continue
+		eligible[String(candidate_path)] = _dungeon_runtime_config.decor_config[candidate_path]
+	var path: String = _pick_weighted_from_dict(eligible)
 	if path.is_empty():
 		return null
 	var batched_instance := _spawn_batched_static_scene(path, pos, parent)
@@ -597,10 +628,9 @@ func _spawn_decor_fallback(pos: Vector3, parent: Node) -> Node:
 	return instance
 
 func _spawn_container_fallback(pos: Vector3, parent: Node) -> Node:
-	var paths := [
-		"res://scenes/props/barrel/barrel.tscn",
-		"res://scenes/props/crates/small_crate.tscn"
-	]
+	var paths: Array = _dungeon_runtime_config.container_config.keys()
+	if paths.is_empty():
+		return null
 	var path: String = paths[randi() % paths.size()]
 	var batched_instance := _spawn_batched_static_scene(path, pos, parent)
 	if batched_instance != null:

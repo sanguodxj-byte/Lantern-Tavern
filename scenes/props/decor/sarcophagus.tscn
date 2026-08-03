@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/props/voxel_prop.gd" id="1_voxel"]
+
+[node name="Sarcophagus" type="StaticBody3D"]
+script = ExtResource("1_voxel")
+prop_kind = "sarcophagus"
+metadata/topdown_kind = "terrain_feature"
+metadata/decor_kind = "sarcophagus"
+metadata/voxel_style = "one_px_32px_per_meter"
+metadata/voxel_unit_px = 1
+metadata/voxel_px_per_meter = 32
+metadata/blocks_navigation = true

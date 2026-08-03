@@ -18,12 +18,14 @@ extends Node
 const EXPLORATION_PRESSURE_SCRIPT := preload("res://globals/dungeon/exploration_pressure.gd")
 const LIGHTING_HELPER := preload("res://scenes/expedition/dungeon_lighting_helper.gd")
 const DungeonRenderingConfig := preload("res://scenes/expedition/dungeon_rendering_config.gd")
+const DungeonSpawnFootprint := preload("res://scenes/expedition/dungeon_spawn_footprint.gd")
 const VOXEL_LIGHTING := preload("res://globals/visual/voxel_lighting_adapter.gd")
 
 # 配置（由 ProceduralDungeon._ready 注入）
 var layout: DungeonLayout = null
 var build_result: DungeonBuildResult = null
 var expedition_finished: bool = false
+var _downstairs_transition_started: bool = false
 
 # 宿主仅提供：spawn_player / streaming_controller / decor batch 收尾
 var _level: Node = null
@@ -62,6 +64,7 @@ func configure(p_layout: DungeonLayout, p_build_result: DungeonBuildResult, p_le
 	_level = p_level
 	_streaming_controller = p_streaming_controller
 	spawn_population_enabled = p_spawn_population
+	_downstairs_transition_started = false
 	if p_rendering_cfg != null:
 		_rendering_cfg = p_rendering_cfg
 
@@ -85,6 +88,7 @@ func start() -> void:
 	mount_expedition_hud()
 	setup_exploration_pressure()
 	wire_extraction_portal_signal()
+	wire_downstairs_signal()
 	if AudioManager:
 		AudioManager.start_music()
 
@@ -100,6 +104,9 @@ func mount_expedition_hud() -> void:
 	layer.name = "ExpeditionHUDLayer"
 	layer.add_child(hud)
 	_level.add_child(layer)
+	var floor_label := _get_current_floor_label()
+	hud.set_floor_label(floor_label)
+	hud.show_floor_arrival(_get_current_zone_name(), floor_label)
 	# 无头环境（gdUnit/CI 或专用服务器）没有可渲染的显示上下文：整套客户端 UI
 	# （ui.tscn → pause_menu.tscn 的 blur_overlay 后处理 shader）在 GL Compatibility 无头渲染下
 	# 反复创建 shader/viewport，跨多次全场景实例化累积 GPU 资源，最终触发原生崩溃（signal 11），
@@ -138,7 +145,7 @@ func setup_exploration_pressure() -> void:
 func stabilize_lighting() -> void:
 	if _level == null or not is_instance_valid(_level):
 		return
-	var player_node: Node3D = GameState.current_player
+	var player_node: Node3D = GameState.resolve_player_node(0) as Node3D
 	if player_node != null and is_instance_valid(player_node):
 		if player_node.has_method("_setup_player_light"):
 			player_node._setup_player_light()
@@ -152,7 +159,13 @@ func stabilize_lighting() -> void:
 	var base_range: float = _rendering_cfg.player_vision_base_range
 	for light in local_lights:
 		if LIGHTING_HELPER.is_player_vision_light(light, Player.PLAYER_VISION_LIGHT_NAME):
-			LIGHTING_HELPER.configure_player_vision_light(light, base_energy, base_range)
+			LIGHTING_HELPER.configure_player_vision_light(
+				light,
+				base_energy,
+				base_range,
+				_rendering_cfg.player_vision_color,
+				_rendering_cfg.player_vision_attenuation,
+			)
 			continue
 		if LIGHTING_HELPER.is_hint_light(light, _level):
 			light.visible = false
@@ -198,7 +211,7 @@ func spawn_enemies(spawned_player: Node3D = null) -> void:
 		return
 	var player_node: Node3D = spawned_player
 	if player_node == null:
-		player_node = GameState.current_player
+		player_node = GameState.resolve_player_node(0)
 		if player_node == null:
 			push_warning("[DungeonRuntime] Player not spawned, skip enemy generation")
 			return
@@ -206,6 +219,7 @@ func spawn_enemies(spawned_player: Node3D = null) -> void:
 	# 分帧实例化：先取生成计划（不实例化），再按帧批量生成，避免进场单帧卡顿。
 	_enemy_spawn_plan = spawner.spawn_enemies_from_layout(layout, spawn_root, player_node, true)
 	_snap_enemy_spawn_plan_to_navigation()
+	_enemy_spawn_plan = _reserve_enemy_spawn_plan_footprints(_enemy_spawn_plan)
 	_enemy_spawn_root = spawn_root
 	_enemy_spawn_player = player_node
 	_enemy_spawn_index = 0
@@ -246,6 +260,25 @@ func _snap_enemy_spawn_plan_to_navigation() -> void:
 		# 导航面 y 仅用于烘焙层高度；角色根节点仍以脚底 y=0.5 生成并自然落地。
 		descriptor["pos"] = Vector3(closest.x, 0.5, closest.z)
 		_enemy_spawn_plan[index] = descriptor
+
+
+func _reserve_enemy_spawn_plan_footprints(plan: Array) -> Array:
+	if build_result == null:
+		return plan
+	var accepted: Array = []
+	for descriptor in plan:
+		var position: Variant = descriptor.get("pos", null)
+		if not position is Vector3:
+			continue
+		var enemy_type := String(descriptor.get("enemy_type", ""))
+		var half_extents := DungeonSpawnFootprint.half_extents_for("enemy", enemy_type)
+		if not DungeonSpawnFootprint.can_place(build_result.spawn_footprints, position, half_extents):
+			push_warning("[DungeonRuntime] skipped overlapping enemy placement: %s" % enemy_type)
+			continue
+		DungeonSpawnFootprint.register(build_result.spawn_footprints, position, half_extents,
+				"enemy:%s" % enemy_type)
+		accepted.append(descriptor)
+	return accepted
 
 
 func _get_spawn_navigation_map() -> RID:
@@ -309,7 +342,7 @@ func spawn_items() -> void:
 		push_warning("[DungeonRuntime] ItemSpawner autoload not found, skipping item placement")
 		return
 	var spawn_root: Node = build_result.spawn_root if build_result.spawn_root != null else _level
-	spawner.spawn_items_from_layout(layout, spawn_root)
+	spawner.spawn_items_from_layout(layout, spawn_root, null, build_result.spawn_footprints)
 	# decor batch 已由 DungeonSceneBuilder.build 在 build 末尾完成
 
 func wire_extraction_portal_signal() -> void:
@@ -318,7 +351,69 @@ func wire_extraction_portal_signal() -> void:
 	for child in build_result.interaction_root.get_children():
 		if String(child.get_meta("topdown_kind", "")) == "extraction" and child.has_signal("extraction_requested"):
 			child.extraction_requested.connect(on_extraction_requested)
+			if child.has_signal("extraction_started"):
+				child.extraction_started.connect(on_extraction_started)
+			if child.has_signal("extraction_progress"):
+				child.extraction_progress.connect(on_extraction_progress)
+			if child.has_signal("extraction_cancelled"):
+				child.extraction_cancelled.connect(on_extraction_cancelled)
 			break
+
+## 连接当前地牢的向下楼梯。楼梯只负责进入下一层，不走撤离结算。
+func wire_downstairs_signal() -> void:
+	if build_result == null or build_result.interaction_root == null:
+		return
+	for child in build_result.interaction_root.get_children():
+		if String(child.get_meta("topdown_kind", "")) != "stairs":
+			continue
+		var area := child.get_node_or_null("DownstairsArea") as Area3D
+		if area == null:
+			continue
+		area.collision_layer = PhysicsSetup.LAYER_TRIGGER
+		area.collision_mask = PhysicsSetup.LAYER_PLAYER
+		area.monitoring = true
+		area.monitorable = true
+		if not area.body_entered.is_connected(on_downstairs_entered):
+			area.body_entered.connect(on_downstairs_entered)
+		break
+
+func on_downstairs_entered(body: Node3D) -> void:
+	if not body is Player or expedition_finished or _downstairs_transition_started:
+		return
+	_downstairs_transition_started = true
+	print("[DungeonRuntime] Downstairs triggered by player")
+	var world := _find_world_controller()
+	if world != null and world.has_method("transition_to_next_floor"):
+		world.transition_to_next_floor()
+		return
+	if GameState != null and GameState.has_method("advance_dungeon_floor"):
+		GameState.advance_dungeon_floor()
+	if world != null and world.has_method("transition_to_dungeon"):
+		world.transition_to_dungeon()
+	elif GameEvents:
+		GameEvents.level_restarted.emit()
+
+func _find_world_controller() -> Node:
+	var node: Node = _level
+	while node != null:
+		if node.has_method("transition_to_next_floor") or node.has_method("transition_to_dungeon"):
+			return node
+		node = node.get_parent()
+	return null
+
+func _get_current_floor_label() -> String:
+	if GameState != null and GameState.has_method("get_dungeon_floor_label"):
+		return String(GameState.get_dungeon_floor_label())
+	return "L1"
+
+func _get_current_zone_name() -> String:
+	var zone := 0
+	if layout != null:
+		zone = layout.zone
+	var zone_manager := Service.zone_manager() if Service != null else null
+	if zone_manager != null and zone_manager.has_method("get_zone_name"):
+		return String(zone_manager.get_zone_name(zone))
+	return "未知区域"
 
 func finish_expedition(player: Node, voluntary: bool) -> void:
 	if expedition_finished:
@@ -345,7 +440,30 @@ func _settle_extraction_loot(player: Node) -> void:
 
 func on_extraction_requested(player: Node) -> void:
 	print("[DungeonRuntime] Extraction triggered by player!")
+	if expedition_hud != null and is_instance_valid(expedition_hud):
+		expedition_hud.complete_extraction()
 	finish_expedition(player, true)
+
+
+func on_extraction_started(_player: Node, duration: float) -> void:
+	if expedition_hud != null and is_instance_valid(expedition_hud):
+		expedition_hud.begin_extraction(duration)
+	# 拉闸声会惊动当前地牢中的怪物，但不会像 100 暗蚀那样永久打开所有门。
+	apply_monster_hunt_pressure(true, false)
+
+
+func on_extraction_progress(_player: Node, progress: float, remaining: float) -> void:
+	if expedition_hud != null and is_instance_valid(expedition_hud):
+		expedition_hud.update_extraction_progress(progress, remaining)
+
+
+func on_extraction_cancelled(_player: Node, reason: String) -> void:
+	if expedition_hud != null and is_instance_valid(expedition_hud):
+		expedition_hud.cancel_extraction(reason)
+	var pressure_hunt := false
+	if exploration_pressure != null and is_instance_valid(exploration_pressure):
+		pressure_hunt = exploration_pressure.should_force_monster_hunt()
+	apply_monster_hunt_pressure(pressure_hunt, false)
 
 func on_expedition_overtime(_snapshot: Dictionary) -> void:
 	var player_node := _get_valid_current_player()
@@ -381,7 +499,7 @@ func on_door_pressure_action(action: String) -> void:
 	exploration_pressure.record_door_action(action)
 
 func apply_player_vision_pressure(multiplier: float) -> void:
-	var player_node: Node = GameState.current_player
+	var player_node: Node = GameState.resolve_player_node(0)
 	if player_node == null or not is_instance_valid(player_node):
 		return
 	var light := player_node.get_node_or_null(Player.PLAYER_VISION_LIGHT_NAME) as OmniLight3D
@@ -398,9 +516,9 @@ func apply_environment_activity(multiplier: float) -> void:
 			continue
 		node.set_meta("environment_activity_mult", clampf(multiplier, 1.0, 1.75))
 
-func apply_monster_hunt_pressure(force_hunt: bool) -> void:
+func apply_monster_hunt_pressure(force_hunt: bool, open_doors: bool = true) -> void:
 	_force_monster_hunt = force_hunt
-	if force_hunt:
+	if force_hunt and open_doors:
 		_open_doors_for_monster_hunt()
 	var player_node := _get_valid_current_player()
 	if player_node == null or not is_instance_valid(player_node):
@@ -428,7 +546,7 @@ func _open_doors_for_monster_hunt() -> void:
 			node.open_for_monster_hunt()
 
 func _get_valid_current_player() -> Player:
-	var candidate: Variant = GameState.current_player
+	var candidate: Variant = GameState.resolve_player_node(0)
 	if candidate == null or not is_instance_valid(candidate):
 		return null
 	return candidate as Player

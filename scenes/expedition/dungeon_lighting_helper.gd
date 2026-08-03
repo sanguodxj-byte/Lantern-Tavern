@@ -21,15 +21,17 @@ static func is_player_vision_light(light: Light3D, vision_light_name: String) ->
 	return light.name == vision_light_name
 
 ## 配置玩家视野灯参数。
-static func configure_player_vision_light(light: Light3D, base_energy: float, base_range: float) -> void:
+static func configure_player_vision_light(light: Light3D, base_energy: float, base_range: float,
+		light_color: Color, attenuation: float) -> void:
 	var omni := light as OmniLight3D
 	if omni == null:
 		return
 	omni.light_specular = 0.0
 	omni.visible = true
+	omni.light_color = light_color
 	omni.light_energy = base_energy
 	omni.omni_range = base_range
-	omni.omni_attenuation = 0.45
+	omni.omni_attenuation = attenuation
 	omni.shadow_enabled = false
 	omni.distance_fade_enabled = false
 

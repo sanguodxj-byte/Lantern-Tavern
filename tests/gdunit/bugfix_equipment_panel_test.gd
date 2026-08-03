@@ -297,6 +297,42 @@ func test_skill_drag_list_has_drop_guard() -> void:
 	assert_bool(func_body.contains('drag_source != "skill_slots"')).is_true()
 
 
+# ── Bug 21: 武器槽拖放替换流程 — 主手有武器时应能替换 ────────────────────
+
+## 验证 configure_selected_weapon_slot 的源码包含从背包取武器、旧武器放回背包、
+## 持久化到 GameState 的关键步骤。
+func test_configure_selected_weapon_slot_replaces_existing() -> void:
+	var source := (load("res://scenes/ui/tavern_equipment_panel.gd") as GDScript).source_code
+	var fn_start := source.find("func configure_selected_weapon_slot(")
+	assert_int(fn_start).is_greater(0)
+	var fn_end := source.find("\nfunc ", fn_start + 1)
+	var fn_body := source.substr(fn_start, fn_end - fn_start)
+	# 从背包取出新武器
+	assert_bool(fn_body.contains("PanelInventory.take_carried_equipment_instance")) \
+		.override_failure_message("configure_selected_weapon_slot 必须从背包取出新武器").is_true()
+	# 配置到目标槽位
+	assert_bool(fn_body.contains("eq.configure_weapon_slot(target_slot, carried_weapon")) \
+		.override_failure_message("configure_selected_weapon_slot 必须配置新武器到目标槽位").is_true()
+	# 旧武器放回背包
+	assert_bool(fn_body.contains("_return_carried_equipment_data(previous)")) \
+		.override_failure_message("configure_selected_weapon_slot 必须将旧武器放回背包").is_true()
+	# 持久化到 GameState
+	assert_bool(fn_body.contains("_apply_equipment_changed(eq)")) \
+		.override_failure_message("configure_selected_weapon_slot 必须持久化装备变更").is_true()
+
+
+## 验证 drop_equipment_slot_data 从背包拖武器到已有武器的槽位时走 configure_selected_weapon_slot。
+func test_drop_equipment_slot_data_routes_backpack_to_configure() -> void:
+	var source := (load("res://scenes/ui/tavern_equipment_panel.gd") as GDScript).source_code
+	var fn_start := source.find("func drop_equipment_slot_data(")
+	assert_int(fn_start).is_greater(0)
+	var fn_end := source.find("\nfunc ", fn_start + 1)
+	var fn_body := source.substr(fn_start, fn_end - fn_start)
+	# 从背包来的 payload 没有 source_slot_kind，会直接走 select + configure
+	assert_bool(fn_body.contains("configure_selected_weapon_slot")) \
+		.override_failure_message("drop_equipment_slot_data 必须路由到 configure_selected_weapon_slot").is_true()
+
+
 # ── 辅助函数 ────────────────────────────────────────────────────────────────
 
 func _make_armor(label: String, phys_def: int, evade: float, move_speed_mult: float = 1.0) -> WeaponData:

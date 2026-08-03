@@ -1,0 +1,2261 @@
+[gd_resource type="AnimationLibrary" format=3]
+
+[sub_resource type="Animation" id="Animation_47h0q"]
+resource_name = "vm_axe_attack"
+length = 0.48
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.0552, 0.16, 0), Vector3(-0.0552, 0.16, 0), Vector3(0.3128, 0, -0.092), Vector3(0.0368, 0.08, -0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.13962634, -0.2443461, 0.06422812), Vector3(0.13962634, -0.2443461, 0.06422812), Vector3(-0.06981317, 0.13962634, -0.44959682), Vector3(-0.34906584, 0.13962634, 0.6101671)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.3122122), Vector3(0, 0, 2.3122122), Vector3(0, 0, 2.3764405), Vector3(0, 0, 2.4085543)]
+}
+
+[sub_resource type="Animation" id="Animation_wlamq"]
+resource_name = "vm_axe_guard"
+length = 0.55
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.0368, 0.08, -0.0184), Vector3(0.0368, 0.08, -0.0184), Vector3(0.0736, 0.18, 0.0368), Vector3(0.0736, 0.18, 0.0368)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.34906584, 0.13962634, 0.6101671), Vector3(-0.34906584, 0.13962634, 0.6101671), Vector3(-0.5934119, 0.20943952, 0.9313077), Vector3(-0.5934119, 0.20943952, 0.9313077)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.4085543), Vector3(0, 0, 2.4085543), Vector3(0, 0, 2.4727826), Vector3(0, 0, 2.4727826)]
+}
+
+[sub_resource type="Animation" id="Animation_awl3u"]
+resource_name = "vm_axe_heavy_swing"
+length = 0.73
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1825, 0.365, 0.73),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.0552, 0.16, 0), Vector3(-0.0552, 0.16, 0), Vector3(-0.1656, 0.16, -0.0368), Vector3(0.0368, 0.08, -0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.1825, 0.365, 0.73),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.13962634, -0.2443461, 0.06422812), Vector3(0.13962634, -0.2443461, 0.06422812), Vector3(0.62831855, -0.41887903, -0.54593897), Vector3(-0.34906584, 0.13962634, 0.6101671)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.1825, 0.365, 0.73),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.3122122), Vector3(0, 0, 2.3122122), Vector3(0, 0, 2.3764405), Vector3(0, 0, 2.4085543)]
+}
+
+[sub_resource type="Animation" id="Animation_vvubs"]
+resource_name = "vm_axe_hold"
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.0368, 0.08, -0.0184), Vector3(0.0368, 0.08, -0.0184), Vector3(-0.0552, 0.16, 0), Vector3(-0.0552, 0.16, 0)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.34906584, 0.13962634, 0.6101671), Vector3(-0.34906584, 0.13962634, 0.6101671), Vector3(0.13962634, -0.2443461, 0.06422812), Vector3(0.13962634, -0.2443461, 0.06422812)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.4085543), Vector3(0, 0, 2.4085543), Vector3(0, 0, 2.3122122), Vector3(0, 0, 2.3122122)]
+}
+
+[sub_resource type="Animation" id="Animation_fmwdx"]
+resource_name = "vm_bash_shield"
+length = 0.48
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ShieldActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.2208, 0.02, -0.184), Vector3(0.2208, 0.02, -0.184), Vector3(0.3128, 0, -0.38639998), Vector3(0.184, -0.04, -0.1104)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ShieldActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.06981317, -0.41887903, -0.19268435), Vector3(-0.06981317, -0.41887903, -0.19268435), Vector3(-0.06981317, -0.5235988, -0.1605703), Vector3(0.06981317, -0.31415927, -0.12845623)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ShieldActionPivot/ShieldImpactPivot/ShieldSocket/ShieldOrientation:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, -0.41748276), Vector3(0, 0, -0.41748276), Vector3(0, 0, -0.44959682), Vector3(0, 0, -0.35325465)]
+}
+
+[sub_resource type="Animation" id="Animation_d6c1w"]
+resource_name = "vm_bow_aim"
+length = 0.55
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.1472, -0.02, -0.0184), Vector3(-0.1472, -0.02, -0.0184), Vector3(-0.0184, -0.02, -0.1288), Vector3(-0.0184, -0.02, -0.1288)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326), Vector3(-0.10471976, 0, 1.4130186), Vector3(-0.10471976, 0, 1.4130186)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326)]
+}
+
+[sub_resource type="Animation" id="Animation_tuund"]
+resource_name = "vm_bow_draw"
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0.0736, -0.04, 0.092), Vector3(0.0736, -0.04, 0.092)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(-0.06981317, 0.13962634, 0.19268435), Vector3(-0.06981317, 0.13962634, 0.19268435)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326)]
+}
+
+[sub_resource type="Animation" id="Animation_ttmkc"]
+resource_name = "vm_bow_hold"
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.1472, -0.02, -0.0184), Vector3(-0.1472, -0.02, -0.0184), Vector3(-0.0368, -0.02, -0.092), Vector3(-0.0368, -0.02, -0.092)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326), Vector3(-0.06981317, 0, 1.4451326), Vector3(-0.06981317, 0, 1.4451326)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326)]
+}
+
+[sub_resource type="Animation" id="Animation_6xxy1"]
+resource_name = "vm_bow_release"
+length = 0.24
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.06, 0.12, 0.24),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.0184, -0.02, -0.1288), Vector3(-0.0184, -0.02, -0.1288), Vector3(0.0368, 0.02, -0.1104), Vector3(-0.1472, -0.02, -0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.06, 0.12, 0.24),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.10471976, 0, 1.4130186), Vector3(-0.10471976, 0, 1.4130186), Vector3(-0.034906585, 0, 1.3809044), Vector3(0, 0, 1.4451326)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.06, 0.12, 0.24),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326)]
+}
+
+[sub_resource type="Animation" id="Animation_53x0b"]
+resource_name = "vm_claw_swipe"
+length = 0.48
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0.08, -0.0368), Vector3(0, 0.08, -0.0368), Vector3(0, 0, -0.1656), Vector3(0, 0.02, 0)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.27925268, -0.13962634, 0), Vector3(-0.27925268, -0.13962634, 0), Vector3(0.06981317, -0.17453292, -0.12845623), Vector3(-0.06981317, 0, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+
+[sub_resource type="Animation" id="Animation_774d5"]
+resource_name = "vm_crossbow_aim"
+length = 0.55
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.1288, -0.02, -0.0368), Vector3(-0.1288, -0.02, -0.0368), Vector3(0, -0.04, -0.1656), Vector3(0, -0.04, -0.1656)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.10471976, 0.10471976, 1.4451326), Vector3(-0.10471976, 0.10471976, 1.4451326), Vector3(-0.20943952, 0.06981317, 1.4451326), Vector3(-0.20943952, 0.06981317, 1.4451326)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326)]
+}
+
+[sub_resource type="Animation" id="Animation_ff350"]
+resource_name = "vm_crossbow_fire"
+length = 0.24
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.06, 0.12, 0.24),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, -0.04, -0.1656), Vector3(0, -0.04, -0.1656), Vector3(0, -0.02, -0.092), Vector3(-0.1288, -0.02, -0.0368)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.06, 0.12, 0.24),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.20943952, 0.06981317, 1.4451326), Vector3(-0.20943952, 0.06981317, 1.4451326), Vector3(-0.13962634, 0.10471976, 1.4451326), Vector3(-0.10471976, 0.10471976, 1.4451326)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.06, 0.12, 0.24),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326)]
+}
+
+[sub_resource type="Animation" id="Animation_2at4n"]
+resource_name = "vm_crossbow_hold"
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.1288, -0.02, -0.0368), Vector3(-0.1288, -0.02, -0.0368), Vector3(-0.0368, -0.02, -0.1104), Vector3(-0.0368, -0.02, -0.1104)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.10471976, 0.10471976, 1.4451326), Vector3(-0.10471976, 0.10471976, 1.4451326), Vector3(-0.17453292, 0.06981317, 1.4451326), Vector3(-0.17453292, 0.06981317, 1.4451326)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326)]
+}
+
+[sub_resource type="Animation" id="Animation_4xwfj"]
+resource_name = "vm_crossbow_reload"
+length = 1.2
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.3, 0.6, 1.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(-0.0368, -0.12, 0.046), Vector3(0, 0, 0)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.3, 0.6, 1.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(-0.17453292, 0.06981317, -0.12845623), Vector3(0, 0, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.3, 0.6, 1.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326), Vector3(0, 0, 1.4451326)]
+}
+
+[sub_resource type="Animation" id="Animation_b5vsb"]
+resource_name = "vm_dagger_guard"
+length = 0.55
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.1104, 0.02, -0.0368), Vector3(-0.1104, 0.02, -0.0368), Vector3(-0.0736, 0.08, -0.0184), Vector3(-0.0736, 0.08, -0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.034906585, -0.31415927, 0.44959682), Vector3(-0.034906585, -0.31415927, 0.44959682), Vector3(-0.27925268, -0.4886922, 0.67439526), Vector3(-0.27925268, -0.4886922, 0.67439526)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 1.6057029), Vector3(0, 0, 1.6057029), Vector3(0, 0, 1.5093608), Vector3(0, 0, 1.5093608)]
+}
+
+[sub_resource type="Animation" id="Animation_mjsh8"]
+resource_name = "vm_dagger_hold"
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.1104, 0.02, -0.0368), Vector3(-0.1104, 0.02, -0.0368), Vector3(-0.1104, 0.08, 0), Vector3(-0.1104, 0.08, 0)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.034906585, -0.31415927, 0.44959682), Vector3(-0.034906585, -0.31415927, 0.44959682), Vector3(-0.31415927, -0.41887903, 0.67439526), Vector3(-0.31415927, -0.41887903, 0.67439526)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 1.6057029), Vector3(0, 0, 1.6057029), Vector3(0, 0, 1.5093608), Vector3(0, 0, 1.5093608)]
+}
+
+[sub_resource type="Animation" id="Animation_man84"]
+resource_name = "vm_equip"
+length = 0.32
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.08, 0.16, 0.32),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, -0.06, 0.0368), Vector3(0, -0.06, 0.0368), Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.08, 0.16, 0.32),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.13962634, 0, 0), Vector3(-0.13962634, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.08, 0.16, 0.32),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+
+[sub_resource type="Animation" id="Animation_55ovu"]
+resource_name = "vm_greatsword_attack"
+length = 0.72
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.18, 0.36, 0.72),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.0368, 0.18, 0.0184), Vector3(0.0368, 0.18, 0.0184), Vector3(0.092, -0.06, -0.184), Vector3(0.0184, 0.1, -0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.18, 0.36, 0.72),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.20943952, 0.10471976, 0.6101671), Vector3(0.20943952, 0.10471976, 0.6101671), Vector3(-0.13962634, -0.034906585, -0.35325465), Vector3(-0.27925268, -0.13962634, 0.7386233)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.18, 0.36, 0.72),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.4888394), Vector3(0, 0, 2.4888394), Vector3(0, 0, 2.5209537), Vector3(0, 0, 2.5530677)]
+}
+
+[sub_resource type="Animation" id="Animation_k2ebc"]
+resource_name = "vm_greatsword_guard"
+length = 0.55
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.0184, 0.1, -0.0184), Vector3(0.0184, 0.1, -0.0184), Vector3(0.0184, 0.16, 0.0368), Vector3(0.0184, 0.16, 0.0368)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.27925268, -0.13962634, 0.7386233), Vector3(-0.27925268, -0.13962634, 0.7386233), Vector3(-0.5235988, 0, 1.0597639), Vector3(-0.5235988, 0, 1.0597639)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.5530677), Vector3(0, 0, 2.5530677), Vector3(0, 0, 2.6494098), Vector3(0, 0, 2.6494098)]
+}
+
+[sub_resource type="Animation" id="Animation_k2ji3"]
+resource_name = "vm_greatsword_heavy_swing"
+length = 0.97
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.2425, 0.485, 0.97),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.0368, 0.18, 0.0184), Vector3(0.0368, 0.18, 0.0184), Vector3(-0.0368, 0.22, 0.0184), Vector3(0.0184, 0.1, -0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.2425, 0.485, 0.97),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.20943952, 0.10471976, 0.6101671), Vector3(0.20943952, 0.10471976, 0.6101671), Vector3(0.7330383, 0.17453292, -0.12845623), Vector3(-0.27925268, -0.13962634, 0.7386233)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.2425, 0.485, 0.97),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.4888394), Vector3(0, 0, 2.4888394), Vector3(0, 0, 2.4567256), Vector3(0, 0, 2.5530677)]
+}
+
+[sub_resource type="Animation" id="Animation_5ib8o"]
+resource_name = "vm_greatsword_hold"
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.0184, 0.1, -0.0184), Vector3(0.0184, 0.1, -0.0184), Vector3(0.0368, 0.18, 0.0184), Vector3(0.0368, 0.18, 0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.27925268, -0.13962634, 0.7386233), Vector3(-0.27925268, -0.13962634, 0.7386233), Vector3(0.20943952, 0.10471976, 0.6101671), Vector3(0.20943952, 0.10471976, 0.6101671)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.5530677), Vector3(0, 0, 2.5530677), Vector3(0, 0, 2.4888394), Vector3(0, 0, 2.4888394)]
+}
+
+[sub_resource type="Animation" id="Animation_rcen4"]
+resource_name = "vm_grimoire_attack"
+length = 0.48
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.0736, 0.16, -0.0736), Vector3(-0.0736, 0.16, -0.0736), Vector3(-0.0184, 0.02, -0.1656), Vector3(-0.1288, 0.08, -0.0368)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.20943952, -0.17453292, 1.5093608), Vector3(-0.20943952, -0.17453292, 1.5093608), Vector3(-0.38397244, 0.17453292, 1.2203342), Vector3(-0.06981317, -0.34906584, 1.3809044)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 1.5414748), Vector3(0, 0, 1.5414748), Vector3(0, 0, 1.5414748), Vector3(0, 0, 1.5414748)]
+}
+
+[sub_resource type="Animation" id="Animation_gokj3"]
+resource_name = "vm_grimoire_guard"
+length = 0.55
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.1288, 0.08, -0.0368), Vector3(-0.1288, 0.08, -0.0368), Vector3(-0.0368, 0.18, -0.0184), Vector3(-0.0368, 0.18, -0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.06981317, -0.34906584, 1.3809044), Vector3(-0.06981317, -0.34906584, 1.3809044), Vector3(-0.31415927, -0.13962634, 1.6057029), Vector3(-0.31415927, -0.13962634, 1.6057029)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 1.5414748), Vector3(0, 0, 1.5414748), Vector3(0, 0, 1.5414748), Vector3(0, 0, 1.5414748)]
+}
+
+[sub_resource type="Animation" id="Animation_8tlc2"]
+resource_name = "vm_grimoire_hold"
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.1288, 0.08, -0.0368), Vector3(-0.1288, 0.08, -0.0368), Vector3(-0.0736, 0.16, -0.0736), Vector3(-0.0736, 0.16, -0.0736)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.06981317, -0.34906584, 1.3809044), Vector3(-0.06981317, -0.34906584, 1.3809044), Vector3(-0.20943952, -0.17453292, 1.5093608), Vector3(-0.20943952, -0.17453292, 1.5093608)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 1.5414748), Vector3(0, 0, 1.5414748), Vector3(0, 0, 1.5414748), Vector3(0, 0, 1.5414748)]
+}
+
+[sub_resource type="Animation" id="Animation_8br5x"]
+resource_name = "vm_idle"
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+
+[sub_resource type="Animation" id="Animation_hawhp"]
+resource_name = "vm_melee_charge"
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(-0.046, 0.12, 0.0368), Vector3(-0.046, 0.12, 0.0368)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(-0.13962634, -0.20943952, 0.3853687), Vector3(-0.13962634, -0.20943952, 0.3853687)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+
+[sub_resource type="Animation" id="Animation_6pc5j"]
+resource_name = "vm_shield_block"
+length = 0.55
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ShieldActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.184, -0.04, -0.1104), Vector3(0.184, -0.04, -0.1104), Vector3(0.1656, 0.02, -0.27600002), Vector3(0.1656, 0.02, -0.27600002)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ShieldActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.06981317, -0.31415927, -0.12845623), Vector3(0.06981317, -0.31415927, -0.12845623), Vector3(-0.27925268, -0.41887903, -0.28902653), Vector3(-0.27925268, -0.41887903, -0.28902653)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ShieldActionPivot/ShieldImpactPivot/ShieldSocket/ShieldOrientation:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, -0.35325465), Vector3(0, 0, -0.35325465), Vector3(0, 0, -0.41748276), Vector3(0, 0, -0.41748276)]
+}
+
+[sub_resource type="Animation" id="Animation_t6vp8"]
+resource_name = "vm_shield_hold"
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ShieldActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.184, -0.04, -0.1104), Vector3(0.184, -0.04, -0.1104), Vector3(0.2208, 0.02, -0.184), Vector3(0.2208, 0.02, -0.184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ShieldActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.06981317, -0.31415927, -0.12845623), Vector3(0.06981317, -0.31415927, -0.12845623), Vector3(-0.06981317, -0.41887903, -0.19268435), Vector3(-0.06981317, -0.41887903, -0.19268435)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ShieldActionPivot/ShieldImpactPivot/ShieldSocket/ShieldOrientation:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, -0.35325465), Vector3(0, 0, -0.35325465), Vector3(0, 0, -0.41748276), Vector3(0, 0, -0.41748276)]
+}
+
+[sub_resource type="Animation" id="Animation_0ve47"]
+resource_name = "vm_shortsword_thrust"
+length = 0.42
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.105, 0.21, 0.42),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.0736, 0.1, 0.0184), Vector3(-0.0736, 0.1, 0.0184), Vector3(-0.092, 0.02, -0.2944), Vector3(-0.092, 0.02, -0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.105, 0.21, 0.42),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.38397244, -0.4886922, 0.7065093), Vector3(-0.38397244, -0.4886922, 0.7065093), Vector3(-0.034906585, -0.13962634, 0.54593897), Vector3(-0.13962634, -0.20943952, 0.54593897)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.105, 0.21, 0.42),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.4246116), Vector3(0, 0, 2.4246116), Vector3(1.2217305, 0, 1.5254178), Vector3(0, 0, 2.3282692)]
+}
+
+[sub_resource type="Animation" id="Animation_vjhnw"]
+resource_name = "vm_shortsword_guard"
+length = 0.55
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.092, 0.02, -0.0184), Vector3(-0.092, 0.02, -0.0184), Vector3(-0.0368, 0.1, -0.0184), Vector3(-0.0368, 0.1, -0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.13962634, -0.20943952, 0.54593897), Vector3(-0.13962634, -0.20943952, 0.54593897), Vector3(-0.34906584, -0.13962634, 0.7386233), Vector3(-0.34906584, -0.13962634, 0.7386233)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.3282692), Vector3(0, 0, 2.3282692), Vector3(0, 0, 2.4246116), Vector3(0, 0, 2.4246116)]
+}
+
+[sub_resource type="Animation" id="Animation_fvtxx"]
+resource_name = "vm_shortsword_hold"
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.092, 0.02, -0.0184), Vector3(-0.092, 0.02, -0.0184), Vector3(-0.0736, 0.1, 0.0184), Vector3(-0.0736, 0.1, 0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.13962634, -0.20943952, 0.54593897), Vector3(-0.13962634, -0.20943952, 0.54593897), Vector3(-0.38397244, -0.4886922, 0.7065093), Vector3(-0.38397244, -0.4886922, 0.7065093)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.3282692), Vector3(0, 0, 2.3282692), Vector3(0, 0, 2.4246116), Vector3(0, 0, 2.4246116)]
+}
+
+[sub_resource type="Animation" id="Animation_nc6y1"]
+resource_name = "vm_shortsword_thrust"
+length = 0.42
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.105, 0.21, 0.42),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.0736, 0.1, 0.0184), Vector3(-0.0736, 0.1, 0.0184), Vector3(-0.092, 0.02, -0.2944), Vector3(-0.092, 0.02, -0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.105, 0.21, 0.42),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.38397244, -0.4886922, 0.7065093), Vector3(-0.38397244, -0.4886922, 0.7065093), Vector3(-0.034906585, -0.13962634, 0.54593897), Vector3(-0.13962634, -0.20943952, 0.54593897)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.105, 0.21, 0.42),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.4246116), Vector3(0, 0, 2.4246116), Vector3(1.2217305, 0, 1.5254178), Vector3(0, 0, 2.3282692)]
+}
+
+[sub_resource type="Animation" id="Animation_nuukg"]
+resource_name = "vm_sword_slash"
+length = 0.45
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.0184, 0.12, 0.0184), Vector3(-0.0184, 0.12, 0.0184), Vector3(0.27600002, -0.1, -0.0736), Vector3(-0.0736, 0.04, -0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.5235988, -0.034906585, 0.89919364), Vector3(-0.5235988, -0.034906585, 0.89919364), Vector3(-0.20943952, 0.06981317, -0.28902653), Vector3(-0.20943952, -0.13962634, 0.67439526)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.6012387), Vector3(0, 0, 2.6012387), Vector3(0, 0, 2.5048966), Vector3(0, 0, 2.5048966)]
+}
+
+[sub_resource type="Animation" id="Animation_83c4f"]
+resource_name = "vm_greatsword_attack"
+length = 0.78
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.18, 0.36, 0.72),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.0368, 0.18, 0.0184), Vector3(0.0368, 0.18, 0.0184), Vector3(0.092, -0.06, -0.184), Vector3(0.0184, 0.1, -0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.18, 0.36, 0.72),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.20943952, 0.10471976, 0.6101671), Vector3(0.20943952, 0.10471976, 0.6101671), Vector3(-0.13962634, -0.034906585, -0.35325465), Vector3(-0.27925268, -0.13962634, 0.7386233)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.18, 0.36, 0.72),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.4888394), Vector3(0, 0, 2.4888394), Vector3(0, 0, 2.5209537), Vector3(0, 0, 2.5530677)]
+}
+
+[sub_resource type="Animation" id="Animation_b4epv"]
+resource_name = "vm_sword_slash"
+length = 0.46
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.0184, 0.12, 0.0184), Vector3(-0.0184, 0.12, 0.0184), Vector3(0.27600002, -0.1, -0.0736), Vector3(-0.0736, 0.04, -0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.5235988, -0.034906585, 0.89919364), Vector3(-0.5235988, -0.034906585, 0.89919364), Vector3(-0.20943952, 0.06981317, -0.28902653), Vector3(-0.20943952, -0.13962634, 0.67439526)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.6012387), Vector3(0, 0, 2.6012387), Vector3(0, 0, 2.5048966), Vector3(0, 0, 2.5048966)]
+}
+
+[sub_resource type="Animation" id="Animation_kw4h0"]
+resource_name = "vm_spear_guard"
+length = 0.55
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.0368, 0.04, -0.0368), Vector3(-0.0368, 0.04, -0.0368), Vector3(0, 0.12, -0.092), Vector3(0, 0.12, -0.092)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.17453292, -0.06981317, 0.8349655), Vector3(-0.17453292, -0.06981317, 0.8349655), Vector3(-0.34906584, 0, 1.0597639), Vector3(-0.34906584, 0, 1.0597639)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.6815238), Vector3(0, 0, 2.6815238), Vector3(0, 0, 2.745752), Vector3(0, 0, 2.745752)]
+}
+
+[sub_resource type="Animation" id="Animation_el1qe"]
+resource_name = "vm_spear_heavy_swing"
+length = 0.75
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1875, 0.375, 0.75),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.0184, 0.14, -0.092), Vector3(-0.0184, 0.14, -0.092), Vector3(-0.0184, 0.18, -0.1104), Vector3(-0.0368, 0.04, -0.0368)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.1875, 0.375, 0.75),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.13962634, -0.034906585, 0.44959682), Vector3(0.13962634, -0.034906585, 0.44959682), Vector3(0.5934119, -0.06981317, 0.3211406), Vector3(-0.17453292, -0.06981317, 0.8349655)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.1875, 0.375, 0.75),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.6172955), Vector3(0, 0, 2.6172955), Vector3(0, 0, 2.6494098), Vector3(0, 0, 2.6815238)]
+}
+
+[sub_resource type="Animation" id="Animation_ujb0n"]
+resource_name = "vm_spear_hold"
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.0368, 0.04, -0.0368), Vector3(-0.0368, 0.04, -0.0368), Vector3(-0.0184, 0.14, -0.092), Vector3(-0.0184, 0.14, -0.092)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.17453292, -0.06981317, 0.8349655), Vector3(-0.17453292, -0.06981317, 0.8349655), Vector3(0.13962634, -0.034906585, 0.44959682), Vector3(0.13962634, -0.034906585, 0.44959682)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.6815238), Vector3(0, 0, 2.6815238), Vector3(0, 0, 2.6172955), Vector3(0, 0, 2.6172955)]
+}
+
+[sub_resource type="Animation" id="Animation_kg2uo"]
+resource_name = "vm_stab_dagger"
+length = 0.3
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.075, 0.15, 0.3),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.1104, 0.08, 0), Vector3(-0.1104, 0.08, 0), Vector3(-0.0736, 0, -0.2392), Vector3(-0.1104, 0.02, -0.0368)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.075, 0.15, 0.3),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.31415927, -0.41887903, 0.67439526), Vector3(-0.31415927, -0.41887903, 0.67439526), Vector3(0.17453292, -0.38397244, 0.3211406), Vector3(-0.034906585, -0.31415927, 0.44959682)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.075, 0.15, 0.3),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 1.5093608), Vector3(0, 0, 1.5093608), Vector3(0, 0, 1.573589), Vector3(0, 0, 1.6057029)]
+}
+
+[sub_resource type="Animation" id="Animation_t3c5y"]
+resource_name = "vm_dagger_hold"
+length = 0.4
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.1104, 0.02, -0.0368), Vector3(-0.1104, 0.02, -0.0368), Vector3(-0.1104, 0.08, 0), Vector3(-0.1104, 0.08, 0)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.034906585, -0.31415927, 0.44959682), Vector3(-0.034906585, -0.31415927, 0.44959682), Vector3(-0.31415927, -0.41887903, 0.67439526), Vector3(-0.31415927, -0.41887903, 0.67439526)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 1.6057029), Vector3(0, 0, 1.6057029), Vector3(0, 0, 1.5093608), Vector3(0, 0, 1.5093608)]
+}
+
+[sub_resource type="Animation" id="Animation_04c7j"]
+resource_name = "vm_staff_attack"
+length = 0.48
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.0552, 0.12, -0.0552), Vector3(-0.0552, 0.12, -0.0552), Vector3(-0.0736, 0.06, -0.184), Vector3(-0.092, 0.03, -0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.41887903, -0.034906585, 1.0276499), Vector3(-0.41887903, -0.034906585, 1.0276499), Vector3(-0.5934119, -0.06981317, 0.7707374), Vector3(-0.2443461, -0.06981317, 0.8670796)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.6654665), Vector3(0, 0, 2.6654665), Vector3(0, 0, 2.5691247), Vector3(0, 0, 2.6012387)]
+}
+
+[sub_resource type="Animation" id="Animation_5jgp2"]
+resource_name = "vm_staff_guard"
+length = 0.55
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.092, 0.03, -0.0184), Vector3(-0.092, 0.03, -0.0184), Vector3(-0.0368, 0.12, 0), Vector3(-0.0368, 0.12, 0)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.2443461, -0.06981317, 0.8670796), Vector3(-0.2443461, -0.06981317, 0.8670796), Vector3(-0.41887903, 0, 1.1239921), Vector3(-0.41887903, 0, 1.1239921)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.6012387), Vector3(0, 0, 2.6012387), Vector3(0, 0, 2.6654665), Vector3(0, 0, 2.6654665)]
+}
+
+[sub_resource type="Animation" id="Animation_qtiia"]
+resource_name = "vm_staff_hold"
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.092, 0.03, -0.0184), Vector3(-0.092, 0.03, -0.0184), Vector3(-0.0552, 0.12, -0.0552), Vector3(-0.0552, 0.12, -0.0552)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.2443461, -0.06981317, 0.8670796), Vector3(-0.2443461, -0.06981317, 0.8670796), Vector3(-0.41887903, -0.034906585, 1.0276499), Vector3(-0.41887903, -0.034906585, 1.0276499)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.6012387), Vector3(0, 0, 2.6012387), Vector3(0, 0, 2.6654665), Vector3(0, 0, 2.6654665)]
+}
+
+[sub_resource type="Animation" id="Animation_oep2s"]
+resource_name = "vm_sword_slash"
+length = 0.48
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.0184, 0.12, 0.0184), Vector3(-0.0184, 0.12, 0.0184), Vector3(0.27600002, -0.1, -0.0736), Vector3(-0.0736, 0.04, -0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.5235988, -0.034906585, 0.89919364), Vector3(-0.5235988, -0.034906585, 0.89919364), Vector3(-0.20943952, 0.06981317, -0.28902653), Vector3(-0.20943952, -0.13962634, 0.67439526)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.6012387), Vector3(0, 0, 2.6012387), Vector3(0, 0, 2.5048966), Vector3(0, 0, 2.5048966)]
+}
+
+[sub_resource type="Animation" id="Animation_erfq1"]
+resource_name = "vm_sword_guard"
+length = 0.55
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.0736, 0.04, -0.0184), Vector3(-0.0736, 0.04, -0.0184), Vector3(0, 0.12, 0.0184), Vector3(0, 0.12, 0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.20943952, -0.13962634, 0.67439526), Vector3(-0.20943952, -0.13962634, 0.67439526), Vector3(-0.41887903, 0.06981317, 0.9313077), Vector3(-0.41887903, 0.06981317, 0.9313077)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.5048966), Vector3(0, 0, 2.5048966), Vector3(0, 0, 2.5691247), Vector3(0, 0, 2.5691247)]
+}
+
+[sub_resource type="Animation" id="Animation_55ho5"]
+resource_name = "vm_sword_hold"
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.0736, 0.04, -0.0184), Vector3(-0.0736, 0.04, -0.0184), Vector3(-0.0184, 0.12, 0.0184), Vector3(-0.0184, 0.12, 0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.20943952, -0.13962634, 0.67439526), Vector3(-0.20943952, -0.13962634, 0.67439526), Vector3(-0.5235988, -0.034906585, 0.89919364), Vector3(-0.5235988, -0.034906585, 0.89919364)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.5048966), Vector3(0, 0, 2.5048966), Vector3(0, 0, 2.6012387), Vector3(0, 0, 2.6012387)]
+}
+
+[sub_resource type="Animation" id="Animation_5dsby"]
+resource_name = "vm_sword_slash"
+length = 0.48
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.07, 0.155, 0.265, 0.35, 0.48),
+"transitions": PackedFloat32Array(1, 1.3, 1.7, 0.32, 0.75, 1),
+"update": 0,
+"values": [Vector3(-0.0184, 0.12, 0.0184), Vector3(-0.1, 0.15, 0.05), Vector3(-0.3, 0.25, 0.1), Vector3(0.2, -0.11, -0.31), Vector3(0.23, -0.06, -0.15), Vector3(-0.0184, 0.12, 0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.07, 0.155, 0.265, 0.35, 0.48),
+"transitions": PackedFloat32Array(1, 1.3, 1.7, 0.32, 0.75, 1),
+"update": 0,
+"values": [Vector3(-0.5235988, -0.034906585, 0.89919364), Vector3(-0.32, 0.22, 1.28), Vector3(0.2, 0.7, 1.92), Vector3(-0.62, -0.58, -0.88), Vector3(-0.44, -0.36, -1.16), Vector3(-0.5235988, -0.034906585, 0.89919364)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.07, 0.155, 0.265, 0.35, 0.48),
+"transitions": PackedFloat32Array(1, 1.3, 1.7, 0.32, 0.75, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.6012387), Vector3(0, 0, 2.76), Vector3(0, 0, 3.3731854), Vector3(0, 0, 2.12), Vector3(0, 0, 1.92), Vector3(0, 0, 2.6012387)]
+}
+
+[sub_resource type="Animation" id="Animation_mkapp"]
+resource_name = "vm_thrust_spear"
+length = 0.5
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.0184, 0.14, -0.092), Vector3(-0.0184, 0.14, -0.092), Vector3(-0.0184, 0, -0.38639998), Vector3(-0.0368, 0.04, -0.0368)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.13962634, -0.034906585, 0.44959682), Vector3(0.13962634, -0.034906585, 0.44959682), Vector3(-0.13962634, 0, 0.8349655), Vector3(-0.17453292, -0.06981317, 0.8349655)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.6172955), Vector3(0, 0, 2.6172955), Vector3(0, 0, 2.6815238), Vector3(0, 0, 2.6815238)]
+}
+
+[sub_resource type="Animation" id="Animation_gn11v"]
+resource_name = "vm_unarmed_guard"
+length = 0.55
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0.02, 0), Vector3(0, 0.02, 0), Vector3(0, 0.08, 0.0184), Vector3(0, 0.08, 0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.06981317, 0, 0), Vector3(-0.06981317, 0, 0), Vector3(-0.20943952, 0, 0), Vector3(-0.20943952, 0, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+
+[sub_resource type="Animation" id="Animation_lp86d"]
+resource_name = "vm_unarmed_hold"
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0.02, 0), Vector3(0, 0.02, 0), Vector3(0, 0.08, -0.0368), Vector3(0, 0.08, -0.0368)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.06981317, 0, 0), Vector3(-0.06981317, 0, 0), Vector3(-0.27925268, -0.13962634, 0), Vector3(-0.27925268, -0.13962634, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+
+[sub_resource type="Animation" id="Animation_4b6od"]
+resource_name = "vm_staff_attack"
+length = 0.38
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.0552, 0.12, -0.0552), Vector3(-0.0552, 0.12, -0.0552), Vector3(-0.0736, 0.06, -0.184), Vector3(-0.092, 0.03, -0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.41887903, -0.034906585, 1.0276499), Vector3(-0.41887903, -0.034906585, 1.0276499), Vector3(-0.5934119, -0.06981317, 0.7707374), Vector3(-0.2443461, -0.06981317, 0.8670796)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.48),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.6654665), Vector3(0, 0, 2.6654665), Vector3(0, 0, 2.5691247), Vector3(0, 0, 2.6012387)]
+}
+
+[sub_resource type="Animation" id="Animation_nl5hf"]
+resource_name = "vm_warhammer_attack"
+length = 0.72
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.18, 0.36, 0.72),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.0184, 0.18, 0.0184), Vector3(0.0184, 0.18, 0.0184), Vector3(0.1656, -0.02, -0.1472), Vector3(0.046, 0.06, -0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.18, 0.36, 0.72),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.27925268, 0.17453292, 0.096342176), Vector3(0.27925268, 0.17453292, 0.096342176), Vector3(-0.034906585, 0.20943952, -0.51382494), Vector3(-0.38397244, 0.20943952, 0.51382494)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.18, 0.36, 0.72),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.2479842), Vector3(0, 0, 2.2479842), Vector3(0, 0, 2.3122122), Vector3(0, 0, 2.344326)]
+}
+
+[sub_resource type="Animation" id="Animation_fophe"]
+resource_name = "vm_warhammer_guard"
+length = 0.55
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.046, 0.06, -0.0184), Vector3(0.046, 0.06, -0.0184), Vector3(0.092, 0.2, 0.0552), Vector3(0.092, 0.2, 0.0552)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.38397244, 0.20943952, 0.51382494), Vector3(-0.38397244, 0.20943952, 0.51382494), Vector3(-0.6632251, 0.27925268, 0.8349655), Vector3(-0.6632251, 0.27925268, 0.8349655)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.1375, 0.275, 0.55),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.344326), Vector3(0, 0, 2.344326), Vector3(0, 0, 2.4406683), Vector3(0, 0, 2.4406683)]
+}
+
+[sub_resource type="Animation" id="Animation_4wv3b"]
+resource_name = "vm_warhammer_heavy_swing"
+length = 0.97
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.2425, 0.485, 0.97),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.0184, 0.18, 0.0184), Vector3(0.0184, 0.18, 0.0184), Vector3(0.0368, 0.28, 0), Vector3(0.046, 0.06, -0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.2425, 0.485, 0.97),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.27925268, 0.17453292, 0.096342176), Vector3(0.27925268, 0.17453292, 0.096342176), Vector3(0.9424778, 0.27925268, -0.03211406), Vector3(-0.38397244, 0.20943952, 0.51382494)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.2425, 0.485, 0.97),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.2479842), Vector3(0, 0, 2.2479842), Vector3(0, 0, 2.2800982), Vector3(0, 0, 2.344326)]
+}
+
+[sub_resource type="Animation" id="Animation_jsy4x"]
+resource_name = "vm_warhammer_hold"
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ActionPivot:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.046, 0.06, -0.0184), Vector3(0.046, 0.06, -0.0184), Vector3(0.0184, 0.18, 0.0184), Vector3(0.0184, 0.18, 0.0184)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ActionPivot:rotation")
+tracks/1/interp = 2
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.38397244, 0.20943952, 0.51382494), Vector3(-0.38397244, 0.20943952, 0.51382494), Vector3(0.27925268, 0.17453292, 0.096342176), Vector3(0.27925268, 0.17453292, 0.096342176)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ActionPivot/WeaponSocket:rotation")
+tracks/2/interp = 2
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 2.344326), Vector3(0, 0, 2.344326), Vector3(0, 0, 2.2479842), Vector3(0, 0, 2.2479842)]
+}
+
+[resource]
+resource_name = "sword_alternate_first_person"
+_data = {
+&"vm_axe_attack": SubResource("Animation_47h0q"),
+&"vm_axe_guard": SubResource("Animation_wlamq"),
+&"vm_axe_heavy_swing": SubResource("Animation_awl3u"),
+&"vm_axe_hold": SubResource("Animation_vvubs"),
+&"vm_bash_shield": SubResource("Animation_fmwdx"),
+&"vm_bow_aim": SubResource("Animation_d6c1w"),
+&"vm_bow_draw": SubResource("Animation_tuund"),
+&"vm_bow_hold": SubResource("Animation_ttmkc"),
+&"vm_bow_release": SubResource("Animation_6xxy1"),
+&"vm_claw_swipe": SubResource("Animation_53x0b"),
+&"vm_crossbow_aim": SubResource("Animation_774d5"),
+&"vm_crossbow_fire": SubResource("Animation_ff350"),
+&"vm_crossbow_hold": SubResource("Animation_2at4n"),
+&"vm_crossbow_reload": SubResource("Animation_4xwfj"),
+&"vm_dagger_guard": SubResource("Animation_b5vsb"),
+&"vm_dagger_hold": SubResource("Animation_mjsh8"),
+&"vm_equip": SubResource("Animation_man84"),
+&"vm_greatsword_attack": SubResource("Animation_55ovu"),
+&"vm_greatsword_guard": SubResource("Animation_k2ebc"),
+&"vm_greatsword_heavy_swing": SubResource("Animation_k2ji3"),
+&"vm_greatsword_hold": SubResource("Animation_5ib8o"),
+&"vm_grimoire_attack": SubResource("Animation_rcen4"),
+&"vm_grimoire_guard": SubResource("Animation_gokj3"),
+&"vm_grimoire_hold": SubResource("Animation_8tlc2"),
+&"vm_idle": SubResource("Animation_8br5x"),
+&"vm_melee_charge": SubResource("Animation_hawhp"),
+&"vm_shield_block": SubResource("Animation_6pc5j"),
+&"vm_shield_hold": SubResource("Animation_t6vp8"),
+&"vm_shortsword_attack": SubResource("Animation_0ve47"),
+&"vm_shortsword_guard": SubResource("Animation_vjhnw"),
+&"vm_shortsword_hold": SubResource("Animation_fvtxx"),
+&"vm_shortsword_thrust": SubResource("Animation_nc6y1"),
+&"vm_slash_default": SubResource("Animation_nuukg"),
+&"vm_slash_heavy": SubResource("Animation_83c4f"),
+&"vm_slash_one_hand": SubResource("Animation_b4epv"),
+&"vm_spear_guard": SubResource("Animation_kw4h0"),
+&"vm_spear_heavy_swing": SubResource("Animation_el1qe"),
+&"vm_spear_hold": SubResource("Animation_ujb0n"),
+&"vm_stab_dagger": SubResource("Animation_kg2uo"),
+&"vm_stab_default": SubResource("Animation_t3c5y"),
+&"vm_staff_attack": SubResource("Animation_04c7j"),
+&"vm_staff_guard": SubResource("Animation_5jgp2"),
+&"vm_staff_hold": SubResource("Animation_qtiia"),
+&"vm_sword_attack": SubResource("Animation_oep2s"),
+&"vm_sword_guard": SubResource("Animation_erfq1"),
+&"vm_sword_hold": SubResource("Animation_55ho5"),
+&"vm_sword_slash": SubResource("Animation_5dsby"),
+&"vm_thrust_spear": SubResource("Animation_mkapp"),
+&"vm_unarmed_guard": SubResource("Animation_gn11v"),
+&"vm_unarmed_hold": SubResource("Animation_lp86d"),
+&"vm_wand_cast": SubResource("Animation_4b6od"),
+&"vm_warhammer_attack": SubResource("Animation_nl5hf"),
+&"vm_warhammer_guard": SubResource("Animation_fophe"),
+&"vm_warhammer_heavy_swing": SubResource("Animation_4wv3b"),
+&"vm_warhammer_hold": SubResource("Animation_jsy4x")
+}

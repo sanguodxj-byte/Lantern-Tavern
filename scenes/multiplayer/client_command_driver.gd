@@ -112,7 +112,9 @@ func _send_input_frame(nm: Node) -> void:
 	nm.submit_command(cmd)
 
 ## 发起一次攻击（CMD_ATTACK）。target_hint = 服务器实体 id（敌人/可破坏物）。
-func send_attack(target_hint: int, attack_type: String = "melee") -> void:
+## 架构审查 P0-2：客户端只提交意图（手位/蓄力/目标提示），不再提交 attack_type——
+## 攻击类型/射程/冷却/伤害全部由服务器从权威 loadout 派生（AttackContextFactory）。
+func send_attack(target_hint: int, hand: String = "primary", charge_ratio: float = 1.0) -> void:
 	var nm: Node = get_node_or_null("/root/NetworkManager")
 	if nm == null or not nm.is_active:
 		return
@@ -120,12 +122,14 @@ func send_attack(target_hint: int, attack_type: String = "melee") -> void:
 		return
 	_attack_timer = attack_cooldown
 	_sequence += 1
+
 	nm.submit_command({
 		"type": NP.CMD_ATTACK,
 		"protocol_version": NP.PROTOCOL_VERSION,
 		"world_revision": _server_world_revision(nm),
 		"sequence": _sequence,
-		"attack_type": attack_type,
+		"hand": hand,
+		"charge_ratio": clampf(charge_ratio, 0.0, 1.0),
 		"target_hint": target_hint,
 	})
 
@@ -145,8 +149,8 @@ func send_interact(target: int = 0) -> void:
 		"target_hint": target,
 	})
 
-## 发起一次技能（CMD_SKILL）。
-func send_skill(skill_id: String, attack_type: String = "melee") -> void:
+## 发起一次技能（CMD_SKILL）。技能 id 由服务器校验归属；攻击类型由服务器权威派生。
+func send_skill(skill_id: String) -> void:
 	var nm: Node = get_node_or_null("/root/NetworkManager")
 	if nm == null or not nm.is_active:
 		return
@@ -157,7 +161,23 @@ func send_skill(skill_id: String, attack_type: String = "melee") -> void:
 		"world_revision": _server_world_revision(nm),
 		"sequence": _sequence,
 		"skill_id": skill_id,
-		"attack_type": attack_type,
+	})
+
+## 发起法术施放。客户端只提交槽位/方向提示；服务端必须重解析固定配方与数值。
+func send_cast_spell(slot_index: int, origin: Vector3, direction: Vector3, target_hint: Variant = null) -> void:
+	var nm: Node = get_node_or_null("/root/NetworkManager")
+	if nm == null or not nm.is_active:
+		return
+	_sequence += 1
+	nm.submit_command({
+		"type": NP.CMD_CAST_SPELL,
+		"protocol_version": NP.PROTOCOL_VERSION,
+		"world_revision": _server_world_revision(nm),
+		"sequence": _sequence,
+		"slot_index": clampi(slot_index, 0, 4),
+		"origin": [origin.x, origin.y, origin.z],
+		"direction": [direction.x, direction.y, direction.z],
+		"target_hint": target_hint,
 	})
 
 ## 发起一次出征结算（CMD_EXTRACT）：服务器计算本次净获得并回传 EVT_EXTRACTION_RESULT，
@@ -178,6 +198,37 @@ func send_extract() -> void:
 ## 协议当前无独立 CMD_BLOCK：服务器移动权威从 CMD_INPUT.block 读取持盾/格挡状态。
 func send_block(active: bool) -> void:
 	block_active = active
+
+## 发起一次升级选择意图（CMD_LEVEL_UP_CHOICE，P1-4 权威闭环）。
+## 客户端只提交选择；服务器校验 pending 次数/候选后应用，绝不直接修改权威属性。
+func send_level_up_choice(kind: String, attr_key: String = "", rune_id: String = "") -> void:
+	var nm: Node = get_node_or_null("/root/NetworkManager")
+	if nm == null or not nm.is_active:
+		return
+	_sequence += 1
+	nm.submit_command({
+		"type": NP.CMD_LEVEL_UP_CHOICE,
+		"protocol_version": NP.PROTOCOL_VERSION,
+		"world_revision": _server_world_revision(nm),
+		"sequence": _sequence,
+		"kind": kind,
+		"attr_key": attr_key,
+		"rune_id": rune_id,
+	})
+
+## 请求本次升级的符文候选（CMD_LEVEL_UP_RUNE_CANDIDATES）：服务器按 player_guid
+## 确定性掷出并经 EVT_PROGRESSION_RUNE_CANDIDATES 下发。
+func request_level_up_rune_candidates() -> void:
+	var nm: Node = get_node_or_null("/root/NetworkManager")
+	if nm == null or not nm.is_active:
+		return
+	_sequence += 1
+	nm.submit_command({
+		"type": NP.CMD_LEVEL_UP_RUNE_CANDIDATES,
+		"protocol_version": NP.PROTOCOL_VERSION,
+		"world_revision": _server_world_revision(nm),
+		"sequence": _sequence,
+	})
 
 ## 发起一次拾取（CMD_PICKUP）。entity_id 为服务器实体 id；0 表示由服务器按玩家位置/朝向推断。
 func send_pickup(entity_id: int) -> void:
@@ -209,8 +260,10 @@ func send_throw(item_id: String = "") -> void:
 		"throw": true,
 	})
 
-## 装备切换（CMD_EQUIP）。item_id 为目标物品；slot 可选（"" 表示自动判定）。
-func send_equip(item_id: String, slot: String = "") -> void:
+## 装备切换（CMD_EQUIP，P0-4 协议统一）。
+## item_id 为目标物品；slot_kind="weapon"/"armor" + slot_index(int)/slot_name(String) 明确表达槽位；
+## slot_kind 为空时由服务器按物品类别自动判定（武器→武器槽 / 护甲→护甲槽）。
+func send_equip(item_id: String, slot_kind: String = "", slot_index: int = -1, slot_name: String = "") -> void:
 	var nm: Node = get_node_or_null("/root/NetworkManager")
 	if nm == null or not nm.is_active:
 		return
@@ -221,7 +274,9 @@ func send_equip(item_id: String, slot: String = "") -> void:
 		"world_revision": _server_world_revision(nm),
 		"sequence": _sequence,
 		"item_id": item_id,
-		"slot": slot,
+		"slot_kind": slot_kind,
+		"slot_index": slot_index,
+		"slot_name": slot_name,
 	})
 
 ## 丢弃（CMD_DROP + throw=false）。
@@ -257,6 +312,13 @@ func _on_event(event: Dictionary) -> void:
 	var kind: String = event.get("event", "")
 	if kind == NP.EVT_WORLD_REVISION_CHANGED:
 		_known_server_rev = int(event.get("world_revision", _known_server_rev))
+		return
+	if kind == NP.EVT_SESSION_SNAPSHOT:
+		# 闭环自愈：晚到/重连客户端经会话快照补学当前服务器 revision
+		# （可能错过早期 EVT_WORLD_REVISION_CHANGED 广播，否则所有命令被永久拒绝）。
+		var snap = event.get("snapshot", {})
+		if snap is Dictionary and snap.has("world_revision"):
+			_known_server_rev = int(snap["world_revision"])
 		return
 	if kind != NP.EVT_PLAYER_SNAPSHOT:
 		return

@@ -1,5 +1,13 @@
 extends GdUnitTestSuite
 
+class _CanInteractOnly extends RefCounted:
+	func can_interact() -> bool:
+		return true
+
+class _NameOnlyCollider extends RefCounted:
+	func get_item_name() -> String:
+		return "Decorative Name"
+
 
 func test_player_ready_creates_single_named_vision_light() -> void:
 	var packed: PackedScene = load("res://scenes/characters/player/player.tscn")
@@ -11,11 +19,18 @@ func test_player_ready_creates_single_named_vision_light() -> void:
 	assert_object(light) \
 		.override_failure_message("玩家必须稳定创建命名视野灯，避免地牢内偶发无自发光") \
 		.is_not_null()
-	assert_float(light.light_energy).is_greater_equal(2.4)
-	assert_float(light.omni_range).is_greater_equal(10.0)
+	assert_float(light.light_energy).is_equal_approx(2.2, 0.001)
+	assert_float(light.omni_range).is_equal_approx(10.5, 0.001)
+	assert_float(light.omni_attenuation).is_equal_approx(1.15, 0.001)
+	assert_float(absf(light.light_color.r - light.light_color.b)) \
+		.override_failure_message("玩家补光必须接近中性，不能给全场景增加暖色污染") \
+		.is_less_equal(0.101)
 	assert_bool(light.distance_fade_enabled) \
 		.override_failure_message("玩家主视野灯不能参与距离淡出，否则拾取/移动时会像全局光照关闭") \
 		.is_false()
+	assert_int(light.light_cull_mask) \
+		.override_failure_message("玩家补光只能照亮地形层 1，不能影响怪物层 2") \
+		.is_equal(1)
 	assert_int(_count_named_children(player, "PlayerVisionLight")).is_equal(1)
 
 	player.free()
@@ -34,6 +49,50 @@ func test_player_vision_light_setup_is_idempotent() -> void:
 		.override_failure_message("重复初始化玩家时不能堆叠多个视野灯") \
 		.is_equal(1)
 
+	player.free()
+
+func test_non_interactive_voxel_prop_does_not_offer_interaction() -> void:
+	var packed: PackedScene = load("res://scenes/characters/player/player.tscn")
+	var player := packed.instantiate() as Player
+	add_child(player)
+	await await_idle_frame()
+	var prop := VoxelProp.new()
+	prop.prop_kind = "bones"
+	assert_bool(player._can_interact_collider(prop)) \
+		.override_failure_message("没有交互效果的体素装饰不能显示交互提示").is_false()
+	prop.free()
+	player.free()
+
+func test_can_interact_without_interact_method_does_not_offer_interaction() -> void:
+	var packed: PackedScene = load("res://scenes/characters/player/player.tscn")
+	var player := packed.instantiate() as Player
+	add_child(player)
+	await await_idle_frame()
+	var collider := _CanInteractOnly.new()
+	assert_bool(player._can_interact_collider(collider)) \
+		.override_failure_message("只有 can_interact() 而没有 interact() 的物体不能显示交互提示").is_false()
+	player.free()
+
+func test_name_only_collider_does_not_offer_pickup_prompt() -> void:
+	var packed := load("res://scenes/characters/player/player.tscn") as PackedScene
+	var player := packed.instantiate() as Player
+	add_child(player)
+	await await_idle_frame()
+	var collider := _NameOnlyCollider.new()
+	assert_bool(player._can_interact_collider(collider)) \
+		.override_failure_message("只有 get_item_name() 的节点不能显示拾取提示").is_false()
+	player.free()
+
+func test_stale_interaction_hint_clears_without_waiting_for_collider_change() -> void:
+	var packed: PackedScene = load("res://scenes/characters/player/player.tscn")
+	var player := packed.instantiate() as Player
+	add_child(player)
+	await await_idle_frame()
+	player.current_possible_action = "stale"
+	player._last_possible_action_collider = null
+	player.check_for_possible_action()
+	assert_str(player.current_possible_action).is_empty()
+	assert_object(player._last_possible_action_collider).is_null()
 	player.free()
 
 

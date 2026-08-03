@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,12 +34,53 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "pointed green goblin ear tip with cartilage ridge"
 
+# Goblin ear pixel palette: sickly goblin greens, raw cartilage pinks, vein
+# purples, jaundice yellow blemishes, dark necrotic tips.
+# Each material owns its own seed/pattern; no shared identity table.
+_SKIN_GREEN = (0.32, 0.55, 0.22, 1.0)
+_SKIN_DARK = (0.18, 0.32, 0.12, 1.0)
+_SKIN_LIT = (0.48, 0.72, 0.32, 1.0)
+_CART_TAN = (0.62, 0.58, 0.38, 1.0)
+_CART_PINK = (0.72, 0.42, 0.38, 1.0)
+_VEIN_PURPLE = (0.38, 0.15, 0.28, 1.0)
+_JAUNDICE = (0.68, 0.62, 0.22, 1.0)
+_TIP_DARK = (0.20, 0.35, 0.15, 1.0)
+_NECROTIC = (0.12, 0.18, 0.08, 1.0)
+_FROST_BLUE = (0.30, 0.45, 0.55, 1.0)  # cool blue accent
+_DEEP_PLUM = (0.20, 0.08, 0.26, 1.0)  # deep plum shadow accent
+
+
 def build_model():
-    skin = make_material("ge_skin", (0.32, 0.55, 0.22, 1.0), roughness=0.82)
-    skin_dark = make_material("ge_dark", (0.18, 0.32, 0.12, 1.0), roughness=0.85)
-    skin_lit = make_material("ge_lit", (0.45, 0.68, 0.30, 1.0), roughness=0.78)
-    cartilage = make_material("ge_cart", (0.55, 0.62, 0.35, 1.0), roughness=0.70)
-    tip = make_material("ge_tip", (0.25, 0.40, 0.18, 1.0), roughness=0.80)
+    skin = make_pixel_material(
+        "ge_skin", (0.32, 0.55, 0.22, 1.0),
+        roughness=0.78, palette=(_SKIN_LIT, _JAUNDICE, _VEIN_PURPLE, _SKIN_DARK, _FROST_BLUE),
+        pixel_size=48, variation=0.42, seed=2901, pattern="cracks", normal_strength=1.3,
+        edge_darken=0.38, highlight=0.30, detail_noise=0.15,
+    )
+    skin_dark = make_pixel_material(
+        "ge_dark", (0.18, 0.32, 0.12, 1.0),
+        roughness=0.82, palette=(_SKIN_DARK, _NECROTIC, _VEIN_PURPLE, _SKIN_GREEN, _DEEP_PLUM),
+        pixel_size=48, variation=0.40, seed=2907, pattern="cracks", normal_strength=1.4,
+        edge_darken=0.45, highlight=0.30, detail_noise=0.15,
+    )
+    skin_lit = make_pixel_material(
+        "ge_lit", (0.48, 0.72, 0.32, 1.0),
+        roughness=0.72, palette=(_SKIN_LIT, _JAUNDICE, _CART_PINK, _SKIN_GREEN, _FROST_BLUE),
+        pixel_size=48, variation=0.38, seed=2913, pattern="speckle", normal_strength=1.2,
+        edge_darken=0.35, highlight=0.30, detail_noise=0.15,
+    )
+    cartilage = make_pixel_material(
+        "ge_cart", (0.62, 0.58, 0.38, 1.0),
+        roughness=0.60, palette=(_CART_PINK, _CART_TAN, _JAUNDICE, _SKIN_LIT, _DEEP_PLUM),
+        pixel_size=48, variation=0.40, seed=2919, pattern="cracks", normal_strength=1.3,
+        edge_darken=0.35, highlight=0.35, detail_noise=0.15,
+    )
+    tip = make_pixel_material(
+        "ge_tip", (0.20, 0.35, 0.15, 1.0),
+        roughness=0.75, palette=(_TIP_DARK, _NECROTIC, _VEIN_PURPLE, _SKIN_DARK, _DEEP_PLUM),
+        pixel_size=48, variation=0.42, seed=2923, pattern="speckle", normal_strength=1.2,
+        edge_darken=0.44, highlight=0.30, detail_noise=0.15,
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
     def add(name, center, size, material):

@@ -49,6 +49,10 @@ STATIC_OUTPUT = ROOT / "assets" / "meshes" / "characters" / "voxel_spider_30px.g
 RIG_OUTPUT = ROOT / "assets" / "meshes" / "characters" / "voxel_spider_30px_rig.glb"
 PREVIEW_DIR = ROOT / "reports" / "characters_preview"
 PX = 1.0 / 32.0
+SPIDER_RUN_FRAME_COUNT = 24
+# Alternating tetrapod gait: no adjacent ipsilateral feet enter swing together.
+SPIDER_GAIT_GROUP_A = ("Leg1.L", "Leg2.R", "Leg3.L", "Leg4.R")
+SPIDER_GAIT_GROUP_B = ("Leg1.R", "Leg2.L", "Leg3.R", "Leg4.L")
 
 
 @dataclass(frozen=True)
@@ -136,29 +140,29 @@ PART_SPECS: tuple[PartSpec, ...] = (
 
     # Four mirrored pairs of three-segment legs. No segment is 1-2px thin.
     PartSpec("leg1_root_left", (-13.0, -9.0, 10.0), (6.0, 5.0, 6.0), "carapace_high", "Leg1.L"),
-    PartSpec("leg1_mid_left", (-19.0, -13.0, 8.0), (6.0, 6.0, 6.0), "joint", "Leg1.L"),
-    PartSpec("leg1_foot_left", (-24.5, -18.0, 4.0), (5.0, 6.0, 8.0), "underside", "Leg1.L"),
+    PartSpec("leg1_mid_left", (-19.0, -13.0, 8.0), (6.0, 6.0, 6.0), "joint", "Leg1Lower.L"),
+    PartSpec("leg1_foot_left", (-24.5, -18.0, 4.0), (5.0, 6.0, 8.0), "underside", "Leg1Foot.L"),
     PartSpec("leg1_root_right", (13.0, -9.0, 10.0), (6.0, 5.0, 6.0), "carapace_high", "Leg1.R"),
-    PartSpec("leg1_mid_right", (19.0, -13.0, 8.0), (6.0, 6.0, 6.0), "joint", "Leg1.R"),
-    PartSpec("leg1_foot_right", (24.5, -18.0, 4.0), (5.0, 6.0, 8.0), "underside", "Leg1.R"),
+    PartSpec("leg1_mid_right", (19.0, -13.0, 8.0), (6.0, 6.0, 6.0), "joint", "Leg1Lower.R"),
+    PartSpec("leg1_foot_right", (24.5, -18.0, 4.0), (5.0, 6.0, 8.0), "underside", "Leg1Foot.R"),
     PartSpec("leg2_root_left", (-13.0, -4.0, 10.0), (6.0, 5.0, 6.0), "carapace_mid", "Leg2.L"),
-    PartSpec("leg2_mid_left", (-19.0, -7.0, 8.0), (6.0, 6.0, 6.0), "joint", "Leg2.L"),
-    PartSpec("leg2_foot_left", (-24.5, -11.0, 4.0), (5.0, 6.0, 8.0), "underside", "Leg2.L"),
+    PartSpec("leg2_mid_left", (-19.0, -7.0, 8.0), (6.0, 6.0, 6.0), "joint", "Leg2Lower.L"),
+    PartSpec("leg2_foot_left", (-24.5, -11.0, 4.0), (5.0, 6.0, 8.0), "underside", "Leg2Foot.L"),
     PartSpec("leg2_root_right", (13.0, -4.0, 10.0), (6.0, 5.0, 6.0), "carapace_mid", "Leg2.R"),
-    PartSpec("leg2_mid_right", (19.0, -7.0, 8.0), (6.0, 6.0, 6.0), "joint", "Leg2.R"),
-    PartSpec("leg2_foot_right", (24.5, -11.0, 4.0), (5.0, 6.0, 8.0), "underside", "Leg2.R"),
+    PartSpec("leg2_mid_right", (19.0, -7.0, 8.0), (6.0, 6.0, 6.0), "joint", "Leg2Lower.R"),
+    PartSpec("leg2_foot_right", (24.5, -11.0, 4.0), (5.0, 6.0, 8.0), "underside", "Leg2Foot.R"),
     PartSpec("leg3_root_left", (-13.0, 1.0, 10.0), (6.0, 5.0, 6.0), "carapace_mid", "Leg3.L"),
-    PartSpec("leg3_mid_left", (-19.0, 4.0, 8.0), (6.0, 6.0, 6.0), "joint", "Leg3.L"),
-    PartSpec("leg3_foot_left", (-24.5, 8.0, 4.0), (5.0, 6.0, 8.0), "underside", "Leg3.L"),
+    PartSpec("leg3_mid_left", (-19.0, 4.0, 8.0), (6.0, 6.0, 6.0), "joint", "Leg3Lower.L"),
+    PartSpec("leg3_foot_left", (-24.5, 8.0, 4.0), (5.0, 6.0, 8.0), "underside", "Leg3Foot.L"),
     PartSpec("leg3_root_right", (13.0, 1.0, 10.0), (6.0, 5.0, 6.0), "carapace_mid", "Leg3.R"),
-    PartSpec("leg3_mid_right", (19.0, 4.0, 8.0), (6.0, 6.0, 6.0), "joint", "Leg3.R"),
-    PartSpec("leg3_foot_right", (24.5, 8.0, 4.0), (5.0, 6.0, 8.0), "underside", "Leg3.R"),
+    PartSpec("leg3_mid_right", (19.0, 4.0, 8.0), (6.0, 6.0, 6.0), "joint", "Leg3Lower.R"),
+    PartSpec("leg3_foot_right", (24.5, 8.0, 4.0), (5.0, 6.0, 8.0), "underside", "Leg3Foot.R"),
     PartSpec("leg4_root_left", (-13.0, 6.0, 10.0), (6.0, 5.0, 6.0), "carapace_high", "Leg4.L"),
-    PartSpec("leg4_mid_left", (-19.0, 10.0, 8.0), (6.0, 6.0, 6.0), "joint", "Leg4.L"),
-    PartSpec("leg4_foot_left", (-24.5, 15.0, 4.0), (5.0, 6.0, 8.0), "underside", "Leg4.L"),
+    PartSpec("leg4_mid_left", (-19.0, 10.0, 8.0), (6.0, 6.0, 6.0), "joint", "Leg4Lower.L"),
+    PartSpec("leg4_foot_left", (-24.5, 15.0, 4.0), (5.0, 6.0, 8.0), "underside", "Leg4Foot.L"),
     PartSpec("leg4_root_right", (13.0, 6.0, 10.0), (6.0, 5.0, 6.0), "carapace_high", "Leg4.R"),
-    PartSpec("leg4_mid_right", (19.0, 10.0, 8.0), (6.0, 6.0, 6.0), "joint", "Leg4.R"),
-    PartSpec("leg4_foot_right", (24.5, 15.0, 4.0), (5.0, 6.0, 8.0), "underside", "Leg4.R"),
+    PartSpec("leg4_mid_right", (19.0, 10.0, 8.0), (6.0, 6.0, 6.0), "joint", "Leg4Lower.R"),
+    PartSpec("leg4_foot_right", (24.5, 15.0, 4.0), (5.0, 6.0, 8.0), "underside", "Leg4Foot.R"),
 )
 
 
@@ -172,11 +176,11 @@ def _build_materials() -> dict[str, bpy.types.Material]:
         "fang": make_material("Spider_Fang_Ivory", (0.600, 0.530, 0.390, 1.0), roughness=0.72),
         "spinneret": make_material("Spider_Spinneret_Ash", (0.330, 0.350, 0.380, 1.0), roughness=0.92),
         "eye_deep": make_material("Spider_Eye_Deep", (0.010, 0.008, 0.012, 1.0), roughness=0.34),
-        "eye_mid": make_material("Spider_Eye_Amber", (0.900, 0.190, 0.035, 1.0), roughness=0.28, emission=0.8),
-        "eye_high": make_material("Spider_Eye_High", (1.000, 0.760, 0.180, 1.0), roughness=0.20, emission=2.0),
+        "eye_mid": make_material("Spider_Eye_Amber", (0.900, 0.190, 0.035, 1.0), roughness=0.28),
+        "eye_high": make_material("Spider_Eye_High", (1.000, 0.760, 0.180, 1.0), roughness=0.20),
         "venom_deep": make_material("Spider_Venom_Deep", (0.020, 0.180, 0.150, 1.0), roughness=0.64),
         "venom_mid": make_material("Spider_Venom_Mid", (0.040, 0.430, 0.300, 1.0), roughness=0.48),
-        "venom_high": make_material("Spider_Venom_High", (0.240, 0.860, 0.540, 1.0), roughness=0.34, emission=1.1),
+        "venom_high": make_material("Spider_Venom_High", (0.240, 0.860, 0.540, 1.0), roughness=0.34),
     }
 
 
@@ -222,8 +226,20 @@ def _point_to_m(point_px: tuple[float, float, float]) -> Vector:
     return Vector(tuple(value * PX for value in point_px))
 
 
+def _pose_offset_from_blender_world(
+    armature: bpy.types.Object,
+    bone_name: str,
+    world_offset: tuple[float, float, float],
+) -> tuple[float, float, float]:
+    """Convert Blender-world motion to a bone's PoseBone.location axes."""
+    rest_basis = armature.data.bones[bone_name].matrix_local.to_3x3()
+    local_offset = rest_basis.inverted() @ Vector(world_offset)
+    return tuple(local_offset)
+
+
 def _create_spider_armature() -> bpy.types.Object:
     bone_defs = (
+        # Authored in Blender Z-up; glTF export_yup maps Z to Godot +Y.
         ("Root", (0.0, 0.0, 0.0), (0.0, 0.0, 5.0), ""),
         ("Thorax", (0.0, -3.0, 5.0), (0.0, -3.0, 19.0), "Root"),
         ("Head", (0.0, -10.0, 13.0), (0.0, -20.0, 18.0), "Thorax"),
@@ -231,14 +247,32 @@ def _create_spider_armature() -> bpy.types.Object:
         ("Venom", (0.0, 15.0, 18.0), (0.0, 19.0, 27.0), "Abdomen"),
         ("Mandible.L", (-4.0, -20.0, 11.0), (-6.0, -24.0, 5.0), "Head"),
         ("Mandible.R", (4.0, -20.0, 11.0), (6.0, -24.0, 5.0), "Head"),
-        ("Leg1.L", (-8.0, -9.0, 10.0), (-24.0, -18.0, 4.0), "Thorax"),
-        ("Leg1.R", (8.0, -9.0, 10.0), (24.0, -18.0, 4.0), "Thorax"),
-        ("Leg2.L", (-8.0, -4.0, 10.0), (-24.0, -11.0, 4.0), "Thorax"),
-        ("Leg2.R", (8.0, -4.0, 10.0), (24.0, -11.0, 4.0), "Thorax"),
-        ("Leg3.L", (-8.0, 1.0, 10.0), (-24.0, 8.0, 4.0), "Thorax"),
-        ("Leg3.R", (8.0, 1.0, 10.0), (24.0, 8.0, 4.0), "Thorax"),
-        ("Leg4.L", (-8.0, 6.0, 10.0), (-24.0, 15.0, 4.0), "Thorax"),
-        ("Leg4.R", (8.0, 6.0, 10.0), (24.0, 15.0, 4.0), "Thorax"),
+        # Every leg-chain pivot sits on the exact face-contact patch between
+        # its authored boxes, keeping hinges visually attached while swinging.
+        ("Leg1.L", (-10.0, -9.0, 10.0), (-16.0, -10.75, 9.0), "Thorax"),
+        ("Leg1Lower.L", (-16.0, -10.75, 9.0), (-22.0, -15.5, 6.5), "Leg1.L"),
+        ("Leg1Foot.L", (-22.0, -15.5, 6.5), (-24.5, -18.0, 1.0), "Leg1Lower.L"),
+        ("Leg1.R", (10.0, -9.0, 10.0), (16.0, -10.75, 9.0), "Thorax"),
+        ("Leg1Lower.R", (16.0, -10.75, 9.0), (22.0, -15.5, 6.5), "Leg1.R"),
+        ("Leg1Foot.R", (22.0, -15.5, 6.5), (24.5, -18.0, 1.0), "Leg1Lower.R"),
+        ("Leg2.L", (-10.0, -4.0, 10.0), (-16.0, -5.25, 9.0), "Thorax"),
+        ("Leg2Lower.L", (-16.0, -5.25, 9.0), (-22.0, -9.0, 6.5), "Leg2.L"),
+        ("Leg2Foot.L", (-22.0, -9.0, 6.5), (-24.5, -11.0, 1.0), "Leg2Lower.L"),
+        ("Leg2.R", (10.0, -4.0, 10.0), (16.0, -5.25, 9.0), "Thorax"),
+        ("Leg2Lower.R", (16.0, -5.25, 9.0), (22.0, -9.0, 6.5), "Leg2.R"),
+        ("Leg2Foot.R", (22.0, -9.0, 6.5), (24.5, -11.0, 1.0), "Leg2Lower.R"),
+        ("Leg3.L", (-10.0, 1.0, 10.0), (-16.0, 2.25, 9.0), "Thorax"),
+        ("Leg3Lower.L", (-16.0, 2.25, 9.0), (-22.0, 6.0, 6.5), "Leg3.L"),
+        ("Leg3Foot.L", (-22.0, 6.0, 6.5), (-24.5, 8.0, 1.0), "Leg3Lower.L"),
+        ("Leg3.R", (10.0, 1.0, 10.0), (16.0, 2.25, 9.0), "Thorax"),
+        ("Leg3Lower.R", (16.0, 2.25, 9.0), (22.0, 6.0, 6.5), "Leg3.R"),
+        ("Leg3Foot.R", (22.0, 6.0, 6.5), (24.5, 8.0, 1.0), "Leg3Lower.R"),
+        ("Leg4.L", (-10.0, 6.0, 10.0), (-16.0, 7.75, 9.0), "Thorax"),
+        ("Leg4Lower.L", (-16.0, 7.75, 9.0), (-22.0, 12.5, 6.5), "Leg4.L"),
+        ("Leg4Foot.L", (-22.0, 12.5, 6.5), (-24.5, 15.0, 1.0), "Leg4Lower.L"),
+        ("Leg4.R", (10.0, 6.0, 10.0), (16.0, 7.75, 9.0), "Thorax"),
+        ("Leg4Lower.R", (16.0, 7.75, 9.0), (22.0, 12.5, 6.5), "Leg4.R"),
+        ("Leg4Foot.R", (22.0, 12.5, 6.5), (24.5, 15.0, 1.0), "Leg4Lower.R"),
     )
     bpy.ops.object.armature_add(enter_editmode=True, location=(0.0, 0.0, 0.0))
     armature = bpy.context.object
@@ -276,16 +310,46 @@ def _parent_parts_to_spider_bones(
             part.matrix_world = world_transform
 
 
+def _spider_gait_pose(
+    armature: bpy.types.Object,
+    swing_group: tuple[str, ...],
+    stride_sign: float,
+) -> dict[str, dict]:
+    """Pose all 24 leg bones so support and swing feet have explicit keys."""
+    pose: dict[str, dict] = {
+        "Thorax": {"loc": _pose_offset_from_blender_world(
+            armature, "Thorax", (0.0, 0.0, 0.035 if swing_group else -0.015)
+        )},
+        "Abdomen": {"rot": (-2.0 * stride_sign, 0.0, 0.0)},
+    }
+    for leg_index in range(1, 5):
+        fore_sign = 1.0 if leg_index <= 2 else -1.0
+        for side, side_sign in (("L", -1.0), ("R", 1.0)):
+            upper = f"Leg{leg_index}.{side}"
+            lower = f"Leg{leg_index}Lower.{side}"
+            foot = f"Leg{leg_index}Foot.{side}"
+            swinging = upper in swing_group
+            sweep = stride_sign * fore_sign * (10.0 if swinging else -4.0)
+            pose[upper] = {"rot": (0.0, side_sign * (2.5 if swinging else -1.0), side_sign * sweep)}
+            pose[lower] = {"rot": (-9.0 if swinging else 3.0, 0.0, side_sign * sweep * 0.35)}
+            pose[foot] = {
+                "rot": (11.0 if swinging else -2.0, 0.0, -side_sign * sweep * 0.20),
+            }
+    return pose
+
+
 def _build_spider_actions(armature: bpy.types.Object) -> None:
     make_action(armature, "idle", 28, [
         (1, {}),
         (14, {"Abdomen": {"rot": (3, 0, 0), "loc": (0.0, 0.0, 0.025)}, "Mandible.L": {"rot": (0, 0, -5)}, "Mandible.R": {"rot": (0, 0, 5)}}),
         (28, {}),
     ])
-    make_action(armature, "run", 12, [
-        (1, {"Thorax": {"loc": (0.0, 0.0, 0.04)}, "Leg1.L": {"rot": (0, 0, 14)}, "Leg2.R": {"rot": (0, 0, -14)}, "Leg3.L": {"rot": (0, 0, -12)}, "Leg4.R": {"rot": (0, 0, 12)}}),
-        (6, {"Thorax": {"loc": (0.0, 0.0, -0.02)}, "Leg1.R": {"rot": (0, 0, -14)}, "Leg2.L": {"rot": (0, 0, 14)}, "Leg3.R": {"rot": (0, 0, 12)}, "Leg4.L": {"rot": (0, 0, -12)}}),
-        (12, {"Thorax": {"loc": (0.0, 0.0, 0.04)}, "Leg1.L": {"rot": (0, 0, 14)}, "Leg2.R": {"rot": (0, 0, -14)}, "Leg3.L": {"rot": (0, 0, -12)}, "Leg4.R": {"rot": (0, 0, 12)}}),
+    make_action(armature, "run", SPIDER_RUN_FRAME_COUNT, [
+        (1, _spider_gait_pose(armature, SPIDER_GAIT_GROUP_A, -1.0)),
+        (7, _spider_gait_pose(armature, (), 0.0)),
+        (13, _spider_gait_pose(armature, SPIDER_GAIT_GROUP_B, 1.0)),
+        (19, _spider_gait_pose(armature, (), 0.0)),
+        (24, _spider_gait_pose(armature, SPIDER_GAIT_GROUP_A, -1.0)),
     ])
     make_action(armature, "hurt", 7, [
         (1, {"Thorax": {"rot": (12, 0, 8), "loc": (0.0, 0.05, 0.0)}, "Abdomen": {"rot": (-10, 0, -8)}}),

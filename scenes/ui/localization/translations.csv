@@ -866,6 +866,7 @@ HP 上限,Max HP,HP 上限
 负重上限,Carry Weight Cap,负重上限
 %s: 熟练度 Lv %d,%s: Proficiency Lv %d,%s: 熟练度 Lv %d
 Show FPS,Show FPS,显示 FPS
+Pixel Shader,Pixel Shader,像素着色
 Multiplayer,Multiplayer,联机
 Multiplayer Lobby,Multiplayer Lobby,联机大厅
 Host Room,Host Room,创建房间
@@ -895,6 +896,51 @@ THE HEARTH AWAITS,THE HEARTH AWAITS,炉火在此静候
 "Build your legend between the warmth of the hearth and the dark below.","Build your legend between the warmth of the hearth and the dark below.","在温暖的炉火与深邃的黑暗中，谱写你的传奇。"
 PREFERENCES,PREFERENCES,偏好设置
 LONE LIGHT TAVERN  •  EARLY ACCESS,LONE LIGHT TAVERN  •  EARLY ACCESS,孤灯酒馆  •  抢先体验版
+Spell Weaving,Spell Weaving,法术编织
+Rune List,Rune List,符文列表
+"Hold right mouse to weave spells. Select a spell slot, then add runes in fixed order.","Hold right mouse to weave spells. Select a spell slot, then add runes in fixed order.","按住右键保持法术界面；选择法术槽位后，按固定顺序装配符文。"
+"Keys 1-5 select a spell slot. Click an equipped rune to clear it. Release right mouse to close.","Keys 1-5 select a spell slot. Click an equipped rune to clear it. Release right mouse to close.","数字键 1–5 选择法术槽位；点击已装配符文可清除；松开右键关闭。"
+No available runes in your carried inventory.,No available runes in your carried inventory.,随身库存中没有可用于装配的符文。
+Spell Slot,Spell Slot,法术槽位
+No fixed recipe formed,No fixed recipe formed,未形成固定配方
+Unknown Spell,Unknown Spell,未知法术
+Empty Rune,Empty Rune,空符文
+Editing Spell Slot %d,Editing Spell Slot %d,当前装配：法术槽位 %d
+Recipes Ready: %d / %d,Recipes Ready: %d / %d,已形成配方：%d / %d
+霜寒符文,Frost Rune,霜寒符文
+雷霆符文,Thunder Rune,雷霆符文
+附加冰冷伤害并减速敌人。,Adds frost damage and slows enemies.,附加冰冷伤害并减速敌人。
+附加雷电伤害并有概率短暂眩晕。,Adds lightning damage with a chance to briefly stun.,附加雷电伤害并有概率短暂眩晕。
+余烬弹,Ember Bolt,余烬弹
+火焰冲击,Flame Impact,火焰冲击
+火球术,Fireball,火球术
+寒霜屏障,Frost Barrier,寒霜屏障
+连锁闪电,Chain Lightning,连锁闪电
+发射一枚基础火焰法术弹。,Launches a basic fire projectile.,发射一枚基础火焰法术弹。
+将余烬压缩为更强的冲击法术。,Compresses embers into a stronger impact spell.,将余烬压缩为更强的冲击法术。
+固定三符文配方：余烬、冲击、抛掷。,"Fixed three-rune recipe: Ember, Force, Launch.",固定三符文配方：余烬、冲击、抛掷。
+固定三符文配方：寒冰、冲击、守护。,"Fixed three-rune recipe: Frost, Force, Guardian.",固定三符文配方：寒冰、冲击、守护。
+固定三符文配方：雷霆、涌动、回响。,"Fixed three-rune recipe: Thunder, Surge, Echo.",固定三符文配方：雷霆、涌动、回响。
+酒馆装备与仓库,Tavern Equipment & Storage,酒馆装备与仓库
+关闭,Close,关闭
+防具,Armor,防具
+武器,Weapons,武器
+全部,All,全部
+材料,Materials,材料
+符文,Runes,符文
+整理,Sort,整理
+物品,Items,物品
+技能,Skills,技能
+仓库,Storage,仓库
+随身物品,Carried Items,随身物品
+技能槽位,Skill Slots,技能槽位
+符文仓库,Rune Storage,符文仓库
+可用技能,Available Skills,可用技能
+技能详情,Skill Details,技能详情
+绑定,Bind,绑定
+解绑,Unbind,解绑
+%s · %d items,%s · %d items,%s · %d 件
+No saved adventure found.,No saved adventure found.,未找到可继续的冒险存档。
 S 档,S Tier,S 档
 A 档,A Tier,A 档
 B 档,B Tier,B 档
@@ -1016,8 +1062,17 @@ hover items to inspect,hover items to inspect,悬停查看详情
 click to unequip,click to unequip,点击卸下
 Empty slot,Empty slot,空槽
 [Empty],[Empty],[空]
-items  chest %d  /  bag %d    weight  %.2fkg,items  chest %d  /  bag %d    weight  %.2fkg,物品  宝箱 %d  /  背包 %d    重量  %.2fkg
-BAG  %d / %d  (%d%%),BAG  %d / %d  (%d%%),背包  %d / %d  (%d%%)
+ITEMS  CHEST %d  /  BAG %d,ITEMS  CHEST %d  /  BAG %d,物品  宝箱 %d  /  背包 %d
+CAPACITY  %d / %d  (%d%%),CAPACITY  %d / %d  (%d%%),容量  %d / %d  (%d%%)
+Drag or double-click items to transfer.,Drag or double-click items to transfer.,拖动或双击物品进行转移。
+Item transferred to backpack.,Item transferred to backpack.,物品已转移至背包。
+Equipment moved to backpack.,Equipment moved to backpack.,装备已卸至背包。
+Item transferred.,Item transferred.,物品已转移。
+All chest items transferred.,All chest items transferred.,宝箱物品已全部收获。
+Backpack capacity reached.,Backpack capacity reached.,背包容量已满。
+Some items remain because the backpack is full.,Some items remain because the backpack is full.,背包已满，部分物品仍留在宝箱中。
+Item transfer failed.,Item transfer failed.,物品转移失败。
+Equipment transfer failed.,Equipment transfer failed.,装备转移失败。
 EQ_SLOT_HEAD,Head,头
 EQ_SLOT_CHEST,Chest,胸
 EQ_SLOT_HANDS,Hands,手
@@ -1026,3 +1081,117 @@ EQ_SLOT_MAIN,Main,主手
 EQ_SLOT_OFF,Off,副手
 EQ_SLOT_BACK,Back,背
 EQ_SLOT_ACC,Acc.,饰
+Empty,Empty,空
+Defense %d,Defense %d,防御 %d
+Protective armor worn by the adventurer.,Protective armor worn by the adventurer.,冒险者穿戴的防护护甲。
+获得 %d 角色经验,Gained %d character XP,获得 %d 角色经验
+经验 %d / %d,XP %d / %d,经验 %d / %d
+Crit %+0.1f%%,Crit %+0.1f%%,暴击 %+0.1f%%
+Crit Dmg %+0.0f%%,Crit Dmg %+0.0f%%,暴击伤害 %+0.0f%%
+Stun %+.2fs,Stun %+.2fs,眩晕 %+.2f秒
+地图,Map,地图
+按 M 关闭,Press M to close,按 M 关闭
+无地图数据,No map data,无地图数据
+待处理升级：%d,Pending upgrades: %d,待处理升级：%d
+升级抉择,Upgrade Choice,升级抉择
+选择一枚符文,Choose a Rune,选择一枚符文
+Dungeon Props,Dungeon Props,地牢道具
+Projectiles,Projectiles,投射物
+选择你的出身,Choose Your Origin,选择你的出身
+出身决定起跑姿势，不规定终点。任何武器、流派、属性均可通过实际使用成长。,"Your origin sets your starting stance, not your destination. Any weapon, school, or attribute grows through actual use.",出身决定起跑姿势，不规定终点。任何武器、流派、属性均可通过实际使用成长。
+返回,Back,返回
+确认出身,Confirm Origin,确认出身
+初始武器,Starting Weapon,初始武器
+酿酒方向,Brewing Direction,酿酒方向
+选择,Select,选择
+Save Game,Save Game,保存游戏
+Load Game,Load Game,读取游戏
+Slot %d,Slot %d,存档位 %d
+Unknown Hero,Unknown Hero,未知英雄
+Day,Day,天
+Gold,Gold,金币
+Save,Save,保存
+Overwrite,Overwrite,覆盖
+Load,Load,读取
+手持槽 %d\n%s,Hand Slot %d\n%s,手持槽 %d\n%s
+双手占用主手与副手\n%s,Two-handed occupies main and off hand\n%s,双手占用主手与副手\n%s
+撤离引导  %.1f 秒,Extraction guide  %.1f s,撤离引导  %.1f 秒
+保持警戒  %.1f 秒,Stay alert  %.1f s,保持警戒  %.1f 秒
+受到攻击，撤离中断,Hit - extraction interrupted,受到攻击，撤离中断
+离开引导区域，撤离中断,Left the guide area - extraction interrupted,离开引导区域，撤离中断
+进入符文中心后才能撤离,Enter the rune center to extract,进入符文中心后才能撤离
+撤离已取消,Extraction cancelled,撤离已取消
+撤离完成,Extraction complete,撤离完成
+MultiplayerSession 未就绪,MultiplayerSession not ready,MultiplayerSession 未就绪
+力量 STR %d,STR %d,力量 STR %d
+生命 %s,Life %s,生命 %s
+敏捷 DEX %d,DEX %d,敏捷 DEX %d
+攻击 %s,Attack %s,攻击 %s
+体质 CON %d,CON %d,体质 CON %d
+护甲 %d,Armor %d,护甲 %d
+智力 MAG %d,MAG %d,智力 MAG %d
+闪避 %s,Evade %s,闪避 %s
+灵巧 AGI %d,AGI %d,灵巧 AGI %d
+暴击 %s,Crit %s,暴击 %s
+感知 PER %d,PER %d,感知 PER %d
+✓ 已激活,Active,✓ 已激活
+未激活,Inactive,未激活
+熟练度,Proficiency,熟练度
+•  属性  •,•  Attributes  •,•  属性  •
+选择技能,Select Skill,选择技能
+酿酒台 / Brewing Panel,Brewing Station / Brewing Panel,酿酒台 / Brewing Panel
+桶位状态（点击选中）,Keg status (click to select),桶位状态（点击选中）
+材料库存（点击加入下料篮）,Material stock (click to add to basket),材料库存（点击加入下料篮）
+下料启动发酵,Load & Start Fermenting,下料启动发酵
+开缸取酒,Open the Keg,开缸取酒
+封存陈酿,Seal & Age,封存陈酿
+选择材料与桶位后操作,Select materials and a keg to operate,选择材料与桶位后操作
+Delete,Delete,删除
+Weapon & School Proficiency,Weapon & School Proficiency,武器与流派熟练度
+设置,Settings,设置
+音频,Audio,音频
+主音量,Master Volume,主音量
+显示,Display,显示
+全屏,Fullscreen,全屏
+语言,Language,语言
+Connection failed: %s,Connection failed: %s,连接失败：%s
+Failed to create room: %s,Failed to create room: %s,创建房间失败：%s
+MODEL VIEWER / EDITOR,MODEL VIEWER / EDITOR,模型查看器 / 编辑器
+ASSET INSPECTOR,ASSET INSPECTOR,资产检查器
+符文: %s,Runes: %s,符文: %s
+炼药锅,Brew Cauldron,炼药锅
+倒桶台,Barrel Fill Station,倒桶台
+窖藏位,Cellar Rack Slot,窖藏位
+原料,Ingredient,原料
+顾客,Customer,顾客
+端上酒杯,Serve the Drink,端上酒杯
+炼药锅里已有熟麦汁，先取出,Wort is ready inside - take it out first,炼药锅里已有熟麦汁，先取出
+已取出麦汁，倒入倒桶台,Wort drawn - pour it into the barrel station,已取出麦汁，倒入倒桶台
+在原料架取原料，投入炼药锅开酿,Take ingredients from the shelf and add them to the cauldron,在原料架取原料，投入炼药锅开酿
+原料已入锅,Ingredients added,原料已入锅
+蒸煮 %d%%,Boiling %d%%,蒸煮 %d%%
+麦汁已熟，交互取麦汁,Wort is ready - interact to draw it,麦汁已熟，交互取麦汁
+酒桶已装满，扛起搬到酒窖,Barrel full - carry it down to the cellar,酒桶已装满，扛起搬到酒窖
+已扛起酒桶，前往酒窖窖藏位,Keg lifted - bring it to the cellar rack,已扛起酒桶，前往酒窖窖藏位
+取用 %s,Take %s,取用 %s
+%s ×%d,%s x%d,%s ×%d
+先把手中物品放下或用掉,Use or drop what you are holding first,先把手中物品放下或用掉
+仓库没有足够的%s,Not enough %s in the warehouse,仓库没有足够的%s
+取用 %s（投到炼药锅蒸煮）,Take %s (add to the brew cauldron),取用 %s（投到炼药锅蒸煮）
+仓库没有原料，白天探索收集后可用,No ingredients in the warehouse - gather some during expeditions,仓库没有原料，白天探索收集后可用
+手持原料,Holding Ingredient,手持原料
+手持麦汁,Holding Wort,手持麦汁
+盛酒器,Serving Vessel,盛酒器
+扛着酒桶,Carrying Keg,扛着酒桶
+空手,Empty Hands,空手
+发酵桶位已满，先开缸腾位,All keg slots are busy - open a keg first,发酵桶位已满，先开缸腾位
+已窖藏，发酵中（明日熟成）,Aged in cellar - fermenting (ready tomorrow),已窖藏，发酵中（明日熟成）
+开缸取酒，端给顾客,Keg opened - serve the drink to a customer,开缸取酒，端给顾客
+空位：放入满桶窖藏,Empty slot - place a full keg here,空位：放入满桶窖藏
+发酵中（明日熟成）,Fermenting (ready tomorrow),发酵中（明日熟成）
+已熟成，交互开缸,Matured - interact to open the keg,已熟成，交互开缸
+陈酿中 %d/%d,Aging %d/%d,陈酿中 %d/%d
+陈酿封顶，交互开缸,Fully aged - interact to open the keg,陈酿封顶，交互开缸
+升级奖励 · 二选一,Level-Up Reward - Choose One,升级奖励 · 二选一
+符文奖励 · 本级不再提升属性,Rune Reward - No Stat Gain This Level,符文奖励 · 本级不再提升属性
+Camera Impact,Camera Impact,Camera Impact

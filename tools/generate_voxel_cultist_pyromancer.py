@@ -126,8 +126,8 @@ def _build_palette() -> dict[str, bpy.types.Material]:
         "trim_gold": make_material("trim_gold", (0.85, 0.70, 0.20, 1.0), roughness=0.4, metallic=0.6),
         "leather_dark": make_material("leather_dark", (0.16, 0.10, 0.05, 1.0), roughness=0.6),
         "mask_wood": make_material("mask_wood", (0.25, 0.20, 0.15, 1.0), roughness=0.9),
-        "fire_core": make_material("fire_core", (1.00, 0.90, 0.20, 1.0), roughness=0.1, metallic=0.1, emission=3.5),
-        "fire_outer": make_material("fire_outer", (1.00, 0.35, 0.05, 1.0), roughness=0.1, metallic=0.1, emission=2.5),
+        "fire_core": make_material("fire_core", (1.00, 0.90, 0.20, 1.0), roughness=0.1, metallic=0.1),
+        "fire_outer": make_material("fire_outer", (1.00, 0.35, 0.05, 1.0), roughness=0.1, metallic=0.1),
     }
 
 

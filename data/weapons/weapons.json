@@ -751,7 +751,7 @@
 			"name": "Shield",
 			"name_zh": "盾牌",
 			"first_person": {
-				"view_scale": 0.42,
+				"view_scale": 0.30,
 				"mount_position": [-0.28, -0.02, -0.02],
 				"mount_rotation": [8.0, -18.0, 10.0]
 			},

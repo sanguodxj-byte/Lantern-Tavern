@@ -39,6 +39,21 @@ func test_same_seed_produces_identical_rooms_and_roles() -> void:
 	for k in layout_a.room_roles.keys():
 		assert_bool(layout_a.room_roles[k] == layout_b.room_roles[k]).is_true()
 
+func test_same_seed_produces_identical_hazards_and_environment_plans() -> void:
+	var cfg := DungeonGenerationConfig.new()
+	cfg.algorithm = "isaac"
+	cfg.seed = 7777
+	var layout_a := DungeonGenerator.new().generate(cfg)
+	var layout_b := DungeonGenerator.new().generate(cfg)
+	DungeonHazardPlanner.new().plan(layout_a)
+	DungeonHazardPlanner.new().plan(layout_b)
+	DungeonRoomFocusPlanner.new().plan(layout_a)
+	DungeonRoomFocusPlanner.new().plan(layout_b)
+	assert_bool(layout_a.hazard_anchors == layout_b.hazard_anchors).is_true()
+	assert_bool(layout_a.kick_lanes == layout_b.kick_lanes).is_true()
+	assert_bool(layout_a.decor_specs == layout_b.decor_specs).is_true()
+	assert_bool(layout_a.terrain_features == layout_b.terrain_features).is_true()
+
 func test_different_seed_produces_different_layout_summary() -> void:
 	var cfg_a := DungeonGenerationConfig.new()
 	cfg_a.algorithm = "isaac"

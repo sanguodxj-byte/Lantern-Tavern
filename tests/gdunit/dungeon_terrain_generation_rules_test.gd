@@ -83,15 +83,67 @@ func test_builder_creates_one_integer_ceiling_transition_at_height_boundary() ->
 	var transforms: Array = group["transforms"]
 	assert_int(transforms.size()).is_equal(1)
 	assert_float(transition_size.x).is_equal_approx(0.2, 0.0001)
-	assert_float(transition_size.y).is_equal_approx(2.0, 0.0001)
+	assert_float(transition_size.y).is_equal_approx(1.9, 0.0001)
 	assert_float(transition_size.z).is_equal_approx(3.0, 0.0001)
 	var transition := transforms[0] as Transform3D
 	assert_float(transition.origin.x).is_equal_approx(-1.5, 0.0001)
-	assert_float(transition.origin.y).is_equal_approx(4.0, 0.0001)
+	assert_float(transition.origin.y).is_equal_approx(4.05, 0.0001)
 	assert_float(transition.origin.z).is_equal_approx(-1.5, 0.0001)
-	assert_bool(DungeonGenerationConfig.is_integer_height(transition_size.y)).is_true()
+	assert_bool(transition_size.y > 0.0).is_true()
 	assert_float((result.ceiling_transforms[0] as Transform3D).origin.y).is_equal_approx(3.05, 0.0001)
 	assert_float((result.ceiling_transforms[1] as Transform3D).origin.y).is_equal_approx(5.05, 0.0001)
+
+func test_height_transition_is_face_contact_with_lower_ceiling() -> void:
+	# The ceiling slab is centered at H + thickness/2, so its top occupies
+	# H + thickness. A vertical transition must start there, not at raw H;
+	# otherwise the two textured surfaces overlap and z-fight at the boundary.
+	var layout := DungeonLayout.new()
+	layout.width = 2
+	layout.height = 1
+	layout.tile_size = 3.0
+	layout.grid = [[1, 1]]
+	layout.heights = [[3.0, 5.0]]
+	var result := DungeonBuildResult.new()
+	DungeonSceneBuilder.new()._build_terrain(layout, result)
+
+	var group: Dictionary = result.ceiling_transition_transforms_by_size.values()[0]
+	var transition_size: Vector3 = group["size"]
+	var transition := group["transforms"][0] as Transform3D
+	var lower_ceiling := result.ceiling_transforms[0] as Transform3D
+	var lower_ceiling_top := lower_ceiling.origin.y + 0.05
+	var transition_bottom := transition.origin.y - transition_size.y * 0.5
+	var transition_top := transition.origin.y + transition_size.y * 0.5
+	assert_float(transition_bottom).is_equal_approx(lower_ceiling_top, 0.0001)
+	assert_float(transition_top).is_equal_approx(5.0, 0.0001)
+	assert_float(transition_size.y).is_equal_approx(1.9, 0.0001)
+
+func test_generated_height_transitions_do_not_overlap_any_ceiling() -> void:
+	var builder := DungeonSceneBuilder.new()
+	for seed_value in [94021, 3401, 71231, 91811, 271828]:
+		var config := DungeonGenerationConfig.new()
+		config.seed = seed_value
+		var layout := DungeonGenerator.new().generate(config)
+		var result := DungeonBuildResult.new()
+		builder._build_terrain(layout, result)
+		for group in result.ceiling_transition_transforms_by_size.values():
+			var transition_size: Vector3 = group["size"]
+			for transition_value in group["transforms"]:
+				var transition := transition_value as Transform3D
+				var transition_aabb := AABB(transition.origin - transition_size * 0.5, transition_size)
+				for ceiling_value in result.ceiling_transforms:
+					var ceiling := ceiling_value as Transform3D
+					var ceiling_size := Vector3(layout.tile_size, 0.1, layout.tile_size)
+					var ceiling_aabb := AABB(ceiling.origin - ceiling_size * 0.5, ceiling_size)
+					assert_bool(_has_positive_aabb_overlap(transition_aabb, ceiling_aabb)) \
+						.override_failure_message("seed=%d height transition overlaps ceiling: transition=%s ceiling=%s" % [seed_value, transition.origin, ceiling.origin]) \
+						.is_false()
+
+func _has_positive_aabb_overlap(a: AABB, b: AABB) -> bool:
+	var overlap := Vector3(
+		minf(a.end.x, b.end.x) - maxf(a.position.x, b.position.x),
+		minf(a.end.y, b.end.y) - maxf(a.position.y, b.position.y),
+		minf(a.end.z, b.end.z) - maxf(a.position.z, b.position.z))
+	return overlap.x > 0.0001 and overlap.y > 0.0001 and overlap.z > 0.0001
 
 func test_ceiling_transition_is_registered_for_visual_and_collision_chunks() -> void:
 	var layout := DungeonLayout.new()

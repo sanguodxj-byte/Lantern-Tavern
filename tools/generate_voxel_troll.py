@@ -17,7 +17,7 @@ import bpy
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
-from voxel_character_rig import build_all_actions, build_weapon_actions, export_glb as export_rig_glb
+from voxel_character_rig import HumanoidMotionProfile, build_all_actions, build_weapon_actions, export_glb as export_rig_glb
 from voxel_humanoid_rig import create_voxel_humanoid_armature, parent_parts_by_bone
 from voxel_model_primitives import (
     bounds_center_scale,
@@ -42,6 +42,19 @@ TARGET_ENVELOPE_PX = (44.0, 64.0, 24.0)
 STATIC_OUTPUT = ROOT / "assets" / "meshes" / "characters" / "voxel_troll_64x.glb"
 RIG_OUTPUT = ROOT / "assets" / "meshes" / "characters" / "voxel_troll_64x_rig.glb"
 PREVIEW_DIR = ROOT / "reports" / "characters_preview"
+MOTION_PROFILE = HumanoidMotionProfile(
+    stride_scale=0.40,
+    arm_swing_scale=0.70,
+    weight_scale=1.34,
+    agility_scale=0.78,
+    torso_scale=0.72,
+    swing_lift_scale=3.10,
+    swing_foot_pitch_scale=0.0,
+    contact_foot_pitch_scale=0.50,
+    contact_lead_knee_scale=1.0,
+    contact_height_offset_m=0.026,
+    death_height_offset_m=0.12,
+)
 
 
 def build_troll() -> tuple[bpy.types.Object, list[bpy.types.Object], dict[str, list[bpy.types.Object]]]:
@@ -54,7 +67,7 @@ def build_troll() -> tuple[bpy.types.Object, list[bpy.types.Object], dict[str, l
     skin_dark = make_material("Troll_Skin_Dark", (0.13, 0.20, 0.11, 1.0))
     skin_moss = make_material("Troll_Skin_Moss", (0.34, 0.43, 0.16, 1.0))
     eye_dark = make_material("Troll_Eye_Socket", (0.035, 0.045, 0.025, 1.0))
-    eye_amber = make_material("Troll_Eye_Amber", (0.82, 0.43, 0.075, 1.0), emission=0.45)
+    eye_amber = make_material("Troll_Eye_Amber", (0.82, 0.43, 0.075, 1.0))
     tusk_high = make_material("Troll_Tusk_High", (0.78, 0.72, 0.52, 1.0))
     tusk_dark = make_material("Troll_Tusk_Dark", (0.43, 0.38, 0.25, 1.0))
     scute_high = make_material("Troll_Scute_High", (0.31, 0.29, 0.17, 1.0))
@@ -242,8 +255,8 @@ def main() -> None:
     armature = create_voxel_humanoid_armature(height_px=64.0, name="TrollRig")
     armature.parent = root
     parent_parts_by_bone(parts_by_bone, armature)
-    build_all_actions(armature)
-    build_weapon_actions(armature)
+    build_all_actions(armature, MOTION_PROFILE)
+    build_weapon_actions(armature, MOTION_PROFILE)
     root.rotation_euler.z = math.pi
     bpy.context.view_layer.update()
     export_rig_glb(RIG_OUTPUT)

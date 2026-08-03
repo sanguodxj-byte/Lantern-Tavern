@@ -110,21 +110,15 @@ func test_slashing_has_method_is_try_receive_hit() -> void:
 # 4. check_for_possible_action — 行为逻辑验证（源码模式）
 # ======================================================================
 
-func test_check_for_possible_action_has_pickup_fallback() -> void:
-	# check_for_possible_action 的 collider 链应以 pickup 兜底分支结尾
-	# null safety: 用 elif collider != null 守卫，避免在 null 上调用 has_method
+func test_check_for_possible_action_rejects_name_only_pickup_fallback() -> void:
+	# 仅有 get_item_name() 的碰撞节点没有可执行拾取效果，不应伪造提示。
 	var src: String = _source("res://scenes/characters/player/player.gd")
-	# 定位 check_for_possible_action 函数体
 	var fn_start: int = src.find("func check_for_possible_action")
 	assert_int(fn_start).is_greater(0)
-	# 验证 pickup 兜底分支存在（null safety: 用 elif collider != null 守卫）
 	var pickup_branch: int = src.find("elif collider != null and collider.has_method(\"get_item_name\")", fn_start)
-	assert_bool(pickup_branch > fn_start) \
-		.override_failure_message("check_for_possible_action 应包含 pickup 兜底分支（elif collider != null and collider.has_method('get_item_name')）").is_true()
-	# 验证该分支设置 [E] Pick Up 提示
-	var branch_snippet: String = src.substr(pickup_branch, 200)
-	assert_bool(branch_snippet.find("[E] %s %s") != -1) \
-		.override_failure_message("pickup 兜底分支应设置 [E] Pick Up 提示").is_true()
+	assert_bool(pickup_branch == -1).is_true() \
+		.override_failure_message("check_for_possible_action 不得保留 get_item_name() 拾取兜底分支").is_true()
+	assert_bool(src.contains("_pickable_item_has_interaction_payload")).is_true()
 
 
 func test_pickable_focus_emits_shared_detail_popup_signal() -> void:

@@ -4,6 +4,7 @@ class_name TavernEquipmentPanel
 const SD := preload("res://globals/combat/skill_data.gd")
 const AS := preload("res://globals/combat/action_skills.gd")
 const RD := preload("res://globals/combat/rune_data.gd")
+const RWD := preload("res://globals/combat/rune_word_data.gd")
 const DETAIL_POPUP_SCRIPT_PATH := "res://scenes/ui/equipment_detail_popup.gd"
 const PLAYER_PREVIEW_SCENE_PATH := "res://scenes/characters/player/player.tscn"
 ## Compatibility alias for tools that refer to the preview scene as a model.
@@ -17,12 +18,16 @@ const SKILL_RUNTIME_SCRIPT := preload("res://globals/combat/skill_runtime.gd")
 const Service := preload("res://globals/core/service.gd")
 const BD := preload("res://globals/tavern/brewing_data.gd")
 const PanelInventory := preload("res://scenes/ui/equipment_panel_inventory.gd")
+const InventoryTransferService := preload("res://globals/core/inventory_transfer_service.gd")
 const SlotHintIcons := preload("res://scenes/ui/equipment_slot_hint_icons.gd")
 const SLOT_ICON_SIZE := 80
 const RUNE_SLOT_ICON_SIZE := 32
 const EQUIPMENT_SLOT_SIZE := Vector2(96, 96)
 const INVENTORY_GRID_COLUMNS := 6
 const LEFT_COLUMN_WIDTH := 640.0
+const COMPACT_LEFT_COLUMN_WIDTH := 560.0
+const COMPACT_LAYOUT_WIDTH := 1500.0
+const COMPACT_LAYOUT_HEIGHT := 820.0
 const SLOT_HINT_COLOR := Color(0.94, 0.82, 0.64, 0.55)
 const SLOT_FILL_NEIGHBORS := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 const SLOT_HINT_ASSET_VERSION := "v4"
@@ -88,6 +93,10 @@ var weapon_slot_buttons: Array[Button] = []
 var armor_slot_buttons: Dictionary = {}
 var skill_slot_buttons: Array[Button] = []
 var rune_slot_buttons: Array[Button] = []
+var rune_word_label: Label = null
+## 符文之语参与信息面板（悬浮符文槽位时在槽位下方显示）
+var rune_word_info_panel: PanelContainer = null
+var rune_word_info_label: RichTextLabel = null
 var detail_popup
 var DETAIL_POPUP_SCRIPT: GDScript
 var PLAYER_FINDER: GDScript
@@ -95,6 +104,7 @@ var current_preview_node: Node3D = null
 var _slot_icon_cache: Dictionary = {}
 var _capture_weapon_slots: Array = []
 var _capture_weapon_icon_paths: Dictionary = {}
+var _preview_refresh_queued := false
 var WeaponRegistry: Node:
 	get:
 		return get_tree().root.get_node_or_null("WeaponRegistry") if get_tree() != null else null
@@ -126,6 +136,9 @@ func _ready() -> void:
 	}
 	skill_slot_buttons = [skill_slot_0, skill_slot_1, skill_slot_2, skill_slot_3, skill_slot_4, skill_slot_5, skill_slot_6]
 	rune_slot_buttons = _collect_rune_slot_buttons()
+	_create_rune_word_label()
+	_create_rune_word_info_panel()
+	_connect_rune_slot_hover_signals()
 	_prepare_skill_workspace_layout()
 	_remove_internal_information_fills()
 	_apply_pixel_ui_variations()
@@ -148,6 +161,7 @@ func _ready() -> void:
 	slot_feet.pressed.connect(func(): select_armor_slot("feet"))
 	gear_list.item_activated.connect(_on_gear_item_activated)
 	gear_list.item_selected.connect(_on_gear_item_selected)
+	gear_list.gui_input.connect(_on_gear_list_gui_input)
 	filter_all.pressed.connect(func(): set_inventory_filter(VIEW_MODEL.FILTER_ALL))
 	filter_equipment.pressed.connect(func(): set_inventory_filter(VIEW_MODEL.FILTER_EQUIPMENT))
 	filter_weapons.pressed.connect(func(): set_inventory_filter(VIEW_MODEL.FILTER_WEAPONS))
@@ -158,16 +172,53 @@ func _ready() -> void:
 	available_skills_list.item_selected.connect(_on_available_skill_selected)
 	bind_skill_btn.pressed.connect(_on_bind_skill_pressed)
 	unbind_skill_btn.pressed.connect(_on_unbind_skill_pressed)
+	_refresh_static_texts()
 	if not _is_capture_mode():
+		var tavern_manager := Service.tavern_manager()
+		if tavern_manager != null and tavern_manager.has_method("ensure_debug_all_runes_in_warehouse"):
+			tavern_manager.ensure_debug_all_runes_in_warehouse()
 		_refresh_all()
 
 
+func _refresh_static_texts() -> void:
+	$PanelContainer/VBoxContainer/Header/Title.text = tr("酒馆装备与仓库")
+	return_btn.text = tr("关闭")
+	$PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ArmorSlots/ArmorTitle.text = tr("防具")
+	$PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/WeaponSlots/WeaponTitle.text = tr("武器")
+	filter_all.text = tr("全部")
+	filter_equipment.text = tr("装备")
+	filter_weapons.text = tr("武器")
+	filter_armor.text = tr("防具")
+	filter_materials.text = tr("材料")
+	filter_runes.text = tr("符文")
+	sort_inventory_btn.text = tr("整理")
+	right_tabs.set_tab_title(0, tr("物品"))
+	right_tabs.set_tab_title(1, tr("技能"))
+	right_tabs.set_tab_title(2, tr("仓库"))
+	$PanelContainer/VBoxContainer/MainLayout/RightTabs/仓库/WarehouseLayout/CarriedPanel/CarriedBox/CarriedTitle.text = tr("随身物品")
+	$PanelContainer/VBoxContainer/MainLayout/RightTabs/仓库/WarehouseLayout/WarehousePanel/WarehouseBox/WarehouseTitle.text = tr("仓库")
+	_set_label_text_recursive(right_tabs, "SkillSlotsTitle", tr("技能槽位"))
+	_set_label_text_recursive(right_tabs, "RuneWarehouseTitle", tr("符文仓库"))
+	_set_label_text_recursive(right_tabs, "AvailableSkillsTitle", tr("可用技能"))
+	_set_label_text_recursive(right_tabs, "SkillDetailsTitle", tr("技能详情"))
+	bind_skill_btn.text = tr("绑定")
+	unbind_skill_btn.text = tr("解绑")
+
+
+func _set_label_text_recursive(root_node: Node, node_name: String, value: String) -> void:
+	if root_node == null:
+		return
+	var label := root_node.find_child(node_name, true, false) as Label
+	if label != null:
+		label.text = value
+
+
 func _remove_internal_information_fills() -> void:
-	# Keep the parchment visible through information containers. The global
-	# theme remains opaque for the rest of the game, so this screen applies the
-	# transparent treatment locally at runtime after TabContainer setup.
+	# Preserve the parchment as the screen's base without flattening every
+	# information surface. Only decorative wrappers stay translucent; tabs and
+	# item grids keep their authored panels so sections remain easy to scan.
 	var panel_style := StyleBoxFlat.new()
-	panel_style.bg_color = Color(0, 0, 0, 0)
+	panel_style.bg_color = Color(0.07, 0.045, 0.035, 0.34)
 	panel_style.border_width_left = 1
 	panel_style.border_width_top = 1
 	panel_style.border_width_right = 1
@@ -175,18 +226,13 @@ func _remove_internal_information_fills() -> void:
 	panel_style.border_color = Color(0.42, 0.27, 0.16, 0.92)
 	panel_style.shadow_color = Color(0.012, 0.008, 0.016, 0.68)
 	panel_style.shadow_size = 2
-	for node in find_children("", "PanelContainer", true, false):
-		var panel := node as PanelContainer
+	var decorative_panel_paths: Array[String] = [
+		"PanelContainer/VBoxContainer/MainLayout/LeftColumn/EquipTop/ModelPlaceholder",
+	]
+	for path in decorative_panel_paths:
+		var panel := get_node_or_null(path) as PanelContainer
 		if panel != null and panel != preview_frame:
 			panel.add_theme_stylebox_override("panel", panel_style)
-	for node in find_children("", "TabContainer", true, false):
-		var tabs := node as TabContainer
-		if tabs != null:
-			tabs.add_theme_stylebox_override("panel", panel_style)
-	for node in find_children("", "ItemList", true, false):
-		var list := node as ItemList
-		if list != null:
-			list.add_theme_stylebox_override("panel", panel_style)
 
 
 func _is_capture_mode() -> bool:
@@ -200,23 +246,42 @@ func _is_capture_mode() -> bool:
 func _lock_left_column_layout() -> void:
 	if left_column == null:
 		return
-	left_column.custom_minimum_size.x = LEFT_COLUMN_WIDTH
+	var compact := size.x < COMPACT_LAYOUT_WIDTH or size.y < COMPACT_LAYOUT_HEIGHT
+	left_column.custom_minimum_size.x = (
+		COMPACT_LEFT_COLUMN_WIDTH if compact else LEFT_COLUMN_WIDTH
+	)
 	left_column.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	left_column.size_flags_stretch_ratio = 0.0
+	var equip_top := left_column.get_node_or_null("EquipTop") as Control
+	var bottom_info := left_column.get_node_or_null("BottomInfo") as Control
+	if equip_top != null:
+		equip_top.custom_minimum_size.y = 400.0 if compact else 470.0
+	if bottom_info != null:
+		bottom_info.custom_minimum_size.y = 0.0
+		bottom_info.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	if right_tabs != null:
+		var available_width := maxf(420.0, size.x - left_column.custom_minimum_size.x - 72.0)
+		right_tabs.custom_minimum_size.x = minf(620.0 if compact else 920.0, available_width)
+		right_tabs.clip_contents = compact
 
 
-## 面板内容的最小宽度不能反向改变外框的 20px 内边距。
+## 面板内容的最小宽度不能反向改变外框的安全边距。
 ## 使用左上角锚点后，外框只跟随根节点尺寸变化，不参与内容最小尺寸回算。
 func _lock_panel_frame_layout() -> void:
 	if panel_frame == null or size.x <= 0.0 or size.y <= 0.0:
 		return
+	var safe_margin := 12.0 if size.x < COMPACT_LAYOUT_WIDTH or size.y < COMPACT_LAYOUT_HEIGHT else 20.0
 	panel_frame.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	panel_frame.position = Vector2(20.0, 20.0)
-	panel_frame.size = Vector2(maxf(0.0, size.x - 40.0), maxf(0.0, size.y - 40.0))
+	panel_frame.position = Vector2(safe_margin, safe_margin)
+	panel_frame.size = Vector2(
+		maxf(0.0, size.x - safe_margin * 2.0),
+		maxf(0.0, size.y - safe_margin * 2.0)
+	)
 
 
 func _on_panel_resized() -> void:
 	_lock_panel_frame_layout()
+	_lock_left_column_layout()
 
 
 func _on_right_tab_changed(_tab_index: int) -> void:
@@ -503,7 +568,10 @@ func _refresh_items() -> void:
 		var scroll_bar := gear_list.get_v_scroll_bar()
 		if scroll_bar != null:
 			scroll_bar.value = 0.0
-	filter_count.text = "%s · %d件" % [VIEW_MODEL.filter_label(inventory_filter), gear_list.item_count if gear_list.item_count > 0 and gear_list.get_item_metadata(0) != null else 0]
+	filter_count.text = tr("%s · %d items") % [
+		tr(VIEW_MODEL.filter_label(inventory_filter)),
+		gear_list.item_count if gear_list.item_count > 0 and gear_list.get_item_metadata(0) != null else 0,
+	]
 	_update_inventory_filter_buttons()
 
 func _append_equipment_to_list(list: ItemList, filter_id: String = "") -> void:
@@ -680,28 +748,27 @@ func select_armor_slot(slot_name: String) -> bool:
 	_refresh_equipment_slots()
 	return true
 
-func configure_selected_weapon_slot(weapon_id: String) -> bool:
+func configure_selected_weapon_slot(weapon_id: String, data_override: WeaponData = null) -> bool:
 	var eq := _get_player_equipment()
 	if eq == null:
 		return false
-	var weapon: WeaponData = WeaponRegistry.get_weapon_data(weapon_id)
+	var weapon: WeaponData = data_override if data_override != null and data_override.id == weapon_id else WeaponRegistry.get_weapon_data(weapon_id)
 	if weapon == null:
 		return false
 	var target_slot := _normalise_weapon_slot_index(selected_weapon_slot)
 	var existing_two_hand_slot := _two_hand_group_slot_index(eq)
-	var displaced_two_hand_id := ""
+	var displaced_two_hand: WeaponData = null
 	if existing_two_hand_slot >= 0 and target_slot <= 1 and not _weapon_slot_occupies_both_hands(weapon):
 		# Replacing a merged two-hand group with a one-hand weapon starts a new
 		# main-hand layout. Do not leave the old two-hand item hidden in slot 2.
 		target_slot = 0
 		if existing_two_hand_slot != target_slot:
-			var displaced_two_hand: Variant = eq.get_weapon_slot_data(existing_two_hand_slot)
-			displaced_two_hand_id = String(displaced_two_hand.id) if displaced_two_hand != null and "id" in displaced_two_hand else ""
+			displaced_two_hand = eq.get_weapon_slot_data(existing_two_hand_slot)
 	if _weapon_slot_occupies_both_hands(weapon):
 		# Two-hand, ranged, and spell weapons always use the canonical leading
 		# hand slot so the UI and the equipment component share one invariant.
 		target_slot = 0
-	var previous: Variant = eq.get_weapon_slot_data(target_slot)
+	var previous: WeaponData = eq.get_weapon_slot_data(target_slot)
 	var previous_id := String(previous.id) if previous != null and "id" in previous else ""
 	if previous_id == weapon_id:
 		_clear_two_hand_companion_slot(eq, target_slot, weapon)
@@ -709,19 +776,20 @@ func configure_selected_weapon_slot(weapon_id: String) -> bool:
 		if activated:
 			_apply_equipment_changed(eq)
 		return activated
-	if not _consume_carried_equipment(weapon_id):
+	var carried_weapon: WeaponData = PanelInventory.take_carried_equipment_instance(weapon_id)
+	if carried_weapon == null:
 		return false
-	if not displaced_two_hand_id.is_empty():
+	if displaced_two_hand != null:
 		eq.configure_weapon_slot(existing_two_hand_slot, null, false)
-	var ok: bool = eq.configure_weapon_slot(target_slot, weapon, true)
+	var ok: bool = eq.configure_weapon_slot(target_slot, carried_weapon, true)
 	if ok:
-		_return_carried_equipment(previous_id)
-		_return_carried_equipment(displaced_two_hand_id)
+		_return_carried_equipment_data(previous)
+		_return_carried_equipment_data(displaced_two_hand)
 		_clear_two_hand_companion_slot(eq, target_slot, weapon)
 		_apply_equipment_changed(eq)
 	else:
-		_return_carried_equipment(weapon_id)
-		_return_carried_equipment(displaced_two_hand_id)
+		_return_carried_equipment_data(carried_weapon)
+		_return_carried_equipment_data(displaced_two_hand)
 	return ok
 
 
@@ -729,36 +797,36 @@ func _clear_two_hand_companion_slot(eq: Node, target_slot: int, weapon: WeaponDa
 	if eq == null or not _weapon_slot_occupies_both_hands(weapon) or target_slot > 1:
 		return
 	var companion_slot := 1 if target_slot == 0 else 0
-	var companion: Variant = eq.get_weapon_slot_data(companion_slot)
+	var companion: WeaponData = eq.get_weapon_slot_data(companion_slot)
 	if companion == null:
 		return
 	eq.configure_weapon_slot(companion_slot, null, false)
-	var companion_id := String(companion.id) if "id" in companion else ""
-	_return_carried_equipment(companion_id)
+	_return_carried_equipment_data(companion)
 
-func configure_armor_slot(slot_name: String, armor_id: String) -> bool:
+func configure_armor_slot(slot_name: String, armor_id: String, data_override: WeaponData = null) -> bool:
 	if not armor_slot_ids.has(slot_name):
 		return false
 	var meta: Dictionary = WeaponRegistry.get_entry_meta(armor_id)
 	var category: String = meta.get("category", "")
 	if not _is_armor_category(category):
 		return false
-	var armor: WeaponData = WeaponRegistry.get_weapon_data(armor_id)
+	var armor: WeaponData = data_override if data_override != null and data_override.id == armor_id else WeaponRegistry.get_weapon_data(armor_id)
 	if armor == null:
 		return false
 	var eq := _get_player_equipment()
 	if eq == null:
 		return false
-	var previous: Variant = eq.get_armor_slot_data(slot_name)
+	var previous: WeaponData = eq.get_armor_slot_data(slot_name)
 	var previous_id := String(previous.id) if previous != null and "id" in previous else ""
 	if previous_id == armor_id:
 		return true
-	if not _consume_carried_equipment(armor_id):
+	var carried_armor: WeaponData = PanelInventory.take_carried_equipment_instance(armor_id)
+	if carried_armor == null:
 		return false
-	if not eq.configure_armor_slot(slot_name, armor):
-		_return_carried_equipment(armor_id)
+	if not eq.configure_armor_slot(slot_name, carried_armor):
+		_return_carried_equipment_data(carried_armor)
 		return false
-	_return_carried_equipment(previous_id)
+	_return_carried_equipment_data(previous)
 	armor_slot_ids[slot_name] = armor_id
 	_apply_equipment_changed(eq)
 	return true
@@ -780,12 +848,32 @@ func _apply_equipment_changed(eq: Node) -> void:
 	_refresh_character_summary()
 	_refresh_items()
 	_refresh_warehouse()
-	call_deferred("_refresh_preview")
+	_queue_preview_refresh()
 	_ensure_mouse_visible()
+
+func _queue_preview_refresh() -> void:
+	if _preview_refresh_queued:
+		return
+	_preview_refresh_queued = true
+	call_deferred("_flush_preview_refresh")
+
+func _flush_preview_refresh() -> void:
+	_preview_refresh_queued = false
+	_refresh_preview()
 
 func _on_gear_item_activated(index: int) -> void:
 	var meta = gear_list.get_item_metadata(index)
 	_equip_gear_metadata(meta)
+
+func _on_gear_list_gui_input(event: InputEvent) -> void:
+	if not event is InputEventMouseButton or event.button_index != MOUSE_BUTTON_RIGHT or not event.pressed:
+		return
+	var index := gear_list.get_item_at_position(event.position, true)
+	if index < 0 or index >= gear_list.item_count:
+		return
+	gear_list.select(index)
+	_equip_gear_metadata(gear_list.get_item_metadata(index))
+	get_viewport().set_input_as_handled()
 
 func _on_gear_item_selected(index: int) -> void:
 	var meta = gear_list.get_item_metadata(index)
@@ -824,11 +912,13 @@ func _equip_gear_metadata(meta: Variant) -> void:
 		return
 	match meta.get("type", ""):
 		"weapon":
-			configure_selected_weapon_slot(String(meta.get("id", "")))
+			configure_selected_weapon_slot(String(meta.get("id", "")), meta.get("data", null) as WeaponData)
 		"armor":
-			var armor_data: WeaponData = WeaponRegistry.get_weapon_data(String(meta.get("id", "")))
+			var armor_data: WeaponData = meta.get("data", null) as WeaponData
+			if armor_data == null:
+				armor_data = WeaponRegistry.get_weapon_data(String(meta.get("id", "")))
 			var target_slot: String = armor_data.armor_slot if armor_data != null and not armor_data.armor_slot.is_empty() else selected_armor_slot
-			configure_armor_slot(target_slot, String(meta.get("id", "")))
+			configure_armor_slot(target_slot, String(meta.get("id", "")), armor_data)
 
 func _refresh_skill_slots() -> void:
 	var sr: Node = _get_skill_runtime()
@@ -840,6 +930,151 @@ func _refresh_skill_slots() -> void:
 		if i >= 0 and i < skill_slot_buttons.size():
 			skill_slot_buttons[i].text = "%s%s\n%s" % [label, selected_marker, skill_name]
 	_refresh_rune_slots()
+	_refresh_rune_word_summary()
+
+## 创建符文之语展示标签（挂到技能详情同级容器，无容器则跳过）
+func _create_rune_word_label() -> void:
+	var parent: Node = skill_details.get_parent() if skill_details != null else null
+	if parent == null:
+		return
+	rune_word_label = Label.new()
+	rune_word_label.name = "RuneWordSummary"
+	rune_word_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	rune_word_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	rune_word_label.custom_minimum_size = Vector2(0, 0)
+	# 插入到技能详情之后
+	var idx: int = (skill_details.get_index() + 1) if skill_details != null else parent.get_child_count()
+	parent.add_child(rune_word_label)
+	parent.move_child(rune_word_label, mini(idx, parent.get_child_count() - 1))
+
+## 刷新已激活符文之语展示
+func _refresh_rune_word_summary() -> void:
+	if rune_word_label == null or not is_instance_valid(rune_word_label):
+		return
+	var sr: Node = _get_skill_runtime()
+	var active: Array = sr.get_active_rune_words() if sr != null and sr.has_method("get_active_rune_words") else []
+	if active.is_empty():
+		rune_word_label.text = ""
+		rune_word_label.visible = false
+		return
+	rune_word_label.visible = true
+	var lines: Array = ["[符文之语]"]
+	for word_id in active:
+		var word: Dictionary = RWD.get_rune_word(String(word_id))
+		if word.is_empty():
+			continue
+		lines.append("%s  %s" % [String(word.get("runic_name", "")), String(word.get("desc", ""))])
+	rune_word_label.text = "\n".join(lines)
+
+## 创建符文之语参与信息面板，插入到 SkillPyramid 之后、RuneWarehousePanel 之前
+func _create_rune_word_info_panel() -> void:
+	var pyramid := find_child("SkillPyramid", true, false)
+	if pyramid == null or pyramid.get_parent() == null:
+		return
+	var parent: Container = pyramid.get_parent()
+	rune_word_info_panel = PanelContainer.new()
+	rune_word_info_panel.name = "RuneWordInfoPanel"
+	rune_word_info_panel.custom_minimum_size = Vector2(0, 0)
+	rune_word_info_panel.visible = false
+	# 使用与装备区域一致的面板样式
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.06, 0.05, 0.04, 0.96)
+	style.set_border_width_all(2)
+	style.border_color = Color(0.72, 0.43, 0.20, 0.96)
+	style.set_content_margin_all(8)
+	rune_word_info_panel.add_theme_stylebox_override("panel", style)
+
+	rune_word_info_label = RichTextLabel.new()
+	rune_word_info_label.bbcode_enabled = true
+	rune_word_info_label.fit_content = true
+	rune_word_info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	rune_word_info_label.custom_minimum_size = Vector2(480, 0)
+	rune_word_info_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rune_word_info_panel.add_child(rune_word_info_label)
+
+	# 插入到 SkillPyramid 之后
+	var idx: int = pyramid.get_index() + 1
+	parent.add_child(rune_word_info_panel)
+	parent.move_child(rune_word_info_panel, mini(idx, parent.get_child_count() - 1))
+
+## 连接所有符文槽位按钮的 mouse_entered / mouse_exited 信号
+func _connect_rune_slot_hover_signals() -> void:
+	for button in rune_slot_buttons:
+		if button is Control:
+			if button.mouse_entered.is_connected(_on_rune_slot_hovered):
+				button.mouse_entered.disconnect(_on_rune_slot_hovered)
+			if button.mouse_exited.is_connected(_on_rune_slot_unhovered):
+				button.mouse_exited.disconnect(_on_rune_slot_unhovered)
+			button.mouse_entered.connect(_on_rune_slot_hovered.bind(button))
+			button.mouse_exited.connect(_on_rune_slot_unhovered)
+
+## 鼠标悬浮符文槽位：在槽位下方面板显示该符文参与的符文之语
+func _on_rune_slot_hovered(button: Button) -> void:
+	if rune_word_info_panel == null or not is_instance_valid(rune_word_info_panel):
+		return
+	var rune_id := String(button.get("rune_id"))
+	if rune_id.is_empty():
+		rune_word_info_panel.visible = false
+		return
+	var bbcode := _build_rune_word_info_bbcode(rune_id)
+	if bbcode.is_empty():
+		rune_word_info_panel.visible = false
+		return
+	rune_word_info_label.text = bbcode
+	rune_word_info_panel.visible = true
+
+## 鼠标离开符文槽位：隐藏信息面板
+func _on_rune_slot_unhovered() -> void:
+	if rune_word_info_panel != null and is_instance_valid(rune_word_info_panel):
+		rune_word_info_panel.visible = false
+
+## 构建符文之语参与信息的 BBCode 文本
+func _build_rune_word_info_bbcode(rune_id: String) -> String:
+	var rune: Dictionary = RD.get_rune(rune_id)
+	if rune.is_empty():
+		return ""
+	var word_ids: Array = RWD.get_rune_words_containing_rune(rune_id)
+	if word_ids.is_empty():
+		return ""
+
+	var runic := String(rune.get("runic_name", ""))
+	var rune_color := RD.get_rune_color(rune_id)
+	var sr: Node = _get_skill_runtime()
+	var active_words: Array = sr.get_active_rune_words() if sr != null and sr.has_method("get_active_rune_words") else []
+
+	var lines: Array = []
+	# 标题：当前符文的梵语名用其专属色
+	lines.append("[b][color=%s]%s[/color][/b] 参与的符文之语:" % [rune_color, runic])
+	for word_id in word_ids:
+		var word: Dictionary = RWD.get_rune_word(String(word_id))
+		if word.is_empty():
+			continue
+		var w_runic := String(word.get("runic_name", ""))
+		var w_desc := String(word.get("desc", ""))
+		var recipe: Array = word.get("recipe", [])
+		var is_active: bool = active_words.has(String(word_id))
+
+		# 符文之语拥有独立的梵语主题名（非拼接）。
+		# 配方行中每个符文用其专属色着色，当前悬浮符文加粗，建立视觉关联。
+		var recipe_parts: Array = []
+		for r in recipe:
+			var rid := String(r)
+			var r_runic := String(RD.get_rune(rid).get("runic_name", rid))
+			var r_color := RD.get_rune_color(rid)
+			if rid == rune_id:
+				recipe_parts.append("[color=%s][b]%s[/b][/color]" % [r_color, r_runic])
+			else:
+				recipe_parts.append("[color=%s]%s[/color]" % [r_color, r_runic])
+		var recipe_str := " → ".join(recipe_parts)
+
+		var status_color := "#6CFF6C" if is_active else "#888888"
+		var status_text := tr("✓ 已激活") if is_active else tr("未激活")
+		lines.append("")
+		lines.append("[b][color=#FFD700]%s[/color][/b]  [color=%s]%s[/color]" % [w_runic, status_color, status_text])
+		lines.append("  %s" % recipe_str)
+		lines.append("  [i][color=#AAAAAA]%s[/color][/i]" % w_desc)
+
+	return "\n".join(lines)
 
 func _refresh_rune_slots() -> void:
 	var sr: Node = _get_skill_runtime()
@@ -858,10 +1093,14 @@ func _refresh_rune_slots() -> void:
 			var rune_id := String(runes[socket_index])
 			button.text = ""
 			button.icon = _scaled_rune_slot_icon(DETAIL_POPUP_SCRIPT.icon_for_rune(rune_id))
-			button.tooltip_text = RD.get_rune_name(rune_id)
+			# 设置 rune_id 供 RuneSlotDropButton._make_custom_tooltip 使用，
+			# tooltip_text 设为非空以触发 Godot 调用 _make_custom_tooltip。
+			button.set("rune_id", rune_id)
+			button.tooltip_text = " "
 		else:
 			button.text = "-"
 			button.icon = null
+			button.set("rune_id", "")
 			button.tooltip_text = ""
 
 func _refresh_available_skills() -> void:
@@ -966,6 +1205,7 @@ func collect_drag_payload(source: String) -> Dictionary:
 				"kind": "equipment",
 				"id": String(meta.get("id", "")),
 				"category": String(meta.get("category", "")),
+				"data": meta.get("data", null),
 				"count": int(meta.get("amount", 1)),
 			}
 	var ids: Array[String] = []
@@ -1017,6 +1257,7 @@ func collect_equipment_slot_drag_payload(slot_kind: String, slot_index: int, arm
 				"kind": "equipment",
 				"id": String(w_data.id),
 				"category": String(w_data.equipment_category),
+				"data": w_data,
 				"count": 1,
 				"source_slot_kind": "weapon",
 				"source_slot_index": _weapon_slot_data_index_for_visual(slot_index),
@@ -1029,6 +1270,7 @@ func collect_equipment_slot_drag_payload(slot_kind: String, slot_index: int, arm
 				"kind": "equipment",
 				"id": String(a_data.id),
 				"category": String(a_data.equipment_category),
+				"data": a_data,
 				"count": 1,
 				"source_slot_kind": "armor",
 				"source_armor_slot": armor_slot,
@@ -1043,27 +1285,28 @@ func _unequip_to_inventory(data: Variant) -> void:
 	if equipment_id.is_empty():
 		return
 	var source_slot_kind := String(data.get("source_slot_kind", ""))
+	var source_data: WeaponData = null
 	match source_slot_kind:
 		"weapon":
 			var slot_index := int(data.get("source_slot_index", -1))
 			if slot_index < 0 or slot_index >= 4:
 				return
-			var slot_data: Variant = eq.get_weapon_slot_data(slot_index)
-			if slot_data == null or String(slot_data.id) != equipment_id:
+			source_data = eq.get_weapon_slot_data(slot_index)
+			if source_data == null or String(source_data.id) != equipment_id:
 				return
 			eq.configure_weapon_slot(slot_index, null, slot_index == eq.active_weapon_slot)
 		"armor":
 			var armor_slot := String(data.get("source_armor_slot", ""))
 			if not armor_slot_ids.has(armor_slot):
 				return
-			var slot_data: Variant = eq.get_armor_slot_data(armor_slot)
-			if slot_data == null or String(slot_data.id) != equipment_id:
+			source_data = eq.get_armor_slot_data(armor_slot)
+			if source_data == null or String(source_data.id) != equipment_id:
 				return
 			eq.configure_armor_slot(armor_slot, null)
 			armor_slot_ids[armor_slot] = ""
 		_:
 			return
-	_return_carried_equipment(equipment_id)
+	_return_carried_equipment_data(source_data)
 	_apply_equipment_changed(eq)
 	_ensure_mouse_visible()
 
@@ -1095,6 +1338,7 @@ func drop_equipment_slot_data(slot_kind: String, slot_index: int, armor_slot: St
 		_ensure_mouse_visible()
 		return
 	var equipment_id: String = data.get("id", "")
+	var equipment_data: WeaponData = data.get("data", null) as WeaponData
 	var source_slot_kind := String(data.get("source_slot_kind", ""))
 	var target_weapon_index := _weapon_slot_data_index_for_visual(slot_index) if slot_kind == "weapon" else slot_index
 	# 同槽位拖放直接忽略
@@ -1116,9 +1360,12 @@ func drop_equipment_slot_data(slot_kind: String, slot_index: int, armor_slot: St
 	match slot_kind:
 		"weapon":
 			select_weapon_slot(slot_index)
-			configure_selected_weapon_slot(equipment_id)
+			configure_selected_weapon_slot(equipment_id, equipment_data)
 		"armor":
-			configure_armor_slot(armor_slot, equipment_id)
+			var target_armor_slot := armor_slot
+			if equipment_data != null and not equipment_data.armor_slot.is_empty():
+				target_armor_slot = equipment_data.armor_slot
+			configure_armor_slot(target_armor_slot, equipment_id, equipment_data)
 	_ensure_mouse_visible()
 
 func _swap_equipment_slots(data: Variant, target_kind: String, target_index: int, target_armor_slot: String) -> void:
@@ -1265,7 +1512,9 @@ func hide_detail_popup() -> void:
 func transfer_materials(source: String, target: String, item_ids: Array) -> Dictionary:
 	var source_inv: Dictionary = _inventory_for_source(source)
 	var target_inv: Dictionary = _inventory_for_source(target)
-	var moved: Dictionary = move_items_between(source_inv, target_inv, item_ids, target == "items", GameState.MATERIAL_SPACE_PER_ITEM)
+	var moved: Dictionary = InventoryTransferService.move_items_between(
+		source_inv, target_inv, item_ids, target == "items",
+		InventoryTransferService.MATERIAL_SPACE_PER_ITEM, _carried_capacity_callback())
 	_refresh_items()
 	_refresh_warehouse()
 	_refresh_skill_rune_warehouse()
@@ -1273,16 +1522,25 @@ func transfer_materials(source: String, target: String, item_ids: Array) -> Dict
 
 func transfer_inventory_items(source: String, target: String, material_ids: Array, rune_ids: Array) -> Dictionary:
 	var moved := {
-		"materials": move_items_between(_inventory_for_source(source), _inventory_for_source(target), material_ids, target == "items", GameState.MATERIAL_SPACE_PER_ITEM),
-		"runes": move_items_between(_rune_inventory_for_source(source), _rune_inventory_for_source(target), rune_ids, target == "items", GameState.RUNE_SPACE_PER_ITEM),
+		"materials": InventoryTransferService.move_items_between(
+			_inventory_for_source(source), _inventory_for_source(target), material_ids, target == "items",
+			InventoryTransferService.MATERIAL_SPACE_PER_ITEM, _carried_capacity_callback()),
+		"runes": InventoryTransferService.move_items_between(
+			_rune_inventory_for_source(source), _rune_inventory_for_source(target), rune_ids, target == "items",
+			InventoryTransferService.RUNE_SPACE_PER_ITEM, _carried_capacity_callback()),
 	}
 	_refresh_items()
 	_refresh_warehouse()
 	_refresh_skill_rune_warehouse()
 	return moved
 
-func move_items_between(source_inv: Dictionary, target_inv: Dictionary, item_ids: Array, target_is_carried: bool = false, space_per_item: int = 1) -> Dictionary:
-	return PanelInventory.move_items_between(source_inv, target_inv, item_ids, target_is_carried, space_per_item)
+## 随身容量判定回调：经 GameState.can_add_carried_space 注入（无 GameState 时跳过容量校验）。
+func _carried_capacity_callback() -> Callable:
+	var gs := Service.game_state()
+	if gs != null and gs.has_method("can_add_carried_space"):
+		return func(total_space: int, _per_item: int) -> bool:
+			return gs.can_add_carried_space(total_space)
+	return Callable()
 
 func _refresh_armor_slot_button(slot_name: String, display_name: String) -> void:
 	var button: Button = armor_slot_buttons.get(slot_name, null)
@@ -1330,12 +1588,12 @@ func _refresh_character_summary() -> void:
 	# StatsVisual alternates entries into left/right columns. Keep combat readouts
 	# on the left and the six canonical attributes on the right.
 	var stats_lines: Array[String] = [
-		"等级 %d" % level, "力量 STR %d" % int(attrs.get("str", 0)),
-		"生命 %s" % life_text, "敏捷 DEX %d" % int(attrs.get("dex", 0)),
-		"攻击 %s" % attack_text, "体质 CON %d" % int(attrs.get("con", 0)),
-		"护甲 %d" % armor_value, "智力 MAG %d" % int(attrs.get("mag", 0)),
-		"闪避 %s" % evade_text, "灵巧 AGI %d" % int(attrs.get("agi", 0)),
-		"暴击 %s" % crit_text, "感知 PER %d" % int(attrs.get("per", 0)),
+		tr("等级 %d") % level, tr("力量 STR %d") % int(attrs.get("str", 0)),
+		tr("生命 %s") % life_text, tr("敏捷 DEX %d") % int(attrs.get("dex", 0)),
+		tr("攻击 %s") % attack_text, tr("体质 CON %d") % int(attrs.get("con", 0)),
+		tr("护甲 %d") % armor_value, tr("智力 MAG %d") % int(attrs.get("mag", 0)),
+		tr("闪避 %s") % evade_text, tr("灵巧 AGI %d") % int(attrs.get("agi", 0)),
+		tr("暴击 %s") % crit_text, tr("感知 PER %d") % int(attrs.get("per", 0)),
 	]
 	if stats_lines.is_empty():
 		stats_lines.append(tr("未找到实机角色"))
@@ -1362,6 +1620,10 @@ func _refresh_preview(preview_equipment_id: String = "") -> void:
 		var data: WeaponData = WeaponRegistry.get_weapon_data(preview_equipment_id)
 		if data != null and _is_hand_category(data.equipment_category):
 			preview_hand_data = data
+	var preview_equipment: Node = current_preview_node.get("equipment") as Node if current_preview_node != null and is_instance_valid(current_preview_node) else null
+	if preview_equipment != null and preview_equipment.has_method("configure_weapon_slot"):
+		preview_equipment.configure_weapon_slot(0, preview_hand_data, true)
+		return
 	_spawn_preview_character(preview_hand_data)
 
 func _clear_preview() -> void:
@@ -1538,11 +1800,8 @@ func _get_warehouse_rune_inventory() -> Dictionary:
 func _consume_rune_from_inventory(rune_id: String) -> bool:
 	return PanelInventory.consume_rune(rune_id)
 
-func _consume_carried_equipment(equipment_id: String) -> bool:
-	return PanelInventory.consume_carried_equipment(equipment_id)
-
-func _return_carried_equipment(equipment_id: String) -> void:
-	PanelInventory.return_carried_equipment(equipment_id)
+func _return_carried_equipment_data(data: WeaponData) -> void:
+	PanelInventory.return_carried_equipment_instance(data)
 
 func _can_add_carried_stack(amount: int, space_per_item: int) -> bool:
 	return PanelInventory.can_add_carried_stack(amount, space_per_item)
@@ -1670,7 +1929,7 @@ func _format_slot_runes(runes: Array) -> String:
 	var names: Array[String] = []
 	for raw_id in runes:
 		names.append(RD.get_rune_name(String(raw_id)))
-	return tr("\n符文: %s") % " / ".join(names)
+	return "\n" + tr("符文: %s") % " / ".join(names)
 
 func _get_skill_runtime() -> Node:
 	return Service.skill_runtime()

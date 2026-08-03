@@ -37,10 +37,10 @@ shape = SubResource("CapsuleShape3D_bcx1r")
 
 [node name="MainCamera" type="Camera3D" parent="." unique_id=556309240]
 unique_name_in_owner = true
-transform = Transform3D(1, 0, 0, 0, 1.0000002, 0, 0, 0, 1.0000001, 0, 1.5, -0.47325873)
+transform = Transform3D(1, 0, 0, 0, 1.0000002, 0, 0, 0, 1.0000001, 0, 1.5, 0)
 current = true
-near = 0.001
-cull_mask = 1
+near = 0.05
+cull_mask = 3
 script = ExtResource("2_qd3e3")
 
 [node name="SelectRaycast" type="RayCast3D" parent="MainCamera" unique_id=1304238975]

@@ -133,8 +133,8 @@ const _CHAR_CATEGORY_KEY := "Characters & Monsters"
 func _ready() -> void:
 	super._ready()
 	# Localize panel titles
-	sidebar_title.text = tr(" MODEL VIEWER / EDITOR")
-	inspector_title.text = tr(" ASSET INSPECTOR")
+	sidebar_title.text = " " + tr("MODEL VIEWER / EDITOR")
+	inspector_title.text = " " + tr("ASSET INSPECTOR")
 
 	# Wire up UI controls
 	return_btn.pressed.connect(_on_return_pressed)

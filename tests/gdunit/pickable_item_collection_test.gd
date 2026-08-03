@@ -69,17 +69,12 @@ func test_pickup_state_routes_runes_to_game_state() -> void:
 
 func test_check_for_possible_action_null_collider_safe() -> void:
 	# 回归测试：捡起物品 queue_free() 后，射线仍报告碰撞但 get_collider() 返回 null，
-	# check_for_possible_action() 的 else 分支不得在 null 上调用 has_method。
+	# check_for_possible_action() 不得通过 get_item_name() 兜底伪造拾取提示。
 	var script = load("res://scenes/characters/player/player.gd") as GDScript
 	assert_object(script).is_not_null()
 	var source: String = script.source_code
-	# 旧代码在 else 分支直接 collider.has_method("get_item_name") 无空检查，
-	# 修复后应改为 elif collider != null and collider.has_method("get_item_name")
-	assert_bool(source.contains('elif collider != null and collider.has_method("get_item_name")')) \
-		.override_failure_message("check_for_possible_action 必须在调用 has_method 前检查 collider != null").is_true()
-	# 确保旧的裸 else 分支已移除
-	assert_bool(source.contains('else:\n\t\t\tvar item_name := ""\n\t\t\tif collider.has_method("get_item_name")')) \
-		.override_failure_message("check_for_possible_action 仍存在未检查 null 的 else 分支").is_false()
+	assert_bool(source.contains('elif collider != null and collider.has_method("get_item_name")')).is_false()
+	assert_bool(source.contains('elif collider != null and collider.has_method("interact") and _can_interact_collider(collider)')).is_true()
 
 
 func test_pickup_state_clears_focused_item_after_free() -> void:

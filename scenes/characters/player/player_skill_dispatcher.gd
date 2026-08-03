@@ -8,6 +8,9 @@ const SD_DB := preload("res://globals/combat/skill_data.gd")
 const CB_LIB := preload("res://globals/combat/combat_bridge.gd")
 const CE_LIB := preload("res://globals/combat/combat_engine.gd")
 const Service := preload("res://globals/core/service.gd")
+const REH := preload("res://globals/combat/rune_effect_hooks.gd")
+const RWPH := preload("res://globals/combat/rune_word_passive_hooks.gd")
+const SES := preload("res://globals/combat/status_effect_system.gd")
 
 ## 技能释放完成后触发实际游戏内效果
 static func on_skill_released(player: Player, skill_id: String) -> void:
@@ -76,8 +79,10 @@ static func dispatch_weapon_skill(player: Player, skill: Dictionary) -> void:
 			var style_ctx: Dictionary = player.get_style_context() if player.has_method("get_style_context") else {}
 			var result = CB_LIB.resolve_player_attack(player, enemy, weapon, main_type, off_type, attrs, level, is_back, skill, style_ctx)
 			if result.hit:
+				result.final_damage = _apply_rune_damage_modifiers(player, enemy, result.final_damage)
 				enemy.try_receive_hit_result(player, result)
 				_apply_lifesteal(player, result)
+				_trigger_rune_hit_hooks(player, enemy, result)
 		elif collider != null and collider.has_method("try_receive_hit"):
 			var object_damage := int(max(1.0, float(skill.get("damage_mult", 1.0)) * 4.0))
 			collider.try_receive_hit(player, object_damage)
@@ -95,6 +100,11 @@ static func _spawn_skill_projectile(player: Player, skill: Dictionary, weapon, p
 			ps.spawn_spread(projectile_id, spawn_transform, player, 5, 20.0, weapon, skill)
 		_:
 			ps.spawn(projectile_id, spawn_transform, player, weapon, skill)
+	# 符文之语「回响之语」：远程技能额外发射一枚投射物（轻微偏角）
+	if player.has_mechanism_passive("rune_word_extra_projectile"):
+		var extra_transform := spawn_transform
+		extra_transform.basis = extra_transform.basis.rotated(Vector3.UP, deg_to_rad(5.0))
+		ps.spawn(projectile_id, extra_transform, player, weapon, skill)
 	# 武器耐久磨损（技能释放时消耗）
 	if player.equipment != null and player.equipment.has_method("apply_weapon_damage"):
 		player.equipment.apply_weapon_damage(2)
@@ -145,7 +155,16 @@ static func apply_action_skill_hit(player: Player, enemy: Enemy, skill: Dictiona
 	if bool(skill.get("breaks_shield", false)) and enemy.equipment != null and enemy.equipment.has_shield():
 		enemy.equipment.drop_shield()
 		result.ignores_block = true
+	result.final_damage = _apply_rune_damage_modifiers(player, enemy, result.final_damage)
 	enemy.try_receive_hit_result(player, result)
+	# 触发符文与符文之语命中效果（带动作技能上下文）
+	var context: Dictionary = {}
+	var skill_enum: int = int(skill.get("enum", -1))
+	if skill_enum == AS_DB.ActionSkill.KICK:
+		context["is_kick"] = true
+	if skill_enum == AS_DB.ActionSkill.CHARGE:
+		context["is_charging"] = true
+	_trigger_rune_hit_hooks(player, enemy, result, context)
 
 static func apply_kick_hit(player: Player, enemy: Enemy) -> void:
 	var skill := AS_DB.get_skill_by_id("踢击")
@@ -233,3 +252,43 @@ static func _find_grab_target(player: Player) -> Enemy:
 			best_dist = dist
 			best_enemy = enemy
 	return best_enemy
+
+# ============================================================================
+# 符文系统集成
+# ============================================================================
+
+## 应用符文之语伤害倍率与状态效果受击增伤
+## 在 CombatBridge 结算后、敌人受击前调用，返回修正后的最终伤害
+static func _apply_rune_damage_modifiers(player: Player, enemy: Enemy, base_damage: int) -> int:
+	if enemy == null or not is_instance_valid(enemy):
+		return base_damage
+	var mult := 1.0
+	# 符文之语：生力/勇咒/恐惧增伤/业力递增/穿透/解脱等
+	mult *= RWPH.get_outgoing_damage_mult(player, enemy)
+	# 状态效果：致盲/恐惧/震颤敌人受到额外伤害
+	mult *= SES.get_incoming_damage_mult(enemy)
+	if mult == 1.0:
+		return base_damage
+	return maxi(1, int(round(float(base_damage) * mult)))
+
+## 触发符文机制与符文之语被动（命中后调用）
+static func _trigger_rune_hit_hooks(player: Player, enemy: Enemy, result, context: Dictionary = {}) -> void:
+	if enemy == null or not is_instance_valid(enemy):
+		return
+	var hit_pos: Vector3 = enemy.global_position
+	var damage_dealt: int = int(result.final_damage) if "final_damage" in result else 0
+	REH.on_player_hit_enemy(player, enemy, hit_pos, damage_dealt)
+	RWPH.on_player_hit_enemy(player, enemy, hit_pos, damage_dealt, context)
+	# 检查敌人是否因本次命中死亡，触发击杀效果
+	_check_enemy_killed(player, enemy)
+
+## 检查敌人是否死亡并触发符文之语击杀效果
+static func _check_enemy_killed(player: Player, enemy: Enemy) -> void:
+	if enemy == null or not is_instance_valid(enemy):
+		return
+	var health = enemy.get("health")
+	if health == null or not is_instance_valid(health):
+		return
+	var current := int(health.get("current_life"))
+	if current <= 0:
+		RWPH.on_enemy_killed(player, enemy, enemy.global_position)

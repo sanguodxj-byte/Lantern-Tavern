@@ -136,7 +136,7 @@ def _build_palette() -> dict[str, bpy.types.Material]:
         "cloth_rag_dark": make_material("cloth_rag_dark", (0.12, 0.10, 0.10, 1.0), roughness=0.9),
         "bone_decayed": make_material("bone_decayed", (0.65, 0.60, 0.45, 1.0), roughness=0.7),
         "cavity_black": make_material("cavity_black", (0.02, 0.02, 0.02, 1.0), roughness=0.95),
-        "toxic_guts_glow": make_material("toxic_guts_glow", (0.10, 0.95, 0.15, 1.0), roughness=0.1, metallic=0.1, emission=3.0),
+        "toxic_guts_glow": make_material("toxic_guts_glow", (0.10, 0.95, 0.15, 1.0), roughness=0.1, metallic=0.1),
     }
 
 

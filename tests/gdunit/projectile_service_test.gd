@@ -122,6 +122,22 @@ func test_default_elemental_bolt_is_spell() -> void:
 	var elem: Resource = ps.get_data("elemental_bolt")
 	assert_object(elem).is_not_null()
 	assert_str(elem.damage_type).is_equal("spell")
+	assert_int(elem.impact_burst_type).is_equal(0)
+
+
+func test_default_spell_projectiles_wire_particle_hit_bursts() -> void:
+	var ps: Node = Service.projectile_service()
+	var expected := {
+		"elemental_bolt": 0,
+		"arcane_bolt": 5,
+		"frost_nova_bolt": 1,
+		"thunder_bolt": 2,
+	}
+	for projectile_id in expected.keys():
+		var data: Resource = ps.get_data(String(projectile_id))
+		assert_object(data).is_not_null()
+		assert_str(data.damage_type).is_equal("spell")
+		assert_int(data.impact_burst_type).is_equal(int(expected[projectile_id]))
 
 func test_default_frost_nova_has_aoe() -> void:
 	var ps: Node = Service.projectile_service()
@@ -192,6 +208,13 @@ func test_skill_map_elemental_bolt() -> void:
 	var skill := SD.get_skill_by_id("元素弹")
 	assert_bool(skill.is_empty()).is_false()
 	assert_str(ps.get_projectile_id_for_skill(skill, null)).is_equal("elemental_bolt")
+
+
+func test_fixed_recipe_spells_map_to_runtime_projectiles() -> void:
+	var ps: Node = Service.projectile_service()
+	assert_str(ps.get_projectile_id_for_skill({"id": "spell_fireball"}, null)).is_equal("elemental_bolt")
+	assert_str(ps.get_projectile_id_for_skill({"id": "spell_chain_lightning"}, null)).is_equal("thunder_bolt")
+	assert_str(ps.get_projectile_id_for_skill({"id": "spell_frost_barrier"}, null)).is_empty()
 
 func test_skill_map_frost_nova() -> void:
 	var ps: Node = Service.projectile_service()

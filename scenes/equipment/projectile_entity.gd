@@ -9,6 +9,9 @@ const CB := preload("res://globals/combat/combat_bridge.gd")
 const CE := preload("res://globals/combat/combat_engine.gd")
 const Service := preload("res://globals/core/service.gd")
 const PD := preload("res://data/projectile_data.gd")
+const REH := preload("res://globals/combat/rune_effect_hooks.gd")
+const RWPH := preload("res://globals/combat/rune_word_passive_hooks.gd")
+const SES := preload("res://globals/combat/status_effect_system.gd")
 
 ## 投射物定义
 @export var projectile_data: Resource
@@ -174,7 +177,7 @@ func _process(delta: float) -> void:
 			set_process(false)
 
 
-## 默认法术弹外观：发光球体
+## 默认法术弹外观：法术能量本身是光源，使用发光球体和局部点光。
 func _build_default_spell_visual() -> void:
 	var mi := MeshInstance3D.new()
 	var sphere := SphereMesh.new()
@@ -183,10 +186,10 @@ func _build_default_spell_visual() -> void:
 	mi.mesh = sphere
 	mi.material_override = _get_shared_spell_material()
 	visual_root.add_child(mi)
-	# 附加点光源
 	var light := OmniLight3D.new()
 	light.light_color = projectile_data.default_color
 	light.light_energy = 1.5
+	light.light_specular = 0.0
 	light.omni_range = 3.0
 	light.omni_attenuation = 1.5
 	visual_root.add_child(light)
@@ -264,6 +267,12 @@ func _on_body_entered(body: Node) -> void:
 	# 忽略发射者自身
 	if body == source_player:
 		return
+	# P0-1-B：会话权威实体命中——目标带 entity_id meta 且投射物 skill_data 携带
+	# damage_port（服务器注入）时，经端口写回 SessionRoot 权威实体仓。
+	if body != null and body.has_meta("entity_id") and skill_data is Dictionary \
+			and skill_data.has("damage_port"):
+		_resolve_session_entity_hit(body)
+		return
 	# 敌人命中
 	if body is Enemy and is_instance_valid(body):
 		_resolve_enemy_hit(body as Enemy)
@@ -274,6 +283,23 @@ func _on_body_entered(body: Node) -> void:
 	# 环境物体命中（墙/地板/场景物体）
 	if projectile_data.destroy_on_environment:
 		_destroy_with_impact()
+
+
+## P0-1-B：会话权威实体命中结算——经 damage_port 写回服务器实体仓
+## （生命/死亡/掉落复制事件由 SessionRoot 统一出口，端口恰调用一次）。
+func _resolve_session_entity_hit(body: Node) -> void:
+	if _hit_targets.has(body):
+		return
+	_hit_targets.append(body)
+	var entity_id: int = int(body.get_meta("entity_id"))
+	var port: Callable = skill_data.get("damage_port", Callable())
+	if entity_id != 0 and port.is_valid():
+		var damage := int(skill_data.get("damage", 10))
+		var caster_peer := int(skill_data.get("caster_peer", 0))
+		port.call(entity_id, damage, caster_peer)
+	_apply_weapon_wear()
+	_play_impact_sound()
+	_destroy_with_impact()
 
 
 ## 对敌人命中结算
@@ -321,9 +347,11 @@ func _resolve_single_hit(enemy: Enemy) -> void:
 		skill_data, _current_damage_mult, style_ctx
 	)
 	if result.hit:
+		result.final_damage = _apply_rune_damage_modifiers(enemy, result.final_damage)
 		enemy.try_receive_hit_result(source_player, result)
 		_apply_lifesteal(result)
 		_apply_skill_debuff(enemy)
+		_trigger_rune_hit_hooks(enemy, result)
 	# 命中音效
 	_play_impact_sound()
 
@@ -348,9 +376,11 @@ func _resolve_aoe_impact(trigger_enemy: Enemy) -> void:
 			skill_data, _current_damage_mult, style_ctx
 		)
 		if result.hit:
+			result.final_damage = _apply_rune_damage_modifiers(enemy, result.final_damage)
 			enemy.try_receive_hit_result(source_player, result)
 			_apply_lifesteal(result)
 			_apply_skill_debuff(enemy)
+			_trigger_rune_hit_hooks(enemy, result)
 	_play_impact_sound()
 
 
@@ -422,6 +452,36 @@ func _apply_lifesteal(result) -> void:
 			FxHelper.create_heal_number(source_player.global_position, result.lifesteal_amount)
 
 
+## 应用符文之语伤害倍率与状态效果受击增伤
+func _apply_rune_damage_modifiers(enemy: Enemy, base_damage: int) -> int:
+	if enemy == null or not is_instance_valid(enemy):
+		return base_damage
+	var mult := 1.0
+	if source_player != null and is_instance_valid(source_player):
+		mult *= RWPH.get_outgoing_damage_mult(source_player, enemy)
+	mult *= SES.get_incoming_damage_mult(enemy)
+	if mult == 1.0:
+		return base_damage
+	return maxi(1, int(round(float(base_damage) * mult)))
+
+
+## 触发符文机制与符文之语被动（命中后调用）
+func _trigger_rune_hit_hooks(enemy: Enemy, result) -> void:
+	if enemy == null or not is_instance_valid(enemy):
+		return
+	if source_player == null or not is_instance_valid(source_player):
+		return
+	var hit_pos: Vector3 = enemy.global_position
+	var damage_dealt: int = int(result.final_damage) if "final_damage" in result else 0
+	REH.on_player_hit_enemy(source_player, enemy, hit_pos, damage_dealt)
+	RWPH.on_player_hit_enemy(source_player, enemy, hit_pos, damage_dealt)
+	# 检查敌人是否因本次命中死亡
+	var health = enemy.get("health")
+	if health != null and is_instance_valid(health):
+		if int(health.get("current_life")) <= 0:
+			RWPH.on_enemy_killed(source_player, enemy, hit_pos)
+
+
 ## 命中音效
 func _play_impact_sound() -> void:
 	if projectile_data.impact_sound_key == "":
@@ -444,6 +504,8 @@ func _destroy_with_impact() -> void:
 				parent.add_child(fx)
 				if fx is Node3D:
 					(fx as Node3D).global_transform = global_transform
+	if projectile_data.impact_burst_type >= 0:
+		REH.spawn_hit_burst(global_position, projectile_data.impact_burst_type, projectile_data.default_color)
 	# 取消计时器
 	if _lifetime_timer != null and _lifetime_timer.timeout.is_connected(_on_lifetime_expired):
 		_lifetime_timer.timeout.disconnect(_on_lifetime_expired)

@@ -18,6 +18,9 @@ const SCENES := {
 	"chair": "res://scenes/props/decor/chair.tscn",
 	"bench": "res://scenes/props/decor/bench.tscn",
 	"lit_candles": "res://scenes/props/decor/lit_candles.tscn",
+	"floor_candelabrum": "res://scenes/props/dungeon/decor/floor_candelabrum.tscn",
+	"wall_candelabrum": "res://scenes/props/dungeon/decor/wall_candelabrum.tscn",
+	"iron_bar_grate": "res://scenes/props/dungeon/decor/iron_bar_grate.tscn",
 	"tankard": "res://scenes/props/decor/tankard.tscn",
 	"goblet": "res://scenes/props/decor/goblet.tscn",
 	"bottle_set": "res://scenes/props/decor/bottle_set.tscn",
@@ -27,9 +30,15 @@ const SCENES := {
 	"fireplace": "res://scenes/props/decor/fireplace.tscn",
 	"torch": "res://scenes/props/torch/torch.tscn",
 	"barrel": "res://scenes/props/barrel/barrel.tscn",
+	"brew_cauldron": "res://scenes/props/decor/brew_cauldron.tscn",
 	"chest": "res://scenes/props/chest/chest.tscn",
 	"boss_chest": "res://scenes/props/chest/boss_chest.tscn",
 	"weapon_rack": "res://scenes/props/decor/weapon_rack.tscn",
+	"ritual_totem": "res://scenes/props/dungeon/decor/ritual_totem.tscn",
+	"stalagmite_cluster": "res://scenes/props/dungeon/decor/stalagmite_cluster.tscn",
+	"sarcophagus": "res://scenes/props/dungeon/decor/sarcophagus.tscn",
+	"wall_chain": "res://scenes/props/dungeon/decor/wall_chain.tscn",
+	"fungus_patch": "res://scenes/props/dungeon/decor/fungus_patch.tscn",
 }
 
 const WEAPON_SCENES := {
@@ -45,6 +54,7 @@ const WEAPON_SCENES := {
 	"grimoire": "res://assets/meshes/weapons/weapons_voxel_grimoire.glb",
 	"shield": "res://assets/meshes/weapons/weapons_voxel_shield.glb",
 	"sword": "res://assets/meshes/weapons/weapons_voxel_sword.glb",
+	"buckler": "res://assets/meshes/shields/voxel_buckler.glb",
 }
 
 const MONSTER_SCENES := {
@@ -78,6 +88,12 @@ const ARMOR_SCENES := {
 	"iron_boots": "res://assets/meshes/armor/armor_voxel_iron_boots.glb",
 }
 
+const TRAP_SCENES := {
+	"spikes_trap": "res://assets/meshes/traps/traps_spikes_trap.glb",
+	"acid_trap": "res://assets/meshes/traps/traps_acid_trap.glb",
+	"flame_vent": "res://assets/meshes/traps/traps_flame_vent.glb",
+}
+
 var _had_error := false
 
 
@@ -99,6 +115,8 @@ func _run() -> void:
 			await _capture_scene(requested_asset, String(WEAPON_SCENES[requested_asset]))
 		elif ARMOR_SCENES.has(requested_asset):
 			await _capture_scene(requested_asset, String(ARMOR_SCENES[requested_asset]))
+		elif TRAP_SCENES.has(requested_asset):
+			await _capture_scene(requested_asset, String(TRAP_SCENES[requested_asset]))
 		else:
 			await _capture_scene(requested_asset, String(SCENES[requested_asset]))
 		_finish()
@@ -144,6 +162,7 @@ func _requested_asset(user_args: PackedStringArray) -> String:
 		and not MONSTER_SCENES.has(selected) \
 		and not WEAPON_SCENES.has(selected) \
 		and not ARMOR_SCENES.has(selected) \
+		and not TRAP_SCENES.has(selected) \
 		and not SCENES.has(selected):
 		_fail("[VoxelPropThreeView] unknown asset: %s" % selected)
 		return ""
@@ -207,6 +226,26 @@ func _capture_monster(monster_id: String) -> void:
 
 
 func _voxel_boxes(root_node: Node) -> Array[Dictionary]:
+	# VoxelProp 合并材质网格后，运行时 MeshInstance3D 的 AABB 只剩下每种材质
+	# 的大包围盒。结构投影必须优先读取源体素盒，否则墙挂铁链等细长装饰会
+	# 被错误绘制成一整块矩形。普通 GLB/非 VoxelProp 场景继续走网格 AABB 路径。
+	if root_node.has_method("collect_box_bounds"):
+		var source_boxes: Variant = root_node.call("collect_box_bounds")
+		if source_boxes is Array and not source_boxes.is_empty():
+			var voxel_boxes: Array[Dictionary] = []
+			for source_box in source_boxes:
+				if not source_box is Dictionary:
+					continue
+				var name := String(source_box.get("name", "VoxelBox"))
+				voxel_boxes.append({
+					"name": name,
+					"min": source_box.get("min", Vector3.ZERO),
+					"max": source_box.get("max", Vector3.ZERO),
+					"color": _box_color(name),
+				})
+			if not voxel_boxes.is_empty():
+				return voxel_boxes
+
 	var boxes: Array[Dictionary] = []
 	for mesh_instance in _collect_meshes(root_node):
 		if mesh_instance.mesh == null:

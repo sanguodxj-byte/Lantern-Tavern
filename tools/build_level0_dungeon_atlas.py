@@ -57,6 +57,16 @@ def save_tile(name: str, image: Image.Image) -> None:
     image.save(SOURCE_DIR / f"{name}.png")
 
 
+def load_external_tile(name: str) -> Image.Image:
+    path = SOURCE_DIR / f"{name}.png"
+    if not path.exists():
+        raise FileNotFoundError(f"missing generated dungeon tile: {path}")
+    image = Image.open(path).convert("RGBA")
+    if image.size != (TILE, TILE):
+        raise ValueError(f"generated dungeon tile must be {TILE}x{TILE}: {path}")
+    return image
+
+
 def make_wall_stone_brick() -> Image.Image:
     image = Image.new("RGBA", (TILE, TILE), PALETTE["stone_mid"])
     px = image.load()
@@ -629,6 +639,14 @@ def build() -> None:
         "overlay_blood": make_overlay("blood"),
         "overlay_torch_scorch": make_overlay("torch_scorch"),
         "decor_rubble": make_rubble(),
+        "barony_wall_stone": load_external_tile("barony_wall_stone"),
+        "barony_floor_rough": load_external_tile("barony_floor_rough"),
+        "barony_platform_cut": load_external_tile("barony_platform_cut"),
+        "barony_threshold_iron": load_external_tile("barony_threshold_iron"),
+        "barony_ceiling_slab": load_external_tile("barony_ceiling_slab"),
+        "barony_moss_floor": load_external_tile("barony_moss_floor"),
+        "barony_broken_wall": load_external_tile("barony_broken_wall"),
+        "barony_boss_slab": load_external_tile("barony_boss_slab"),
     }
     for name, tile in tiles.items():
         save_tile(name, tile)
@@ -643,6 +661,14 @@ def build() -> None:
         "portal_rune": (7, 0, 1, 1),
         "decor_iron_grate": (0, 1, 1, 1),
         "decor_rubble": (1, 1, 1, 1),
+        "barony_wall_stone": (4, 2, 1, 1),
+        "barony_floor_rough": (5, 2, 1, 1),
+        "barony_platform_cut": (6, 2, 1, 1),
+        "barony_threshold_iron": (7, 2, 1, 1),
+        "barony_ceiling_slab": (2, 3, 1, 1),
+        "barony_moss_floor": (3, 3, 1, 1),
+        "barony_broken_wall": (4, 3, 1, 1),
+        "barony_boss_slab": (5, 3, 1, 1),
         "door_edge_side": (2, 2, 1, 1),
         "door_edge_top": (3, 2, 1, 1),
         "overlay_cracks": (2, 1, 1, 1),

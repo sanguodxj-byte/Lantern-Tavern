@@ -162,8 +162,8 @@ func test_try_receive_hit_uses_can_get_hurt_only() -> void:
 	var func_body := source.substr(func_start, func_end - func_start)
 	assert_bool(not func_body.contains("not equipment.has_shield() or state_node.can_get_hurt()")) \
 		.override_failure_message("try_receive_hit 不应再用 has_shield 做完全格挡判定").is_true()
-	assert_bool(func_body.contains("if state_node.can_get_hurt():")) \
-		.override_failure_message("try_receive_hit 应直接用 can_get_hurt() 判定受伤").is_true()
+	assert_bool(func_body.contains("state_node.can_get_hurt()")) \
+		.override_failure_message("try_receive_hit 应使用 can_get_hurt() 判定受伤").is_true()
 
 # ============================================================
 # 4. CombatEngine 动作控制版验证（无概率格挡投骰）

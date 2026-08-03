@@ -190,6 +190,8 @@ func serialize_all() -> Dictionary:
 		data["fermentation_system"] = fs.serialize()
 	else:
 		data["fermentation_system"] = {}
+	var bfs := _get_brew_flow_system()
+	data["brew_flow_system"] = bfs.serialize() if bfs != null else {}
 	var ts := _get_tavern_settlement()
 	data["tavern_settlement"] = ts.serialize() if ts != null else {}
 	var arp := _get_armor_proficiency()
@@ -218,6 +220,9 @@ func deserialize_all(data: Dictionary) -> void:
 		sr.deserialize(data["skill_runtime"])
 	if fs != null and data.has("fermentation_system"):
 		fs.deserialize(data["fermentation_system"])
+	var bfs := _get_brew_flow_system()
+	if bfs != null and data.has("brew_flow_system"):
+		bfs.deserialize(data["brew_flow_system"])
 	var ts := _get_tavern_settlement()
 	if ts != null and data.has("tavern_settlement"):
 		ts.deserialize(data["tavern_settlement"])
@@ -249,6 +254,9 @@ func reset_all() -> void:
 		sr.reset()
 	if fs != null:
 		fs.reset()
+	var bfs := _get_brew_flow_system()
+	if bfs != null:
+		bfs.reset()
 	var ts := _get_tavern_settlement()
 	if ts != null:
 		ts.reset_state()
@@ -289,6 +297,9 @@ func _get_skill_runtime() -> Node:
 
 func _get_fermentation_system() -> Node:
 	return Service.fermentation_system()
+
+func _get_brew_flow_system() -> Node:
+	return Service.brew_flow_system()
 
 func _get_tavern_settlement() -> Node:
 	return Service.tavern_settlement()

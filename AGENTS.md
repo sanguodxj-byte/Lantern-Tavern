@@ -253,6 +253,13 @@ Directory targets, wildcards, repeated `--spec`, `--batch`, and any wrapper or l
 
 ## Agent skills
 
+## Subagent Delegation
+
+- Delegate only independent, bounded subtasks. Give each subagent its objective, affected files or ownership boundary, expected verification, and the required return report.
+- Do not assign concurrent subagents overlapping write ownership. Coordinate sequentially when work must touch the same files, generated assets, or shared test outputs.
+- For every subagent that executes a code task, select **`luna high`**. Do not use `sol` for code execution tasks.
+- The delegating agent remains responsible for integrating the result, reviewing the diff, and running the relevant tests before reporting completion.
+
 ### Issue tracker
 
 Issues and PRDs are tracked in this repository's GitHub Issues. See `docs/agents/issue-tracker.md`.

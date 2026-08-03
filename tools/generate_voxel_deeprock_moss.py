@@ -21,7 +21,7 @@ from voxel_model_primitives import (  # noqa: E402
     cube_px,
     face_attachment_center,
     finish_model,
-    make_material,
+    make_pixel_material,
     make_root,
     reset_scene,
     stack_center,
@@ -34,11 +34,43 @@ PREVIEW_DIR = ROOT / "reports" / "materials_preview"
 MANIFEST_PATH = ROOT / "data" / "material_model_manifest.json"
 SHAPE_NOTE = "wide dark mineral moss mat with stone flecks"
 
+# Deeprock moss pixel palette: dark mineral moss, deep dark green, stone gray
+# flecks, mineral blue wet pockets, accent blue and violet.
+# Each material owns its own seed/pattern; no shared identity table.
+_DARK_MOSS = (0.18, 0.32, 0.22, 1.0)
+_DEEP_DARK = (0.10, 0.18, 0.14, 1.0)
+_STONE_FLECK = (0.45, 0.48, 0.42, 1.0)
+_MINERAL_BLUE = (0.12, 0.28, 0.30, 1.0)
+_MOSS_MID = (0.30, 0.42, 0.30, 1.0)
+_PALE_STONE = (0.55, 0.58, 0.55, 1.0)
+_ACCENT_BLUE = (0.10, 0.18, 0.42, 1.0)
+_ACCENT_VIOLET = (0.18, 0.08, 0.38, 1.0)
+
 def build_model():
-    moss = make_material("drm_moss", (0.18, 0.32, 0.22, 1.0), roughness=0.92)
-    dark = make_material("drm_dark", (0.10, 0.18, 0.14, 1.0), roughness=0.94)
-    fleck = make_material("drm_fleck", (0.45, 0.48, 0.42, 1.0), roughness=0.70, metallic=0.15)
-    wet = make_material("drm_wet", (0.12, 0.28, 0.30, 1.0), roughness=0.50)
+    moss = make_pixel_material(
+        "drm_moss", (0.18, 0.32, 0.22, 1.0),
+        roughness=0.92, palette=(_DARK_MOSS, _MOSS_MID, _STONE_FLECK, _ACCENT_VIOLET),
+        pixel_size=48, variation=0.41, seed=2001, pattern="porous", normal_strength=1.0,
+        edge_darken=0.4, highlight=0.25, detail_noise=0.15,
+    )
+    dark = make_pixel_material(
+        "drm_dark", (0.10, 0.18, 0.14, 1.0),
+        roughness=0.94, palette=(_DEEP_DARK, _DARK_MOSS, _ACCENT_BLUE, _MOSS_MID),
+        pixel_size=48, variation=0.41, seed=2013, pattern="porous", normal_strength=1.1,
+        edge_darken=0.4, highlight=0.25, detail_noise=0.15,
+    )
+    fleck = make_pixel_material(
+        "drm_fleck", (0.45, 0.48, 0.42, 1.0),
+        roughness=0.70, metallic=0.15, palette=(_STONE_FLECK, _PALE_STONE, _ACCENT_VIOLET, _MINERAL_BLUE),
+        pixel_size=48, variation=0.41, seed=2025, pattern="cracks", normal_strength=1.2,
+        edge_darken=0.4, highlight=0.25, detail_noise=0.15,
+    )
+    wet = make_pixel_material(
+        "drm_wet", (0.12, 0.28, 0.30, 1.0),
+        roughness=0.50, palette=(_MINERAL_BLUE, _ACCENT_BLUE, _DARK_MOSS, _MOSS_MID),
+        pixel_size=48, variation=0.42, seed=2037, pattern="porous", normal_strength=0.8,
+        edge_darken=0.4, highlight=0.25, detail_noise=0.15,
+    )
 
     root = make_root(f"materials_{MODEL_ID}")
     def add(name, center, size, material):

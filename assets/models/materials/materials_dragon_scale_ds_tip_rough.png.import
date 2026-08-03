@@ -1,0 +1,44 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://1h68h24m732l"
+path.s3tc="res://.godot/imported/materials_dragon_scale_ds_tip_rough.png-8d26102a95edd4cb5018f07d3df17b02.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
+generator_parameters={
+"md5": "0fb95082d26ec9cfa7785dd93146637d"
+}
+
+[deps]
+
+source_file="res://assets/models/materials/materials_dragon_scale_ds_tip_rough.png"
+dest_files=["res://.godot/imported/materials_dragon_scale_ds_tip_rough.png-8d26102a95edd4cb5018f07d3df17b02.s3tc.ctex"]
+
+[params]
+
+compress/mode=2
+compress/high_quality=false
+compress/lossy_quality=0.7
+compress/uastc_level=0
+compress/rdo_quality_loss=0.0
+compress/hdr_compression=1
+compress/normal_map=0
+compress/channel_pack=0
+mipmaps/generate=true
+mipmaps/limit=-1
+roughness/mode=0
+roughness/src_normal=""
+process/channel_remap/red=0
+process/channel_remap/green=1
+process/channel_remap/blue=2
+process/channel_remap/alpha=3
+process/fix_alpha_border=true
+process/premult_alpha=false
+process/normal_map_invert_y=false
+process/hdr_as_srgb=false
+process/hdr_clamp_exposure=false
+process/size_limit=0
+detect_3d/compress_to=0

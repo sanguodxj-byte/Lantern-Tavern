@@ -28,6 +28,16 @@ const DungeonAuthorityClass := preload("res://globals/multiplayer/dungeon_author
 const ConnectionAuthorityClass := preload("res://globals/multiplayer/connection_authority.gd")
 const SaveAuthorityClass := preload("res://globals/multiplayer/save_authority.gd")
 const DamageResolverClass := preload("res://globals/combat/damage_resolver.gd")
+const SpellRecipeDataClass := preload("res://globals/combat/spell_recipe_data.gd")
+const SpellAuthorityClass := preload("res://globals/combat/spell_authority.gd")
+const AttackContextFactoryClass := preload("res://globals/combat/attack_context_factory.gd")
+const AttackCadencePolicyClass := preload("res://globals/combat/attack_cadence_policy.gd")
+const SpellAccessPolicyClass := preload("res://globals/combat/spell_access_policy.gd")
+const SpellWorldExecutorClass := preload("res://globals/combat/spell_world_executor.gd")
+const ServerCharacterMotorClass := preload("res://globals/multiplayer/server_character_motor.gd")
+const EquipmentPolicyClass := preload("res://globals/core/equipment_policy.gd")
+const ServerSaveRepositoryClass := preload("res://globals/multiplayer/server_save_repository.gd")
+const ProgressionAuthorityClass := preload("res://globals/multiplayer/progression_authority.gd")
 
 signal session_event(event: Dictionary)
 signal player_registered(peer_id: int)
@@ -78,6 +88,9 @@ var entity_sync_auth: EntitySyncAuthorityClass
 var dungeon_auth: DungeonAuthorityClass
 var connection_auth: ConnectionAuthorityClass
 var save_auth: SaveAuthorityClass
+var spell_auth: SpellAuthorityClass
+# P0-1：服务器权威移动马达（真实碰撞 move_and_slide；无碰撞世界回退纯积分）。
+var movement_motor: ServerCharacterMotorClass
 
 # 服务器权威世界状态变更广播钩子：由 NetworkManager 接线为 _dispatch_world_event（含 RPC 下发到远端客户端）。
 # 单进程无真实 peer 时 is_valid() 为 false→仅本地计数（单测可注入 spy 观察）。SessionRoot 经此广播
@@ -88,15 +101,23 @@ var broadcast_event: Callable = Callable()
 # 服务器固定采样步长（秒）：客户端以该频率发送 input_frame，服务器以此积分移动。
 const SERVER_TICK_DT := 1.0 / 30.0
 
-# 攻击冷却（秒，服务器绝对时间维护，客户端无法绕过）。
-const SERVER_ATTACK_CD := 0.4
 # 攻击扇区半角余弦（前 ~150° 弧内可命中；cos(75°)≈0.259）。
 const ATTACK_SECTOR_HALF_COS := 0.259
+# 客户端攻击意图命令允许携带的字段白名单（P0-2：绝不接受客户端 attack_type）。
+# 攻击类型/射程/冷却/伤害全部由服务器从权威 loadout 派生（AttackContextFactory）。
+const ATTACK_INTENT_FIELDS := ["type", "protocol_version", "world_revision", "client_tick", "sequence", "hand", "charge_ratio", "target_hint"]
 
 # 攻击冷却到期时刻（peer_id -> 绝对时间），与 current_time 比较。
 var _attack_cd_until: Dictionary = {}
 # 玩家硬直剩余秒（peer_id -> float），受击时由伤害结算写入（Phase 3 预留）。
 var _stagger: Dictionary = {}
+# P0-2：per-peer 最新输入缓冲（peer_id -> 最新 input_frame 命令）。
+# RPC 只更新缓冲（最新覆盖），服务器在固定 SERVER_TICK_DT 消费——客户端提高合法递增
+# sequence 的发送频率不会让服务器按 RPC 次数重复积分（速度作弊/穿墙根防）。
+var _input_queue: Dictionary = {}
+# P1-1：服务器可信存档仓（按 player_guid 持久化权威背包/装配/法术状态）。
+# 由 NetworkManager 注入；null 时退回「仅调用方传入摘要」的旧行为（测试/无仓环境）。
+var server_save_repo: ServerSaveRepositoryClass = null
 
 func _init() -> void:
 	registry = PlayerRegistryClass.new()
@@ -120,6 +141,8 @@ func _init() -> void:
 	dungeon_auth = DungeonAuthorityClass.new()
 	connection_auth = ConnectionAuthorityClass.new()
 	save_auth = SaveAuthorityClass.new()
+	spell_auth = SpellAuthorityClass.new()
+	movement_motor = ServerCharacterMotorClass.new()
 	# 引用类型必须在 _init 内按实例独立初始化（GDScript 类级字面量跨实例共享）。
 	_live_state = {}
 	_entities = {}
@@ -130,6 +153,7 @@ func _init() -> void:
 	_peer_state_nodes = {}
 	_attack_cd_until = {}
 	_stagger = {}
+	_input_queue = {}
 
 ## 服务器侧会话初始化：标记权威、挂载默认权威处理器。
 func init_server() -> void:
@@ -155,11 +179,17 @@ func register_player(peer_id: int, ctx: PlayerContextClass, player = null, posit
 ## 酒馆经营（酿造/升级/共享经济）为单人本地，不在联机范围内、不由本会话权威管理。
 ## save_state: 玩家单人存档摘要（materials/loadout 等），由存档系统加载后传入；空则使用默认。
 ## player_guid: 稳定身份（§14.2，不随 peer_id 变化），用于重连锚定；空则按 peer_id 派生。
+## 架构审查 P0-1：在创建任何玩家子对象/库存基线【前】做在线 GUID 唯一性预检——
+## 重复在线身份直接拒绝（返回 null），避免先建状态再覆盖身份索引导致的重连/结算串账。
 func handle_spawn_request(peer_id: int, save_state: Dictionary = {}, player_guid: String = "") -> PlayerContextClass:
 	if not is_server:
 		return null
 	if registry.has_peer(peer_id):
 		return registry.get_context(peer_id)
+	var guid: String = player_guid if player_guid != "" else ("peer_%d" % peer_id)
+	# P0-1 预检：该 GUID 已被其他 ONLINE peer 占用 → 拒绝（不创建任何状态）。
+	if connection_auth.has_online_guid(guid):
+		return null
 	var attrs := AttrPanelClass.new()
 	attrs.init_defaults()
 	var sk := SkillRuntimeClass.new()
@@ -171,15 +201,24 @@ func handle_spawn_request(peer_id: int, save_state: Dictionary = {}, player_guid
 	_peer_state_nodes[peer_id] = [attrs, sk]
 	var inv := ExpeditionInventoryClass.new()
 	var lo := EquipmentLoadoutClass.new()
-	# 只继承存档状态：把玩家单人存档摘要应用到新生成的联机上下文（服务器可信数据）。
-	if not save_state.is_empty():
-		_apply_save_state(inv, lo, save_state)
+	var ctx: PlayerContextClass = PlayerContextClass.for_peer(attrs, sk, inv, lo, null, guid)
+	# P1-1：服务器可信存档仓优先——该身份在服务器已有权威存档时，以仓内状态恢复
+	# （材料/装备/法术装配），绝不信任客户端字典；无仓/无存档才用调用方摘要或默认状态。
+	var applied_save: Dictionary = {}
+	if server_save_repo != null:
+		applied_save = server_save_repo.load_save(guid)
+	if applied_save.is_empty():
+		applied_save = save_state
+	if not applied_save.is_empty():
+		_apply_save_state(ctx, inv, lo, applied_save)
 	# 记录进地牢时的背包基线（用于结算时只回写净获得）。
 	_inventory_baseline[peer_id] = inv.to_dict()
-	var guid: String = player_guid if player_guid != "" else ("peer_%d" % peer_id)
-	var ctx: PlayerContextClass = PlayerContextClass.for_peer(attrs, sk, inv, lo, null, guid)
 	register_player(peer_id, ctx, null, player_spawn_pos)
-	connection_auth.register_online(peer_id, guid, 0.0)
+	# P0-1：结构化注册结果；预检后理论上必成功，失败则回滚（不留下半创建状态）。
+	var reg: Dictionary = connection_auth.register_online(peer_id, guid, 0.0)
+	if not bool(reg.get("ok", false)):
+		unregister_player(peer_id)
+		return null
 	player_spawned.emit(peer_id)
 	# 玩家加入是结构性世界变更→推进 world_revision 并广播（闭环）。
 	_bump_world()
@@ -187,11 +226,34 @@ func handle_spawn_request(peer_id: int, save_state: Dictionary = {}, player_guid
 
 ## 把玩家单人存档摘要应用到新生成的联机上下文（地牢继承存档状态）。
 ## 仅复制服务器可信的存档数据；不信任任何客户端自报值。
-func _apply_save_state(inv: ExpeditionInventoryClass, lo: EquipmentLoadoutClass, save_state: Dictionary) -> void:
+## P0-5：除 materials/loadout 外，还恢复 spell_state（权威法术装配：符文槽/冷却/法力），
+## 使正常远端入口拥有服务器权威法术来源，不再默认空 SpellLoadout。
+func _apply_save_state(ctx: PlayerContextClass, inv: ExpeditionInventoryClass, lo: EquipmentLoadoutClass, save_state: Dictionary) -> void:
 	if save_state.has("materials") and save_state["materials"] is Dictionary:
 		inv.materials = save_state["materials"].duplicate()
 	if save_state.has("loadout") and save_state["loadout"] is Dictionary:
 		lo.from_dict(save_state["loadout"])
+	if save_state.has("spell_state") and save_state["spell_state"] is Dictionary:
+		ctx.deserialize_spell_state(save_state["spell_state"])
+	# P1-4：统一 DungeonPlayerSnapshot——属性/熟练度/等级与技能装配随存档摘要恢复，
+	# 使服务器权威成长（击杀经验/升级选择）作用于玩家真实状态而非默认值。
+	if save_state.has("attributes") and save_state["attributes"] is Dictionary and ctx.attributes != null:
+		ctx.attributes.deserialize(save_state["attributes"])
+	if save_state.has("skills") and save_state["skills"] is Dictionary and ctx.skills != null:
+		ctx.skills.deserialize(save_state["skills"])
+
+## 把真实 Player 实体绑定到 peer 的权威 PlayerContext（架构审查 P0-4）。
+## 服务器法术权威执行依赖已绑定的 caster 节点；未绑定时施法在资源 commit 前被拒绝。
+## 由表现层（DungeonSessionController 房主本地玩家 / MultiplayerSceneBridge 远端 avatar）
+## 在实体创建后调用。返回是否绑定成功。
+func bind_player_entity(peer_id: int, player_entity: Node3D) -> bool:
+	if player_entity == null or not is_instance_valid(player_entity):
+		return false
+	var ctx: PlayerContextClass = registry.get_context(peer_id)
+	if ctx == null:
+		return false
+	ctx.player_node = player_entity
+	return true
 
 ## 注销玩家（断线清理）。
 func unregister_player(peer_id: int) -> void:
@@ -390,10 +452,13 @@ func wire_default_authorities() -> void:
 	register_authority(NP.CMD_EXTRACT, _handle_extract)
 	register_authority(NP.CMD_RESUME, _handle_resume)
 	register_authority(NP.CMD_SKILL, _handle_skill)
+	register_authority(NP.CMD_CAST_SPELL, _handle_cast_spell)
 	register_authority(NP.CMD_EQUIP, _handle_equip)
 	register_authority(NP.CMD_DROP, _handle_drop)
 	register_authority(NP.CMD_SAVE, _handle_save)
 	register_authority(NP.CMD_LEAVE, _handle_leave)
+	register_authority(NP.CMD_LEVEL_UP_CHOICE, _handle_level_up_choice)
+	register_authority(NP.CMD_LEVEL_UP_RUNE_CANDIDATES, _handle_level_up_rune_candidates)
 
 func _handle_interaction(command: Dictionary, ctx: PlayerContextClass) -> Dictionary:
 	var peer_id: int = int(_ctx_peer.get(ctx.get_instance_id(), 0))
@@ -413,21 +478,35 @@ func _handle_interaction(command: Dictionary, ctx: PlayerContextClass) -> Dictio
 				res["extra_events"] = extra
 	return res
 
-## 攻击有效射程（服务器权威，基于攻方当前激活武器 / 攻击类型，绝不信任客户端）。
-## 近战约 2.5m，远程（弩/法术）约 18m；远程要求玩家确实装备了对应武器（归属校验）。
-func _attack_range_for(ctx: PlayerContextClass, command: Dictionary) -> float:
-	var atk_type: String = String(command.get("attack_type", "melee"))
-	if atk_type == "ranged" or atk_type == "crossbow" or atk_type == "spell":
-		# 远程攻击：校验确由激活武器支撑（无武器则降级为近战射程，避免凭空远程）。
-		var w: String = ctx.loadout.get_weapon_slot(ctx.loadout.active_weapon_slot)
-		if w != "" and w != "unarmed":
-			return 18.0
-		return 2.5
-	return 2.5
+## 从服务器权威 PlayerContext 构建本次攻击的唯一 AttackContext（架构审查 P0-2）。
+## 手位/蓄力/目标提示取自命令意图（白名单字段）；攻击类型/射程/风格/伤害输入
+## 全部由权威 loadout + WeaponRegistry 派生，绝不接受客户端 attack_type。
+## registry 为空（无场景树）时按武器 id 派生，伤害输入退化为未解析武器（测试环境）。
+func _build_attack_context(ctx: PlayerContextClass, command: Dictionary, registry: Object) -> Dictionary:
+	var hand: String = String(command.get("hand", "primary"))
+	if hand != "primary" and hand != "secondary":
+		hand = "primary"
+	var charge_ratio: float = clampf(float(command.get("charge_ratio", 1.0)), 0.0, 1.0)
+	var attrs: Dictionary = ctx.attributes.get_player_attrs() if ctx.attributes != null else {}
+	var level: int = ctx.attributes.get_level() if ctx.attributes != null else 1
+	var actx = AttackContextFactoryClass.build_from_player_state(
+		attrs, level, ctx.loadout, registry, hand, charge_ratio, command.get("target_hint", 0))
+	return {
+		"context": actx,
+		"hand": hand,
+		"charge_ratio": charge_ratio,
+		"attack_input": AttackContextFactoryClass.to_attack_input(actx),
+		"range": actx.attack_range(),
+	}
 
 func _handle_combat(command: Dictionary, ctx: PlayerContextClass) -> Dictionary:
 	var peer_id: int = int(_ctx_peer.get(ctx.get_instance_id(), 0))
 	var live: Dictionary = _live_state.get(peer_id, {})
+	# P0-2：攻击意图命令只允许携带白名单字段（hand/charge_ratio/target_hint），
+	# 拒绝任何攻击类型/伤害/属性自报字段（防伪报 ranged 骗射程）。
+	for key in command.keys():
+		if not (key in ATTACK_INTENT_FIELDS):
+			return {"success": false, "event": {}, "error_code": NP.ERR_INVALID_STATE}
 	var err: String = combat_auth.validate_attack_request(command, live, world.world_revision, _seq_tracker)
 	if err != "":
 		return {"success": false, "event": {}, "error_code": err}
@@ -446,30 +525,33 @@ func _handle_combat(command: Dictionary, ctx: PlayerContextClass) -> Dictionary:
 		"position": target_data.get("position", Vector3.ZERO),
 		"los_ok": bool(target_data.get("los_ok", true)),
 	}
+	# 攻击装配唯一真相：AttackContextFactory（攻击类型/射程/风格/伤害输入由权威 loadout 派生）。
+	var built: Dictionary = _build_attack_context(ctx, command, _weapon_registry())
+	var actx = built["context"]
 	var atk_cfg := {
-		"max_range": _attack_range_for(ctx, command),
+		"max_range": float(built["range"]),
 		"sector_half_cos": ATTACK_SECTOR_HALF_COS,
 		"allow_missing_target": true,
 	}
 	var terr: String = combat_auth.validate_attack_targeting(attacker_snapshot, target_snapshot, atk_cfg)
 	if terr != "":
 		return {"success": false, "event": {}, "error_code": terr}
-	# 构造攻方输入（从服务器权威 PlayerContext 读取属性，绝不信任客户端自报）
-	var ai: DamageResolverClass.AttackInput = DamageResolverClass.AttackInput.new()
-	ai.attacker_str = ctx.attributes.get_attr("str")
-	ai.attacker_dex = ctx.attributes.get_attr("dex")
-	ai.attacker_mag = ctx.attributes.get_attr("mag")
-	ai.attacker_per = ctx.attributes.get_attr("per")
-	ai.attacker_agi = ctx.attributes.get_attr("agi")
-	ai.attacker_con = ctx.attributes.get_attr("con")
-	ai.attack_type = String(command.get("attack_type", "melee"))
+	# 武器归属兜底（防后续路径引入未经 loadout 的武器）：权威 loadout 派生的武器必然在槽内。
+	var owned_weapons: Array = []
+	for raw_id in ctx.loadout.weapon_slots:
+		owned_weapons.append(String(raw_id))
+	if not CombatAuthorityClass.validate_weapon_ownership(actx.weapon_id(), owned_weapons):
+		return {"success": false, "event": {}, "error_code": NP.ERR_INVALID_TARGET}
+	var ai: DamageResolverClass.AttackInput = built["attack_input"]
 	# 防方：从实体注册表取 target_hint 对应的敌人数据（服务器权威）
-	# 注意：defender_entity_id 已在上方 Phase 3 校验块声明，此处复用不再 var 重声明。
 	var defender_data: Dictionary = _entities.get(defender_entity_id, {})
 	var forward: Vector3 = Vector3(0, 0, -1)
 	var out: Dictionary = combat_auth.resolve_attack(ai, defender_data, forward, peer_id, defender_entity_id)
-	# 服务器权威攻击冷却（绝对时间），防连点秒怪 / 绕过动画。
-	_attack_cd_until[peer_id] = current_time + SERVER_ATTACK_CD
+	# 服务器权威攻击冷却：唯一真相 AttackCadencePolicy（架构审查 P0-3），
+	# 与单机 PlayerCombatRuntime/HUD 同一公式（流派/手位派生；联机侧无连击栈与被动查询，
+	# 传 0/false，DEX 等属性不影响冷却——与单机已裁定公式一致）。
+	var cd: float = AttackCadencePolicyClass.compute_attack_cd(actx, false, 0)
+	_attack_cd_until[peer_id] = current_time + cd
 	# 权威扣血写回实体注册表，并附带 entity_snapshot（受伤）/ entity_despawned（死亡）事件，
 	# 使两端表现层更新敌人 HP 或移除死亡敌人。掉落由死亡触发（Phase ⑤，此处先出 despawn）。
 	var extra: Array = []
@@ -488,15 +570,36 @@ func _handle_combat(command: Dictionary, ctx: PlayerContextClass) -> Dictionary:
 				extra.append(ures["event"])
 	return {"success": true, "event": out["event"], "error_code": "", "extra_events": extra}
 
+## 解析 WeaponRegistry（autoload）。无场景树（headless 单测）时返回 null。
+func _weapon_registry() -> Object:
+	var tree := Engine.get_main_loop()
+	if tree == null or tree.root == null:
+		return null
+	return tree.root.get_node_or_null("WeaponRegistry")
+
 ## 敌人死亡钩子（Phase ⑤ 掉落入口）：根据敌人 loot_table 掷确定性掉落，
 ## 生成掉落实体（kind=loot，含 item_id/item_kind/amount/position）并产出 entity_spawned 事件，
 ## 供两端表现层（MultiplayerSceneBridge）复制为可见掉落物节点。
 ## 掉落位置取击杀者（killer）服务器权威坐标——保证击杀者处于交互范围内可立即拾取；
 ## 真实玩法中近战击杀者本就在敌人身旁，远程击杀可改为敌人死亡坐标（待设计确认）。
-## 返回事件数组（entity_spawned），由 _handle_combat 合并进 extra_events 一并广播给两端。
+## P1-4：击杀经验只授予 killer 的 per-peer 属性上下文并广播 EVT_PROGRESSION_CHANGED
+## （服务器权威成长闭环；单机路径不变）。
+## 返回事件数组（entity_spawned / progression_changed），由 _handle_combat 合并进
+## extra_events 一并广播给两端。
 func _on_entity_killed(entity_id: int, killer_peer: int) -> Array:
 	var events: Array = []
 	var enemy: Dictionary = _entities.get(entity_id, {})
+	# P1-4：击杀归属 → 角色经验（仅 killer 的权威上下文；绝不写他人/全局 current_player）。
+	var killer_ctx: PlayerContextClass = registry.get_context(killer_peer)
+	if killer_ctx != null and killer_ctx.attributes != null:
+		var reward: int = ProgressionAuthorityClass.compute_kill_reward(
+			int(enemy.get("max_life", 0)),
+			bool(enemy.get("is_elite", false)),
+			bool(enemy.get("is_boss", false)))
+		var levels_gained: int = ProgressionAuthorityClass.award_kill_experience(killer_ctx.attributes, reward)
+		if levels_gained > 0 or reward > 0:
+			var prog_evt := _progression_event(killer_peer, killer_ctx)
+			events.append(prog_evt)
 	var table: Dictionary = enemy.get("loot_table", {})
 	if table.is_empty():
 		return events
@@ -533,13 +636,16 @@ func _on_entity_killed(entity_id: int, killer_peer: int) -> Array:
 		idx += 1
 	return events
 
-## 服务器采样客户端输入帧（§6.2）：从输入积分出权威位置，更新 live state，下发 player_snapshot。
+## 服务器采样客户端输入帧（§6.2）：从输入产出权威位置，更新 live state，下发 player_snapshot。
 ## 关键：服务器计算位置，绝不信任客户端自报坐标（防穿墙/速度作弊/瞬移）。
+## P0-1：已绑定真实 CharacterBody3D（房主 Player / 远端 avatar）时经 ServerCharacterMotor
+## 走 move_and_slide 真实碰撞；未绑定（headless 单测/无几何专用服务器）回退纯积分。
 func _handle_movement(command: Dictionary, ctx: PlayerContextClass) -> Dictionary:
 	var peer_id: int = int(_ctx_peer.get(ctx.get_instance_id(), 0))
 	var live: Dictionary = _live_state.get(peer_id, {})
 	var old_pos: Vector3 = live.get("position", Vector3.ZERO)
-	var out: Dictionary = movement_auth.resolve_input_frame(command, live, world.world_revision, _seq_tracker, SERVER_TICK_DT)
+	var body: CharacterBody3D = ctx.player_node as CharacterBody3D
+	var out: Dictionary = movement_auth.resolve_input_frame(command, live, world.world_revision, _seq_tracker, SERVER_TICK_DT, movement_motor, body)
 	if out["success"]:
 		var new_pos: Vector3 = out["event"]["position"]
 		set_player_position(peer_id, new_pos)
@@ -558,6 +664,43 @@ func _handle_movement(command: Dictionary, ctx: PlayerContextClass) -> Dictionar
 ## 由 yaw（弧度）求水平前向单位向量（Godot 约定：yaw=0 朝 -Z）。
 static func _yaw_to_forward(yaw: float) -> Vector3:
 	return Vector3(sin(yaw), 0.0, -cos(yaw)).normalized()
+
+# ---------------------------------------------------------------------------
+# P0-2：服务器固定 tick 输入缓冲（docs/25 §6.2 生产化）
+# ---------------------------------------------------------------------------
+
+## 入队某 peer 的最新输入帧（RPC 路径调用；仅服务器且该 peer ONLINE 才接受）。
+## 缓冲语义：每 peer 只保留【最新】一帧，重复帧直接覆盖——合法递增 sequence 的
+## 高频洪泛不会造成输入累积（每 tick 每 peer 最多消费一次）。
+func queue_input(peer_id: int, command: Dictionary) -> bool:
+	if not is_server:
+		return false
+	if not connection_auth.is_online(peer_id):
+		return false
+	_input_queue[peer_id] = command.duplicate()
+	return true
+
+## 消费一个服务器固定 tick（SERVER_TICK_DT）的全部 pending 输入：每 peer 恰好消费
+## 【最新】一帧，产出的 player_snapshot 由调用方（NetworkManager）统一节流下发。
+## 返回处理结果数组（元素含 peer_id/command/result）。被更新的命令取代的输入帧
+## （sequence 已落后于已接受序列）静默跳过，不做权威位移、不产生拒绝事件。
+func consume_input_tick() -> Array:
+	var results: Array = []
+	if not is_server or _input_queue.is_empty():
+		return results
+	for pid in _input_queue.keys():
+		var command: Dictionary = _input_queue[pid]
+		_input_queue.erase(pid)
+		var ctx: PlayerContextClass = registry.get_context(pid)
+		if ctx == null:
+			continue
+		var res: Dictionary = _handle_movement(command, ctx)
+		results.append({"peer_id": pid, "command": command, "result": res})
+	return results
+
+## 服务器输入缓冲当前待处理帧数（测试观测用）。
+func pending_input_count() -> int:
+	return _input_queue.size()
 
 ## 服务器开启出征（§Phase 7）：由服务器决定权威 seed 并广播 dungeon_layout 事件。
 ## 客户端可在 command 中带 seed（host 指定），否则服务器随机。
@@ -583,6 +726,213 @@ func _handle_layout_request(command: Dictionary, ctx: PlayerContextClass) -> Dic
 		return _reject(res["error_code"])
 	session_event.emit(res["event"])
 	return {"success": true, "event": res["event"], "error_code": ""}
+
+## 客户端请求施放法术：服务器校验槽位/配方/资格/法力/冷却后，按
+## prepare → execute → verify → commit → publish 原子顺序执行（架构审查 P0-3/P0-4/P0-5）：
+##   * 施法资格（法杖/魔导书/奥法之剑）经 SpellAccessPolicy 纯逻辑重新校验，绝不信任客户端；
+##   * caster 实体未绑定（ctx.player_node == null）时在【任何资源 commit 前】拒绝 PLAYER_NOT_READY，
+##     杜绝「扣法力+提交冷却但无世界效果」的事务断裂；
+##   * 世界执行在【资源 commit 前】完成并校验 ok（预算满/实施不支持/服务缺失 → 拒绝，不扣资源）；
+##   * 世界伤害（ray/area/ground/summon）经会话级执行器的 damage_entity_port 写回权威实体仓
+##     _entities（生命/死亡/掉落复制与普通攻击同一路径），不再只打在可见节点上；
+##   * 只有执行成功才提交法力与冷却，然后发布 EVT_SPELL_RESOLVED。
+func _handle_cast_spell(command: Dictionary, ctx: PlayerContextClass) -> Dictionary:
+	var peer_id: int = int(_ctx_peer.get(ctx.get_instance_id(), 0))
+	if not _seq_tracker.accept(peer_id, int(command.get("sequence", 0))):
+		return _reject(NP.ERR_INVALID_SEQUENCE)
+	var slot_index := clampi(int(command.get("slot_index", -1)), 0, 4)
+	# 服务端只从 per-peer PlayerContext 的权威 SpellLoadout 读取，绝不接受客户端 spell_id。
+	if ctx.spell_loadout == null:
+		return _reject(NP.ERR_INVALID_STATE)
+	var spell: Dictionary = ctx.spell_loadout.get_spell(slot_index)
+	if spell.is_empty() or SpellRecipeDataClass.resolve(spell.get("recipe", [])).is_empty():
+		return _reject(NP.ERR_INVALID_TARGET)
+	# P0-5：施法资格 —— SpellAccessPolicy 纯逻辑（权威 loadout 武器 + 奥法之剑被动），
+	# 绕过本地 UI 直接提交施法在这里被拒绝。
+	if not _validate_spell_access(ctx):
+		return _reject(NP.ERR_INVALID_TARGET)
+	# P0-4：caster 必须已绑定真实 Player 实体，否则在任何资源 commit 前拒绝。
+	if ctx.player_node == null or not is_instance_valid(ctx.player_node):
+		return _reject(NP.ERR_PLAYER_NOT_READY)
+	var mana_cost := ctx.spell_runtime.mana_cost_for(spell)
+	if ctx.spell_mana < mana_cost:
+		return _reject(NP.ERR_INSUFFICIENT_RESOURCE)
+	var spell_id := String(spell.get("id", ""))
+	# 冷却只读预检（commit_authoritative_cooldown 会在提交时二重确认）。
+	if ctx.spell_runtime.is_on_cooldown(spell_id):
+		return _reject(NP.ERR_COOLDOWN_ACTIVE)
+	# 世界执行可行性预检（commit 前）：不支持的实施类型不得消耗资源。
+	var implementation := String(spell.get("implementation", "projectile"))
+	if not SpellAuthorityClass.supports_implementation(implementation):
+		return _reject(NP.ERR_INVALID_TARGET)
+	# ---- 事务：execute → verify（commit 前）→ commit → publish ----
+	# P0-3：会话级世界执行器（SessionRoot 挂树拥有，非 static 跨会话共享），
+	# 并接线实体仓伤害端口（世界伤害写回 _entities 权威路径）。
+	_ensure_spell_world_executor()
+	var live: Dictionary = _live_state.get(peer_id, {})
+	var origin: Vector3 = live.get("position", Vector3.ZERO)
+	var direction: Vector3 = live.get("facing", Vector3(0, 0, -1))
+	var effect_plan := ctx.spell_runtime._effect_plan({"implementation": implementation, "spell": spell})
+	var authority_execution: Dictionary = spell_auth.execute(ctx.player_node, {"ok": true, "spell_id": spell_id, "imagery": spell.get("imagery", "unknown"), "origin": origin, "direction": direction, "target_hint": command.get("target_hint"), "effect_plan": effect_plan, "visual_event": {}}, ctx.player_node.get_parent(), peer_id)
+	# P0-3：世界执行失败（预算满/实施不支持/服务缺失）→ 拒绝，法力与冷却均不提交。
+	if not bool(authority_execution.get("ok", false)):
+		return _reject(NP.ERR_INVALID_STATE)
+	# P0-1-A：movement 位移以 caster（权威物理体）实际落点为真相，同步 _live_state
+	# 权威位置——否则后续 player_snapshot 会把位移回弹覆盖。
+	if implementation == "movement" and ctx.player_node != null and is_instance_valid(ctx.player_node):
+		set_player_position(peer_id, ctx.player_node.global_position)
+	# verify：ray 命中实体时，端口写回事件（snapshot/despawn/掉落）提升为 extra_events，
+	# 由 NetworkManager 统一广播（P0-1-C 事件 outbox：ray 在施法响应窗口内同步出口）。
+	var extra: Array = []
+	var world_execution: Dictionary = authority_execution.get("world_execution", {})
+	var port_result: Dictionary = world_execution.get("port_result", {})
+	var port_events = port_result.get("events", [])
+	if port_events is Array:
+		for ev in port_events:
+			if ev is Dictionary and not (ev as Dictionary).is_empty():
+				extra.append(ev)
+	# ---- commit（执行成功后才扣资源）----
+	ctx.spell_mana -= mana_cost
+	ctx.spell_runtime.commit_authoritative_cooldown(spell)
+	var evt := {
+		"event": NP.EVT_SPELL_RESOLVED,
+		"peer_id": peer_id,
+		"slot_index": slot_index,
+		"spell_id": spell_id,
+		"imagery": String(spell.get("imagery", "unknown")),
+		"implementation": implementation,
+		"origin": origin,
+		"direction": direction,
+		"color": spell.get("color", Color.WHITE),
+		"mana_spent": mana_cost,
+		"mana_remaining": ctx.spell_mana,
+		"cooldown_ms": ctx.spell_runtime.remaining_cooldown_ms(spell_id),
+		"authority_execution": authority_execution,
+		"world_execution": world_execution,
+		"effects": {
+			"healed": int(authority_execution.get("healed", 0)),
+			"absorb": int(authority_execution.get("absorb", 0)),
+			"duration": float(authority_execution.get("duration", 0.0)),
+			"distance": float(authority_execution.get("distance", 0.0)),
+		},
+	}
+	# ---- publish ----
+	session_event.emit(evt)
+	return {"success": true, "event": evt, "error_code": "", "extra_events": extra}
+
+## P0-3：确保会话级世界执行器存在（挂为 SessionRoot 子节点，随会话生命周期释放），
+## 并把实体仓伤害端口接到本会话（世界伤害写回 _entities → 生命/死亡/掉落复制事件）。
+func _ensure_spell_world_executor() -> void:
+	var ex: Node = spell_auth.get_world_executor()
+	if ex == null or not is_instance_valid(ex):
+		var executor := SpellWorldExecutorClass.new()
+		executor.name = "SpellWorldExecutor"
+		add_child(executor)
+		spell_auth.set_world_executor(executor)
+		ex = executor
+	if "damage_entity_port" in ex:
+		ex.damage_entity_port = _spell_damage_entity
+
+## P0-3：法术世界伤害写回权威实体仓（与普通攻击同路径）：
+##   扣血 → 死亡（掉落 + despawn） / 存活（entity_snapshot）。
+## 返回 {ok, killed, events}（events 为复制事件，供发布端广播）。
+func _spell_damage_entity(entity_id: int, damage: int, caster_peer: int) -> Dictionary:
+	var out := {"ok": false, "killed": false, "events": []}
+	if damage <= 0 or not _entities.has(entity_id):
+		return out
+	var data: Dictionary = _entities[entity_id]
+	var new_life: int = int(data.get("current_life", 0)) - damage
+	var events: Array = []
+	if new_life <= 0:
+		var loot_events: Array = _on_entity_killed(entity_id, caster_peer)
+		var dres: Dictionary = remove_entity(entity_id)
+		if bool(dres.get("success", false)):
+			events.append(dres["event"])
+		for le in loot_events:
+			events.append(le)
+		out["killed"] = true
+	else:
+		var ures: Dictionary = update_entity(entity_id, {"current_life": new_life})
+		if bool(ures.get("success", false)):
+			events.append(ures["event"])
+	out["ok"] = true
+	out["events"] = events
+	return out
+
+## P0-1-C：排空 field/summon 异步 tick 产生的实体复制事件（outbox）。
+## 由 NetworkManager.tick 定期调用并广播；返回事件数组。
+func poll_spell_world_events() -> Array:
+	var ex: Node = spell_auth.get_world_executor()
+	if ex == null or not is_instance_valid(ex):
+		return []
+	if ex.has_method("drain_pending_events"):
+		return ex.drain_pending_events()
+	return []
+
+## 施法资格纯逻辑校验（P0-5）：读取权威 loadout 的激活武器，经 SpellAccessPolicy
+## 检查法杖/魔导书/奥法之剑资格；奥法之剑被动来自 per-peer SkillRuntime（服务器权威）。
+## 无 WeaponRegistry（headless 纯逻辑单测）时返回 true——资格校验由带场景的测试覆盖。
+func _validate_spell_access(ctx: PlayerContextClass) -> bool:
+	var reg := _weapon_registry()
+	if reg == null:
+		return true
+	var weapon_id: String = ctx.loadout.get_weapon_slot(ctx.loadout.active_weapon_slot)
+	var weapon = reg.get_weapon_data(weapon_id) if not weapon_id.is_empty() else null
+	if weapon == null:
+		return false
+	var has_arcane_sword := false
+	if ctx.skills != null and ctx.skills.has_method("has_mechanism_passive"):
+		has_arcane_sword = ctx.skills.has_mechanism_passive(SpellAccessPolicyClass.ARCANE_SWORD_PASSIVE_ID)
+	return SpellAccessPolicyClass.can_use_spell_interface(weapon, has_arcane_sword)
+
+
+## 客户端提交升级选择意图（P1-4 权威闭环）：服务器校验 pending 次数/候选合法性后应用，
+## 应用成功广播 EVT_PROGRESSION_CHANGED；失败不消耗任何升级机会。客户端面板
+## 只发送意图，绝不直接修改服务器权威属性。
+func _handle_level_up_choice(command: Dictionary, ctx: PlayerContextClass) -> Dictionary:
+	var peer_id: int = int(_ctx_peer.get(ctx.get_instance_id(), 0))
+	if not _seq_tracker.accept(peer_id, int(command.get("sequence", 0))):
+		return _reject(NP.ERR_INVALID_SEQUENCE)
+	var intent := {
+		"kind": String(command.get("kind", "")),
+		"attr_key": String(command.get("attr_key", "")),
+		"rune_id": String(command.get("rune_id", "")),
+	}
+	var res: Dictionary = ProgressionAuthorityClass.apply_level_up_choice(ctx.attributes, ctx.inventory, intent)
+	if not bool(res.get("ok", false)):
+		return _reject(String(res.get("error_code", NP.ERR_INVALID_TARGET)))
+	var evt := _progression_event(peer_id, ctx)
+	session_event.emit(evt)
+	return {"success": true, "event": evt, "error_code": ""}
+
+## 客户端请求本次升级的符文候选：服务器按 player_guid 确定性掷出（重连/回放同一组），
+## 经 EVT_PROGRESSION_RUNE_CANDIDATES 下发；候选锁定在权威 AttrPanel。
+func _handle_level_up_rune_candidates(command: Dictionary, ctx: PlayerContextClass) -> Dictionary:
+	var peer_id: int = int(_ctx_peer.get(ctx.get_instance_id(), 0))
+	if not _seq_tracker.accept(peer_id, int(command.get("sequence", 0))):
+		return _reject(NP.ERR_INVALID_SEQUENCE)
+	var candidates: Array = ProgressionAuthorityClass.roll_rune_candidates(ctx.attributes, _peer_guid(peer_id, ctx))
+	if candidates.is_empty():
+		return _reject(NP.ERR_INVALID_STATE)
+	var evt := {
+		"event": NP.EVT_PROGRESSION_RUNE_CANDIDATES,
+		"peer_id": peer_id,
+		"candidates": candidates,
+	}
+	session_event.emit(evt)
+	return {"success": true, "event": evt, "error_code": ""}
+
+## 权威成长状态事件（P1-4）：killer/选择者 peer 的等级/经验/待升级队列快照。
+func _progression_event(peer_id: int, ctx: PlayerContextClass) -> Dictionary:
+	var attrs = ctx.attributes
+	return {
+		"event": NP.EVT_PROGRESSION_CHANGED,
+		"peer_id": peer_id,
+		"level": int(attrs.get_level()) if attrs != null else 1,
+		"level_exp": int(attrs.level_exp) if attrs != null else 0,
+		"threshold": int(attrs.get_level_upgrade_threshold()) if attrs != null else 100,
+		"pending_level_choices": int(attrs.get_pending_level_choices()) if attrs != null else 0,
+	}
 
 ## 客户端请求释放技能（§Phase 3 战斗权威前哨）：服务器校验该技能确由该玩家绑定，
 ## 拒绝伪造/未拥有的技能 id，再广播 EVT_SKILL_STATE_CHANGED 供两端表现层播放预表现。
@@ -611,15 +961,27 @@ func _handle_skill(command: Dictionary, ctx: PlayerContextClass) -> Dictionary:
 	session_event.emit(evt)
 	return {"success": true, "event": evt, "error_code": ""}
 
-## 客户端请求装备物品：服务器校验物品确在该玩家背包内（权威），再写入 loadout 槽位。
-## 绝不信客户端自报的任何属性；物品 id/slot 仅为标识符，服务器逐一校验合法性。
+## 客户端请求装备物品：服务器校验物品确在该玩家背包内（权威），再经唯一装备策略
+## EquipmentPolicy 解析类别/槽位兼容/占槽关系后写入 loadout 槽位（架构审查 P0-4）。
+## 协议：slot_kind("weapon"/"armor") + slot_index(int)/slot_name(String)；兼容旧版 slot
+## （int=武器槽 / String=护甲槽名）。材料/符文/未知物品一律拒绝——绝不污染权威 loadout。
 func _handle_equip(command: Dictionary, ctx: PlayerContextClass) -> Dictionary:
 	var peer_id: int = int(_ctx_peer.get(ctx.get_instance_id(), 0))
 	if not _seq_tracker.accept(peer_id, int(command.get("sequence", 0))):
 		return _reject(NP.ERR_INVALID_SEQUENCE)
 	var item_id: String = String(command.get("item_id", ""))
-	var slot = command.get("slot", null)
-	if item_id.is_empty() or slot == null:
+	# 新协议：slot_kind + slot_index/slot_name；旧协议 slot（int/string）兼容解析。
+	var slot_kind: String = String(command.get("slot_kind", ""))
+	var slot_index: int = int(command.get("slot_index", -1))
+	var slot_name: String = String(command.get("slot_name", ""))
+	var legacy_slot = command.get("slot", null)
+	if legacy_slot is int:
+		slot_kind = "weapon"
+		slot_index = int(legacy_slot)
+	elif legacy_slot is String:
+		slot_kind = "armor"
+		slot_name = String(legacy_slot)
+	if item_id.is_empty():
 		return _reject(NP.ERR_INVALID_TARGET)
 	# 物品必须在该玩家背包内（权威），否则视为非法请求。
 	var inv = ctx.inventory
@@ -627,26 +989,44 @@ func _handle_equip(command: Dictionary, ctx: PlayerContextClass) -> Dictionary:
 	if not owned:
 		return _reject(NP.ERR_INVALID_TARGET)
 	var lo = ctx.loadout
-	var ok: bool = false
-	if slot is int:
-		if int(slot) < 0 or int(slot) >= lo.WEAPON_SLOT_COUNT:
-			return _reject(NP.ERR_INVALID_TARGET)
-		ok = lo.set_weapon_slot(int(slot), item_id)
-	elif slot is String:
-		if not (String(slot) in lo.VALID_ARMOR_SLOTS):
-			return _reject(NP.ERR_INVALID_TARGET)
-		ok = lo.set_armor_slot(String(slot), item_id)
-	else:
+	# P0-4：唯一装备策略（类别/槽位兼容/双手↔盾互斥/唯一性），拒绝任何非装备污染槽位。
+	var res: Dictionary = EquipmentPolicyClass.resolve(item_id, slot_kind, slot_index, slot_name,
+		lo, _equipment_data_source())
+	if not bool(res.get("ok", false)):
 		return _reject(NP.ERR_INVALID_TARGET)
+	var ok: bool = false
+	if String(res["slot_kind"]) == EquipmentPolicyClass.SLOT_KIND_WEAPON:
+		ok = lo.set_weapon_slot(int(res["slot_index"]), item_id)
+	else:
+		ok = lo.set_armor_slot(String(res["slot_name"]), item_id)
 	if not ok:
 		return _reject(NP.ERR_INVALID_TARGET)
 	var evt := {
 		"event": NP.EVT_EQUIPMENT_CHANGED,
 		"peer_id": peer_id,
 		"item_id": item_id,
-		"slot": slot,
+		"slot_kind": res["slot_kind"],
+		"slot_index": res["slot_index"],
+		"slot_name": res["slot_name"],
 	}
 	return {"success": true, "event": evt, "error_code": ""}
+
+## 装备策略数据源（P0-4）：从 WeaponRegistry 解析物品类别/手位/护甲部位。
+## 可由测试注入 stub（headless 无 autoload）。
+var _equipment_data_source_custom: Callable = Callable()
+
+func _equipment_data_source() -> Callable:
+	if _equipment_data_source_custom.is_valid():
+		return _equipment_data_source_custom
+	var reg := _weapon_registry()
+	if reg == null or not reg.has_method("get_weapon_data"):
+		return EquipmentPolicyClass.DEFAULT_DATA_SOURCE
+	return func(item_id: String) -> Dictionary:
+		var wd = reg.get_weapon_data(item_id)
+		if wd == null:
+			return {}
+		return {"category": String(wd.equipment_category), "hands": String(wd.hands),
+			"armor_slot": String(wd.armor_slot)}
 
 ## 客户端请求丢弃物品：服务器权威夹紧丢弃数量到【玩家实际持有量】（绝不信任客户端自报的
 ## drop_amount/绝对数量），从背包移除后于玩家服务器权威坐标生成可拾取的掉落实体。
@@ -726,6 +1106,10 @@ func _settle_expedition(peer_id: int, ctx: PlayerContextClass, requested_save: b
 		return {"success": true, "event": evt_dup, "error_code": ""}
 	var settlement: Dictionary = _compute_settlement(peer_id)
 	save_auth.mark_settled(guid, settlement)
+	# P1-1：结算成功 → 把该玩家当前权威状态（背包/装配/法术）写回服务器存档仓，
+	# 作为其下次 spawn 的可信来源（服务器持久化闭环；客户端不参与写入）。
+	if server_save_repo != null:
+		server_save_repo.save_save(guid, _build_server_save_state(ctx))
 	var evt := {
 		"event": NP.EVT_EXTRACTION_RESULT,
 		"peer_id": peer_id,
@@ -734,6 +1118,20 @@ func _settle_expedition(peer_id: int, ctx: PlayerContextClass, requested_save: b
 		"requested_save": requested_save,
 	}
 	return {"success": true, "event": evt, "error_code": ""}
+
+## P1-1：构建服务器存档仓快照（与 GameState.build_network_save_state 同构：
+## materials(三类字典)/loadout/spell_state/attributes/skills）。
+func _build_server_save_state(ctx: PlayerContextClass) -> Dictionary:
+	var state := {
+		"materials": ctx.inventory.materials.duplicate(),
+		"loadout": ctx.loadout.to_dict(),
+		"spell_state": ctx.serialize_spell_state(),
+	}
+	if ctx.attributes != null and ctx.attributes.has_method("serialize"):
+		state["attributes"] = ctx.attributes.serialize()
+	if ctx.skills != null and ctx.skills.has_method("serialize"):
+		state["skills"] = ctx.skills.serialize()
+	return state
 
 ## 取某 peer 的稳定身份 guid（优先 PlayerContext.player_guid，缺省按 peer_id 派生）。
 func _peer_guid(peer_id: int, ctx: PlayerContextClass = null) -> String:
@@ -751,14 +1149,16 @@ func _handle_leave(command: Dictionary, ctx: PlayerContextClass) -> Dictionary:
 	return {"success": true, "event": {}, "error_code": ""}
 
 ## 计算某 peer 的出征净获得 = 当前背包 - 进地牢基线，按 materials/runes/equipment 三类求正差值。
-## 返回 {materials:{id:amt}, runes:{id:amt}, equipment:{id:amt}}（仅含净增加项）。
+## P1-4：附带 attributes 权威快照（联机期间获得的经验/升级/熟练度），
+## 由桥接层在结算写回时应用到单人存档，保证联机成长带回酒馆。
+## 返回 {materials:{id:amt}, runes:{id:amt}, equipment:{id:amt}, attributes:{...}}（仅含净增加项）。
 func _compute_settlement(peer_id: int) -> Dictionary:
 	var ctx: PlayerContextClass = registry.get_context(peer_id)
 	if ctx == null or ctx.inventory == null:
-		return {"materials": {}, "runes": {}, "equipment": {}}
+		return {"materials": {}, "runes": {}, "equipment": {}, "attributes": {}}
 	var cur: Dictionary = ctx.inventory.to_dict()
 	var base: Dictionary = _inventory_baseline.get(peer_id, {"materials": {}, "runes": {}, "equipment": {}})
-	var out: Dictionary = {"materials": {}, "runes": {}, "equipment": {}}
+	var out: Dictionary = {"materials": {}, "runes": {}, "equipment": {}, "attributes": {}}
 	for cat in ["materials", "runes", "equipment"]:
 		var c: Dictionary = cur.get(cat, {})
 		var b: Dictionary = base.get(cat, {})
@@ -766,6 +1166,8 @@ func _compute_settlement(peer_id: int) -> Dictionary:
 			var delta: int = int(c[k]) - int(b.get(k, 0))
 			if delta > 0:
 				out[cat][k] = delta
+	if ctx.attributes != null and ctx.attributes.has_method("serialize"):
+		out["attributes"] = ctx.attributes.serialize()
 	return out
 
 ## 服务器权威掉落（敌人死亡时调用，非客户端命令）。
@@ -830,10 +1232,12 @@ func build_session_snapshot() -> Dictionary:
 	var players: Array = []
 	for pid in registry.peer_ids():
 		var ls: Dictionary = _live_state.get(pid, {})
+		var ctx: PlayerContextClass = registry.get_context(pid)
 		players.append({
 			"peer_id": pid,
 			"is_alive": bool(ls.get("is_alive", true)),
 			"position": ls.get("position", Vector3.ZERO),
+			"spell_state": ctx.serialize_spell_state() if ctx != null else {},
 		})
 	snap["players"] = players
 	snap["entities"] = _entities.duplicate()
@@ -851,3 +1255,9 @@ func apply_session_snapshot(snap: Dictionary) -> void:
 		dungeon_auth.deserialize(snap["dungeon"])
 	if snap.has("save"):
 		save_auth.deserialize(snap["save"])
+	if snap.has("players"):
+		for player_data in snap["players"]:
+			if player_data is Dictionary and player_data.has("spell_state"):
+				var ctx: PlayerContextClass = registry.get_context(int(player_data.get("peer_id", 0)))
+				if ctx != null:
+					ctx.deserialize_spell_state(Dictionary(player_data.spell_state))

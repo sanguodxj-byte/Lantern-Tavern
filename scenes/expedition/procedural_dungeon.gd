@@ -1,4 +1,4 @@
-﻿extends BaseLevel
+extends BaseLevel
 class_name ProceduralDungeon
 
 const Service := preload("res://globals/core/service.gd")
@@ -126,13 +126,14 @@ func _ready() -> void:
 	if config.enable_hazards:
 		DungeonHazardPlanner.new().plan(layout)
 
+	# 房间构成先于敌人规划，敌人需要读取主题房间的扇区/高台数据。
+	DungeonRoomFocusPlanner.new().plan(layout)
+
 	if config.enable_spawn_planning:
 		var spawn_planner := DungeonSpawnPlanner.new()
 		spawn_planner.plan_enemy_spawns(layout)
 		spawn_planner.plan_item_spawns(layout)
 		spawn_planner.plan_chest_spawns(layout)
-
-	DungeonRoomFocusPlanner.new().plan(layout)
 
 	# build_result 集中实例化 hazard/chest/extraction portal（唯一路径，旧 _generate_visuals 调用已注释）
 	build_result = DungeonSceneBuilder.new().build(layout, self)
@@ -156,7 +157,7 @@ func _ready() -> void:
 	_runtime.configure(layout, build_result, self, streaming_controller, _rendering_cfg, spawn_population_enabled)
 	_runtime.start()
 	# spawn_player 已由 _runtime.start() 内调（转 procedural.spawn_player）；玩家引用经 GameState.current_player 回读
-	_player_spawn = GameState.current_player
+	_player_spawn = GameState.resolve_player_node(0)
 
 
 func _exit_tree() -> void:
@@ -221,7 +222,7 @@ func _on_expedition_overtime(_snapshot: Dictionary) -> void:
 	if _runtime != null and is_instance_valid(_runtime):
 		_runtime.on_expedition_overtime(_snapshot)
 		return
-	var player_node := GameState.current_player as Player
+	var player_node := GameState.resolve_player_node(0) as Player
 	_finish_expedition(player_node, false)
 
 func _setup_zone_ambient() -> void:
@@ -247,9 +248,11 @@ func _setup_zone_ambient() -> void:
 
 	var env := WorldEnvironment.new()
 	env.environment = Environment.new()
+	env.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.environment.ambient_light_color = zone_ambient_config.ambient_color
 	env.environment.ambient_light_energy = zone_ambient_config.ambient_energy
 	env.environment.tonemap_mode = Environment.TONE_MAPPER_ACES
+	env.environment.tonemap_exposure = float(zone_ambient_config.get("exposure", 1.0))
 	env.environment.fog_enabled = zone_ambient_config.fog_enabled
 	env.environment.fog_light_color = zone_ambient_config.fog_color
 	env.environment.fog_density = zone_ambient_config.fog_density
@@ -295,19 +298,28 @@ func _build_terrain_geometry(grid: Array) -> void:
 		player_spawn_pos = Vector3(0, 0.5, 0)
 
 func _on_downstairs_entered(body: Node3D) -> void:
+	if _runtime != null and is_instance_valid(_runtime):
+		_runtime.on_downstairs_entered(body)
+		return
 	if not body is Player:
 		return
 	print("[Dungeon] Downstairs triggered by player")
 	var world := _find_world_controller()
-	if world != null:
+	if world != null and world.has_method("transition_to_next_floor"):
+		world.transition_to_next_floor()
+	elif world != null and world.has_method("transition_to_dungeon"):
+		if GameState != null and GameState.has_method("advance_dungeon_floor"):
+			GameState.advance_dungeon_floor()
 		world.transition_to_dungeon()
 	elif GameEvents:
+		if GameState != null and GameState.has_method("advance_dungeon_floor"):
+			GameState.advance_dungeon_floor()
 		GameEvents.level_restarted.emit()
 
 func _find_world_controller() -> Node:
 	var node: Node = get_parent()
 	while node != null:
-		if node.has_method("transition_to_dungeon"):
+		if node.has_method("transition_to_next_floor") or node.has_method("transition_to_dungeon"):
 			return node
 		node = node.get_parent()
 	return null
@@ -337,63 +349,66 @@ func _configure_scene_object(instance: Node) -> void:
 	builder._configure_scene_object(instance)
 
 func _get_zone_ambient_config(zone: int) -> Dictionary:
+	# 环境光整体调暗（2026-08 视觉调优）：全部区域 ambient_energy 下调约 35%，
+	# 环境色同步压暗，保持冷色基调与火把局部对比；曝光不变以保留高光余量。
 	match zone:
-		0:  # 幽暗地牢 — 阴冷石砌地牢，保留阴影但保证基础可视
+		0:  # 幽暗地牢 — 冷暗石砌空间，以火把形成探索节奏并保留基础可视
 			return {
-				light_energy = 0.22,
-				light_color = Color(0.55, 0.52, 0.48),
-				ambient_color = Color(0.18, 0.16, 0.18),
-				ambient_energy = 0.28,
+				light_energy = 0.26,
+				light_color = Color(0.55, 0.60, 0.68),
+				ambient_color = Color(0.14, 0.16, 0.20),
+				ambient_energy = 0.40,
+				exposure = 0.96,
 				fog_enabled = true,
-				fog_color = Color(0.12, 0.10, 0.11),
-				fog_density = 0.008,
+				fog_color = Color(0.09, 0.10, 0.12),
+				fog_density = 0.006,
 			}
 		1:  # 寂静之森 — 树冠下月光筛落，青绿冷光，无需火把
 			return {
-				light_energy = 0.15,
+				light_energy = 0.12,
 				light_color = Color(0.4, 0.6, 0.5),
-				ambient_color = Color(0.15, 0.25, 0.2),
-				ambient_energy = 0.3,
+				ambient_color = Color(0.10, 0.17, 0.13),
+				ambient_energy = 0.20,
 				fog_enabled = true,
 				fog_color = Color(0.1, 0.18, 0.15),
 				fog_density = 0.008,
 			}
 		2:  # 深邃洞窟 — 暗冷紫光，火把提供主要局部对比
 			return {
-				light_energy = 0.14,
+				light_energy = 0.11,
 				light_color = Color(0.38, 0.42, 0.58),
-				ambient_color = Color(0.10, 0.09, 0.14),
-				ambient_energy = 0.20,
+				ambient_color = Color(0.07, 0.06, 0.10),
+				ambient_energy = 0.14,
 				fog_enabled = true,
 				fog_color = Color(0.08, 0.07, 0.10),
 				fog_density = 0.012,
 			}
 		3:  # 荒芜墓园 — 阴冷灰蓝，保留雾气但不压黑地面
 			return {
-				light_energy = 0.16,
+				light_energy = 0.12,
 				light_color = Color(0.45, 0.50, 0.62),
-				ambient_color = Color(0.12, 0.11, 0.16),
-				ambient_energy = 0.22,
+				ambient_color = Color(0.08, 0.07, 0.11),
+				ambient_energy = 0.15,
 				fog_enabled = true,
 				fog_color = Color(0.10, 0.09, 0.13),
 				fog_density = 0.010,
 			}
 		4:  # 熔岩火山 — 熔岩辉光暖橙，无需火把
 			return {
-				light_energy = 0.12,
+				light_energy = 0.10,
 				light_color = Color(0.8, 0.5, 0.2),
-				ambient_color = Color(0.15, 0.08, 0.03),
-				ambient_energy = 0.25,
+				ambient_color = Color(0.10, 0.05, 0.02),
+				ambient_energy = 0.17,
 				fog_enabled = true,
 				fog_color = Color(0.12, 0.06, 0.02),
 				fog_density = 0.01,
 			}
 		5:  # 古代遗迹 — 灵界蓝白辉光，古代魔力弥漫，无需火把
 			return {
-				light_energy = 0.1,
+				light_energy = 0.08,
 				light_color = Color(0.5, 0.6, 0.8),
-				ambient_color = Color(0.1, 0.12, 0.2),
-				ambient_energy = 0.2,
+				ambient_color = Color(0.07, 0.08, 0.14),
+				ambient_energy = 0.14,
 				fog_enabled = true,
 				fog_color = Color(0.08, 0.1, 0.18),
 				fog_density = 0.008,
@@ -402,8 +417,8 @@ func _get_zone_ambient_config(zone: int) -> Dictionary:
 			return {
 				light_energy = 0.02,
 				light_color = Color(0.3, 0.35, 0.5),
-				ambient_color = Color(0.04, 0.03, 0.06),
-				ambient_energy = 0.04,
+				ambient_color = Color(0.03, 0.02, 0.04),
+				ambient_energy = 0.03,
 				fog_enabled = true,
 				fog_color = Color(0.05, 0.04, 0.06),
 				fog_density = 0.02,

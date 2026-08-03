@@ -20,19 +20,20 @@
 		"spawn_min_dist_from_player": 2.0,
 		"max_per_room": 6,
 		"item_scene_paths": [
-			{ "path": "res://scenes/props/decor/bones.tscn", "weight": 20 },
-			{ "path": "res://scenes/props/decor/lit_candles.tscn", "weight": 15 },
-			{ "path": "res://scenes/props/decor/floor_candelabrum.tscn", "weight": 9 },
-			{ "path": "res://scenes/props/decor/wall_candelabrum.tscn", "weight": 8 },
-			{ "path": "res://scenes/props/decor/iron_bar_grate.tscn", "weight": 7 },
-			{ "path": "res://scenes/props/decor/spiderweb.tscn", "weight": 15 },
-			{ "path": "res://scenes/props/decor/bench.tscn", "weight": 10 },
-			{ "path": "res://scenes/props/decor/chair.tscn", "weight": 10 },
-			{ "path": "res://scenes/props/decor/table.tscn", "weight": 10 },
-			{ "path": "res://scenes/props/decor/banner.tscn", "weight": 8 },
-			{ "path": "res://scenes/props/decor/bucket.tscn", "weight": 8 },
-			{ "path": "res://scenes/props/decor/candles.tscn", "weight": 6 },
-			{ "path": "res://scenes/props/decor/ruble.tscn", "weight": 8 }
+			{ "path": "res://scenes/props/dungeon/decor/bones.tscn", "weight": 20 },
+			{ "path": "res://scenes/props/dungeon/decor/rubble.tscn", "weight": 10 },
+			{ "path": "res://scenes/props/dungeon/decor/plank.tscn", "weight": 10 },
+			{ "path": "res://scenes/props/dungeon/decor/floor_candelabrum.tscn", "weight": 9 },
+			{ "path": "res://scenes/props/dungeon/decor/wall_candelabrum.tscn", "weight": 8 },
+			{ "path": "res://scenes/props/dungeon/decor/iron_bar_grate.tscn", "weight": 7 },
+			{ "path": "res://scenes/props/dungeon/decor/spiderweb.tscn", "weight": 15 },
+			{ "path": "res://scenes/props/dungeon/dungeon_crate.tscn", "weight": 10 },
+			{ "path": "res://scenes/props/dungeon/dungeon_barrel.tscn", "weight": 10 },
+			{ "path": "res://scenes/props/dungeon/decor/ritual_totem.tscn", "weight": 5 },
+			{ "path": "res://scenes/props/dungeon/decor/stalagmite_cluster.tscn", "weight": 8 },
+			{ "path": "res://scenes/props/dungeon/decor/sarcophagus.tscn", "weight": 4 },
+			{ "path": "res://scenes/props/dungeon/decor/wall_chain.tscn", "weight": 7 },
+			{ "path": "res://scenes/props/dungeon/decor/fungus_patch.tscn", "weight": 9 }
 		]
 	},
 	{
@@ -44,8 +45,8 @@
 		"spawn_min_dist_from_player": 4.0,
 		"max_per_room": 3,
 		"item_scene_paths": [
-			{ "path": "res://scenes/props/barrel/barrel.tscn", "weight": 50 },
-			{ "path": "res://scenes/props/crates/small_crate.tscn", "weight": 50 }
+			{ "path": "res://scenes/props/dungeon/dungeon_barrel.tscn", "weight": 50 },
+			{ "path": "res://scenes/props/dungeon/dungeon_crate.tscn", "weight": 50 }
 		]
 	},
 	{

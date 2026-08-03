@@ -42,12 +42,13 @@ const BODY_SIZE_SCALE := {
 # ---- 标准掩码组合 ----
 # 静态环境：仅被其他物体碰撞，不主动碰他物
 const MASK_ENVIRONMENT: int = 0
-# 玩家：碰撞环境+敌人+可拾取物+门/触发层+场景物体
-const MASK_PLAYER: int = LAYER_ENVIRONMENT | LAYER_ENEMY | LAYER_PICKABLE | LAYER_TRIGGER | LAYER_SCENE_OBJECT
+# 玩家：碰撞环境+敌人+门/触发层+场景物体。拾取物只由选择射线交互，
+# 不参与角色实体碰撞，否则接近地面物品时会不断推醒刚体、造成闪烁和选中丢失。
+const MASK_PLAYER: int = LAYER_ENVIRONMENT | LAYER_ENEMY | LAYER_TRIGGER | LAYER_SCENE_OBJECT
 # 敌人：碰撞环境+玩家+敌人+可投掷物+门/触发层+场景物体
 const MASK_ENEMY: int = LAYER_ENVIRONMENT | LAYER_PLAYER | LAYER_ENEMY | LAYER_THROWABLE | LAYER_TRIGGER | LAYER_SCENE_OBJECT
-# 可拾取物：碰撞环境+场景物体+其他动态物体
-const MASK_PICKABLE: int = LAYER_ENVIRONMENT | LAYER_SCENE_OBJECT | LAYER_PICKABLE | LAYER_THROWABLE
+# 可拾取物：碰撞环境+场景物体+投掷物；同类拾取物不互撞，避免掉落堆叠持续唤醒。
+const MASK_PICKABLE: int = LAYER_ENVIRONMENT | LAYER_SCENE_OBJECT | LAYER_THROWABLE
 # 可投掷物：碰撞环境+敌人+玩家+门/触发层+场景物体+其他动态物体
 const MASK_THROWABLE: int = LAYER_ENVIRONMENT | LAYER_ENEMY | LAYER_PLAYER | LAYER_TRIGGER | LAYER_SCENE_OBJECT | LAYER_PICKABLE | LAYER_THROWABLE
 # 投射物：碰撞环境+敌人+场景物体（不碰玩家/可拾取物/触发器）

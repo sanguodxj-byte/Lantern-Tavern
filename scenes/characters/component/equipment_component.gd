@@ -2,7 +2,9 @@ class_name EquipmentComponent
 extends Node3D
 
 const EQUIPED_ITEM_PREFAB := preload("res://scenes/equipment/equiped_item.tscn")
+const PICKABLE_ITEM_PREFAB := preload("res://scenes/equipment/pickable_item.tscn")
 const THROWN_ITEM_PREFAB := preload("res://scenes/equipment/thrown_item.tscn")
+const Service := preload("res://globals/core/service.gd")
 
 @export var furniture_data: FurnitureData
 @export var furniture_placeholder: Node3D
@@ -364,6 +366,10 @@ func throw_weapon(is_being_dropped: bool = false, aim_point: Vector3 = Vector3.Z
 			GameEvents.weapon_changed.emit(weapon_data)
 			if was_shield:
 				GameEvents.shield_changed.emit(null)
+	# 武器离开玩家后必须固化到 GameState，否则场景重载/玩家重注册时
+	# apply_equipment_to_player 会从过期的 weapon_slot_ids 恢复已丢弃的武器，
+	# 造成"打开 Tab 后主手复制出一把武器"的 bug。
+	_persist_equipment_state()
 
 func throw_furniture(is_being_dropped: bool = false) -> void:
 	if has_furniture():
@@ -407,19 +413,33 @@ func drop_shield() -> void:
 			return
 		if not level.is_inside_tree():
 			return
-		var dropped_item := THROWN_ITEM_PREFAB.instantiate()
-		dropped_item.shield_data = shield_data
-		dropped_item.is_being_dropped = true
 		var spawn_transform := _fallback_drop_transform(shield_placeholder)
-		dropped_item.global_transform = spawn_transform
-		level.add_child(dropped_item)
+		_spawn_pickable_drop(level, spawn_transform, null, shield_data)
 		shield_data = null
 		if shield_placeholder != null and is_instance_valid(shield_placeholder) and shield_placeholder.get_child_count() > 0:
 			shield_placeholder.get_child(0).queue_free()
 		if is_linked_to_ui:
 			GameEvents.shield_changed.emit(shield_data)
+	# 盾牌离开玩家后同样需要固化到 GameState，防止场景重载时被恢复。
+	_persist_equipment_state()
+
+## 将当前装备状态固化到 GameState。
+## 在武器/盾牌离开玩家（投掷、丢弃、损坏）后调用，确保 GameState 的
+## weapon_slot_ids / armor_slot_ids 与 EquipmentComponent 一致，
+## 避免 apply_equipment_to_player 从过期数据恢复已离手的装备。
+func _persist_equipment_state() -> void:
+	if GameState != null and GameState.has_method("save_equipment_from_player"):
+		var player := get_parent()
+		if player != null:
+			GameState.save_equipment_from_player(player)
 
 func apply_weapon_damage(amount: int) -> void:
+	# 符文之语「无耗之语」：远程武器不消耗耐久
+	if _has_mechanism_passive("rune_word_ranged_no_wear") and is_active_weapon_ranged():
+		return
+	# 符文之语「神盾之语」：盾牌武器不消耗耐久
+	if _has_mechanism_passive("rune_word_shield_no_wear") and _is_shield_weapon(weapon_data):
+		return
 	var mount := get_active_weapon_placeholder()
 	if weapon_data != null and (mount == null or mount.get_child_count() > 0):
 		weapon_data.decrease_condition(amount)
@@ -430,8 +450,10 @@ func apply_weapon_damage(amount: int) -> void:
 			GameEvents.weapon_changed.emit(weapon_data)
 			if _is_shield_weapon(weapon_data):
 				GameEvents.shield_changed.emit(weapon_data)
-		
 func apply_shield_damage(amount: int) -> void:
+	# 符文之语「神盾之语」：盾牌不消耗耐久
+	if _has_mechanism_passive("rune_word_shield_no_wear"):
+		return
 	if _is_shield_weapon(weapon_data):
 		apply_weapon_damage(amount)
 		if is_linked_to_ui:
@@ -449,6 +471,14 @@ func apply_armor_damage(slot_name: String, amount: int) -> bool:
 		return false
 	armor.decrease_condition(amount)
 	return true
+
+## 查询玩家是否拥有某机制类被动（用于符文之语耐久豁免）。
+## 通过 SkillRuntime autoload 查询，无则返回 false。
+func _has_mechanism_passive(id: String) -> bool:
+	var sr: Node = Service.skill_runtime()
+	if sr != null and sr.has_method("has_mechanism_passive"):
+		return sr.has_mechanism_passive(id)
+	return false
 
 func _ensure_weapon_slots() -> void:
 	while weapon_slots.size() < WEAPON_SLOT_COUNT:
@@ -567,12 +597,28 @@ func _spawn_dropped_weapon(data: WeaponData, spawn_transform: Transform3D, is_be
 		level = GameState.current_level
 	if level == null or not is_instance_valid(level) or not level.is_inside_tree():
 		return
+	if is_being_dropped:
+		_spawn_pickable_drop(level, spawn_transform, data)
+		return
 	var thrown_item := THROWN_ITEM_PREFAB.instantiate()
 	thrown_item.weapon_data = data
-	thrown_item.is_being_dropped = is_being_dropped
+	thrown_item.is_being_dropped = false
 	thrown_item.source = get_parent() as CollisionObject3D
 	thrown_item.global_transform = spawn_transform
 	level.add_child(thrown_item)
+
+## A normal drop is immediately interactable. Only an intentional throw uses
+## the temporary combat body and waits for it to settle before becoming loot.
+func _spawn_pickable_drop(level: Node, spawn_transform: Transform3D, weapon: WeaponData = null, shield: ShieldData = null) -> void:
+	if level == null or not is_instance_valid(level):
+		return
+	var pickable := PICKABLE_ITEM_PREFAB.instantiate() as PickableItem
+	if pickable == null:
+		return
+	pickable.weapon_data = weapon
+	pickable.shield_data = shield
+	pickable.global_transform = spawn_transform
+	level.add_child(pickable)
 
 func _is_hand_equipment(data: WeaponData) -> bool:
 	if data == null:

@@ -65,6 +65,68 @@ func test_spawn_request_on_client_returns_null() -> void:
 	s.init_client()
 	assert_object(s.handle_spawn_request(1)).is_null()
 
+## P0-1：同一稳定身份 GUID 被第二个 ONLINE peer 使用时，生成必须被拒绝——
+## 不创建任何玩家子对象/库存基线（防止身份索引覆盖 → 错误重连/结算串账）。
+func test_handle_spawn_request_rejects_duplicate_online_guid() -> void:
+	var s: SR = auto_free(_make_server())
+	var c1 = s.handle_spawn_request(1, {}, "player_shared")
+	assert_object(c1).is_not_null()
+	# 第二个 peer 使用相同 GUID → 拒绝（返回 null，不注册）。
+	var c2 = s.handle_spawn_request(2, {}, "player_shared")
+	assert_object(c2).is_null()
+	assert_int(s.registry.peer_count()).is_equal(1)
+	assert_bool(s.registry.has_peer(2)).is_false()
+	assert_bool(s._live_state.has(2)).is_false()
+	# 身份索引仍指向第一个 peer（未被覆盖）。
+	assert_int(s.connection_auth._guid_to_peer.get("player_shared", 0)).is_equal(1)
+
+## P0-1：空 GUID 按 peer_id 派生身份，互不冲突（多个默认客户端可共存）。
+func test_handle_spawn_request_derived_guid_allows_multiple_peers() -> void:
+	var s: SR = auto_free(_make_server())
+	s.handle_spawn_request(1)
+	s.handle_spawn_request(2)
+	assert_int(s.registry.peer_count()).is_equal(2)
+	assert_str(s.connection_auth.get_player_guid(1)).is_equal("peer_1")
+	assert_str(s.connection_auth.get_player_guid(2)).is_equal("peer_2")
+
+## P1-1：服务器可信存档仓——同身份二次 spawn 以仓内权威状态恢复（不信任客户端字典）。
+func test_spawn_restores_authoritative_state_from_server_save_repo() -> void:
+	var s: SR = auto_free(_make_server())
+	var repo = auto_free(load("res://globals/multiplayer/server_save_repository.gd").new())
+	repo.set_save_dir("user://test_sess_saves_%d" % Time.get_ticks_usec())
+	s.server_save_repo = repo
+	# 首次 spawn 播种（房主存档摘要）。
+	var seed_state := {
+		"materials": {"iron_ore": 5},
+		"loadout": {"weapon_slots": ["shortsword", "", "", ""], "armor_slots": {}, "active_weapon_slot": 0},
+	}
+	var c1 = s.handle_spawn_request(1, seed_state, "player_persist")
+	assert_object(c1).is_not_null()
+	assert_int(int(c1.inventory.materials.get("iron_ore", 0))).is_equal(5)
+	# 客户端自报空存档重连 → 服务器仓优先（铁矿石仍在，且没有空覆盖）。
+	var c2 = s.handle_spawn_request(1, {}, "player_persist")
+	assert_object(c2).is_not_null()
+	assert_int(int(c2.inventory.materials.get("iron_ore", 0))) \
+		.override_failure_message("同身份重连必须以服务器仓状态恢复，不能被空 save_state 覆盖").is_equal(5)
+	assert_str(c2.loadout.get_weapon_slot(0)).is_equal("shortsword")
+
+## P1-1：出征结算把当前权威状态写回服务器仓（持久化闭环）。
+func test_settlement_writes_back_to_server_save_repo() -> void:
+	var s: SR = auto_free(_make_server())
+	var repo = auto_free(load("res://globals/multiplayer/server_save_repository.gd").new())
+	repo.set_save_dir("user://test_sess_saves_%d" % Time.get_ticks_usec())
+	s.server_save_repo = repo
+	var ctx = s.handle_spawn_request(1, {}, "player_saveback")
+	ctx.inventory.add_material("goblin_tooth", 2)
+	var r: Dictionary = s.on_command(1, {"type": NP.CMD_EXTRACT,
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
+	assert_bool(r["success"]).is_true()
+	# 仓内已有该身份的权威快照，且包含本次获得的材料。
+	var saved: Dictionary = repo.load_save("player_saveback")
+	assert_bool(not saved.is_empty()).is_true()
+	assert_int(int(saved["materials"]["goblin_tooth"])) \
+		.override_failure_message("结算必须把当前权威背包写回服务器存档仓").is_equal(2)
+
 # ---------------------------------------------------------------------------
 # 命令入口 / 权限边界
 # ---------------------------------------------------------------------------
@@ -161,7 +223,8 @@ func test_combat_handler_resolves_damage() -> void:
 	var s: SR = auto_free(_make_server())
 	s.handle_spawn_request(1)
 	s.set_entity(4312, {"con": 10, "agi": 10, "per": 10, "armor_def": 0, "current_life": 100, "max_life": 100})
-	var cmd := {"type": NP.CMD_ATTACK, "attack_type": "melee", "target_hint": 4312, "protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1}
+	# P0-2：攻击意图只携带 hand/charge_ratio/target_hint，不携带 attack_type。
+	var cmd := {"type": NP.CMD_ATTACK, "hand": "primary", "charge_ratio": 1.0, "target_hint": 4312, "protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1}
 	var r: Dictionary = s.on_command(1, cmd)
 	assert_bool(r["success"]).is_true()
 	var evt: Dictionary = r["event"]
@@ -172,6 +235,16 @@ func test_combat_handler_resolves_damage() -> void:
 	var r2: Dictionary = s.on_command(1, cmd)
 	assert_bool(r2["success"]).is_false()
 	assert_str(r2["error_code"]).is_equal(NP.ERR_INVALID_SEQUENCE)
+
+func test_combat_handler_rejects_client_attack_type_field() -> void:
+	# P0-2 反作弊：携带客户端自报 attack_type 的攻击意图整单被拒（攻击类型由服务器权威派生）。
+	var s: SR = auto_free(_make_server())
+	s.handle_spawn_request(1)
+	s.set_entity(4313, {"con": 10, "agi": 10, "per": 10, "armor_def": 0, "current_life": 100, "max_life": 100})
+	var cmd := {"type": NP.CMD_ATTACK, "attack_type": "ranged", "hand": "primary", "target_hint": 4313, "protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1}
+	var r: Dictionary = s.on_command(1, cmd)
+	assert_bool(r["success"]).is_false()
+	assert_str(r["error_code"]).is_equal(NP.ERR_INVALID_STATE)
 
 # ---------------------------------------------------------------------------
 # 移动同步（Phase 4：服务器采样输入帧，从输入积分权威位置）
@@ -601,17 +674,116 @@ func test_handle_equip_rejects_item_not_owned() -> void:
 	assert_bool(r["success"]).is_false()
 	assert_str(r["error_code"]).is_equal(NP.ERR_INVALID_TARGET)
 
-func test_handle_equip_accepts_owned_item() -> void:
+## P0-4：材料（iron_ore）装进武器槽必须被拒绝——旧实现把此漏洞固化为预期行为，
+## 现在改为反例门禁：非装备类别绝不允许污染权威 loadout。
+func test_handle_equip_rejects_material_in_weapon_slot() -> void:
 	var s: SR = auto_free(_make_server())
 	var ctx = s.handle_spawn_request(1)
 	# 物品必须真实存在于该玩家背包（服务器权威校验）。
 	ctx.inventory.add_material("iron_ore", 1)
 	var r: Dictionary = s.on_command(1, {"type": NP.CMD_EQUIP, "item_id": "iron_ore",
 		"slot": 0, "protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
+	assert_bool(r["success"]).is_false()
+	assert_str(r["error_code"]).is_equal(NP.ERR_INVALID_TARGET)
+	# 权威 loadout 未被污染（材料仍留在背包）。
+	assert_str(ctx.loadout.get_weapon_slot(0)).is_equal("")
+	assert_int(int(ctx.inventory.materials.get("iron_ore", 0))).is_equal(1)
+
+## P0-4：符文同理——任何非装备类别都不能进入任何槽位。
+func test_handle_equip_rejects_rune_in_armor_slot() -> void:
+	var s: SR = auto_free(_make_server())
+	var ctx = s.handle_spawn_request(1)
+	ctx.inventory.add_rune("ember", 1)
+	var r: Dictionary = s.on_command(1, {"type": NP.CMD_EQUIP, "item_id": "ember",
+		"slot_kind": "armor", "slot_name": "body",
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
+	assert_bool(r["success"]).is_false()
+	assert_str(r["error_code"]).is_equal(NP.ERR_INVALID_TARGET)
+	assert_str(ctx.loadout.get_armor_slot("body")).is_equal("")
+
+## P0-4：装备策略数据源 stub（headless 无 WeaponRegistry autoload）。
+func _stub_equipment_source() -> Callable:
+	return func(item_id: String) -> Dictionary:
+		match item_id:
+			"shortsword": return {"category": "weapons", "hands": "one_hand", "armor_slot": ""}
+			"greatsword": return {"category": "weapons", "hands": "two_hand", "armor_slot": ""}
+			"shield": return {"category": "shields", "hands": "off_hand", "armor_slot": ""}
+			"cloth_armor": return {"category": "armor_light", "hands": "", "armor_slot": "body"}
+			"leather_cap": return {"category": "armor_light", "hands": "", "armor_slot": "head"}
+			_: return {}
+
+func _equip_cmd(s: SR, item_id: String, slot_kind: String, slot_index: int = -1, slot_name: String = "", sequence: int = 1) -> Dictionary:
+	return {"type": NP.CMD_EQUIP, "item_id": item_id,
+		"slot_kind": slot_kind, "slot_index": slot_index, "slot_name": slot_name,
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": sequence}
+
+## P0-4：武器 → 武器槽（新协议 slot_kind + slot_index）成功写入。
+func test_handle_equip_accepts_weapon_into_weapon_slot() -> void:
+	var s: SR = auto_free(_make_server())
+	s._equipment_data_source_custom = _stub_equipment_source()
+	var ctx = s.handle_spawn_request(1)
+	ctx.inventory.add_equipment("shortsword", 1)
+	var r: Dictionary = s.on_command(1, _equip_cmd(s, "shortsword", "weapon", 0))
 	assert_bool(r["success"]).is_true()
 	assert_str(r["event"]["event"]).is_equal(NP.EVT_EQUIPMENT_CHANGED)
-	# 装备槽位已更新（权威写入）。
-	assert_str(ctx.loadout.get_weapon_slot(0)).is_equal("iron_ore")
+	assert_str(r["event"]["slot_kind"]).is_equal("weapon")
+	assert_str(ctx.loadout.get_weapon_slot(0)).is_equal("shortsword")
+
+## P0-4：护甲 → 护甲槽（slot_name）成功写入；护甲不能进武器槽。
+func test_handle_equip_accepts_armor_into_armor_slot_rejects_weapon_slot() -> void:
+	var s: SR = auto_free(_make_server())
+	s._equipment_data_source_custom = _stub_equipment_source()
+	var ctx = s.handle_spawn_request(1)
+	ctx.inventory.add_equipment("cloth_armor", 1)
+	var ok: Dictionary = s.on_command(1, _equip_cmd(s, "cloth_armor", "armor", -1, "body"))
+	assert_bool(ok["success"]).is_true()
+	assert_str(ctx.loadout.get_armor_slot("body")).is_equal("cloth_armor")
+	var bad: Dictionary = s.on_command(1, _equip_cmd(s, "cloth_armor", "weapon", 1, "", 2))
+	assert_bool(bad["success"]).is_false()
+	assert_str(ctx.loadout.get_weapon_slot(1)).is_equal("")
+
+## P0-2：护甲固有部位反例（会话层）——头盔装进 body 槽必须被拒绝，
+## 权威 loadout 不被污染（属性/存档/外观不会因错误部位而改变）。
+func test_handle_equip_rejects_armor_into_wrong_intrinsic_slot() -> void:
+	var s: SR = auto_free(_make_server())
+	s._equipment_data_source_custom = _stub_equipment_source()
+	var ctx = s.handle_spawn_request(1)
+	ctx.inventory.add_equipment("leather_cap", 1)
+	var r: Dictionary = s.on_command(1, _equip_cmd(s, "leather_cap", "armor", -1, "body"))
+	assert_bool(r["success"]).is_false()
+	assert_str(r["error_code"]).is_equal(NP.ERR_INVALID_TARGET)
+	assert_str(ctx.loadout.get_armor_slot("body")).is_equal("")
+	# 物品保留在背包（未消耗）。
+	assert_int(int(ctx.inventory.equipment.get("leather_cap", 0))).is_equal(1)
+	# 固有部位自身允许。
+	var ok: Dictionary = s.on_command(1, _equip_cmd(s, "leather_cap", "armor", -1, "head", 2))
+	assert_bool(ok["success"]).is_true()
+	assert_str(ctx.loadout.get_armor_slot("head")).is_equal("leather_cap")
+
+## P0-4：双手武器 ↔ 盾互斥（先装盾再装双手 → 拒绝）。
+func test_handle_equip_two_hand_conflicts_with_shield() -> void:
+	var s: SR = auto_free(_make_server())
+	s._equipment_data_source_custom = _stub_equipment_source()
+	var ctx = s.handle_spawn_request(1)
+	ctx.inventory.add_equipment("shield", 1)
+	ctx.inventory.add_equipment("greatsword", 1)
+	var shield_ok: Dictionary = s.on_command(1, _equip_cmd(s, "shield", "weapon", 0))
+	assert_bool(shield_ok["success"]).is_true()
+	# 已持盾 → 装双手武器必须拒绝（互斥）。
+	var bad: Dictionary = s.on_command(1, _equip_cmd(s, "greatsword", "weapon", 1, "", 2))
+	assert_bool(bad["success"]).is_false()
+	assert_str(ctx.loadout.get_weapon_slot(1)).is_equal("")
+	# 反向：已装双手 → 装盾拒绝。
+	var s2: SR = auto_free(_make_server())
+	s2._equipment_data_source_custom = _stub_equipment_source()
+	var ctx2 = s2.handle_spawn_request(1)
+	ctx2.inventory.add_equipment("greatsword", 1)
+	ctx2.inventory.add_equipment("shield", 1)
+	var gs_ok: Dictionary = s2.on_command(1, _equip_cmd(s2, "greatsword", "weapon", 0))
+	assert_bool(gs_ok["success"]).is_true()
+	var bad2: Dictionary = s2.on_command(1, _equip_cmd(s2, "shield", "weapon", 1, "", 2))
+	assert_bool(bad2["success"]).is_false()
+	assert_str(ctx2.loadout.get_weapon_slot(1)).is_equal("")
 
 func test_handle_drop_clamps_to_held_amount() -> void:
 	var s: SR = auto_free(_make_server())
@@ -734,7 +906,7 @@ func test_world_revision_carried_in_session_snapshot() -> void:
 	var snap: Dictionary = s.build_session_snapshot()
 	assert_int(int(snap.get("world_revision", -1))).is_equal(s.world.world_revision)
 	# 新服务器实例应用快照后 world_revision 一致（重连追平）
-	var s2: SR = SR.new()
+	var s2: SR = auto_free(SR.new())
 	s2.init_server()
 	s2.apply_session_snapshot(snap)
 	assert_int(s2.world.world_revision).is_equal(s.world.world_revision)

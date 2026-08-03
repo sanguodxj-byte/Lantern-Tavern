@@ -32,3 +32,23 @@ func test_unregister_player_only_clears_matching_player() -> void:
 	player_a.free()
 	player_b.free()
 	gs.free()
+
+func test_dungeon_floor_starts_at_l1_and_advances_with_label() -> void:
+	var gs = load("res://globals/core/game_state.gd").new()
+	assert_int(gs.get_dungeon_floor()).is_equal(1)
+	assert_str(gs.get_dungeon_floor_label()).is_equal("L1")
+	assert_int(gs.advance_dungeon_floor()).is_equal(2)
+	assert_str(gs.get_dungeon_floor_label()).is_equal("L2")
+	gs.free()
+
+func test_dungeon_floor_reset_and_serialization_are_safe() -> void:
+	var gs = load("res://globals/core/game_state.gd").new()
+	gs.set_dungeon_floor(4)
+	assert_int(gs.serialize()["dungeon_floor"]).is_equal(4)
+	gs.reset_dungeon_floor()
+	assert_str(gs.get_dungeon_floor_label()).is_equal("L1")
+	gs.deserialize({"dungeon_floor": 3})
+	assert_str(gs.get_dungeon_floor_label()).is_equal("L3")
+	gs.deserialize({"dungeon_floor": 0})
+	assert_int(gs.get_dungeon_floor()).is_equal(1)
+	gs.free()

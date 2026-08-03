@@ -97,6 +97,8 @@ func plan_enemy_spawns(layout: DungeonLayout) -> Array:
 	# 敌人域 RNG（与掉落/陷阱错开）+ 房间深度场（BFS 距离），用于方差与深度梯度
 	var rng := _seeded_rng(layout, 0x454E45)  # "ENE"
 	var depth_field := layout.compute_floor_distance_field()
+	# 房间装饰已先于人口规划生成；敌人必须把所有装饰视为占位。
+	var occupied := _occupied_cells(layout, false, false, true, true)
 	for room in layout.rooms:
 		if layout.is_start_room_cell(room.position) or _room_is_start_room(layout, room):
 			continue  # 起始房间不生普通敌人
@@ -105,13 +107,17 @@ func plan_enemy_spawns(layout: DungeonLayout) -> Array:
 			var boss_type := _pick_boss_type(zone_cfg)
 			if boss_type.is_empty():
 				continue
-			var boss_cell := _pick_room_floor_cell(layout, room, layout.boss_cell, true)
+			var boss_cell := _pick_room_floor_cell(layout, room, layout.boss_cell, true, occupied)
 			if boss_cell.x >= 0:
 				layout.enemy_spawn_specs.append({
 					"enemy_type": boss_type, "cell": boss_cell,
 					"room_index": _find_room_index(layout, room),
 					"is_elite": true, "zone": layout.zone,
+					"combat_role": "elite_focus", "sector": "focus", "formation": "focus",
+					"patrol_center_cell": boss_cell, "patrol_radius_cells": 2,
+					"is_elevated": layout.floor_height_at(boss_cell) > 0.1,
 				})
+				occupied[boss_cell] = true
 			continue
 		# 普通房间：按 count_per_room（含方差）取 floor 格，按权重选 type
 		# TEMP: 某些 zone 的 types 为空（例如当前仅 L0 放满怪）→ 不刷普通怪
@@ -121,23 +127,39 @@ func plan_enemy_spawns(layout: DungeonLayout) -> Array:
 		var floor_cells := _collect_room_floor_cells(layout, room, spawn_cell)
 		# 排除 hazard 锚点格：敌人不可直接落在陷阱伤害中心（"敌人不在陷阱"契约的规划期落实）
 		floor_cells = _exclude_hazard_anchor_cells(layout, floor_cells)
+		# LOOT 格留给宝箱，敌人使用普通可走格。
+		floor_cells = _exclude_loot_cells(layout, floor_cells)
+		floor_cells = _exclude_occupied_cells(floor_cells, occupied)
 		if floor_cells.is_empty():
 			continue
 		var depth: int = layout.depth_of_room_with_field(room, depth_field)
 		var target_count := _calc_room_enemy_count(zone_cfg, floor_cells.size(), depth, rng)
 		var used: Dictionary = {}
-		for _i in range(target_count):
-			var cell: Vector2i = _pick_unused_cell(floor_cells, used, rng)
+		var room_index := _find_room_index(layout, room)
+		var sectors := _sectors_for_room(layout, room_index, room)
+		for enemy_index in range(target_count):
+			var sector: Dictionary = sectors[enemy_index % sectors.size()]
+			var sector_cells := _cells_for_sector(floor_cells, sector)
+			var cell: Vector2i = _pick_unused_cell(sector_cells, used, rng)
+			if cell.x < 0:
+				cell = _pick_unused_cell(floor_cells, used, rng)
 			if cell.x < 0:
 				break
 			used[cell] = true
+			occupied[cell] = true
 			var enemy_type := _pick_weighted(type_weights)
 			if enemy_type.is_empty():
 				continue
 			layout.enemy_spawn_specs.append({
 				"enemy_type": enemy_type, "cell": cell,
-				"room_index": _find_room_index(layout, room),
+				"room_index": room_index,
 				"is_elite": false, "zone": layout.zone,
+				"combat_role": String(sector.get("combat_role", "melee_flank")),
+				"sector": String(sector.get("name", "flank_%d" % enemy_index)),
+				"formation": String(sector.get("name", "flank")),
+				"patrol_center_cell": sector.get("center", cell),
+				"patrol_radius_cells": int(sector.get("radius_cells", 2)),
+				"is_elevated": layout.floor_height_at(cell) > 0.1,
 			})
 	return layout.enemy_spawn_specs
 
@@ -149,37 +171,47 @@ func plan_item_spawns(layout: DungeonLayout) -> Array:
 	if layout.is_empty():
 		return []
 	var rng := _seeded_rng(layout, 0x4D4154)  # "MAT" 域盐，与敌人/陷阱序列错开
+	var occupied := _occupied_cells(layout, true, false, true, true)
 	for room in layout.rooms:
 		if layout.is_start_room_cell(room.position) or _room_is_start_room(layout, room):
 			continue
 		if _room_is_boss_room(layout, room):
 			continue  # boss 房间走 chest，不放散落材料
 		var floor_cells := _collect_room_floor_cells(layout, room, layout.player_spawn_cell)
+		floor_cells = _exclude_hazard_anchor_cells(layout, floor_cells)
+		# 材料不抢占 LOOT 格，确保随后规划的宝箱拥有优先落点。
+		floor_cells = _exclude_loot_cells(layout, floor_cells)
+		floor_cells = _exclude_occupied_cells(floor_cells, occupied)
 		if floor_cells.is_empty():
 			continue
-		# 与 procedural 旧逻辑一致：每房间最多 1 个材料，落在首个可走格（不与敌人/陷阱抢位）
+		# 每房间最多 1 个材料；候选已避开敌人、装饰和陷阱。
 		var cell: Vector2i = floor_cells[0]
 		var item_id: String = _pick_material_from_pool(layout.zone, rng)
 		layout.item_spawn_specs.append({
 			"item_type": "material", "item_id": item_id, "cell": cell,
 			"room_index": _find_room_index(layout, room),
 		})
+		occupied[cell] = true
 	return layout.item_spawn_specs
 
-## 规划宝箱 spec：填入 layout.chest_spawn_specs。boss 房间 = boss_chest；其余 LOOT 格 = normal_chest。
+## 规划宝箱 spec：填入 layout.chest_spawn_specs。
+## boss 房间优先 reward/boss 关键格；普通宝箱优先未占用 LOOT 格，
+## 若该格已被其他人口占用，则回退到同房间未占用可行走格。
 func plan_chest_spawns(layout: DungeonLayout) -> Array:
 	layout.chest_spawn_specs.clear()
 	if layout.is_empty():
 		return []
+	var occupied := _occupied_cells(layout, true, true, false, true)
 	# boss 房间：boss_chest 落在 reward_cell 或房间可走格
 	if layout.room_roles.has("boss"):
 		var boss_room: Rect2i = layout.room_roles["boss"]
-		var chest_cell := _pick_room_floor_cell(layout, boss_room, layout.reward_cell)
+		var chest_cell := _pick_room_floor_cell(layout, boss_room, layout.reward_cell, false, occupied)
 		if chest_cell.x >= 0:
 			layout.chest_spawn_specs.append({
 				"chest_type": "boss_chest", "cell": chest_cell,
 				"room_index": _find_room_index(layout, boss_room),
 			})
+			occupied[chest_cell] = true
 	# 其余房间：扫 grid 找 TileType.LOOT(3) 格，放 normal_chest
 	for y in range(layout.grid.size()):
 		for x in range(layout.grid[y].size()):
@@ -187,10 +219,19 @@ func plan_chest_spawns(layout: DungeonLayout) -> Array:
 				var cell: Vector2i = Vector2i(x, y)
 				if layout.is_boss_room_cell(cell):
 					continue  # boss 房间的 LOOT 已走 boss_chest
+				var spawn_cell := cell
+				if occupied.has(spawn_cell):
+					var room_index := _find_room_index_by_cell(layout, cell)
+					if room_index >= 0 and room_index < layout.rooms.size():
+						spawn_cell = _pick_room_floor_cell(layout, layout.rooms[room_index],
+							Vector2i(-1, -1), false, occupied)
+				if spawn_cell.x < 0 or occupied.has(spawn_cell):
+					continue
 				layout.chest_spawn_specs.append({
-					"chest_type": "normal_chest", "cell": cell,
+					"chest_type": "normal_chest", "cell": spawn_cell,
 					"room_index": _find_room_index_by_cell(layout, cell),
 				})
+				occupied[spawn_cell] = true
 	return layout.chest_spawn_specs
 
 ## 校验规划结果合理性。返回 {valid:bool, errors:Array[String]}。不修改 layout。
@@ -228,6 +269,22 @@ func validate_plan(layout: DungeonLayout) -> Dictionary:
 		var ct: String = spec["chest_type"]
 		if ct == "boss_chest" and not layout.is_boss_room_cell(cell):
 			errors.append("boss_chest at %s not in boss room" % str(cell))
+	var occupied_by_cell: Dictionary = {}
+	for category_spec in [
+		{"name": "enemy", "items": layout.enemy_spawn_specs},
+		{"name": "item", "items": layout.item_spawn_specs},
+		{"name": "chest", "items": layout.chest_spawn_specs},
+		{"name": "decor", "items": layout.decor_specs},
+	]:
+		var category_name := String(category_spec["name"])
+		for spec in category_spec["items"]:
+			var cell: Variant = spec.get("cell", Vector2i(-1, -1))
+			if not cell is Vector2i:
+				continue
+			if occupied_by_cell.has(cell):
+				errors.append("%s spec at %s overlaps %s spec" % [category_name, str(cell), occupied_by_cell[cell]])
+			else:
+				occupied_by_cell[cell] = category_name
 	return {"valid": errors.is_empty(), "errors": errors}
 
 
@@ -250,6 +307,32 @@ func _find_room_index_by_cell(layout: DungeonLayout, cell: Vector2i) -> int:
 			return i
 	return -1
 
+func _sectors_for_room(layout: DungeonLayout, room_index: int, room: Rect2i) -> Array[Dictionary]:
+	for composition in layout.room_composition_specs:
+		if int(composition.get("room_index", -1)) == room_index:
+			var planned: Array = composition.get("enemy_sectors", [])
+			if not planned.is_empty():
+				var result: Array[Dictionary] = []
+				for sector in planned:
+					result.append(sector)
+				return result
+	var center := room.position + Vector2i(room.size.x / 2, room.size.y / 2)
+	return [
+		{"name": "left_flank", "combat_role": "melee_flank", "center": room.position + Vector2i(1, room.size.y / 2), "radius_cells": 2},
+		{"name": "right_flank", "combat_role": "melee_flank", "center": room.position + Vector2i(room.size.x - 2, room.size.y / 2), "radius_cells": 2},
+		{"name": "rear_guard", "combat_role": "rear_guard", "center": center, "radius_cells": 2},
+	]
+
+func _cells_for_sector(floor_cells: Array, sector: Dictionary) -> Array:
+	var center: Vector2i = sector.get("center", Vector2i(-1, -1))
+	var radius := maxi(1, int(sector.get("radius_cells", 2))) * 2
+	var selected: Array = []
+	for candidate in floor_cells:
+		var cell: Vector2i = candidate
+		if absi(cell.x - center.x) + absi(cell.y - center.y) <= radius:
+			selected.append(cell)
+	return selected if not selected.is_empty() else floor_cells
+
 func _collect_room_floor_cells(layout: DungeonLayout, room: Rect2i, exclude_near: Vector2i) -> Array:
 	var cells: Array = []
 	for y in range(room.position.y, room.position.y + room.size.y):
@@ -259,24 +342,43 @@ func _collect_room_floor_cells(layout: DungeonLayout, room: Rect2i, exclude_near
 			var cell := Vector2i(x, y)
 			if _is_pillar_cell(layout, cell):
 				continue
+			if _is_room_reserved_cell(layout, cell):
+				continue
 			# 与出生格距离 ≥ 2（procedural 的 spawn_pos 距离近似的格距）
 			if exclude_near.x >= 0 and absi(cell.x - exclude_near.x) + absi(cell.y - exclude_near.y) < 2:
 				continue
 			cells.append(cell)
 	return cells
 
+func _is_room_reserved_cell(layout: DungeonLayout, cell: Vector2i) -> bool:
+	for focus in layout.room_focus_specs:
+		if focus.get("cell", Vector2i(-1, -1)) == cell:
+			return true
+	for composition in layout.room_composition_specs:
+		for cover_cell in composition.get("cover_cells", []):
+			if cover_cell == cell:
+				return true
+	for decor in layout.decor_specs:
+		if bool(decor.get("blocks_navigation", false)) and decor.get("cell", Vector2i(-1, -1)) == cell:
+			return true
+	return false
+
 func _is_pillar_cell(layout: DungeonLayout, cell: Vector2i) -> bool:
 	return cell.y >= 0 and cell.y < layout.grid.size() \
 		and cell.x >= 0 and cell.x < layout.grid[cell.y].size() \
 		and int(layout.grid[cell.y][cell.x]) == 5
 
-func _pick_room_floor_cell(layout: DungeonLayout, room: Rect2i, preferred: Vector2i, avoid_hazard_clearance: bool = false) -> Vector2i:
-	if not layout.is_key_cell_missing(preferred) and layout.is_floor_cell(preferred) and not _is_pillar_cell(layout, preferred) and room.has_point(preferred):
+func _pick_room_floor_cell(layout: DungeonLayout, room: Rect2i, preferred: Vector2i,
+		avoid_hazard_clearance: bool = false, occupied: Dictionary = {}) -> Vector2i:
+	if not layout.is_key_cell_missing(preferred) and layout.is_floor_cell(preferred) \
+			and not _is_pillar_cell(layout, preferred) and room.has_point(preferred) \
+			and not occupied.has(preferred):
 		if not avoid_hazard_clearance or not _is_hazard_clearance_cell(layout, preferred):
 			return preferred
 	var cells := _collect_room_floor_cells(layout, room, Vector2i(-1, -1))
 	if avoid_hazard_clearance:
 		cells = _exclude_hazard_anchor_cells(layout, cells)
+	cells = _exclude_occupied_cells(cells, occupied)
 	if cells.is_empty():
 		return Vector2i(-1, -1)
 	return cells[0]
@@ -291,6 +393,45 @@ func _exclude_hazard_anchor_cells(layout: DungeonLayout, cells: Array) -> Array:
 			out.append(c)
 	return out
 
+func _exclude_loot_cells(layout: DungeonLayout, cells: Array) -> Array:
+	var out: Array = []
+	for candidate in cells:
+		var cell: Vector2i = candidate
+		if cell.y >= 0 and cell.y < layout.grid.size() and cell.x >= 0 and cell.x < layout.grid[cell.y].size() \
+				and int(layout.grid[cell.y][cell.x]) == 3:
+			continue
+		out.append(cell)
+	return out
+
+func _exclude_occupied_cells(cells: Array, occupied: Dictionary) -> Array:
+	if occupied.is_empty():
+		return cells
+	var out: Array = []
+	for candidate in cells:
+		var cell: Vector2i = candidate
+		if not occupied.has(cell):
+			out.append(cell)
+	return out
+
+func _occupied_cells(layout: DungeonLayout, include_enemies: bool, include_items: bool,
+		include_chests: bool, include_decor: bool) -> Dictionary:
+	var occupied: Dictionary = {}
+	if include_enemies:
+		_add_spec_cells(occupied, layout.enemy_spawn_specs)
+	if include_items:
+		_add_spec_cells(occupied, layout.item_spawn_specs)
+	if include_chests:
+		_add_spec_cells(occupied, layout.chest_spawn_specs)
+	if include_decor:
+		_add_spec_cells(occupied, layout.decor_specs)
+	return occupied
+
+func _add_spec_cells(occupied: Dictionary, specs: Array) -> void:
+	for spec in specs:
+		var cell: Variant = spec.get("cell", Vector2i(-1, -1))
+		if cell is Vector2i and cell.x >= 0 and cell.y >= 0:
+			occupied[cell] = true
+
 func _is_hazard_clearance_cell(layout: DungeonLayout, cell: Vector2i) -> bool:
 	for anchor in layout.hazard_anchors:
 		var hazard_cell: Vector2i = anchor.get("anchor_cell", Vector2i(-1, -1))
@@ -300,8 +441,7 @@ func _is_hazard_clearance_cell(layout: DungeonLayout, cell: Vector2i) -> bool:
 
 func _calc_room_enemy_count(zone_cfg: Dictionary, floor_cell_count: int, depth: int, rng: RandomNumberGenerator) -> int:
 	var base: int = int(ceil(float(zone_cfg.get("count_per_room", 1.5))))
-	# 同房间数方差 ±1（至少 1 个），打破“每房恒 2 敌”的平板节奏
-	var lo: int = max(1, base - 1)
+	var lo: int = max(1, base)
 	var hi: int = base + 1
 	var count: int = rng.randi_range(lo, hi)
 	# 深度梯度：越深越险，每 12 格 +1（浅层保留喘息房手感；上限由 floor 格数封顶）

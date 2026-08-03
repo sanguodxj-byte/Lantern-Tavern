@@ -78,9 +78,6 @@ alpha_curve = SubResource("CurveTexture_4a7u4")
 transparency = 1
 vertex_color_use_as_albedo = true
 albedo_color = Color(1, 1, 0.05882353, 1)
-emission_enabled = true
-emission = Color(0.7882353, 0.92156863, 0.3529412, 1)
-emission_energy_multiplier = 2.0
 
 [sub_resource type="BoxMesh" id="BoxMesh_thrqy"]
 material = SubResource("StandardMaterial3D_5mvqb")

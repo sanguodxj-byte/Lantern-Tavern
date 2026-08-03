@@ -42,7 +42,7 @@ func set_info(info: Dictionary) -> void:
 		timestamp_label.visible = true
 		delete_btn.visible = true
 	else:
-		info_label.text = tr("Empty Slot")
+		info_label.text = tr("Empty slot")
 		timestamp_label.visible = false
 		delete_btn.visible = false
 

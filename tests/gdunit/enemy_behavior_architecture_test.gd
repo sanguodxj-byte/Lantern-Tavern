@@ -194,6 +194,13 @@ func test_dark_erosion_disables_agent_avoidance_and_local_separation() -> void:
 	assert_bool(source.contains("not agent.avoidance_enabled")) \
 		.override_failure_message("关闭 RVO 后必须忽略迟到的 velocity_computed 回调").is_true()
 
+func test_rvo_enabled_path_does_not_repeat_group_wide_local_separation_scan() -> void:
+	var controller_script: GDScript = load("res://scenes/characters/enemies/behavior/enemy_movement_controller.gd") as GDScript
+	var source := controller_script.source_code
+	assert_bool(source.contains("agent == null or not agent.avoidance_enabled")) \
+		.override_failure_message("RVO 已启用时不得再对 enemies group 做 O(N²) 的本地分离扫描").is_true()
+
+
 func test_non_finite_avoidance_velocity_cannot_pollute_enemy_body() -> void:
 	var enemy := _new_enemy()
 	add_child(enemy)
@@ -256,13 +263,14 @@ func test_enemy_separates_before_capsules_overlap() -> void:
 	enemy.queue_free()
 	neighbor.queue_free()
 
-func test_spawner_player_reference_becomes_explicit_enemy_target() -> void:
+func test_spawner_player_reference_is_candidate_not_engaged_target() -> void:
 	var enemy := _new_enemy()
 	var player := _new_player()
 	enemy.set_meta("player_ref", player)
 	add_child(player)
 	add_child(enemy)
-	assert_bool(enemy.player == player).is_true()
+	assert_object(enemy.player) \
+		.override_failure_message("生成器候选引用不能让全地图敌人出生即进入已交战 AI").is_null()
 	assert_float(enemy.nav_agent.max_speed).is_equal_approx(enemy.speed, 0.001)
 	player.queue_free()
 	enemy.queue_free()
@@ -296,6 +304,18 @@ func test_dungeon_spawn_meta_initializes_patrol_origin_before_ready() -> void:
 		.override_failure_message("地牢生成的巡逻中心必须使用真实出生点，不能落回世界原点").is_true()
 	assert_bool(enemy.global_position.is_equal_approx(spawn)) \
 		.override_failure_message("地牢敌人 ready 时应先落在描述符指定的出生点").is_true()
+	enemy.queue_free()
+
+func test_dungeon_spawn_meta_can_assign_room_patrol_center_and_radius() -> void:
+	var enemy := _new_enemy()
+	var spawn := Vector3(8.0, 0.5, 6.0)
+	var patrol_center := Vector3(12.0, 1.5, 6.0)
+	enemy.set_meta("spawn_pos", spawn)
+	enemy.set_meta("patrol_center", patrol_center)
+	enemy.set_meta("patrol_radius", 4.5)
+	add_child(enemy)
+	assert_bool(enemy.spawn_position.is_equal_approx(patrol_center)).is_true()
+	assert_float(enemy.patrol_radius).is_equal_approx(4.5, 0.001)
 	enemy.queue_free()
 
 func _new_enemy() -> Enemy:

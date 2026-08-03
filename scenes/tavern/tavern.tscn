@@ -22,13 +22,15 @@
 [ext_resource type="PackedScene" path="res://scenes/props/decor/chandelier.tscn" id="31_chandelier"]
 [ext_resource type="PackedScene" path="res://scenes/props/decor/wall_lantern.tscn" id="32_wall_lantern"]
 [ext_resource type="PackedScene" path="res://scenes/props/decor/weapon_rack.tscn" id="33_weapon_rack"]
+[ext_resource type="Script" path="res://scenes/tavern/brewing/tavern_brewing_coordinator.gd" id="34_brewing"]
+[ext_resource type="Script" path="res://scenes/tavern/customer_spawner.gd" id="35_customer_spawner"]
 
 [sub_resource type="Environment" id="Env_tavern"]
 background_mode = 1
-background_color = Color(0.035, 0.032, 0.03, 1)
+background_color = Color(0.045, 0.045, 0.048, 1)
 ambient_light_source = 2
-ambient_light_color = Color(0.105, 0.095, 0.085, 1)
-ambient_light_energy = 0.34
+ambient_light_color = Color(0.23, 0.235, 0.24, 1)
+ambient_light_energy = 0.58
 tonemap_mode = 2
 // 高亮白点留出火光直射的动态范围，避免非金属材质的漫反射被压成纯白。
 tonemap_white = 2.0
@@ -37,7 +39,7 @@ glow_intensity = 0.28
 glow_bloom = 0.03
 fog_enabled = true
 fog_mode = 1
-fog_light_color = Color(0.58, 0.52, 0.45, 1)
+fog_light_color = Color(0.43, 0.44, 0.46, 1)
 fog_density = 0.006
 
 [sub_resource type="BoxMesh" id="BoxMesh_dlb7h"]
@@ -482,8 +484,8 @@ environment = SubResource("Env_tavern")
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1703922485]
 unique_name_in_owner = true
 transform = Transform3D(0.866, 0.25, -0.433, 0, 0.866, 0.5, 0.5, -0.433, 0.75, 0, 8, 0)
-light_color = Color(0.62, 0.74, 1, 1)
-light_energy = 0.35
+light_color = Color(0.9, 0.93, 1, 1)
+light_energy = 0.5
 shadow_enabled = true
 shadow_bias = 0.02
 shadow_normal_bias = 0.2
@@ -1664,3 +1666,9 @@ metadata/voxel_px_per_meter = 32
 [node name="PlayerSpawn" type="Marker3D" parent="." unique_id=1865600909]
 unique_name_in_owner = true
 transform = Transform3D(-0.48131797, 0.024814704, 0.8761948, 0, 0.9995992, -0.02830964, -0.8765461, -0.013625938, -0.48112506, 6.4614615, 0.04753411, -5.6257253)
+
+[node name="Brewing" type="Node3D" parent="."]
+script = ExtResource("34_brewing")
+
+[node name="CustomerSpawner" type="Node3D" parent="."]
+script = ExtResource("35_customer_spawner")

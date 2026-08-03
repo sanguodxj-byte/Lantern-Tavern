@@ -15,15 +15,15 @@ func test_default_config_has_procedural_dungeon_defaults() -> void:
 	assert_vector(cfg.boss_door_size_meters).is_equal(Vector2(2.0, 2.0))
 	assert_int(cfg.target_room_count).is_equal(18)
 	assert_str(cfg.algorithm).is_equal("isaac")
-	assert_float(cfg.ceiling_height_base).is_equal(3.0)
+	assert_float(cfg.ceiling_height_base).is_equal(2.0)
 
 func test_height_contract_quantizes_to_integer_meter_layers() -> void:
-	assert_float(DungeonGenerationConfig.quantize_height(2.4)).is_equal(3.0)
-	assert_float(DungeonGenerationConfig.quantize_height(3.4)).is_equal(3.0)
-	assert_float(DungeonGenerationConfig.quantize_height(3.8)).is_equal(4.0)
-	assert_float(DungeonGenerationConfig.quantize_height(4.6)).is_equal(5.0)
-	assert_bool(DungeonGenerationConfig.is_integer_height(5.0)).is_true()
-	assert_bool(DungeonGenerationConfig.is_integer_height(4.6)).is_false()
+	assert_float(DungeonGenerationConfig.quantize_height(1.4)).is_equal(2.0)
+	assert_float(DungeonGenerationConfig.quantize_height(2.4)).is_equal(2.0)
+	assert_float(DungeonGenerationConfig.quantize_height(2.8)).is_equal(3.0)
+	assert_float(DungeonGenerationConfig.quantize_height(3.6)).is_equal(4.0)
+	assert_bool(DungeonGenerationConfig.is_integer_height(4.0)).is_true()
+	assert_bool(DungeonGenerationConfig.is_integer_height(3.6)).is_false()
 
 func test_default_config_matches_procedural_dungeon_defaults_helper() -> void:
 	var cfg := DungeonLayout.new()  # 占位，避免 import 段

@@ -1,39 +1,53 @@
-# 第一人称武器 / 盾牌持有姿态（现状）
+# 第一人称武器 / 盾牌表现规范
 
-基于 `scenes/characters/player/view_model.gd`、`.tscn`、`view_model_animator.gd` 的源码分析。
+第一人称 ViewModel 只呈现武器与盾牌本体。不得实例化、显示或驱动手臂、手、身体或
+其他角色部位；第三人称角色 rig 继续承担世界层动画和战斗时序。
 
-## 节点层级（挂在 MainCamera 下）
+## 节点层级
 
+```text
+ViewModel
+└─ BobPivot                         程序化装备运动 + 近墙收纳
+   └─ AimPivot                      平滑 hip/aim 姿态
+      ├─ ActionPivot                武器作者化动作
+      │  └─ WeaponSocket
+      │     └─ WeaponOrientation
+      └─ ShieldActionPivot          盾牌作者化动作
+         └─ ShieldImpactPivot       独立格挡冲击弹簧
+            └─ ShieldSocket
+               └─ ShieldOrientation
 ```
-ViewModel (Node3D)
-└─ BobPivot            每帧 y = sin(t*1.7) · ±0.004 · sway · aimDamp   ← 唯一持续运动
-   ├─ ShieldSocket     盾牌挂点（左手侧固定位姿）
-   └─ AimPivot         base = view↔aim 插值，由 _aim_weight 控制
-      └─ ActionPivot   IDENTITY —— 手臂动画关闭后恒为静止
-         └─ WeaponSocket   武器网格挂点
-            └─ MuzzlePoint 枪口前推 z = -0.6
-```
 
-## 持握位姿（相机视图空间，单位 米 / 度）
+`ActionPivot` 与 `ShieldActionPivot` 分离，保证举盾不会错误拖动主手武器；
+`ShieldImpactPivot` 只处理格挡瞬间的位移与角动量，不会改写持续格挡动作。
 
-### 非瞄准（默认 hip-fire）
-- 武器（one_hand / 短剑）：pos `(0.22, -0.26, -0.45)`  rot `(12°, 4°, -4°)` → 屏幕右下、略低、前方
-- 盾牌：pos `(-0.30, -0.22, -0.42)`  rot `(6°, -20°, 8°)` → 屏幕左下、前方、向左偏
+## 动作资源
 
-### 瞄准（_aim_weight = 1）
-- 武器：pos `(0.0, -0.16, -0.38)`  rot `(4°, 0°, -1°)` → 居中、抬起、拉近
-- 盾牌位姿固定，不随瞄准变化
+- 每种武器拥有 `standard / alternate / heavy` 三套可编辑 `AnimationLibrary`。
+- 攻击动作使用六阶段：持握、预备、蓄力、命中、随动、复位。
+- 装备轨道使用三次插值；动作库只允许 `ActionPivot`、`WeaponSocket`、
+  `ShieldActionPivot`、`ShieldImpactPivot`、`ShieldSocket` 和 `ShieldOrientation` 路径。
+- 第一人称表现是本地视觉层；命中窗口、伤害、状态退出和联网请求仍由 PlayerState 与
+  `CombatSlashAnimator` 决定。
 
-## 当前行为要点
+## 程序化附加运动
 
-- `arm_animation_enabled = false`（默认关闭）：挥砍 / 拉弓 / 后坐等动作动画全部不播放，
-  武器与盾牌恒为静态持握位。仅保留 BobPivot 微摆与 AimPivot 瞄准位移。
-- 独立武器相机（`use_weapon_camera = true`，仅游戏中生效）：武器 / 盾牌渲染在**第 11 层（1<<10）**，
-  由专属 SubViewport 相机（near = 0.001）渲染；主相机 `cull_mask = 1` 不渲染该层 → 贴墙不穿模。
-  headless / 无主相机时回退第 1 层，武器不会消失。
-- 武器姿态按武器类型微调（`_apply_weapon_pose_offsets`）：弓 / 弩有独立 view / aim 偏移，其余用默认。
+`first_person_equipment_motion.gd` 叠加以下只读反馈：
 
-## 截图说明
+- 静止呼吸、行走/奔跑步态与横移倾斜；
+- 鼠标视角惯性、加速度滞后和重型装备质量差异；
+- 冲刺低持、腾空偏移与落地回弹；
+- 弓/弩/法器后坐，以及盾牌格挡冲击；
+- 瞄准和攻击承诺阶段自动减弱附加运动，避免干扰准星。
 
-沙箱 headless 使用 RendererDummy，无法将 3D 光栅化到帧缓冲，故本环境无法生成真实渲染截图；
-本说明纯基于源码。如需本地真实截图，可在带 GPU 的机器上用 `--headless` + 真实渲染驱动运行同样探针。
+## 渲染与遮挡
+
+武器/盾牌由独立 SubViewport 叠加相机渲染，并在靠近实体表面时平滑后收和下压。
+渲染副本保留纹理与逐像素光照，不使用自发光或无光照材质冒充可见度。
+
+## 验证
+
+动作资源由 `first_person_weapon_animation_catalog_test.gd` 验证三套变体、六阶段、三次插值
+和无角色骨骼轨道；运行时由 `view_model_test.gd` 与
+`first_person_equipment_motion_test.gd` 验证纯装备节点、瞄准、后坐、落地与盾牌冲击。
+真实 3D 动作序列使用 `tools/sword_first_person_animation_capture.gd` 生成并逐帧检查。

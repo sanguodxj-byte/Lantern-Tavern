@@ -1,36 +1,25 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=4 format=3 uid="uid://flameventtrapvoxel"]
 
 [ext_resource type="Script" path="res://scenes/traps/flame_vent_trap.gd" id="1_flame"]
+[ext_resource type="PackedScene" path="res://assets/meshes/traps/traps_flame_vent.glb" id="2_glb"]
 
-[sub_resource type="CylinderMesh" id="CylinderMesh_flame_vent"]
-top_radius = 0.55
-bottom_radius = 0.55
-height = 0.08
-radial_segments = 16
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_flame_vent"]
-albedo_color = Color(0.95, 0.24, 0.05, 1)
-emission_enabled = true
-emission = Color(1, 0.28, 0.04, 1)
-emission_energy_multiplier = 1.8
-
-[sub_resource type="CylinderShape3D" id="CylinderShape3D_flame_vent"]
-height = 0.35
-radius = 0.7
+[sub_resource type="BoxShape3D" id="BoxShape3D_flame_vent"]
+size = Vector3(1, 0.5, 1)
 
 [node name="FlameVentTrap" type="Area3D"]
+collision_layer = 0
+collision_mask = 6
+monitorable = false
 script = ExtResource("1_flame")
 
-[node name="VentMesh" type="MeshInstance3D" parent="."]
-mesh = SubResource("CylinderMesh_flame_vent")
-material_override = SubResource("StandardMaterial3D_flame_vent")
+[node name="VoxelModel" parent="." instance=ExtResource("2_glb")]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
-position = Vector3(0, 0.12, 0)
-shape = SubResource("CylinderShape3D_flame_vent")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+shape = SubResource("BoxShape3D_flame_vent")
 
 [node name="FlameLight" type="OmniLight3D" parent="."]
-position = Vector3(0, 0.45, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 0)
 light_color = Color(1, 0.45, 0.16, 1)
-light_energy = 0.55
+light_energy = 0.8
 omni_range = 3.0

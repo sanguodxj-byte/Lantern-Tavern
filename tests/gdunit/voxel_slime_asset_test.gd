@@ -13,7 +13,7 @@ const GEOMETRY_EPSILON := 0.0001
 const PX_PER_METER := 32.0
 
 const EXPECTED_BONES := [
-	"Root", "Torso", "Head", "Face", "Core", "Pseudopod.L", "Pseudopod.R",
+	"Root", "GelBase", "Torso", "Head", "Crown", "Face", "Core", "Pseudopod.L", "Pseudopod.R",
 ]
 
 const EXPECTED_ANIMATIONS := [
@@ -148,7 +148,7 @@ func test_slime_material_ramps_and_authored_asymmetry_are_explicit() -> void:
 	assert_str(source).not_contains("import random")
 
 
-func test_slime_rig_source_owns_seven_bones_and_fourteen_actions() -> void:
+func test_slime_rig_source_owns_nine_bones_and_fourteen_actions() -> void:
 	var source := FileAccess.get_file_as_string(GENERATOR_PATH)
 	assert_str(source).contains("def _create_slime_armature")
 	assert_str(source).contains("def _parent_parts_to_slime_bones")
@@ -164,6 +164,15 @@ func test_slime_rig_source_owns_seven_bones_and_fourteen_actions() -> void:
 	for animation_name in EXPECTED_ANIMATIONS:
 		assert_bool(actions.has(animation_name)).is_true()
 	assert_str(source).not_contains("debug_")
+
+
+func test_slime_run_contract_uses_blender_z_for_a_point_six_meter_godot_up_hop() -> void:
+	var source := FileAccess.get_file_as_string(GENERATOR_PATH)
+	assert_str(source).contains("SLIME_JUMP_HEIGHT_M = 0.60")
+	assert_str(source).contains('world_loc("Root", (0.0, 0.0, SLIME_JUMP_HEIGHT_M))')
+	assert_str(source).contains("def _pose_offset_from_blender_world")
+	assert_str(source).contains("to Godot +Y")
+	assert_str(source).contains('"Crown":')
 
 
 func test_slime_is_accepted_at_a_tier_after_individual_dod() -> void:
@@ -201,6 +210,41 @@ func test_slime_exports_match_authored_geometry_and_creature_rig_contract() -> v
 	assert_bool(report.ok).override_failure_message(str(report)).is_true()
 	assert_int(report.bone_names.size()).is_equal(EXPECTED_BONES.size())
 	assert_int(report.animation_names.size()).is_equal(EXPECTED_ANIMATIONS.size())
+
+
+func test_slime_imported_run_reaches_point_six_meters_on_godot_up_axis() -> void:
+	var packed := load(RIG_PATH) as PackedScene
+	assert_object(packed).is_not_null()
+	if packed == null:
+		return
+	var instance := packed.instantiate() as Node3D
+	var player := instance.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	assert_object(player).is_not_null()
+	if player == null:
+		instance.free()
+		return
+	var run := player.get_animation("run")
+	assert_object(run).is_not_null()
+	if run == null:
+		instance.free()
+		return
+	var root_track := -1
+	for track_index in run.get_track_count():
+		if run.track_get_type(track_index) == Animation.TYPE_POSITION_3D \
+				and String(run.track_get_path(track_index)).ends_with(":Root"):
+			root_track = track_index
+			break
+	assert_int(root_track).override_failure_message("slime run missing Root position track").is_greater_equal(0)
+	if root_track >= 0:
+		var maximum_up := -INF
+		var maximum_horizontal := 0.0
+		for key_index in run.track_get_key_count(root_track):
+			var position := run.track_get_key_value(root_track, key_index) as Vector3
+			maximum_up = maxf(maximum_up, position.y)
+			maximum_horizontal = maxf(maximum_horizontal, maxf(absf(position.x), absf(position.z)))
+		assert_float(maximum_up).is_equal_approx(0.60, 0.015)
+		assert_float(maximum_horizontal).is_less(0.001)
+	instance.free()
 
 
 func test_slime_structural_and_real_three_view_evidence_is_readable_and_nonblank() -> void:

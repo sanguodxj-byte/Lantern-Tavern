@@ -1,6 +1,4 @@
 [gd_resource type="StandardMaterial3D" format=3 uid="uid://d236rahsfuulc"]
 
 [resource]
-emission_enabled = true
-emission = Color(0.87058824, 0.78431374, 0.23529412, 1)
 texture_filter = 0

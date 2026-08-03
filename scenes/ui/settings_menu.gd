@@ -7,6 +7,8 @@ const UI_ROUTES := preload("res://globals/ui/ui_route_catalog.gd")
 @onready var master_volume_value: Label = %MasterVolumeValue
 @onready var fullscreen_check: CheckButton = %FullscreenCheck
 @onready var show_fps_check: CheckButton = %ShowFpsCheck
+@onready var pixel_shader_check: CheckButton = %PixelShaderCheck
+@onready var camera_impact_check: CheckButton = %CameraImpactCheck
 @onready var language_option: OptionButton = %LanguageOption
 @onready var back_btn: Button = %BackBtn
 
@@ -16,6 +18,8 @@ func _ready() -> void:
 	master_volume_slider.value_changed.connect(_on_master_volume_changed)
 	fullscreen_check.toggled.connect(_on_fullscreen_toggled)
 	show_fps_check.toggled.connect(_on_show_fps_toggled)
+	pixel_shader_check.toggled.connect(_on_pixel_shader_toggled)
+	camera_impact_check.toggled.connect(_on_camera_impact_toggled)
 	language_option.item_selected.connect(_on_language_selected)
 	back_btn.pressed.connect(_on_back_pressed)
 	_load_current_settings()
@@ -36,6 +40,12 @@ func _load_current_settings() -> void:
 	fullscreen_check.button_pressed = DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 	show_fps_check.text = tr("Show FPS")
 	show_fps_check.button_pressed = Settings.show_fps
+	pixel_shader_check.text = tr("Pixel Shader")
+	# 直接设置 button_pressed；若触发 toggled 信号，Settings.set_pixel_shader_enabled
+	# 会因值相同而 early-return，不会产生副作用。与 show_fps_check 一致。
+	pixel_shader_check.button_pressed = Settings.pixel_shader_enabled
+	camera_impact_check.text = tr("Camera Impact")
+	camera_impact_check.button_pressed = Settings.camera_impact_enabled
 	language_option.select(1 if TranslationServer.get_locale().begins_with("zh") else 0)
 
 func _on_master_volume_changed(value: float) -> void:
@@ -47,6 +57,12 @@ func _on_fullscreen_toggled(enabled: bool) -> void:
 
 func _on_show_fps_toggled(enabled: bool) -> void:
 	Settings.set_show_fps(enabled)
+
+func _on_pixel_shader_toggled(enabled: bool) -> void:
+	Settings.set_pixel_shader_enabled(enabled)
+
+func _on_camera_impact_toggled(enabled: bool) -> void:
+	Settings.set_camera_impact_enabled(enabled)
 
 func _on_language_selected(index: int) -> void:
 	var locale := String(language_option.get_item_metadata(index))
