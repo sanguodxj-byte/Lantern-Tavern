@@ -124,28 +124,32 @@ func clear_cooldowns() -> void:
 func _effect_plan(plan: Dictionary) -> Dictionary:
 	var implementation := String(plan.get("implementation", "projectile"))
 	var base := {"type": implementation, "authoritative": true, "fx_is_cosmetic": true}
+	# P1（2331 审查）：业务数值单一真相——recipe 的 power 字典（若配置）覆盖默认值；
+	# 未配置时使用本文件默认（recipe 层占位，随 ADR-007 数值校准统一由数据驱动）。
+	var power: Dictionary = Dictionary(Dictionary(plan.get("spell", {})).get("power", {}))
 	match implementation:
 		"projectile", "ray":
 			base["projectile_id"] = String(Dictionary(plan.get("spell", {})).get("projectile_id", "spell_pixel_bolt"))
 			base["speed"] = 18.0
-			# P0-1-B：法术投射物/射线的权威基准伤害（与 heal 28 / absorb 30 同级设计常量；
-			# 数值对齐策划表见 docs/adr/ADR-007，当前为联机权威闭环的确定性基准）。
-			base["damage"] = 10
+			base["damage"] = int(power.get("damage", 10))
 		"area", "ground":
-			base["radius"] = 4.0
-			base["duration"] = 3.0
+			base["radius"] = float(power.get("radius", 4.0))
+			base["duration"] = float(power.get("duration", 3.0))
+			base["damage"] = int(power.get("damage", 4))
 		"barrier":
-			base["duration"] = 5.0
-			base["absorb"] = 30
+			base["duration"] = float(power.get("duration", 5.0))
+			base["absorb"] = int(power.get("absorb", 30))
 		"heal":
-			base["heal"] = 28
+			base["heal"] = int(power.get("heal", 28))
 		"movement":
-			base["distance"] = 5.0
+			base["distance"] = float(power.get("distance", 5.0))
 		"buff":
-			base["duration"] = 6.0
+			base["duration"] = float(power.get("duration", 6.0))
+			base["power_pct"] = float(power.get("power_pct", 20.0))
 		"summon":
 			base["summon_kind"] = "spell_construct"
-			base["duration"] = 12.0
+			base["duration"] = float(power.get("duration", 12.0))
+			base["damage"] = int(power.get("damage", 6))
 	return base
 
 

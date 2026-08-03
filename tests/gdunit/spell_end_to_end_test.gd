@@ -25,9 +25,9 @@ func test_spell_authority_executes_heal_barrier_and_movement() -> void:
 
 func test_world_effects_produce_structured_requests_not_fake_damage() -> void:
 	var player := FakePlayer.new(); add_child(player); var auth := Authority.new()
-	# projectile 用已注册 id（未注册 id 会 spawn 失败 → ok=false，属 P0 正确行为）。
+	# projectile 用已注册 id + 权威伤害（P1-2：执行器必读 plan.damage，缺则失败）。
 	var plans := {
-		"projectile": {"type": "projectile", "projectile_id": "elemental_bolt"},
+		"projectile": {"type": "projectile", "projectile_id": "elemental_bolt", "damage": 10},
 		"ray": {"type": "ray"},
 		"area": {"type": "area"},
 		"ground": {"type": "ground"},

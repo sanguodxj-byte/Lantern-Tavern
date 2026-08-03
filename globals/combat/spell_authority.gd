@@ -57,7 +57,11 @@ func execute(caster: Node3D, result: Dictionary, world: Node = null, caster_peer
 	var execution := {"ok": true, "type": implementation, "spell_id": String(result.get("spell_id", "")), "visual_event": result.get("visual_event", {}).duplicate(true)}
 	match implementation:
 		"heal":
-			var heal_amount := int(plan.get("heal", 28))
+			# P1（2331 审查）：业务数值必须由 effect_plan 携带（单一真相链 recipe→plan），
+			# 执行器禁止静默默认——缺失即失败，暴露未接线/漏配。
+			if not plan.has("heal"):
+				return {"ok": false, "reason": "missing_effect_value"}
+			var heal_amount := int(plan["heal"])
 			if self_effect_port.is_valid():
 				# 权威：写 per-peer 效果状态（远端 avatar 无组件也成功）。
 				self_effect_port.call(caster_peer, "heal", heal_amount, 0.0)
@@ -68,7 +72,9 @@ func execute(caster: Node3D, result: Dictionary, world: Node = null, caster_peer
 				return {"ok": false, "reason": "self_effect_target_unavailable"}
 			execution["healed"] = heal_amount
 		"barrier":
-			var absorb := int(plan.get("absorb", 30))
+			if not plan.has("absorb"):
+				return {"ok": false, "reason": "missing_effect_value"}
+			var absorb := int(plan["absorb"])
 			if self_effect_port.is_valid():
 				self_effect_port.call(caster_peer, "barrier", absorb, float(plan.get("duration", 5.0)))
 			elif "buffs" in caster and caster.buffs != null and caster.buffs.has_method("add"):
@@ -92,6 +98,9 @@ func execute(caster: Node3D, result: Dictionary, world: Node = null, caster_peer
 				return {"ok": false, "reason": "self_effect_target_unavailable"}
 			execution["duration"] = duration
 		"projectile":
+			# P1（2331 审查）：伤害必须由 effect_plan 携带（单一真相链），禁止静默默认。
+			if not plan.has("damage"):
+				return {"ok": false, "reason": "missing_effect_value"}
 			var projectile_service := caster.get_node_or_null("/root/ProjectileService")
 			if projectile_service == null or not projectile_service.has_method("spawn"):
 				return {"ok": false, "reason": "projectile_service_unavailable"}

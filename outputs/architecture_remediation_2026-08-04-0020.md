@@ -46,6 +46,10 @@
 - **P1-5**：editor 关闭阶段 Android EditorSettings 诊断——隔离 MCP 插件后复测。
 - **P2**：源码字符串测试存量、工作树换行噪音、C# feature 工具链。
 
+## 5b. 增补（2026-08-04 00:40 · P1-2 闭环）
+
+**法术业务数值单一真相**：`_effect_plan` 从 recipe `power` 字典（可配）填充业务数值（damage/heal/absorb/duration/radius/power_pct），缺省保留 recipe 层默认；`SpellAuthority` 对 heal/absorb/damage **必读 plan**（缺失 → `ok=false/missing_effect_value`，禁止静默默认）；area/ground/summon 的 damage 显式进入 plan。执行器只校验结构+执行，业务数值由 recipe→plan 链承载。测试适配（projectile plan 带 damage）+ 回归 15/15。
+
 ## 6. 变更清单
 
 **修改**：`network_protocol.gd`（EVT_PLAYER_COMBAT_STATE）、`session_root.gd`（tick_enemy_combat/broadcast_player_combat_state/combat revision）、`network_manager.gd`（tick 敌人攻击）、`client_command_driver.gd`（_apply_combat_state + 快照落地）、`spell_authority.gd`（无目标失败）、`performance_budget_controller.gd`（场景切换重应用）、`tests/gdunit/spell_session_atomicity_test.gd`（+5）。

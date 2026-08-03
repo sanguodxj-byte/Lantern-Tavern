@@ -93,7 +93,7 @@ func expire_buffs(now_ms: int) -> Array:
 			expired.append(buff_id)
 	return expired
 
-## 查询法术伤害倍率（spell_power buff：+20%/层，可叠加）。联机权威法术结算读取。
+## 查询法术伤害倍率（spell_power buff 生效时 +20%）。联机权威法术结算读取。
 func spell_power_mult() -> float:
 	if buffs.has("spell_power"):
 		return 1.0 + 0.2
