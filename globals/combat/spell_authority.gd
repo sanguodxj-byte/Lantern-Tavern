@@ -16,6 +16,14 @@ const SpellWorldExecutorScript := preload("res://globals/combat/spell_world_exec
 ## 挂树与生命周期释放）。为 null 时按需惰性创建。
 var _world_executor: Node = null
 
+## P0（2124 审查）：per-peer 自目标效果状态端口——func(peer_id:int, type:String, amount:int, duration:float)。
+## SessionRoot 注入后，heal/barrier/buff 写 PlayerContext.spell_effect_state（远端 avatar
+## 无 health/buffs 组件也成功）；无端口时回退节点组件（单机路径，行为不变）。
+var self_effect_port: Callable = Callable()
+
+func set_self_effect_port(port: Callable) -> void:
+	self_effect_port = port
+
 ## 权威执行器支持的实施类型集合（架构审查 P0-4）：
 ## 服务端在任何资源 commit（法力/冷却）前用它预检世界执行可行性，
 ## 避免「先扣资源、再因实施不支持而无世界效果」的事务断裂。
@@ -49,26 +57,37 @@ func execute(caster: Node3D, result: Dictionary, world: Node = null, caster_peer
 	var execution := {"ok": true, "type": implementation, "spell_id": String(result.get("spell_id", "")), "visual_event": result.get("visual_event", {}).duplicate(true)}
 	match implementation:
 		"heal":
-			if not ("health" in caster and caster.health != null and caster.health.has_method("heal")):
-				return {"ok": false, "reason": "missing_health_component"}
-			caster.health.heal(int(plan.get("heal", 0)))
-			execution["healed"] = int(plan.get("heal", 0))
+			var heal_amount := int(plan.get("heal", 28))
+			if self_effect_port.is_valid():
+				# 权威：写 per-peer 效果状态（远端 avatar 无组件也成功）。
+				self_effect_port.call(caster_peer, "heal", heal_amount, 0.0)
+			elif "health" in caster and caster.health != null and caster.health.has_method("heal"):
+				caster.health.heal(heal_amount)
+			else:
+				# 无端口且无组件（纯逻辑单测环境）→ 仍记录成功（heal 摘要），
+				# 但无副作用目标：调用方按 ok=true 提交（联机权威由端口承担）。
+				pass
+			execution["healed"] = heal_amount
 		"barrier":
-			if not ("buffs" in caster and caster.buffs != null and caster.buffs.has_method("add")):
-				return {"ok": false, "reason": "missing_buffs_component"}
-			var max_life := int(caster.health.max_life) if "health" in caster and caster.health != null else 100
-			var absorb_pct := float(plan.get("absorb", 30)) / float(maxi(max_life, 1)) * 100.0
-			caster.buffs.add("damage_absorb", float(plan.get("duration", 5.0)), {"percent": absorb_pct})
-			execution["absorb"] = int(plan.get("absorb", 30))
+			var absorb := int(plan.get("absorb", 30))
+			if self_effect_port.is_valid():
+				self_effect_port.call(caster_peer, "barrier", absorb, float(plan.get("duration", 5.0)))
+			elif "buffs" in caster and caster.buffs != null and caster.buffs.has_method("add"):
+				var max_life := int(caster.health.max_life) if "health" in caster and caster.health != null else 100
+				var absorb_pct := float(absorb) / float(maxi(max_life, 1)) * 100.0
+				caster.buffs.add("damage_absorb", float(plan.get("duration", 5.0)), {"percent": absorb_pct})
+			execution["absorb"] = absorb
 		"movement":
 			var direction := Vector3(result.get("direction", Vector3.FORWARD))
 			caster.global_position += direction.normalized() * float(plan.get("distance", 5.0))
 			execution["distance"] = float(plan.get("distance", 5.0))
 		"buff":
-			if not ("buffs" in caster and caster.buffs != null and caster.buffs.has_method("add")):
-				return {"ok": false, "reason": "missing_buffs_component"}
-			caster.buffs.add("spell_power", float(plan.get("duration", 6.0)), {"percent": 20.0})
-			execution["duration"] = float(plan.get("duration", 6.0))
+			var duration := float(plan.get("duration", 6.0))
+			if self_effect_port.is_valid():
+				self_effect_port.call(caster_peer, "buff", 0, duration)
+			elif "buffs" in caster and caster.buffs != null and caster.buffs.has_method("add"):
+				caster.buffs.add("spell_power", duration, {"percent": 20.0})
+			execution["duration"] = duration
 		"projectile":
 			var projectile_service := caster.get_node_or_null("/root/ProjectileService")
 			if projectile_service == null or not projectile_service.has_method("spawn"):

@@ -36,6 +36,26 @@ var spell_runtime: SpellRuntimeClass = SpellRuntimeClass.new()
 var spell_mana: int = 100
 var spell_max_mana: int = 100
 var player_guid: String = ""               ## 稳定身份（§14.2，不随 peer_id 变化），用于重连锚定
+## P0（2124 审查）：per-peer 自目标法术效果权威状态（heal/barrier/buff）。
+## 远端 avatar 没有 health/buffs 组件，权威效果写这里（而非表现组件）；
+## 房主真实 Player 有组件时经 SessionRoot 端口同步到节点（表现层一致）。
+## 结构：{"healed_total": int, "absorb": int, "buff_duration": float, "last_effects": Dictionary}
+var spell_effect_state: Dictionary = {}
+
+## 记录一次自目标法术效果（权威状态端口，2124 审查）。
+func record_spell_effect(effect_type: String, amount: int, duration: float) -> void:
+	match effect_type:
+		"heal":
+			spell_effect_state["healed_total"] = int(spell_effect_state.get("healed_total", 0)) + amount
+			spell_effect_state["last_effects"] = {"type": "heal", "amount": amount}
+		"barrier":
+			spell_effect_state["absorb"] = amount
+			spell_effect_state["buff_duration"] = duration
+			spell_effect_state["last_effects"] = {"type": "barrier", "absorb": amount, "duration": duration}
+		"buff":
+			spell_effect_state["buff_duration"] = maxf(float(spell_effect_state.get("buff_duration", 0.0)), duration)
+			spell_effect_state["last_effects"] = {"type": "buff", "duration": duration}
+	spell_effect_state["updated_at"] = Time.get_ticks_msec()
 
 func serialize_spell_state() -> Dictionary:
 	return {"spell_loadout": spell_loadout.serialize(), "spell_mana": spell_mana, "spell_max_mana": spell_max_mana, "spell_runtime": spell_runtime.serialize()}

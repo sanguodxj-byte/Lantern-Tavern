@@ -210,7 +210,7 @@ func test_boss_room_can_receive_hazard_anchors() -> void:
 			height_row.append(3.0)
 		layout.grid.append(row)
 		layout.heights.append(height_row)
-	layout.rooms = [Rect2i(0, 0, 3, 3), Rect2i(4, 4, 8, 8)]
+	layout.rooms = [Rect2i(0, 0, 3, 3), Rect2i(4, 4, 9, 9)]
 	layout.room_roles["start"] = layout.rooms[0]
 	layout.room_roles["boss"] = layout.rooms[1]
 	layout.player_spawn_cell = Vector2i(1, 1)

@@ -217,8 +217,38 @@ func _spawn_entity_local(entity_id: int, data: Dictionary) -> Node3D:
 	_entity_container.add_child(ent)
 	if ent.has_method("apply_spawn"):
 		ent.apply_spawn(data)
+	# P0（2124 审查）：服务器侧为可受击实体装配【权威物理体】——ray intersect_ray 与
+	# projectile body_entered 需要真实碰撞体 + entity_id meta 才能命中并写回实体仓。
+	# 客户端保留纯表现代理（不做权威物理结算）；实体移除时碰撞体随节点销毁。
+	if _is_server():
+		_attach_authoritative_entity_body(ent, entity_id, data)
 	_entities[entity_id] = ent
 	return ent
+
+## P0（2124 审查）：服务器权威实体物理体装配。
+## 仅对可受击 kind（enemy）创建 StaticBody3D + CapsuleShape3D，并把 entity_id meta
+## 设在【碰撞体节点】上（ray/projectile 命中的 collider 直接携带身份，向上遍历亦可）。
+## 尺寸与项目 HUMANOID 碰撞约定一致（radius 0.45 / height 1.7）。
+func _attach_authoritative_entity_body(ent: Node3D, entity_id: int, data: Dictionary) -> void:
+	if ent == null or not is_instance_valid(ent):
+		return
+	var kind := String(data.get("kind", ent.kind if "kind" in ent else ""))
+	if kind != "enemy":
+		return  # 掉落/宝箱/门不可被法术命中（保持只读表现代理）
+	var body := StaticBody3D.new()
+	body.name = "AuthoritativeBody"
+	body.collision_layer = PhysicsSetup.LAYER_ENEMY
+	body.collision_mask = 0
+	body.set_meta("entity_id", entity_id)
+	var shape := CollisionShape3D.new()
+	shape.name = "EntityCollision"
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = PhysicsSetup.HUMANOID_COLLISION_RADIUS
+	capsule.height = PhysicsSetup.HUMANOID_COLLISION_HEIGHT
+	shape.shape = capsule
+	shape.position = Vector3(0.0, PhysicsSetup.HUMANOID_COLLISION_HEIGHT * 0.5, 0.0)
+	body.add_child(shape)
+	ent.add_child(body)
 
 ## 更新某实体（HP/位置）；节点不存在时按 spawn 兜底（避免 snapshot 早于 spawn 到达丢失）。
 func _update_entity_local(entity_id: int, data: Dictionary) -> void:
@@ -291,7 +321,12 @@ func _can_rpc() -> bool:
 	var nm: Node = _network_manager()
 	return nm != null and is_instance_valid(nm.multiplayer) and nm.multiplayer.multiplayer_peer != null
 
+## 测试注入：-1=auto（读 NetworkManager.is_host，生产默认）；0=强制客户端；1=强制服务器。
+var server_mode_override: int = -1
+
 func _is_server() -> bool:
+	if server_mode_override >= 0:
+		return server_mode_override == 1
 	var nm: Node = _network_manager()
 	if nm != null and "is_host" in nm:
 		return bool(nm.is_host)

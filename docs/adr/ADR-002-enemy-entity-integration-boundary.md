@@ -22,3 +22,10 @@
 
 - 阶段 B 完成前，联机击杀/掉落以实体仓为准、AI 表现以字典代理为准（已知限制）。
 - 完成后移除 `dungeon_session_controller.spawn_server_entities` 的硬编码 Rat/Skeleton 生产路径。
+
+## 更新（2026-08-03 21:30 · 2124 审查后）
+
+**实体碰撞接缝已先行关闭**：服务器权威实体物理节点映射（AuthoritativeEntityBody——
+可受击 enemy 装配 StaticBody3D + CapsuleShape + entity_id meta，ray/projectile 经祖先
+查找命中并写回实体仓）已实施；阶段 B 剩余范围收窄为「正式 Enemy 场景/状态机/AI 接入
+实体仓与表现代理统一」，仍随敌人 WIP 收口。

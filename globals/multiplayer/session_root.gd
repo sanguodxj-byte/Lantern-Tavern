@@ -118,6 +118,9 @@ var _input_queue: Dictionary = {}
 # P1-1：服务器可信存档仓（按 player_guid 持久化权威背包/装配/法术状态）。
 # 由 NetworkManager 注入；null 时退回「仅调用方传入摘要」的旧行为（测试/无仓环境）。
 var server_save_repo: ServerSaveRepositoryClass = null
+# P1（2124 审查）：会话拥有的法术投射物清单——会话销毁时统一回收，
+# 避免全局对象池/场景切换残留跨会话的端口与节点。
+var _session_projectiles: Array = []
 
 func _init() -> void:
 	registry = PlayerRegistryClass.new()
@@ -154,6 +157,21 @@ func _init() -> void:
 	_attack_cd_until = {}
 	_stagger = {}
 	_input_queue = {}
+	_session_projectiles = []
+
+func _notification(what: int) -> void:
+	# P1（2124 审查）：会话销毁时回收会话拥有的法术投射物（含未飞完的），
+	# 防止跨会话残留端口/节点。
+	if what == NOTIFICATION_EXIT_TREE:
+		for proj in _session_projectiles:
+			if proj is Node and is_instance_valid(proj):
+				proj.queue_free()
+		_session_projectiles.clear()
+
+## P1（2124 审查）：登记会话拥有的法术投射物（会话销毁时统一回收）。
+func track_projectile(projectile: Node) -> void:
+	if projectile != null and is_instance_valid(projectile):
+		_session_projectiles.append(projectile)
 
 ## 服务器侧会话初始化：标记权威、挂载默认权威处理器。
 func init_server() -> void:
@@ -791,6 +809,9 @@ func _handle_cast_spell(command: Dictionary, ctx: PlayerContextClass) -> Diction
 		for ev in port_events:
 			if ev is Dictionary and not (ev as Dictionary).is_empty():
 				extra.append(ev)
+	# P1（2124 审查）：会话跟踪法术投射物（生命周期随会话，不残留全局池）。
+	if implementation == "projectile" and authority_execution.has("projectile"):
+		track_projectile(authority_execution["projectile"] as Node)
 	# ---- commit（执行成功后才扣资源）----
 	ctx.spell_mana -= mana_cost
 	ctx.spell_runtime.commit_authoritative_cooldown(spell)
@@ -822,6 +843,7 @@ func _handle_cast_spell(command: Dictionary, ctx: PlayerContextClass) -> Diction
 
 ## P0-3：确保会话级世界执行器存在（挂为 SessionRoot 子节点，随会话生命周期释放），
 ## 并把实体仓伤害端口接到本会话（世界伤害写回 _entities → 生命/死亡/掉落复制事件）。
+## P0（2124 审查）：同时注入 per-peer 自目标效果端口（heal/barrier/buff 权威状态）。
 func _ensure_spell_world_executor() -> void:
 	var ex: Node = spell_auth.get_world_executor()
 	if ex == null or not is_instance_valid(ex):
@@ -832,6 +854,31 @@ func _ensure_spell_world_executor() -> void:
 		ex = executor
 	if "damage_entity_port" in ex:
 		ex.damage_entity_port = _spell_damage_entity
+	spell_auth.set_self_effect_port(_apply_self_effect)
+
+## P0（2124 审查）：per-peer 自目标法术效果端口——
+## 写 PlayerContext.spell_effect_state（权威记录），并对绑定节点的真实组件做表现同步
+## （房主真实 Player 有 health/buffs；远端 avatar 无组件则只记权威状态，施法成功）。
+func _apply_self_effect(peer_id: int, effect_type: String, amount: int, duration: float) -> void:
+	var ctx: PlayerContextClass = registry.get_context(peer_id)
+	if ctx == null:
+		return
+	ctx.record_spell_effect(effect_type, amount, duration)
+	var node: Node = ctx.player_node
+	if node == null or not is_instance_valid(node):
+		return
+	match effect_type:
+		"heal":
+			if "health" in node and node.health != null and node.health.has_method("heal"):
+				node.health.heal(amount)
+		"barrier":
+			if "buffs" in node and node.buffs != null and node.buffs.has_method("add"):
+				var max_life := int(node.health.max_life) if "health" in node and node.health != null else 100
+				var absorb_pct := float(amount) / float(maxi(max_life, 1)) * 100.0
+				node.buffs.add("damage_absorb", duration, {"percent": absorb_pct})
+		"buff":
+			if "buffs" in node and node.buffs != null and node.buffs.has_method("add"):
+				node.buffs.add("spell_power", duration, {"percent": 20.0})
 
 ## P0-3：法术世界伤害写回权威实体仓（与普通攻击同路径）：
 ##   扣血 → 死亡（掉落 + despawn） / 存活（entity_snapshot）。
@@ -868,6 +915,26 @@ func poll_spell_world_events() -> Array:
 	if ex.has_method("drain_pending_events"):
 		return ex.drain_pending_events()
 	return []
+
+## P1（2124 审查）：周期权威实体基线——对全部实体生成 entity_snapshot 事件。
+## entity_snapshot 走 unreliable 通道，丢包后若实体不再变化，客户端 HP 会永久停留旧值；
+## 服务器每 ENTITY_BASELINE_INTERVAL 广播一次全量权威基线（reliable），保证收敛。
+func build_entity_baseline_events() -> Array:
+	var events: Array = []
+	for eid in _entities.keys():
+		var data: Dictionary = _entities[eid]
+		events.append({
+			"event": NP.EVT_ENTITY_SNAPSHOT,
+			"entity_id": int(eid),
+			"data": {
+				"current_life": int(data.get("current_life", 0)),
+				"max_life": int(data.get("max_life", 0)),
+				"position": data.get("position", Vector3.ZERO),
+				"kind": String(data.get("kind", "")),
+				"consumed": bool(data.get("consumed", false)),
+			},
+		})
+	return events
 
 ## 施法资格纯逻辑校验（P0-5）：读取权威 loadout 的激活武器，经 SpellAccessPolicy
 ## 检查法杖/魔导书/奥法之剑资格；奥法之剑被动来自 per-peer SkillRuntime（服务器权威）。

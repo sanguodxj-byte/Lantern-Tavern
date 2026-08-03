@@ -463,8 +463,13 @@ func test_streamed_boundary_walls_stop_character_from_inside_on_all_sides() -> v
 	# register it through streaming, then approach every wall from a walkable cell.
 	# The capsule must stop before its center crosses the wall's inner face.
 	await get_tree().process_frame
+	# 独立 SubViewport 物理世界：隔离同套件其他测试遗留的碰撞体
+	# （PhysicsServer 空间污染会让玩家撞上上一测试的残留墙体）。
+	var viewport := SubViewport.new()
+	viewport.own_world_3d = true
+	add_child(viewport)
 	var stage := Node3D.new()
-	add_child(stage)
+	viewport.add_child(stage)
 	var layout := DungeonLayout.new()
 	layout.width = 5
 	layout.height = 5

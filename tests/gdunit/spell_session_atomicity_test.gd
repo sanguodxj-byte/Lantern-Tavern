@@ -155,6 +155,90 @@ func test_duplicate_sequence_rejected_for_cast() -> void:
 	assert_str(replay["error_code"]).is_equal(NP.ERR_INVALID_SEQUENCE)
 
 # ---------------------------------------------------------------------------
+# P0（2124 审查）：远端 avatar 无 health/buffs 组件时，heal/barrier/buff 必须成功
+# ---------------------------------------------------------------------------
+
+## 生成只绑定 Node3D（模拟远端 avatar：无 health/buffs 组件）的施法者。
+func _bind_plain_caster(s: SR, peer_id: int = 1) -> Node3D:
+	var caster := Node3D.new()
+	caster.name = "PlainCaster%d" % peer_id
+	add_child(caster)
+	s.bind_player_entity(peer_id, caster)
+	return caster
+
+func test_remote_avatar_heal_succeeds_via_self_effect_port() -> void:
+	# 远端 avatar（无 health 组件）heal 不再失败——权威效果写入 PlayerContext.spell_effect_state。
+	var s: SR = auto_free(_make_server())
+	_spawn_caster(s, 1, [["ayu", "", ""], ["", "", ""], ["", "", ""], ["", "", ""], ["", "", ""]])
+	_bind_plain_caster(s)
+	var ctx = s.registry.get_context(1)
+	var mana_before: int = ctx.spell_mana
+	var r: Dictionary = s.on_command(1, _cast_command(s, 0, 1))
+	assert_bool(r["success"]) \
+		.override_failure_message("远端 avatar heal 必须成功（经 per-peer 效果端口，而非组件）").is_true()
+	assert_str(r["event"]["event"]).is_equal(NP.EVT_SPELL_RESOLVED)
+	assert_int(int(r["event"]["effects"]["healed"])).is_greater(0)
+	assert_int(int(ctx.spell_effect_state.get("healed_total", 0))) \
+		.override_failure_message("heal 必须写入 PlayerContext 权威效果状态").is_greater(0)
+	assert_int(ctx.spell_mana).is_less(mana_before)  # 资源正常提交
+
+func test_remote_avatar_barrier_and_buff_succeed_via_self_effect_port() -> void:
+	var s: SR = auto_free(_make_server())
+	# barrier 配方：hima > force > guardian；buff 用 barrier 的 duration 语义覆盖。
+	_spawn_caster(s, 1, [["hima", "force", "guardian"], ["", "", ""], ["", "", ""], ["", "", ""], ["", "", ""]])
+	_bind_plain_caster(s)
+	var ctx = s.registry.get_context(1)
+	var rb: Dictionary = s.on_command(1, _cast_command(s, 0, 1))
+	assert_bool(rb["success"]) \
+		.override_failure_message("远端 avatar barrier 必须成功").is_true()
+	assert_int(int(rb["event"]["effects"]["absorb"])).is_greater(0)
+	assert_int(int(ctx.spell_effect_state.get("absorb", 0))).is_greater(0)
+	# buff：以 barrier 摘要验证 spell_effect_state.buff_duration 记录。
+	assert_float(float(ctx.spell_effect_state.get("buff_duration", 0.0))).is_greater(0.0)
+
+func test_plain_caster_heal_without_port_records_success_summary() -> void:
+	# 纯逻辑单测环境（无 self_effect_port 注入）→ heal 仍成功并带摘要（无副作用目标）。
+	var s: SR = auto_free(_make_server())
+	_spawn_caster(s, 1, [["ayu", "", ""], ["", "", ""], ["", "", ""], ["", "", ""], ["", "", ""]])
+	_bind_plain_caster(s)
+	var r: Dictionary = s.on_command(1, _cast_command(s, 0, 1))
+	assert_bool(r["success"]).is_true()
+	assert_int(int(r["event"]["effects"]["healed"])).is_greater(0)
+
+# ---------------------------------------------------------------------------
+# P1（2124 审查）：周期权威实体基线 + 会话投射物跟踪
+# ---------------------------------------------------------------------------
+
+func test_entity_baseline_events_cover_all_entities() -> void:
+	var s: SR = auto_free(_make_server())
+	s.set_entity(1001, {"kind": "enemy", "current_life": 5, "max_life": 10})
+	s.set_entity(1002, {"kind": "enemy", "current_life": 8, "max_life": 8})
+	var events: Array = s.build_entity_baseline_events()
+	assert_int(events.size()).is_equal(2)
+	var by_id := {}
+	for ev in events:
+		by_id[int(ev["entity_id"])] = ev
+	assert_int(int(by_id[1001]["data"]["current_life"])).is_equal(5)
+	assert_int(int(by_id[1002]["data"]["current_life"])).is_equal(8)
+	# 空实体集 → 空基线。
+	var s2: SR = auto_free(_make_server())
+	assert_array(s2.build_entity_baseline_events()).is_empty()
+
+func test_session_tracks_and_releases_projectiles_on_teardown() -> void:
+	var s: SR = SR.new()
+	add_child(s)
+	s.init_server()
+	var proj := Node3D.new()
+	add_child(proj)
+	s.track_projectile(proj)
+	assert_int(s._session_projectiles.size()).is_equal(1)
+	# 会话销毁（NOTIFICATION_EXIT_TREE）→ 跟踪的投射物被回收。
+	s.free()
+	await get_tree().process_frame
+	assert_bool(not is_instance_valid(proj)) \
+		.override_failure_message("会话销毁必须回收会话拥有的投射物").is_true()
+
+# ---------------------------------------------------------------------------
 # P0-1-B：projectile 服务缺失/生成失败不得 commit；命中写回权威实体仓
 # ---------------------------------------------------------------------------
 

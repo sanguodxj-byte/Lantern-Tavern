@@ -39,7 +39,9 @@ func test_stress_probe_uses_real_procedural_dungeon_and_player() -> void:
 	assert_str(source).contains("procedural_dungeon.tscn")
 	assert_str(source).contains("generation_seed")
 	assert_str(source).contains("spawn_population_enabled")
-	assert_str(source).contains("GameState.current_player")
+	# 探针通过 P1-5 统一解析器取得真实玩家（与 enemy.gd 目标解析同一入口）
+	assert_bool(source.contains("GameState.current_player") or source.contains("GameState.resolve_player_node")) \
+		.override_failure_message("探针必须解析真实玩家（current_player 或 resolve_player_node）").is_true()
 
 
 func test_stress_probe_disables_vsync_before_sampling() -> void:

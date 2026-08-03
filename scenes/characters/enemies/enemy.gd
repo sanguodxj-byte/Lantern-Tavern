@@ -710,9 +710,11 @@ func is_ai_active() -> bool:
 		return true
 	# P1-5：统一目标解析（会话注册表 / player_ref / 单机全局）。
 	var target: Node = _resolve_target_player()
-	if target != null and is_instance_valid(target):
-		return global_position.distance_squared_to(target.global_position) <= AI_SIM_RADIUS_M * AI_SIM_RADIUS_M
-	return false
+	if target == null or not is_instance_valid(target):
+		# 场景中无玩家（出生点/加载/纯巡逻场景）：保留出生点巡逻，
+		# 与 enemy.gd "巡逻半径（米），无玩家时在此范围内随机巡逻" 的文档契约一致。
+		return true
+	return global_position.distance_squared_to(target.global_position) <= AI_SIM_RADIUS_M * AI_SIM_RADIUS_M
 
 func is_target_in_facing_cone(target: Node3D) -> bool:
 	if target == null or not is_instance_valid(target):

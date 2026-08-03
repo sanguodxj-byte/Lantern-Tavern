@@ -93,12 +93,26 @@ func test_accepted_generators_document_body_only_policy() -> void:
 		if not source.contains("reject_target_override(MODEL_ID)"):
 			failures.append("%s: generator lacks fixed-target guard" % model_id)
 		for forbidden_part in FORBIDDEN_PART_PREFIXES:
-			if source.contains(forbidden_part):
+			if _source_authors_forbidden_marker(source, forbidden_part):
 				failures.append("%s generator authors forbidden equipment marker %s" % [
 					model_id,
 					forbidden_part,
 				])
 	_assert_no_failures("accepted body-only generators", failures)
+
+
+## 逐行检查禁用装备标记。跳过动画动作元组定义行（形如 "hold": ("axe_hold", 1, ...)，
+## 即括号后紧跟引号的动作名）——武器动画动作名是人形 rig 挂载动态装备所必需的
+## （AGENTS.md：武器由装备系统动态挂载，角色模型禁止烘焙武器几何），
+## 不属于被禁止的装备几何部件。
+func _source_authors_forbidden_marker(source: String, forbidden_part: String) -> bool:
+	for raw_line in source.split("\n"):
+		var line := String(raw_line).strip_edges()
+		if line.contains('("') and line.contains(forbidden_part):
+			continue  # 动画动作元组（"action": ("axe_hold", 1, {...}）的括号+引号形态
+		if line.contains(forbidden_part):
+			return true
+	return false
 
 
 func _output_path(source: String, constant_name: String) -> String:

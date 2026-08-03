@@ -108,6 +108,11 @@ func rebuild() -> void:
 			if scene != null:
 				var inst := scene.instantiate()
 				for child in inst.get_children():
+					# 动态刚体（可拾取酒桶等）下的烘焙资产同样禁止叠加静态碰撞体，
+					# 与代码路径 _add_collision 的 _is_under_rigid_body 检查保持一致
+					#（baked_<kind>.tscn 内含烘焙碰撞箱，只对独立静态道具生效）。
+					if child is CollisionShape3D and _is_under_rigid_body():
+						continue
 					var copy = child.duplicate()
 					# 标记为 generated 以便 _clear_generated 正确清理
 					copy.set_meta("voxel_generated", true)

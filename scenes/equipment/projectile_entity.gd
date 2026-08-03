@@ -267,9 +267,9 @@ func _on_body_entered(body: Node) -> void:
 	# 忽略发射者自身
 	if body == source_player:
 		return
-	# P0-1-B：会话权威实体命中——目标带 entity_id meta 且投射物 skill_data 携带
-	# damage_port（服务器注入）时，经端口写回 SessionRoot 权威实体仓。
-	if body != null and body.has_meta("entity_id") and skill_data is Dictionary \
+	# P0-1-B/2124：会话权威实体命中——目标带 entity_id（含祖先查找：collider 可能是
+	# StaticBody3D 子节点）且 skill_data 携带 damage_port 时，经端口写回权威实体仓。
+	if body != null and _find_entity_id(body) != 0 and skill_data is Dictionary \
 			and skill_data.has("damage_port"):
 		_resolve_session_entity_hit(body)
 		return
@@ -291,7 +291,7 @@ func _resolve_session_entity_hit(body: Node) -> void:
 	if _hit_targets.has(body):
 		return
 	_hit_targets.append(body)
-	var entity_id: int = int(body.get_meta("entity_id"))
+	var entity_id: int = _find_entity_id(body)
 	var port: Callable = skill_data.get("damage_port", Callable())
 	if entity_id != 0 and port.is_valid():
 		var damage := int(skill_data.get("damage", 10))
@@ -300,6 +300,17 @@ func _resolve_session_entity_hit(body: Node) -> void:
 	_apply_weapon_wear()
 	_play_impact_sound()
 	_destroy_with_impact()
+
+## P0（2124 审查）：从命中节点向上遍历取 entity_id meta（碰撞体可能是子节点）。
+func _find_entity_id(node: Node) -> int:
+	var current: Node = node
+	for _depth in range(6):
+		if current == null or not is_instance_valid(current):
+			return 0
+		if current.has_meta("entity_id"):
+			return int(current.get_meta("entity_id"))
+		current = current.get_parent()
+	return 0
 
 
 ## 对敌人命中结算

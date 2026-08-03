@@ -71,6 +71,10 @@ var _net_stats: Dictionary = {}
 var _netstat_timer: float = 0.0
 ## P0-2：服务器固定 tick 输入消费的帧时间累积器（以 SessionRoot.SERVER_TICK_DT 步进）。
 var _input_tick_accum: float = 0.0
+## P1（2124 审查）：entity 周期权威基线广播间隔（秒）——entity_snapshot 走 unreliable，
+## 定期全量基线（reliable）保证丢包后 HP/状态收敛。
+const ENTITY_BASELINE_INTERVAL := 3.0
+var _entity_baseline_accum: float = 0.0
 
 func _ready() -> void:
 	multiplayer.peer_connected.connect(_on_peer_connected)
@@ -406,6 +410,13 @@ func tick(delta: float) -> void:
 	if session.has_method("poll_spell_world_events"):
 		for ev in session.poll_spell_world_events():
 			_buffer_or_dispatch(ev)
+	# P1（2124 审查）：周期权威实体基线——unreliable entity_snapshot 丢包后的收敛兜底。
+	_entity_baseline_accum += delta
+	if _entity_baseline_accum >= ENTITY_BASELINE_INTERVAL:
+		_entity_baseline_accum = 0.0
+		if session.has_method("build_entity_baseline_events"):
+			for ev in session.build_entity_baseline_events():
+				_dispatch_event(ev, 0)  # reliable 通道（基线不可丢）
 	_flush_snapshots(delta)
 	for pid in session.connection_auth.online_peer_ids():
 		if session.connection_auth.check_timeout(pid, session.current_time):

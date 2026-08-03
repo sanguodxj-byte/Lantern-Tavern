@@ -40,9 +40,8 @@ func _execute_ray(caster: Node3D, request: Dictionary, world: Node, caster_peer:
 	var direction := Vector3(request.get("direction", -caster.global_transform.basis.z)).normalized()
 	var target := _ray_target(caster, origin, direction, 18.0)
 	var damage := int(Dictionary(request.get("params", {})).get("damage", 12))
-	var target_entity_id := 0
-	if target != null and target.has_meta("entity_id"):
-		target_entity_id = int(target.get_meta("entity_id"))
+	# P0（2124 审查）：实体身份经祖先查找（collider 可能是碰撞体子节点）。
+	var target_entity_id := find_entity_id(target)
 	# P0-1-D：_apply_damage 已收敛为【单次】伤害应用——目标带 entity_id 且端口有效时
 	# 由端口写回（返回 port_result），否则退化为节点直伤。此处绝不再二次调用端口。
 	var dmg_result := _apply_damage(target, caster, damage, caster_peer)
@@ -116,17 +115,28 @@ func _ray_target(caster: Node3D, origin: Vector3, direction: Vector3, distance: 
 	var collider: Object = hit.get("collider")
 	return collider as Node
 
+## P0（2124 审查）：从命中节点向上遍历取 entity_id meta（collider 可能是
+## StaticBody3D 子节点，meta 设在碰撞体或其父实体节点上）。
+static func find_entity_id(node: Node) -> int:
+	var current: Node = node
+	for _depth in range(6):
+		if current == null or not is_instance_valid(current):
+			return 0
+		if current.has_meta("entity_id"):
+			return int(current.get_meta("entity_id"))
+		current = current.get_parent()
+	return 0
+
 ## 应用伤害（P0-1-D 单次语义）：返回 {"applied":int, "port_called":bool, "port_result":Dictionary}。
-##   * 目标带 entity_id 且端口有效 → 端口写回权威实体仓（唯一一次），port_called=true；
+##   * 目标带 entity_id（含祖先查找）且端口有效 → 端口写回权威实体仓（唯一一次），port_called=true；
 ##   * 否则退化为节点直伤（单机/无端口回退）。
 func _apply_damage(target: Node, caster: Node3D, damage: int, caster_peer: int) -> Dictionary:
 	if target == null:
 		return {"applied": 0, "port_called": false, "port_result": {}}
-	if target.has_meta("entity_id") and damage_entity_port.is_valid():
-		var entity_id: int = int(target.get_meta("entity_id"))
-		if entity_id != 0:
-			var res: Dictionary = damage_entity_port.call(entity_id, maxi(damage, 0), caster_peer)
-			return {"applied": maxi(damage, 0), "port_called": true, "port_result": res}
+	var entity_id := find_entity_id(target)
+	if entity_id != 0 and damage_entity_port.is_valid():
+		var res: Dictionary = damage_entity_port.call(entity_id, maxi(damage, 0), caster_peer)
+		return {"applied": maxi(damage, 0), "port_called": true, "port_result": res}
 	if target.has_method("try_receive_hit"):
 		target.try_receive_hit(caster, maxi(damage, 0))
 		return {"applied": maxi(damage, 0), "port_called": false, "port_result": {}}

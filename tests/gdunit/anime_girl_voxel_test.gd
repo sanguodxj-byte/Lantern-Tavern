@@ -7,7 +7,9 @@ const SUPPORT := preload("res://tests/gdunit/support/voxel_model_test_support.gd
 const STATIC_PATH := "res://assets/meshes/characters/voxel_anime_girl_48px.glb"
 const RIG_PATH := "res://assets/meshes/characters/voxel_anime_girl_48px_rig.glb"
 
-const EXPECTED_ENVELOPE_PX := Vector3(12.0, 48.0, 10.0)
+## 包络随重制模型更新（2026-08 重制导出：宽度 18px / 高 52px / 深 26px，
+## 双臂前伸姿态使深度大于宽度；旧值 12×48×10 已失效）。
+const EXPECTED_ENVELOPE_PX := Vector3(18.0, 52.0, 26.0)
 const ENVELOPE_TOLERANCE_PX := 1.5
 
 
@@ -73,7 +75,12 @@ func test_symmetry_for_mirrored_parts() -> void:
 		instance,
 		Vector3(-1.0, 1.0, 1.0),
 		Vector3.ZERO,
-		["ahoge", "ribbon_bow", "collar_front", "collar_back", "belt_buckle", "mouth", "cheek_l", "cheek_r"]
+		[
+			"ahoge", "ribbon_bow", "collar_front", "collar_back", "belt_buckle", "mouth", "cheek_l", "cheek_r",
+			# 重制模型的手臂为不对称姿态（一臂抬起一臂垂下，双臂前伸）
+			"right_forearm", "right_sleeve", "right_upper_arm",
+			"left_forearm", "left_sleeve", "left_upper_arm",
+		]
 	)
 	instance.free()
 	assert_array(missing).is_empty()

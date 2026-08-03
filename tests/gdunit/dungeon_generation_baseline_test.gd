@@ -22,9 +22,10 @@ func test_grid_shape_matches_request() -> void:
 func test_room_count_in_target_range() -> void:
 	var gen: Node = load(ISAAC).new()
 	gen.generate_dungeon(42, 42)
-	# isaac target_room_count 默认 18，clamp 到 [6,18]，实际房间数应在该范围内
+	# isaac target_room_count 默认 18（clamp [6,18]），但 _ensure_terminal_count(4)
+	# 会为满足出口/终端数追加少量宏房间，最终房间数落在 [6, 18+4] 区间。
 	assert_int(gen.rooms.size()).is_greater_equal(6)
-	assert_int(gen.rooms.size()).is_less_equal(18)
+	assert_int(gen.rooms.size()).is_less_equal(22)
 	gen.free()
 
 func test_assigns_required_room_roles() -> void:
