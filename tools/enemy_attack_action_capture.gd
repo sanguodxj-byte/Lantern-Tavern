@@ -11,7 +11,14 @@ const PROFILE := preload("res://globals/combat/enemy_attack_profile.gd")
 const ASSETS := {
 	"slime": {"scene": "res://scenes/characters/enemies/slime.tscn", "body": true},
 	"spider": {"scene": "res://scenes/characters/enemies/spider.tscn", "body": true},
-	"dragon": {"scene": "res://scenes/characters/enemies/dragon.tscn", "body": true},
+	"dragon": {
+		"scene": "res://scenes/characters/enemies/dragon.tscn", "body": true,
+		"phases": [
+			{"name": "windup", "progress": 0.20},
+			{"name": "hit", "progress": 0.93},
+			{"name": "recover", "progress": 0.99},
+		],
+	},
 	"rock_golem": {"scene": "res://scenes/characters/enemies/rock_golem.tscn", "body": true},
 	"goblin": {"scene": "res://scenes/characters/enemies/goblin.tscn", "body": false},
 }
@@ -85,14 +92,15 @@ func _run() -> void:
 	camera.current = true
 
 	ap.play(anim_name)
-	var phases := [
+	var phases: Array = spec.get("phases", [
 		{"name": "windup", "progress": 0.25},
 		{"name": "hit", "progress": 0.55},
 		{"name": "recover", "progress": 0.88},
-	]
+	])
 	var views := [
 		{"name": "front", "direction": Vector3.FORWARD, "up": Vector3.UP},
 		{"name": "side", "direction": Vector3.RIGHT, "up": Vector3.UP},
+		{"name": "top", "direction": Vector3.UP, "up": Vector3.FORWARD},
 	]
 	# 程序化横扫补偿（与 enemy_state_slashing._apply_body_sweep 同公式）：
 	# rig 动画较弱的招式（如巨龙）在捕获中叠加横扫，还原实战表现。
