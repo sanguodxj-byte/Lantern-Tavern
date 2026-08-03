@@ -22,7 +22,11 @@ var hit_start := SLASH_ANIM.ENEMY_HIT_START
 var hit_end := SLASH_ANIM.ENEMY_HIT_END
 var animation_speed_scale := SLASH_ANIM.ENEMY_SPEED_SCALE
 var lunge_speed := 0.0
+var body_sweep_rad := 0.0
 var is_body_attack := false
+## 身体横扫的视觉支点（非人形程序化横扫用，避免旋转物理根节点）
+var _body_pivot: Node3D = null
+var _body_pivot_base_yaw := 0.0
 
 func _enter_tree() -> void:
 	var weapon: WeaponData = enemy.get_attack_weapon()
@@ -37,6 +41,10 @@ func _enter_tree() -> void:
 	hit_end = float(attack_profile.get("hit_end", SLASH_ANIM.ENEMY_HIT_END))
 	animation_speed_scale = float(attack_profile.get("speed_scale", SLASH_ANIM.ENEMY_SPEED_SCALE))
 	lunge_speed = float(attack_profile.get("lunge", 0.0))
+	body_sweep_rad = float(attack_profile.get("sweep", 0.0))
+	_body_pivot = enemy.get_node_or_null("character") as Node3D
+	if _body_pivot != null:
+		_body_pivot_base_yaw = _body_pivot.rotation.y
 	weapon_placeholder = enemy.equipment.weapon_placeholder if enemy.equipment != null else null
 	if weapon_placeholder != null:
 		weapon_placeholder_base = weapon_placeholder.transform
@@ -57,11 +65,13 @@ func _physics_process(delta: float) -> void:
 		windup_elapsed += delta
 		var windup_progress := clampf(windup_elapsed / maxf(attack_windup_seconds, 0.001), 0.0, 1.0)
 		SLASH_ANIM.apply_weapon_arc(weapon_placeholder, weapon_placeholder_base, windup_progress * hit_start, -1.0, hit_start, hit_end)
+		_apply_body_sweep(windup_progress, 0.0)
 		if windup_elapsed < attack_windup_seconds:
 			return
 		_start_strike()
 	var slash_progress := SLASH_ANIM.progress(time_start_slash, slash_duration_msec)
 	SLASH_ANIM.apply_weapon_arc(weapon_placeholder, weapon_placeholder_base, slash_progress, -1.0, hit_start, hit_end)
+	_apply_body_sweep(0.0, slash_progress)
 	var is_active := SLASH_ANIM.is_enemy_hit_active(slash_progress, hit_start, hit_end)
 	if hitbox != null and is_instance_valid(hitbox):
 		enemy.set_attack_hitbox_active(hitbox, is_active)
@@ -75,6 +85,28 @@ func _physics_process(delta: float) -> void:
 		AudioManager.play("slash", enemy.action_audio_stream_player)
 	if slash_progress >= 1.0 and enemy.state_node == self:
 		_finish_attack()
+
+## 程序化身体横扫（如巨龙挥爪）：蓄力向一侧侧摆（windup 阶段），
+## 命中窗口内挥过中线到另一侧，收势回正。rig 动画较弱时补偿横扫视觉。
+func _apply_body_sweep(windup_progress: float, slash_progress: float) -> void:
+	if body_sweep_rad <= 0.001 or _body_pivot == null:
+		return
+	var sweep := body_sweep_rad
+	var yaw := _body_pivot_base_yaw
+	if slash_progress <= 0.001:
+		# 蓄力：从回正侧摆到 -sweep
+		yaw = _body_pivot_base_yaw + lerpf(0.0, -sweep, clampf(windup_progress, 0.0, 1.0))
+	else:
+		# 挥击：从 -sweep 经中线挥到 +sweep，收势回正
+		var strike := clampf((slash_progress - hit_start) / maxf(hit_end - hit_start, 0.01), 0.0, 1.0)
+		var recover := clampf((slash_progress - hit_end) / maxf(1.0 - hit_end, 0.01), 0.0, 1.0)
+		if slash_progress < hit_start:
+			yaw = _body_pivot_base_yaw + lerpf(-sweep, 0.0, strike)
+		elif slash_progress <= hit_end:
+			yaw = _body_pivot_base_yaw + lerpf(-sweep, sweep, strike)
+		else:
+			yaw = _body_pivot_base_yaw + lerpf(sweep, 0.0, recover)
+	_body_pivot.rotation.y = yaw
 
 ## 突进：朝已登记玩家方向推进（仅攻击窗口内，避免穿墙）。
 func _apply_lunge(delta: float) -> void:
@@ -108,10 +140,15 @@ func _start_strike() -> void:
 
 func _finish_attack() -> void:
 	SLASH_ANIM.restore_weapon_arc(weapon_placeholder, weapon_placeholder_base)
+	_restore_body_pivot()
 	if hitbox != null and is_instance_valid(hitbox):
 		enemy.set_attack_hitbox_active(hitbox, false)
 	if enemy.state_node == self:
 		transition_state(Enemy.State.MOVING)
+
+func _restore_body_pivot() -> void:
+	if _body_pivot != null and is_instance_valid(_body_pivot):
+		_body_pivot.rotation.y = _body_pivot_base_yaw
 
 func on_animation_finished(anim_name: String) -> void:
 	if not strike_started or anim_name != slash_animation_name or enemy.state_node != self:
@@ -119,6 +156,7 @@ func on_animation_finished(anim_name: String) -> void:
 	_finish_attack()
 
 func _exit_tree() -> void:
+	_restore_body_pivot()
 	if hitbox != null and is_instance_valid(hitbox):
 		enemy.set_attack_hitbox_active(hitbox, false)
 	if enemy != null and is_instance_valid(enemy) and enemy.animation_player != null:

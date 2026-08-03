@@ -67,3 +67,5 @@ Godot/
 _test_result.txt
 armor_test_result.txt
 
+_dbg_*.gd
+

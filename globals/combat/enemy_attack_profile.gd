@@ -28,11 +28,12 @@ const BODY_PROFILES := {
 		"lunge": 0.0,
 	},
 	"dragon": {
-		"animation": "slash",        # 巨龙横向挥爪扫击
+		"animation": "slash",        # 巨龙横向挥爪扫击（rig 动画较弱，配合程序化横扫 sweep）
 		"windup": 0.80,
 		"hit_start": 0.45,
 		"hit_end": 0.95,
 		"lunge": 0.6,
+		"sweep": 0.7,                # 横扫幅度（弧度）：蓄力侧摆 → 挥过中线
 	},
 	"rock_golem": {
 		"animation": "slash_heavy",  # 石魔像双拳砸地（慢起手、迟命中）
