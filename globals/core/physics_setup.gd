@@ -24,6 +24,9 @@ const LAYER_SCENE_OBJECT: int = 64
 const LAYER_PROJECTILE: int = 128
 const LAYER_DEBRIS: int = 256
 const LAYER_FURNITURE: int = LAYER_SCENE_OBJECT
+# bit9=512: 联机实体法术命中体（ArchitectureEntityHit）——仅供 ray/projectile 命中查询，
+# 玩家/物体移动 mask 不含此层，因此不阻挡移动；与真实敌身(ENEMY)位置分离。
+const LAYER_ENTITY_HIT: int = 512
 
 # ---- 角色胶囊碰撞标准 ----
 # 1.7m 成年男性的肩宽通常约 0.4-0.45m；游戏碰撞胶囊额外保留衣物、
@@ -52,7 +55,7 @@ const MASK_PICKABLE: int = LAYER_ENVIRONMENT | LAYER_SCENE_OBJECT | LAYER_THROWA
 # 可投掷物：碰撞环境+敌人+玩家+门/触发层+场景物体+其他动态物体
 const MASK_THROWABLE: int = LAYER_ENVIRONMENT | LAYER_ENEMY | LAYER_PLAYER | LAYER_TRIGGER | LAYER_SCENE_OBJECT | LAYER_PICKABLE | LAYER_THROWABLE
 # 投射物：碰撞环境+敌人+场景物体（不碰玩家/可拾取物/触发器）
-const MASK_PROJECTILE: int = LAYER_ENVIRONMENT | LAYER_ENEMY | LAYER_SCENE_OBJECT
+const MASK_PROJECTILE: int = LAYER_ENVIRONMENT | LAYER_ENEMY | LAYER_SCENE_OBJECT | LAYER_ENTITY_HIT
 # 选择射线：可拾取物+场景物体
 const MASK_SELECTABLE: int = LAYER_PICKABLE | LAYER_SCENE_OBJECT
 # 视野遮挡层：地形/墙壁+场景物体（柱子/家具等），用于敌人视野检测射线

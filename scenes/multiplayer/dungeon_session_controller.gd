@@ -143,12 +143,14 @@ func spawn_server_entities() -> Array:
 	# 出生点确定性偏移放置：敌人围绕玩家出生点，保证两端一致（服务器权威位置）。
 	# P0-1：服务器移动已接入真实碰撞，敌人生成必须位于【可通行】的玩家出生单元内
 	# （沿单元内小偏移），否则墙体阻挡路径，近战永远无法进入射程（旧的跨墙放置作废）。
+	# 2124 审查后：敌人实体有真实碰撞体（玩家 avatar mask 含 ENEMY layer）——
+	# 偏移必须 > 玩家胶囊半径(0.4)+敌人碰撞半径(0.45)≈0.85m，否则玩家出生即与敌体重叠被夹住。
 	var base: Vector3 = _player_spawn_pos
 	var specs: Array = [
-		{"id": 1001, "kind": "enemy", "label": "Rat", "hp": 12, "off": Vector3(0.8, 0.0, 0.0),
+		{"id": 1001, "kind": "enemy", "label": "Rat", "hp": 12, "off": Vector3(1.2, 0.0, 0.0),
 		 # 掉落表（Phase ⑤ 验证用）：高权重材料，确保击杀必掉落，便于测试断言复制+拾取。
 		 "loot_table": {"goblin_tooth": {"kind": "material", "weight": 10, "min": 1, "max": 2}}},
-		{"id": 1002, "kind": "enemy", "label": "Skeleton", "hp": 20, "off": Vector3(0.0, 0.0, 0.8)},
+		{"id": 1002, "kind": "enemy", "label": "Skeleton", "hp": 20, "off": Vector3(0.0, 0.0, 1.2)},
 	]
 	for s in specs:
 		var eid: int = int(s["id"])

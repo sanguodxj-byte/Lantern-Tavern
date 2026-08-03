@@ -29,8 +29,8 @@ func test_server_spawn_enemy_attaches_authoritative_collision_body() -> void:
 		.override_failure_message("服务器侧 enemy 实体必须装配权威碰撞体").is_not_null()
 	# entity_id meta 设在碰撞体节点（ray/projectile 命中的 collider 直接携带身份）。
 	assert_int(int(body.get_meta("entity_id", 0))).is_equal(1001)
-	# 碰撞层为 ENEMY（可被 projectile/ray 命中）。
-	assert_int(int(body.collision_layer)).is_equal(PhysicsSetup.LAYER_ENEMY)
+	# 命中层专用 bit（512）——玩家移动 mask 不含此 bit，不阻挡玩家逼近敌人。
+	assert_int(int(body.collision_layer)).is_equal(PhysicsSetup.LAYER_ENTITY_HIT)
 	# 碰撞形状为胶囊（人体约定尺寸）。
 	var shape := body.get_node_or_null("EntityCollision") as CollisionShape3D
 	assert_object(shape).is_not_null()

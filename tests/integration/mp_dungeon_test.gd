@@ -218,8 +218,17 @@ func _run_client() -> void:
 	# 而非绝对坐标 > 阈值（dungeon spawn x 可能为负，绝对阈值会恒假）。
 	var local_moved := false
 	var remote_moved := false
+	# 时序鲁棒性：host avatar 由 peer_authorized → rpc_spawn_avatar 物化，可能晚于
+	# 移动循环开始；先等待 avatar 出现并稳定一帧，再捕获 start_ax（避免 start_ax=0
+	# 的物化竞态把「已移动」误判为「未移动」）。
+	var av0: Node3D = null
+	for _w in range(120):
+		await get_tree().process_frame
+		av0 = _bridge.get_avatar(_host_peer)
+		if av0 != null:
+			await get_tree().process_frame
+			break
 	var start_lx: float = _local_player.global_position.x if _local_player != null else 0.0
-	var av0: Node3D = _bridge.get_avatar(_host_peer)
 	var start_ax: float = av0.global_position.x if av0 != null else 0.0
 	for i in range(600):
 		await get_tree().process_frame
@@ -228,7 +237,7 @@ func _run_client() -> void:
 		var ax: float = av.global_position.x if av != null else 0.0
 		if lx - start_lx > MOVE_THRESHOLD:
 			local_moved = true
-		if ax - start_ax > MOVE_THRESHOLD:
+		if av != null and ax - start_ax > MOVE_THRESHOLD:
 			remote_moved = true
 		if local_moved and remote_moved:
 			break

@@ -237,7 +237,9 @@ func _attach_authoritative_entity_body(ent: Node3D, entity_id: int, data: Dictio
 		return  # 掉落/宝箱/门不可被法术命中（保持只读表现代理）
 	var body := StaticBody3D.new()
 	body.name = "AuthoritativeBody"
-	body.collision_layer = PhysicsSetup.LAYER_ENEMY
+	# 命中层专用 bit（512）：ray intersect_ray / projectile body_entered 命中它，
+	# 但玩家/物体移动 mask 不含此 bit → 不阻挡玩家移动（与真实敌身 ENEMY 位置分离）。
+	body.collision_layer = PhysicsSetup.LAYER_ENTITY_HIT
 	body.collision_mask = 0
 	body.set_meta("entity_id", entity_id)
 	var shape := CollisionShape3D.new()
