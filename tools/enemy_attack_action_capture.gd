@@ -94,9 +94,17 @@ func _run() -> void:
 		{"name": "front", "direction": Vector3.FORWARD, "up": Vector3.UP},
 		{"name": "side", "direction": Vector3.RIGHT, "up": Vector3.UP},
 	]
+	# 程序化横扫补偿（与 enemy_state_slashing._apply_body_sweep 同公式）：
+	# rig 动画较弱的招式（如巨龙）在捕获中叠加横扫，还原实战表现。
+	var sweep := float(profile.get("sweep", 0.0))
+	var hit_start := float(profile.get("hit_start", 0.34))
+	var hit_end := float(profile.get("hit_end", 0.86))
+	var character_node := creature.get_node_or_null("character") as Node3D
+	var base_yaw := character_node.rotation.y if character_node != null else 0.0
 	for phase in phases:
 		ap.seek(anim.length * float(phase["progress"]), true)
 		ap.advance(0.0)
+		_apply_capture_sweep(character_node, base_yaw, sweep, float(phase["progress"]), hit_start, hit_end)
 		await process_frame
 		var bounds := _global_bounds(creature)
 		if bounds.size.length_squared() <= 0.01:
@@ -121,6 +129,23 @@ func _run() -> void:
 	quit(1 if _had_error else 0)
 
 var _had_error := false
+
+## 与 enemy_state_slashing._apply_body_sweep 同公式的捕获版横扫。
+func _apply_capture_sweep(pivot: Node3D, base_yaw: float, sweep: float, progress_value: float, hit_start: float, hit_end: float) -> void:
+	if pivot == null or sweep <= 0.001:
+		return
+	var yaw := base_yaw
+	if progress_value <= 0.001:
+		yaw = base_yaw
+	elif progress_value < hit_start:
+		yaw = base_yaw + lerpf(-sweep, 0.0, clampf(progress_value / maxf(hit_start, 0.001), 0.0, 1.0))
+	elif progress_value <= hit_end:
+		var strike := clampf((progress_value - hit_start) / maxf(hit_end - hit_start, 0.01), 0.0, 1.0)
+		yaw = base_yaw + lerpf(-sweep, sweep, strike)
+	else:
+		var recover := clampf((progress_value - hit_end) / maxf(1.0 - hit_end, 0.01), 0.0, 1.0)
+		yaw = base_yaw + lerpf(sweep, 0.0, recover)
+	pivot.rotation.y = yaw
 
 func _add_environment() -> void:
 	var environment := Environment.new()
