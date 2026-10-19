@@ -1,12 +1,20 @@
+@tool
 class_name ExtractionPortal
 extends StaticBody3D
+## @tool：编辑器内也构建视觉（_build_visual 只读操作），便于编辑器视口直接
+## 预览与 MCP 视口截图验收；运行时行为不受影响（物理/计时仅在游戏内触发）。
 
 ## 体素风撤离传送门。
-## 用 BoxMesh 组合搭建（石质底座 + 四角发光符文柱 + 顶部方形光环 + 顶光），
-## 取代原先的扁平 CylinderMesh 圆盘。collision_layer = LAYER_SCENE_OBJECT(64)，
-## 使玩家 SelectRaycast(mask=72) 可命中并在准星悬停时显示交互提示。
-## 玩家进入中心区域后按 [E] 开始撤离引导。引导完成前不会结算撤离；
-## 再次交互、离开区域或受到伤害都会取消，避免战斗中无风险秒退。
+## 用 BoxMesh 组合搭建（石质底座 + 四角发光符文柱 + 顶部方形光环 + 顶光）。
+## collision_layer = LAYER_SCENE_OBJECT(64)，使玩家 SelectRaycast(mask=72) 可命中。
+##
+## 撤离机制（2026-08-06 用户裁定：逃离塔科夫式自动撤离，取代按住引导）：
+##   * 玩家踏入撤离区域【自动】开始撤离倒计时——无需交互、无需按住；
+##   * 区域内可自由移动与战斗，倒计时不受影响（受击不取消）；
+##   * 离开撤离区域 → 该玩家倒计时重置（重新进入重新计时）；
+##   * 倒计时结束 → 发出 extraction_requested（结算离场由调用方处理）；
+##   * per-player 独立计时：多名玩家同时在场各自倒计时，互不影响。
+## 术语见 docs/术语表.md「撤离引导」。
 
 signal extraction_requested(player: Player)
 signal extraction_started(player: Player, duration: float)
@@ -27,7 +35,7 @@ const PORTAL_LIGHT_IDLE := 0.9
 const PORTAL_LIGHT_ACTIVE_BOOST := 0.9
 
 @export var interaction_name := "撤离点"
-@export var interaction_verb := "开始撤离引导"
+@export var interaction_verb := "进入区域自动撤离"
 @export var normal_extraction_duration := 1.5
 @export var heavy_extraction_duration := 2.0
 
@@ -35,13 +43,11 @@ var _stone_mat: ShaderMaterial
 var _rune_mat: ShaderMaterial
 var _portal_core: MeshInstance3D = null
 var _portal_light: OmniLight3D = null
-var _players_in_area: Array[Player] = []
-var _active_player: Player = null
-var _active_duration := 0.0
-var _elapsed := 0.0
-var _start_position := Vector3.ZERO
-var _previous_movement_input_enabled := true
-var _completed := false
+## per-player 撤离倒计时状态：player_id -> {"duration": float, "elapsed": float}
+## （2026-08-06：per-peer 独立计时，多玩家互不影响；替代旧单 _active_player 引导状态）。
+var _extract_state: Dictionary = {}
+## 已完成撤离的玩家（per-player 完成保护，替代旧全局 _completed）。
+var _completed_players: Dictionary = {}
 
 
 func _ready() -> void:
@@ -52,14 +58,11 @@ func _ready() -> void:
 	_build_visual()
 	_add_pillar_collision()
 	_add_trigger_area()
-	if GameEvents != null and not GameEvents.player_hurt.is_connected(_on_player_hurt):
-		GameEvents.player_hurt.connect(_on_player_hurt)
 
 
 func _exit_tree() -> void:
-	_restore_player_movement()
-	_active_player = null
-	_players_in_area.clear()
+	_extract_state.clear()
+	_completed_players.clear()
 
 
 func _ensure_materials() -> void:
@@ -99,7 +102,7 @@ func _build_visual() -> void:
 	# 石质底座平台 + 边缘收边
 	_box("PortalBase", Vector3(1.7, 0.12, 1.7), Vector3(0, 0.06, 0), _stone_mat)
 	_box("PortalBaseRim", Vector3(1.8, 0.04, 1.8), Vector3(0, 0.14, 0), _stone_mat)
-	# 中心发光地砖是引导区域的视觉锚点，踏入本身不触发撤离。
+	# 中心发光地砖是撤离区域的视觉锚点。
 	_box("PortalCoreTile", Vector3(1.0, 0.025, 1.0), Vector3(0, 0.1725, 0), _rune_mat)
 	# 四角石柱承重，符文仅作为贴合柱面的发光嵌条。
 	var corners := [
@@ -174,93 +177,77 @@ func _add_trigger_area() -> void:
 
 func _on_body_entered(body: Node3D) -> void:
 	var player := body as Player
-	if player != null and not _players_in_area.has(player):
-		_players_in_area.append(player)
+	if player == null or _completed_players.has(player.get_instance_id()):
+		return
+	# 2026-08-06（用户裁定）：踏入区域即自动开始撤离倒计时（无需交互）。
+	if _extract_state.has(player.get_instance_id()):
+		return
+	var duration := get_required_duration()
+	_extract_state[player.get_instance_id()] = {
+		"player": player, "duration": duration, "elapsed": 0.0,
+	}
+	_set_visual_progress(0.0)
+	extraction_started.emit(player, duration)
+	extraction_progress.emit(player, 0.0, duration)
 
 
 func _on_body_exited(body: Node3D) -> void:
 	var player := body as Player
 	if player == null:
 		return
-	_players_in_area.erase(player)
-	if player == _active_player:
-		cancel_extraction("left_area")
+	# 离开区域 → 该玩家倒计时重置（重新进入重新计时）。
+	if _extract_state.erase(player.get_instance_id()):
+		extraction_cancelled.emit(player, "left_area")
+	_update_visual_progress()
 
 
-func interact(actor: Node = null) -> void:
-	var player_node: Node3D = actor if actor is Player else null
-	if player_node == null:
-		# P1-5：统一玩家解析（actor 缺省时按单机全局；联机交互由会话权威处理）。
-		player_node = GameState.resolve_player_node(0) as Node3D
-	var player := player_node as Player
-	if player == null or _completed:
-		return
-	if player == _active_player:
-		cancel_extraction("manual")
-		return
-	if not _players_in_area.has(player):
-		extraction_cancelled.emit(player, "not_inside")
-		return
-	begin_extraction(player)
-
-
-func begin_extraction(player: Player) -> bool:
-	if player == null or _completed or _active_player != null or not _players_in_area.has(player):
-		return false
-	_active_player = player
-	_active_duration = get_required_duration()
-	_elapsed = 0.0
-	_start_position = _player_position(player)
-	_previous_movement_input_enabled = player.movement_input_enabled
-	player.movement_input_enabled = false
-	player.velocity.x = 0.0
-	player.velocity.z = 0.0
-	interaction_verb = "取消撤离引导"
-	_set_visual_progress(0.0)
-	extraction_started.emit(player, _active_duration)
-	extraction_progress.emit(player, 0.0, _active_duration)
-	return true
+func interact(_actor: Node = null) -> void:
+	# 2026-08-06（用户裁定）：撤离不再需要交互——踏入区域自动倒计时。
+	# 保留空实现以兼容旧调用方（Player 交互提示仍显示区域信息）。
+	pass
 
 
 func _physics_process(delta: float) -> void:
 	advance_extraction(delta)
 
 
+## 推进所有在场玩家的撤离倒计时（per-player 独立）。
 func advance_extraction(delta: float) -> void:
-	if _active_player == null or not is_instance_valid(_active_player) or delta <= 0.0:
+	if delta <= 0.0 or _extract_state.is_empty():
 		return
-	if _player_position(_active_player).distance_squared_to(_start_position) > 0.04:
-		cancel_extraction("moved")
-		return
-	_elapsed = minf(_elapsed + delta, _active_duration)
-	var progress := clampf(_elapsed / maxf(_active_duration, 0.001), 0.0, 1.0)
-	_set_visual_progress(progress)
-	extraction_progress.emit(_active_player, progress, maxf(0.0, _active_duration - _elapsed))
-	if progress >= 1.0:
-		complete_extraction()
+	var completed: Array = []
+	for key in _extract_state.keys():
+		var st: Dictionary = _extract_state[key]
+		var player: Player = st.get("player")
+		if player == null or not is_instance_valid(player):
+			completed.append(key)
+			continue
+		var duration: float = float(st.get("duration", 1.5))
+		st["elapsed"] = minf(float(st.get("elapsed", 0.0)) + delta, duration)
+		var progress := clampf(float(st["elapsed"]) / maxf(duration, 0.001), 0.0, 1.0)
+		extraction_progress.emit(player, progress, maxf(0.0, duration - float(st["elapsed"])))
+		if progress >= 1.0:
+			completed.append(key)
+	for key in completed:
+		var st: Dictionary = _extract_state.get(key, {})
+		_extract_state.erase(key)
+		var player: Player = st.get("player")
+		if player != null and is_instance_valid(player):
+			complete_extraction(player)
+	_update_visual_progress()
 
 
-func cancel_extraction(reason: String = "manual") -> void:
-	if _active_player == null:
+func complete_extraction(player: Player) -> void:
+	# per-player 完成保护：同一玩家只结算一次，其他玩家可独立完成。
+	var pid := player.get_instance_id()
+	if _completed_players.has(pid):
 		return
-	var player := _active_player
-	_restore_player_movement()
-	_clear_active_state()
-	_set_visual_progress(0.0)
-	extraction_cancelled.emit(player, reason)
-
-
-func complete_extraction() -> void:
-	if _active_player == null:
-		return
-	var player := _active_player
-	_completed = true
-	_restore_player_movement()
-	_clear_active_state()
+	_completed_players[pid] = true
 	_set_visual_progress(1.0)
 	extraction_requested.emit(player)
 
 
+## 玩家所需撤离时长（按当前负重：容量 70% 以上用 heavy 档）。
 func get_required_duration() -> float:
 	var used := 0
 	var limit := 0
@@ -277,35 +264,47 @@ static func duration_for_load(used: int, limit: int, normal_duration: float = 1.
 	return maxf(normal_duration, 0.1)
 
 
+## 是否有玩家正在撤离倒计时中。
 func is_extracting() -> bool:
-	return _active_player != null
+	return not _extract_state.is_empty()
 
 
-func get_extraction_progress() -> float:
-	if _active_player == null:
+## 指定玩家的撤离进度（0..1）；无参时返回在场最高进度（兼容旧调用）。
+func get_extraction_progress(player: Player = null) -> float:
+	if player == null:
+		var max_progress := 0.0
+		for st in _extract_state.values():
+			var duration: float = float(st.get("duration", 1.5))
+			max_progress = maxf(max_progress, clampf(float(st.get("elapsed", 0.0)) / maxf(duration, 0.001), 0.0, 1.0))
+		return max_progress
+	var st: Dictionary = _extract_state.get(player.get_instance_id(), {})
+	if st.is_empty():
 		return 0.0
-	return clampf(_elapsed / maxf(_active_duration, 0.001), 0.0, 1.0)
+	var dur: float = float(st.get("duration", 1.5))
+	return clampf(float(st.get("elapsed", 0.0)) / maxf(dur, 0.001), 0.0, 1.0)
 
 
-func _on_player_hurt(player: Player) -> void:
-	if player != null and player == _active_player:
-		cancel_extraction("hurt")
+## 取消指定玩家倒计时（默认取消全部）。兼容旧调用方/工具。
+func cancel_extraction(reason: String = "manual", player: Player = null) -> void:
+	if player != null:
+		if _extract_state.erase(player.get_instance_id()):
+			extraction_cancelled.emit(player, reason)
+		return
+	for key in _extract_state.keys():
+		var st: Dictionary = _extract_state[key]
+		_extract_state.erase(key)
+		var p: Player = st.get("player")
+		if p != null and is_instance_valid(p):
+			extraction_cancelled.emit(p, reason)
+	_update_visual_progress()
 
 
-func _restore_player_movement() -> void:
-	if _active_player != null and is_instance_valid(_active_player):
-		_active_player.movement_input_enabled = _previous_movement_input_enabled
-
-
-func _player_position(player: Player) -> Vector3:
-	return player.global_position if player.is_inside_tree() else player.position
-
-
-func _clear_active_state() -> void:
-	_active_player = null
-	_active_duration = 0.0
-	_elapsed = 0.0
-	interaction_verb = "开始撤离引导"
+func _update_visual_progress() -> void:
+	var max_progress := 0.0
+	for st in _extract_state.values():
+		var duration: float = float(st.get("duration", 1.5))
+		max_progress = maxf(max_progress, clampf(float(st.get("elapsed", 0.0)) / maxf(duration, 0.001), 0.0, 1.0))
+	_set_visual_progress(max_progress)
 
 
 func _set_visual_progress(progress: float) -> void:

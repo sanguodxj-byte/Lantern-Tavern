@@ -129,3 +129,20 @@ static func lighting_controller() -> Node:
 static func settings() -> Node:
 	var r := _root()
 	return r.get_node_or_null("Settings") if r != null else null
+
+# ── E1/E4（1327 审查）── 补齐缺失访问器 ──────────────────
+static func ui_navigation() -> Node:
+	var r := _root()
+	return r.get_node_or_null("UiNavigation") if r != null else null
+
+static func save_manager() -> Node:
+	var r := _root()
+	return r.get_node_or_null("SaveManager") if r != null else null
+
+static func performance_budget() -> Node:
+	var r := _root()
+	return r.get_node_or_null("PerformanceBudget") if r != null else null
+
+static func multiplayer_session() -> Node:
+	var r := _root()
+	return r.get_node_or_null("MultiplayerSession") if r != null else null

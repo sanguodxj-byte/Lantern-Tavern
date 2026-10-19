@@ -16,6 +16,12 @@ const SES := preload("res://globals/combat/status_effect_system.gd")
 const Service := preload("res://globals/core/service.gd")
 const COMBAT_PROGRESSION := preload("res://globals/combat/combat_progression.gd")
 const DEFAULT_DETECTION_RANGE := 5.0
+## 潜行警觉：进入战斗（被攻击或目睹同伴被攻击）后的扩大检测距离（米）。
+const ALERTED_DETECTION_RANGE := 9.0
+## 潜行警觉：进入战斗后视野锥半角扩大为 90°（正前方 180° 视野）。
+const ALERTED_VISION_HALF_ANGLE_DEGREES := 90.0
+## 目睹同伴被攻击的响应距离（米）：此距离内且视线畅通的其他敌人会立即进入战斗。
+const ALERT_RESPONSE_DISTANCE := 10.0
 ## 满暗蚀全图追击倍率：补偿远距出生点与低速敌人的长距离追击时间。
 const DARK_EROSION_HUNT_SPEED_MULTIPLIER := 4.0
 ## 视野射线高度（米）：从角色中心质量发射，避免贴地射线漏检矮墙
@@ -110,6 +116,8 @@ var pushback_force := Vector3.ZERO
 var state: State
 var state_node: EnemyState
 var _targeting: RefCounted = null
+## 潜行警觉：已进入战斗（被攻击或目睹同伴被攻击）后扩大视野范围。
+var is_alerted := false
 var movement_controller: RefCounted = null
 var time_since_last_attack: int
 var combat_debuffs: Dictionary = {}
@@ -650,6 +658,9 @@ func impale(thrown_item: ThrownItem, item_basis: Basis) -> void:
 		state_data.set_impact_direction(hit_direction)
 		switch_state(State.BLOCKING, state_data)
 	screamed.emit()
+	if thrown_item != null and thrown_item.source is Player:
+		is_alerted = true
+		_broadcast_combat_alert(thrown_item.source as Player)
 
 func try_receive_furniture_impact(thrown_item: ThrownItem) -> void:
 	var blocked_by_shield := equipment.has_shield()
@@ -668,6 +679,8 @@ func try_receive_thrown_enemy_impact(source_enemy: Enemy, source_player: Player 
 	if source_player != null:
 		player = source_player
 		register_kill_credit(source_player, not blocked_by_shield)
+		is_alerted = true
+		_broadcast_combat_alert(source_player)
 	screamed.emit()
 	var hit_direction := source_enemy.global_position.direction_to(global_position) if source_enemy != null else Vector3.ZERO
 	var data := EnemyStateData.new().set_damage(6).set_impact_direction(hit_direction).set_knockback_force(5.0)
@@ -716,6 +729,14 @@ func is_ai_active() -> bool:
 		return true
 	return global_position.distance_squared_to(target.global_position) <= AI_SIM_RADIUS_M * AI_SIM_RADIUS_M
 
+## 潜行警觉：进入战斗（被攻击或目睹同伴被攻击）后扩大视野范围。
+func get_effective_detection_range() -> float:
+	return ALERTED_DETECTION_RANGE if is_alerted else detection_range
+
+## 潜行警觉：扩大视野锥半角（默认 60° → 警觉 90°）。
+func get_effective_vision_half_angle() -> float:
+	return ALERTED_VISION_HALF_ANGLE_DEGREES if is_alerted else vision_half_angle_degrees
+
 func is_target_in_facing_cone(target: Node3D) -> bool:
 	if target == null or not is_instance_valid(target):
 		return false
@@ -727,7 +748,7 @@ func is_target_in_facing_cone(target: Node3D) -> bool:
 	forward.y = 0.0
 	if forward.length_squared() <= 0.000001:
 		return false
-	return forward.normalized().dot(offset.normalized()) >= cos(deg_to_rad(vision_half_angle_degrees))
+	return forward.normalized().dot(offset.normalized()) >= cos(deg_to_rad(get_effective_vision_half_angle()))
 
 func is_target_visible() -> bool:
 	return _targeting != null and _targeting.is_visible()
@@ -861,6 +882,41 @@ func is_player_within_reach() -> bool:
 		return false
 	return weapon_reach_raycast.is_colliding()
 
+## 进入战斗警觉：被攻击或目睹同伴被攻击时调用，立即锁定攻击者为目标并扩大视野。
+func alert_to_combat(source_player: Player, victim: Node3D) -> void:
+	if source_player == null or not is_instance_valid(source_player):
+		return
+	if not is_instance_valid(self) or state == State.DYING or state == State.DEAD:
+		return
+	if state_node != null and not is_instance_valid(state_node):
+		return
+	# 只响应视野内目睹的攻击：距离 + 视野锥 + 视线三重校验。
+	if victim == null or not is_instance_valid(victim):
+		return
+	var distance := global_position.distance_to(victim.global_position)
+	if distance > ALERT_RESPONSE_DISTANCE:
+		return
+	if not is_target_in_facing_cone(victim):
+		return
+	if not has_line_of_sight_to(victim):
+		return
+	is_alerted = true
+	_player = source_player
+	if _targeting != null:
+		_targeting.mark_engaged_target(source_player)
+
+## 受伤后广播战斗警报：通知组内其他能目睹本受害者的敌人立即响应。
+func _broadcast_combat_alert(source_player: Player) -> void:
+	if source_player == null or not is_instance_valid(source_player):
+		return
+	if not is_inside_tree():
+		return
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if enemy == self or not is_instance_valid(enemy):
+			continue
+		if enemy.has_method("alert_to_combat"):
+			enemy.alert_to_combat(source_player, self)
+
 func try_receive_hit(source_player: Player, damage: int) -> void:
 	if state_node == null or not is_instance_valid(state_node) or state_node.is_queued_for_deletion():
 		return
@@ -871,6 +927,8 @@ func try_receive_hit(source_player: Player, damage: int) -> void:
 	register_kill_credit(source_player, damage_applied)
 	if _targeting != null:
 		_targeting.mark_engaged_target(source_player)
+	is_alerted = true
+	_broadcast_combat_alert(source_player)
 	screamed.emit()
 	var hit_direction := source_player.global_position.direction_to(global_position)
 	var data := EnemyStateData.new().set_damage(damage).set_impact_direction(hit_direction)
@@ -906,6 +964,8 @@ func try_receive_hit_result(source_player: Player, result) -> void:
 		)
 	if _targeting != null:
 		_targeting.mark_engaged_target(source_player)
+	is_alerted = true
+	_broadcast_combat_alert(source_player)
 	screamed.emit()
 	var hit_direction := source_player.global_position.direction_to(global_position)
 	# 若 result 含向量击退冲量，优先使用其方向
@@ -950,6 +1010,8 @@ func try_receive_kick(source_player: Player) -> void:
 	register_kill_credit(source_player)
 	if _targeting != null:
 		_targeting.mark_engaged_target(source_player)
+	is_alerted = true
+	_broadcast_combat_alert(source_player)
 	screamed.emit()
 	var hit_direction := source_player.global_position.direction_to(global_position)
 	var data := EnemyStateData.new().set_impact_direction(hit_direction)

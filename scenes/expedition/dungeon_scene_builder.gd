@@ -38,6 +38,10 @@ const TERRAIN_WALL_BASE_FILL := 0.24
 const TORCH_VISUAL_TOP_LOCAL_Y := 1.3
 const TORCH_CEILING_CLEARANCE := 0.1
 const TORCH_MIN_ROOT_HEIGHT_ABOVE_FLOOR := 0.8
+# 2109 审查 P1-1：导航源采样容量上限——地板/障碍面片超出后显式标记
+# navigation_complete=false（调用方降级人口生成），而非静默截断。
+const MAX_FLOOR_NAV_SAMPLES := 2048
+const MAX_OBSTACLE_NAV_SAMPLES := 4096
 const HAZARD_NAV_FOOTPRINT_M := {
 	"spikes": 2.25,
 	"acid": 2.25,
@@ -108,6 +112,10 @@ func build_collision_only(layout: DungeonLayout, parent: Node3D) -> DungeonBuild
 	result.collision_root = _new_root("CollisionRoot", parent)
 	_build_terrain(layout, result)
 	_build_collisions(layout, result)
+	for composition in layout.room_composition_specs:
+		if String(composition.get("composition_kind", "")) != "cliff":
+			continue
+		_build_cliff_geometry(layout, result, int(composition.get("room_index", -1)), composition)
 	return result
 
 # ── terrain Transform 收集（阶段 9 条 1 步2） ─────────────────────
@@ -123,6 +131,7 @@ func _build_terrain(layout: DungeonLayout, result: DungeonBuildResult) -> void:
 	var offset_x: float = -(float(grid_width) * tile_size) / 2.0
 	var offset_z: float = -(float(grid_height) * tile_size) / 2.0
 	var dungeon_offset := Vector3(offset_x, 0, offset_z)
+	var cliff_pit_cells := _collect_cliff_pit_cells(layout)
 	# 一个连通墙体只允许一个整数高度。局部传播会在厚墙或闭合外墙中留下
 	# 高度台阶，因此先收集 4 邻接组件，再把相邻可行走格的最高层写回整组。
 	result.wall_h_map = _build_wall_height_map(layout, grid, grid_width, grid_height)
@@ -137,7 +146,7 @@ func _build_terrain(layout: DungeonLayout, result: DungeonBuildResult) -> void:
 			var cell_pos := dungeon_offset + Vector3(x * tile_size, 0, y * tile_size)
 			# floor 只覆盖可行走格。墙格虽然有视觉地板 transform 的历史产物，
 			# 但不能进入导航源，否则导航多边形会落在墙体/角落内部。
-			if _is_walkable_navigation_cell(cell_type):
+			if _is_walkable_navigation_cell(cell_type) and not cliff_pit_cells.has(Vector2i(x, y)):
 				var ft := Transform3D()
 				ft.origin = cell_pos - Vector3(0, 0.05, 0)
 				result.floor_transforms.append(ft)
@@ -1062,12 +1071,12 @@ func _build_focus_geometry(root: Node3D, focus_kind: String) -> void:
 			accent = Color(0.88, 0.62, 0.18)
 			_add_focus_cylinder(root, "TreasureStand", 0.52, 0.16, 0.08, _focus_material(secondary))
 			_add_focus_box(root, "TreasureMark", Vector3(0.42, 0.12, 0.42), Vector3(0.0, 0.14, 0.0), _focus_material(accent, true))
-		"cliff_overlook":
-			accent = Color(0.76, 0.34, 0.14)
-			secondary = Color(0.24, 0.30, 0.34)
-			_add_focus_box(root, "CliffMarker", Vector3(1.25, 0.16, 0.32), Vector3(0.0, 0.10, 0.0), _focus_material(secondary, false, "BARONY_WALL"))
-			_add_focus_box(root, "CliffMarkerEdge", Vector3(0.32, 0.28, 0.52), Vector3(-0.48, 0.20, 0.0), _focus_material(accent, true))
-			_add_focus_box(root, "CliffMarkerEdge", Vector3(0.32, 0.28, 0.52), Vector3(0.48, 0.20, 0.0), _focus_material(accent, true))
+		"cliff_pit":
+			accent = Color(0.90, 0.22, 0.10)
+			secondary = Color(0.18, 0.10, 0.14)
+			_add_focus_box(root, "CliffPitMarker", Vector3(1.25, 0.16, 0.32), Vector3(0.0, 0.10, 0.0), _focus_material(secondary, false, "BARONY_BROKEN_WALL"))
+			_add_focus_box(root, "CliffPitMarkerEdge", Vector3(0.32, 0.28, 0.52), Vector3(-0.48, 0.20, 0.0), _focus_material(accent, true))
+			_add_focus_box(root, "CliffPitMarkerEdge", Vector3(0.32, 0.28, 0.52), Vector3(0.48, 0.20, 0.0), _focus_material(accent, true))
 		"waystone":
 			accent = Color(0.36, 0.56, 0.68)
 			_add_focus_cylinder(root, "Waystone", 0.28, 0.55, 0.18, _focus_material(accent, true))
@@ -1155,33 +1164,36 @@ func _build_room_compositions(layout: DungeonLayout, result: DungeonBuildResult)
 
 
 func _build_cliff_geometry(layout: DungeonLayout, result: DungeonBuildResult, room_index: int, spec: Dictionary) -> void:
-	var cliff_height := float(spec.get("elevation_m", 1.0))
-	for cell_value in spec.get("cliff_cells", spec.get("platform_cells", [])):
+	var pit_depth := maxf(float(spec.get("pit_depth_m", spec.get("depth_m", 1.5))), 0.5)
+	for cell_value in spec.get("pit_cells", spec.get("cliff_cells", [])):
 		var cliff_cell: Vector2i = cell_value
-		var base_position := _cell_to_world(cliff_cell, layout) - Vector3(0.0, layout.floor_height_at(cliff_cell), 0.0)
-		var top_position := base_position + Vector3(0.0, cliff_height * 0.5, 0.0)
-		_add_composition_box(result, "CliffTop_%d_%s" % [room_index, str(cliff_cell)], top_position,
-			Vector3(layout.tile_size, cliff_height, layout.tile_size),
-			_composition_material("cliff_top", layout.tile_size), "platform", PhysicsSetup.LAYER_ENVIRONMENT)
+		var bottom_position := _cell_to_world(cliff_cell, layout)
+		bottom_position.y = -pit_depth - 0.05
+		var bottom := _add_composition_box(result, "CliffPitBottom_%d_%s" % [room_index, str(cliff_cell)], bottom_position,
+			Vector3(layout.tile_size, 0.1, layout.tile_size),
+			_composition_material("cliff_pit_bottom", layout.tile_size), "cliff_pit_bottom", PhysicsSetup.LAYER_ENVIRONMENT)
+		bottom.set_meta("cliff_pit", true)
 	for edge in spec.get("cliff_edges", spec.get("boundary_edges", [])):
-		_build_cliff_boundary(layout, result, room_index, edge, cliff_height)
+		_build_cliff_pit_wall(layout, result, room_index, edge, pit_depth)
 
 
-func _build_cliff_boundary(layout: DungeonLayout, result: DungeonBuildResult, room_index: int, edge: Dictionary, elevation: float) -> void:
+func _build_cliff_pit_wall(layout: DungeonLayout, result: DungeonBuildResult, room_index: int, edge: Dictionary, pit_depth: float) -> void:
 	var cell: Vector2i = edge.get("cell", Vector2i(-1, -1))
 	var direction: Vector2i = edge.get("dir", Vector2i.ZERO)
 	if cell.x < 0 or direction == Vector2i.ZERO:
 		return
 	var depth := 0.18
-	var base_position := _cell_to_world(cell, layout) - Vector3(0.0, layout.floor_height_at(cell), 0.0)
+	var base_position := _cell_to_world(cell, layout)
+	base_position.y = 0.0
 	var outward := Vector3(float(direction.x), 0.0, float(direction.y))
-	var center := base_position + outward * (layout.tile_size * 0.5 + depth * 0.5) + Vector3(0.0, elevation * 0.5, 0.0)
-	var size := Vector3(depth, elevation, layout.tile_size) if direction.x != 0 else Vector3(layout.tile_size, elevation, depth)
-	_add_composition_box(result, "CliffFace_%d_%s_%s" % [room_index, str(cell), str(direction)], center,
-		size, _composition_material("cliff_face", layout.tile_size), "boundary", PhysicsSetup.LAYER_ENVIRONMENT)
+	var center := base_position + outward * (layout.tile_size * 0.5 + depth * 0.5) + Vector3(0.0, -pit_depth * 0.5, 0.0)
+	var size := Vector3(depth, pit_depth, layout.tile_size) if direction.x != 0 else Vector3(layout.tile_size, pit_depth, depth)
+	var wall := _add_composition_box(result, "CliffPitWall_%d_%s_%s" % [room_index, str(cell), str(direction)], center,
+		size, _composition_material("cliff_pit_wall", layout.tile_size), "cliff_pit_wall", PhysicsSetup.LAYER_ENVIRONMENT)
+	wall.set_meta("cliff_pit", true)
 
 func _add_composition_box(result: DungeonBuildResult, name: String, pos: Vector3, size: Vector3,
-		material: Material, topdown_kind: String, collision_layer: int) -> void:
+		material: Material, topdown_kind: String, collision_layer: int) -> MeshInstance3D:
 	var mesh_instance := MeshInstance3D.new()
 	mesh_instance.name = name
 	mesh_instance.set_meta("topdown_kind", topdown_kind)
@@ -1191,8 +1203,9 @@ func _add_composition_box(result: DungeonBuildResult, name: String, pos: Vector3
 	mesh_instance.mesh = mesh
 	mesh_instance.position = pos
 	mesh_instance.material_override = material
-	result.decor_root.add_child(mesh_instance)
-	result.streamed_visual_nodes.append(mesh_instance)
+	if result.decor_root != null:
+		result.decor_root.add_child(mesh_instance)
+		result.streamed_visual_nodes.append(mesh_instance)
 	var body := StaticBody3D.new()
 	body.name = name + "Collision"
 	body.set_meta("composition_kind", topdown_kind)
@@ -1206,6 +1219,7 @@ func _add_composition_box(result: DungeonBuildResult, name: String, pos: Vector3
 	body.add_child(collision)
 	result.collision_root.add_child(body)
 	result.streamed_physics_nodes.append(body)
+	return mesh_instance
 
 func _build_elevation_boundary(layout: DungeonLayout, result: DungeonBuildResult, room_index: int, edge: Dictionary, elevation: float) -> void:
 	var cell: Vector2i = edge.get("cell", Vector2i(-1, -1))
@@ -1226,9 +1240,9 @@ func _composition_material(kind: String, tile_size: float) -> Material:
 			tile_name = "BARONY_FLOOR"
 		"boundary":
 			tile_name = "BARONY_WALL"
-		"cliff_top":
-			tile_name = "BARONY_PLATFORM"
-		"cliff_face":
+		"cliff_pit_bottom":
+			tile_name = "BARONY_BROKEN_WALL"
+		"cliff_pit_wall":
 			tile_name = "BARONY_WALL"
 		"cover":
 			tile_name = "BARONY_WALL"
@@ -1238,11 +1252,11 @@ func _composition_material(kind: String, tile_size: float) -> Material:
 		"roughness": 0.94,
 		"voxel_base_fill": 0.12,
 	}
-	if kind == "cliff_top":
-		profile["albedo_tint"] = Color(0.42, 0.48, 0.48)
-		profile["voxel_base_fill"] = 0.14
-	elif kind == "cliff_face":
-		profile["albedo_tint"] = Color(0.27, 0.30, 0.32)
+	if kind == "cliff_pit_bottom":
+		profile["albedo_tint"] = Color(0.20, 0.12, 0.14)
+		profile["voxel_base_fill"] = 0.08
+	elif kind == "cliff_pit_wall":
+		profile["albedo_tint"] = Color(0.28, 0.20, 0.22)
 		profile["voxel_base_fill"] = 0.10
 	return DungeonTerrainConfig.make_terrain_mat(tile_name, Vector2(tile_size, tile_size), profile)
 
@@ -1528,6 +1542,11 @@ func _is_walkable_navigation_cell(cell_type: int) -> bool:
 func _build_navigation_mesh(layout: DungeonLayout, result: DungeonBuildResult, parent: Node3D) -> void:
 	if result == null or result.floor_transforms.is_empty() or parent == null:
 		return
+	# 2109 审查 P1-1：地板导航采样超出容量上限时显式标记截断（headless 下同样生效，
+	# 保证契约在无窗口测试中可断言），不再静默丢弃尾部房间——调用方据此降级人口生成，
+	# 而非在导航不可达处生成敌人。
+	if result.floor_transforms.size() > MAX_FLOOR_NAV_SAMPLES:
+		result.navigation_complete = false
 	# headless/gdUnit 下 bake 偶发 native crash；生产有窗口时再烘焙
 	if DisplayServer.get_name() == "headless":
 		return
@@ -1548,8 +1567,7 @@ func _build_navigation_mesh(layout: DungeonLayout, result: DungeonBuildResult, p
 	var floor_faces := PackedVector3Array()
 	var navigation_excluded_cells := _collect_navigation_excluded_cells(layout)
 	var raised_cells := _collect_raised_cells(layout)
-	var max_floor_samples := 2048
-	var floor_count := mini(result.floor_transforms.size(), max_floor_samples)
+	var floor_count := mini(result.floor_transforms.size(), MAX_FLOOR_NAV_SAMPLES)
 	for i in range(floor_count):
 		var t: Transform3D = result.floor_transforms[i]
 		var floor_cell := _world_to_cell(t.origin, layout)
@@ -1585,19 +1603,25 @@ func _build_navigation_mesh(layout: DungeonLayout, result: DungeonBuildResult, p
 		NavigationServer3D.bake_from_source_geometry_data_async(nav_mesh, source_geometry_data, Callable())
 	else:
 		NavigationServer3D.bake_from_source_geometry_data(nav_mesh, source_geometry_data, Callable())
+	# 2109 审查 P1-3：同步 bake 完成后标记导航 ready，供 Runtime 出生投影消费；
+	# headless 分支（上面已 return）不置位，Runtime 据此保留原计划并后补重试。
+	result.navigation_ready = true
 
-func _build_navigation_obstacle_faces(layout: DungeonLayout, result: DungeonBuildResult, max_samples: int = 4096) -> PackedVector3Array:
+func _build_navigation_obstacle_faces(layout: DungeonLayout, result: DungeonBuildResult, max_samples: int = MAX_OBSTACLE_NAV_SAMPLES) -> PackedVector3Array:
 	var faces := PackedVector3Array()
 	if layout == null or result == null:
 		return faces
 	var sample_count := 0
 	for wall_key in result.wall_transforms_by_height:
 		if sample_count >= max_samples:
+			# 2109 审查 P1-1：障碍采样超出容量上限——显式标记截断而非静默 break。
+			result.navigation_complete = false
 			break
 		var group: Dictionary = result.wall_transforms_by_height[wall_key]
 		var size: Vector3 = group.get("size", Vector3(3.0, 3.0, 3.0))
 		for transform_value in group.get("transforms", []):
 			if sample_count >= max_samples:
+				result.navigation_complete = false
 				break
 			var transform := transform_value as Transform3D
 			_append_box_faces(faces, transform.origin, size)
@@ -1613,6 +1637,7 @@ func _build_navigation_obstacle_faces(layout: DungeonLayout, result: DungeonBuil
 	for y in range(grid.size()):
 		for x in range(grid[y].size()):
 			if sample_count >= max_samples:
+				result.navigation_complete = false
 				return faces
 			if int(grid[y][x]) != 5:
 				continue
@@ -1625,6 +1650,7 @@ func _build_navigation_obstacle_faces(layout: DungeonLayout, result: DungeonBuil
 	# even when avoidance/RVO is disabled at full dark erosion.
 	for anchor in layout.hazard_anchors:
 		if sample_count >= max_samples:
+			result.navigation_complete = false
 			return faces
 		var cell: Vector2i = anchor.get("anchor_cell", Vector2i(-1, -1))
 		if not layout.is_floor_cell(cell):
@@ -1644,6 +1670,7 @@ func _build_navigation_obstacle_faces(layout: DungeonLayout, result: DungeonBuil
 	if result.doors_root != null:
 		for child in result.doors_root.get_children():
 			if sample_count >= max_samples:
+				result.navigation_complete = false
 				return faces
 			var door := child as DungeonDoor
 			if door == null or door.is_open or door.is_broken:
@@ -1680,7 +1707,7 @@ func _append_navigation_composition_obstacles(faces: PackedVector3Array, root: N
 		return sample_count
 	for body_node in root.find_children("*", "StaticBody3D", true, false):
 		var kind := String(body_node.get_meta("composition_kind", ""))
-		if kind not in ["cover", "boundary"]:
+		if kind not in ["cover", "boundary", "cliff_pit_wall"]:
 			continue
 		for collision_node in body_node.find_children("*", "CollisionShape3D", true, false):
 			if sample_count >= max_samples:
@@ -1696,8 +1723,8 @@ func _append_navigation_composition_obstacles(faces: PackedVector3Array, root: N
 func _collect_raised_cells(layout: DungeonLayout) -> Dictionary:
 	var result := {}
 	for composition in layout.room_composition_specs:
-		# 悬崖平台是视觉/物理地形，但不是敌人的可行走目标；其顶面由
-		# _collect_navigation_excluded_cells() 统一剔除，避免高台寻路自杀。
+		# Raised platforms belong to the elevation composition. Pit cells are
+		# excluded from the floor source below and never become raised targets.
 		if String(composition.get("composition_kind", "")) == "cliff":
 			continue
 		for cell in composition.get("platform_cells", []):
@@ -1706,9 +1733,22 @@ func _collect_raised_cells(layout: DungeonLayout) -> Dictionary:
 			result[cell] = true
 	return result
 
-## 返回不能作为敌人导航目标的危险地形格。
-## 陷阱必须从地板源移除；悬崖顶面和斜坡也必须移除，避免怪物主动走入
-## 会造成坠落/伤害的地形。保留物理/视觉几何和陷阱 footprint 障碍用于碰撞。
+func _collect_cliff_pit_cells(layout: DungeonLayout) -> Dictionary:
+	var result := {}
+	if layout == null:
+		return result
+	for composition in layout.room_composition_specs:
+		if String(composition.get("composition_kind", "")) != "cliff":
+			continue
+		for cell_value in composition.get("pit_cells", composition.get("cliff_cells", [])):
+			var cell: Vector2i = cell_value
+			if layout.is_floor_cell(cell):
+				result[cell] = true
+	return result
+
+	## 返回不能作为敌人导航目标的危险地形格。
+	## 陷阱和悬崖坑洞都从地板源移除，避免怪物主动走入会造成坠落/伤害的地形。
+	## 保留物理/视觉几何和陷阱 footprint 障碍用于碰撞。
 func _collect_navigation_excluded_cells(layout: DungeonLayout) -> Dictionary:
 	var result := {}
 	if layout == null:
@@ -1720,14 +1760,10 @@ func _collect_navigation_excluded_cells(layout: DungeonLayout) -> Dictionary:
 	for composition in layout.room_composition_specs:
 		if String(composition.get("composition_kind", "")) != "cliff":
 			continue
-		for cell_value in composition.get("cliff_cells", composition.get("platform_cells", [])):
+		for cell_value in composition.get("pit_cells", composition.get("cliff_cells", [])):
 			var cliff_cell: Vector2i = cell_value
 			if layout.is_floor_cell(cliff_cell):
 				result[cliff_cell] = true
-		for ramp_spec in composition.get("ramp_specs", []):
-			var ramp_cell: Vector2i = ramp_spec.get("cell", Vector2i(-1, -1))
-			if layout.is_floor_cell(ramp_cell):
-				result[ramp_cell] = true
 	return result
 
 func _world_to_cell(world_pos: Vector3, layout: DungeonLayout) -> Vector2i:
@@ -2028,7 +2064,7 @@ func _is_population_reserved_cell(layout: DungeonLayout, cell: Vector2i) -> bool
 		if focus.get("cell", Vector2i(-1, -1)) == cell:
 			return true
 	for composition in layout.room_composition_specs:
-		for key in ["focus_cell", "cover_cells", "platform_cells", "cliff_cells", "bridge_cells", "door_transition_cells"]:
+		for key in ["focus_cell", "cover_cells", "platform_cells", "pit_cells", "cliff_cells", "bridge_cells", "door_transition_cells"]:
 			var value: Variant = composition.get(key, Vector2i(-1, -1))
 			if value is Array:
 				if value.has(cell):

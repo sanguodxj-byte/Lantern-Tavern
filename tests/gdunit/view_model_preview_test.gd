@@ -23,4 +23,9 @@ func test_view_model_animation_player_targets_only_action_layer() -> void:
 	for action_name in ViewModelAnimator.REQUIRED_ACTIONS:
 		var animation := library.get_animation(action_name)
 		for track_index in animation.get_track_count():
-			assert_bool(String(animation.track_get_path(track_index)).begins_with("ActionPivot")).is_true()
+			var track_path := String(animation.track_get_path(track_index))
+			# 只允许动作层枢纽轨道：主手 ActionPivot 与盾牌副手 ShieldActionPivot（规范盾牌动作）
+			assert_bool(track_path.begins_with("ActionPivot") or track_path.begins_with("ShieldActionPivot")) \
+				.override_failure_message(
+					"view model track must target only the action layer, got: %s" % track_path
+				).is_true()

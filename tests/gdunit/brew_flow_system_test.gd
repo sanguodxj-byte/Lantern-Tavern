@@ -33,6 +33,18 @@ func test_add_to_cauldron_rejected_when_ready() -> void:
 func test_add_empty_id_rejected() -> void:
 	assert_bool(bfs.add_to_cauldron("")).is_false()
 
+func test_add_to_cauldron_rejects_unknown_material() -> void:
+	# 怪物掉落材料未在 BrewingData.MATERIALS_DB 登记 → 投料边界拒绝
+	assert_bool(bfs.add_to_cauldron("goblin_ear")).is_false()
+	assert_bool(bfs.add_to_cauldron("skeleton_dust")).is_false()
+	assert_bool(bfs.cauldron_basket.is_empty()).is_true()
+
+func test_add_to_cauldron_rejects_zero_flavor_unknown() -> void:
+	# 未登记材料即使数量叠加也不得进入下料篮
+	bfs.add_to_cauldron("goblin_ear")
+	bfs.add_to_cauldron("goblin_ear")
+	assert_bool(bfs.cauldron_basket.is_empty()).is_true()
+
 # ---------- 蒸煮状态机 ----------
 
 func test_start_boiling_requires_ingredients() -> void:
@@ -79,6 +91,12 @@ func test_register_filled_keg_returns_token() -> void:
 
 func test_register_filled_keg_rejects_empty() -> void:
 	assert_int(bfs.register_filled_keg({})).is_equal(-1)
+
+func test_register_filled_keg_rejects_unknown_material() -> void:
+	# 未登记材料桶（怪物掉落）不得登记为可窖藏酒桶
+	assert_int(bfs.register_filled_keg({"goblin_ear": 2})).is_equal(-1)
+	assert_int(bfs.register_filled_keg({"blackberry": 1, "goblin_ear": 1})).is_equal(-1)
+	assert_int(bfs.active_kegs.size()).is_equal(0)
 
 func test_place_keg_on_rack_starts_fermentation() -> void:
 	var token: int = bfs.register_filled_keg({"blackberry": 2})

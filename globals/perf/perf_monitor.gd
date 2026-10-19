@@ -1,4 +1,6 @@
 extends Node
+
+const Service := preload("res://globals/core/service.gd")
 ## PerfMonitor（⑪ 性能压测 HUD）：FPS / 帧耗时 / Draw Call / 网络下发速率，
 ## 默认隐藏，按 F3 切换显示。仅作开发期观测，不影响游戏逻辑。
 ##
@@ -70,7 +72,7 @@ func _process(delta: float) -> void:
 
 	var lines := PackedStringArray()
 	lines.append("FPS: %.0f  (%.1f ms)" % [fps, frame_ms])
-	var budget := get_node_or_null("/root/PerformanceBudget")
+	var budget := Service.performance_budget()
 	if budget != null:
 		lines.append("Adaptive: tier %d  scale %.2f" % [
 			int(budget.get("quality_tier")), float(budget.call("get_render_scale"))

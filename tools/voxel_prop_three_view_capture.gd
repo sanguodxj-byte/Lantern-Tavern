@@ -17,6 +17,7 @@ const SCENES := {
 	"table": "res://scenes/props/decor/table.tscn",
 	"chair": "res://scenes/props/decor/chair.tscn",
 	"bench": "res://scenes/props/decor/bench.tscn",
+	"brew_ingredient_rack": "res://scenes/props/decor/brew_ingredient_rack.tscn",
 	"lit_candles": "res://scenes/props/decor/lit_candles.tscn",
 	"floor_candelabrum": "res://scenes/props/dungeon/decor/floor_candelabrum.tscn",
 	"wall_candelabrum": "res://scenes/props/dungeon/decor/wall_candelabrum.tscn",
@@ -69,10 +70,7 @@ const MONSTER_SCENES := {
 	"slime": "res://assets/meshes/characters/voxel_slime_24px.glb",
 	"spider": "res://assets/meshes/characters/voxel_spider_30px.glb",
 	"drow_blade": "res://assets/meshes/characters/voxel_drow_blade_48px.glb",
-	"plague_doctor": "res://assets/meshes/characters/voxel_plague_doctor_64px.glb",
-	"cultist_pyromancer": "res://assets/meshes/characters/voxel_cultist_pyromancer_64px.glb",
-	"bandit_crossbowman": "res://assets/meshes/characters/voxel_bandit_crossbowman_56px.glb",
-	"duergar_miner": "res://assets/meshes/characters/voxel_duergar_miner_48px.glb",
+	"dire_wolf": "res://assets/meshes/characters/voxel_dire_wolf_100px.glb",
 }
 
 const ARMOR_SCENES := {

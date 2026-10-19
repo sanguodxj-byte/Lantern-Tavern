@@ -1,8 +1,9 @@
-[gd_scene load_steps=8 format=3 uid="uid://bpjcxjslusvnk"]
+[gd_scene load_steps=9 format=3 uid="uid://bpjcxjslusvnk"]
 
 [ext_resource type="Script" path="res://scenes/ui/zone_select.gd" id="1_zone_select"]
 [ext_resource type="Theme" path="res://scenes/ui/lantern_theme.tres" id="2_theme"]
 [ext_resource type="Texture2D" path="res://assets/textures/ui/expedition_zone_map.png" id="3_zone_map"]
+[ext_resource type="Script" path="res://scenes/ui/zone_map_hotspot_layer.gd" id="4_zone_hotspot_layer"]
 
 [sub_resource type="StyleBoxFlat" id="Frame"]
 content_margin_left = 24.0
@@ -203,6 +204,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 1
 texture_filter = 1
+script = ExtResource("4_zone_hotspot_layer")
 
 [node name="ZoneDetails" type="PanelContainer" parent="ExpeditionFrame"]
 unique_name_in_owner = true
@@ -253,7 +255,7 @@ text = "危险等级"
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
-theme_override_font_sizes/font_size = 25
+theme_override_font_sizes/font_size = 28
 text = "◆◇◇◇◇◇   1/6"
 
 [node name="DescriptionTitle" type="Label" parent="ExpeditionFrame/ZoneDetails/DetailsBox"]
@@ -268,7 +270,7 @@ size_flags_vertical = 3
 theme_override_font_sizes/font_size = 21
 text = "初始区域。潮湿的石砌地牢，老鼠横行，适合新手熟悉战斗与采集。"
 autowrap_mode = 3
-vertical_alignment = 0
+vertical_alignment = 1
 
 [node name="DetailsRule" type="HSeparator" parent="ExpeditionFrame/ZoneDetails/DetailsBox"]
 layout_mode = 2
@@ -276,7 +278,7 @@ layout_mode = 2
 [node name="DetailsHint" type="Label" parent="ExpeditionFrame/ZoneDetails/DetailsBox"]
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
-text = "点击地图上的区域标记预览目的地。"
+text = "点击地图区域预览目的地。"
 autowrap_mode = 3
 
 [node name="ActionBar" type="PanelContainer" parent="ExpeditionFrame"]

@@ -17,7 +17,7 @@ func test_flagship_models_are_s_tier() -> void:
 
 func test_visual_review_reorders_seen_models() -> void:
 	assert_array(TIERS.model_ids_for_tier(TIERS.A)).is_equal([
-		"bartender", "drow_blade", "minotaur", "necrolord", "orc_raider",
+		"bartender", "dire_wolf", "drow_blade", "minotaur", "necrolord", "orc_raider",
 		"player", "rat", "skeleton", "slime", "spider", "troll",
 	])
 	assert_array(TIERS.model_ids_for_tier(TIERS.B)).is_equal([
@@ -31,13 +31,13 @@ func test_visual_review_reorders_seen_models() -> void:
 func test_only_individually_accepted_models_are_runtime_eligible() -> void:
 	assert_array(TIERS.ACCEPTED_IDS).is_equal([
 		"goblin", "dragon", "rock_golem", "orc_raider", "skeleton", "troll", "player",
-		"minotaur", "slime", "spider", "drow_blade",
+		"minotaur", "slime", "spider", "drow_blade", "dire_wolf",
 	])
 	for model_id in TIERS.ACCEPTED_IDS:
 		assert_bool(TIERS.is_accepted(model_id)).is_true()
 	for model_id in ["dragon", "rock_golem"]:
 		assert_str(TIERS.tier_for(model_id)).is_equal(TIERS.S)
-	for model_id in ["drow_blade", "spider", "orc_raider", "skeleton", "troll", "player", "minotaur", "slime"]:
+	for model_id in ["drow_blade", "spider", "orc_raider", "skeleton", "troll", "player", "minotaur", "slime", "dire_wolf"]:
 		assert_str(TIERS.tier_for(model_id)).is_equal(TIERS.A)
 	for model_id in ["necrolord", "rat", "kobold", "zombie", "anime_girl", "not_a_real_model"]:
 		assert_bool(TIERS.is_accepted(model_id)) \

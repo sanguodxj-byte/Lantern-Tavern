@@ -21,6 +21,12 @@ from voxel_overlap_guard import (  # noqa: E402
     assert_parts_voxel_assembly_valid,
 )
 from voxel_single_model_cli import reject_target_override  # noqa: E402
+from weapon_first_person_rig_lib import (  # noqa: E402
+    build_weapon_rig,
+    export_animated_glb,
+    make_action,
+    render_action_review,
+)
 from voxel_weapon_model_lib import (  # noqa: E402
     PX,
     bounds_size_px,
@@ -42,6 +48,7 @@ LENGTH_PX = 22.0
 
 OUT_GLB = ROOT / "assets" / "meshes" / "weapons" / "weapons_voxel_grimoire.glb"
 PREVIEW_DIR = ROOT / "reports" / "props_preview"
+ANIMATION_PREVIEW_DIR = ROOT / "reports" / "first_person_animation" / "grimoire_blender"
 
 
 def build_grimoire() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
@@ -212,13 +219,52 @@ def build_grimoire() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
     return root, parts
 
 
+def _author_first_person_actions(armature: bpy.types.Object) -> None:
+    make_action(armature, "vm_grimoire_hold", 1, 34, [
+        (1, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+        (17, (0.0, 0.0, -0.10), (0.2, -0.3, 0.15)),
+        (34, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ], loop=True)
+    # Present the rune cover, then roll the book open toward the player's reading plane.
+    make_action(armature, "vm_grimoire_charge", 1, 32, [
+        (1, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+        (8, (-0.2, 0.2, -0.3), (-2.0, 4.0, -5.0)),
+        (16, (-0.5, 0.5, -0.6), (-5.0, 10.0, -11.0)),
+        (24, (-0.7, 0.8, -0.8), (-7.0, 16.0, -18.0)),
+        (32, (-0.7, 0.8, -0.8), (-7.0, 16.0, -18.0)),
+    ])
+    # Push the glyph plane toward the target, hold one beat for release, then let it float back.
+    make_action(armature, "vm_grimoire_attack", 1, 26, [
+        (1, (-0.7, 0.8, -0.8), (-7.0, 16.0, -18.0)),
+        (5, (-0.4, 0.4, -0.5), (-3.0, 10.0, -10.0)),
+        (9, (0.2, 0.0, -1.4), (2.0, -5.0, 8.0)),
+        (12, (0.7, -0.1, -2.2), (5.0, -11.0, 16.0)),
+        (15, (0.6, -0.1, -2.0), (4.0, -9.0, 13.0)),
+        (20, (0.0, 0.2, -0.7), (0.0, 3.0, -4.0)),
+        (26, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ])
+    armature["action_names"] = ["vm_grimoire_hold", "vm_grimoire_charge", "vm_grimoire_attack"]
+
+
 def main() -> None:
     reject_target_override(MODEL_ID)
     reset_scene()
     root, parts = build_grimoire()
     assert_parts_no_positive_volume_overlap(parts, label=MODEL_ID)
     assert_parts_voxel_assembly_valid(parts, label=MODEL_ID)
-    export_glb(root, OUT_GLB)
+    armature = build_weapon_rig(root, parts, "GrimoireRig", 10.0, -10.0)
+    _author_first_person_actions(armature)
+    render_action_review(
+        root, armature, ANIMATION_PREVIEW_DIR,
+        ((0.14, -0.20, -0.62), (-2.0, -20.0, -96.0)),
+        {
+            "00": ("vm_grimoire_hold", 1), "01": ("vm_grimoire_charge", 24),
+            "02": ("vm_grimoire_attack", 5), "03": ("vm_grimoire_attack", 12),
+            "04": ("vm_grimoire_attack", 15), "05": ("vm_grimoire_attack", 26),
+            "06": ("vm_grimoire_charge", 32), "07": ("vm_grimoire_attack", 12),
+        },
+    )
+    export_animated_glb(root, OUT_GLB)
     render_true_3d_views(root, MODEL_ID, PREVIEW_DIR)
     dimensions = bounds_size_px(root)
     print(f"Wrote {OUT_GLB}")

@@ -114,7 +114,7 @@ var _equip_drag_slot_key: String = ""
 
 func _ready() -> void:
 	visible = false
-	add_to_group("character_panel")
+	add_to_group("modal_gameplay_blocker")
 	harvest_all_btn.pressed.connect(_on_harvest_all_pressed)
 	close_btn.pressed.connect(_on_close_pressed)
 	chest_list.item_activated.connect(_on_chest_item_activated)
@@ -229,12 +229,13 @@ func show_for_chest(chest: Node, player: Node) -> void:
 	visible = true
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	if _player != null and is_instance_valid(_player):
-		if "movement_input_enabled" in _player:
-			_player.movement_input_enabled = false
-		if "interaction_input_enabled" in _player:
-			_player.interaction_input_enabled = false
-		if "combat_input_enabled" in _player:
-			_player.combat_input_enabled = false
+		# 1851 审查 P1：保存打开前输入状态快照，关闭时还原——不与撤离/教程/升级等其他
+		# 输入锁交叉破坏（无条件写 false/true 会释放其他系统的锁）。
+		_saved_input_flags = {}
+		for flag_name in ["movement_input_enabled", "interaction_input_enabled", "combat_input_enabled"]:
+			if flag_name in _player:
+				_saved_input_flags[flag_name] = bool(_player[flag_name])
+				_player[flag_name] = false
 
 func _load_loot_data() -> void:
 	_loot_weapon = null
@@ -736,15 +737,17 @@ func _add_equipment_to_backpack(data: WeaponData) -> bool:
 		return gs.add_carried_equipment_instance(data)
 	return gs.add_carried_equipment(data.id, 1)
 
+## 1851 审查 P1：打开前玩家输入标志快照（关闭时还原，避免与其他输入锁交叉破坏）。
+var _saved_input_flags: Dictionary = {}
+
 func _close() -> void:
 	visible = false
 	if _player != null and is_instance_valid(_player):
-		if "movement_input_enabled" in _player:
-			_player.movement_input_enabled = true
-		if "interaction_input_enabled" in _player:
-			_player.interaction_input_enabled = true
-		if "combat_input_enabled" in _player:
-			_player.combat_input_enabled = true
+		# 1851 审查 P1：只还原本面板打开前保存的状态（快照），不无条件写 true。
+		for flag_name in _saved_input_flags.keys():
+			if flag_name in _player:
+				_player[flag_name] = bool(_saved_input_flags[flag_name])
+		_saved_input_flags.clear()
 	if not OS.has_feature("web"):
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	if _chest != null and is_instance_valid(_chest):
@@ -1030,28 +1033,42 @@ func _start_list_drag(list: ItemList, meta: Dictionary) -> void:
 		"index": int(meta.get("loot_index", -1)),
 	}
 	var preview_text := String(meta.get("name", meta.get("id", "")))
+	var preview_icon: Texture2D = null
 	if payload.type == "equipment":
 		var data = meta.get("data", null)
 		if data != null and data.has_method("get_full_display_name"):
 			preview_text = String(data.get_full_display_name())
+		preview_icon = DETAIL_POPUP_SCRIPT.icon_for_equipment_id(String(payload.id))
 	elif payload.type == "rune":
 		preview_text = RD.get_rune_name(String(payload.id))
+		preview_icon = DETAIL_POPUP_SCRIPT.icon_for_rune(String(payload.id))
 	elif payload.type == "material" and preview_text.is_empty():
 		preview_text = BD.get_material_name(String(payload.id))
-	list.force_drag(payload, _build_drag_preview(preview_text))
+		preview_icon = DETAIL_POPUP_SCRIPT.icon_for_material(String(payload.id))
+	list.force_drag(payload, _build_drag_preview(preview_icon, preview_text))
 
 
-func _build_drag_preview(display_text: String) -> Control:
+func _build_drag_preview(icon: Texture2D, display_text: String) -> Control:
 	var preview := PanelContainer.new()
 	preview.theme = get_node("Root").theme
 	preview.theme_type_variation = &"LootDragPreview"
 	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	preview.add_child(row)
+	if icon != null:
+		var texture_rect := TextureRect.new()
+		texture_rect.texture = icon
+		texture_rect.custom_minimum_size = Vector2(48, 48)
+		texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		row.add_child(texture_rect)
 	var label := Label.new()
 	label.text = display_text
 	label.theme_type_variation = &"LootSectionTitle"
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	preview.add_child(label)
+	row.add_child(label)
 	return preview
 
 
@@ -1072,7 +1089,10 @@ func _on_equip_slot_gui_input(event: InputEvent, btn: Button, slot_key: String, 
 				"data": data,
 			}
 			var preview_text := String(data.get_full_display_name()) if data != null and data.has_method("get_full_display_name") else slot_key
-			btn.force_drag(payload, _build_drag_preview(preview_text))
+			var preview_icon: Texture2D = null
+			if data != null and data.has_method("get_full_display_name"):
+				preview_icon = _icon_for_weapon_data(data)
+			btn.force_drag(payload, _build_drag_preview(preview_icon, preview_text))
 			_equip_drag_slot_key = ""
 
 

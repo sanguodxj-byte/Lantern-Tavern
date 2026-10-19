@@ -1,8 +1,9 @@
 extends Control
 ## 酿酒台/吧台操作面板（夜晚营业阶段玩家交互入口）。
-## 接入 FermentationSystem 的 Keg 状态机 + BrewingData 的中文键数据。
-## 三大操作：下料 / 开缸取酒 / 选择陈酿。
-## 挂载到 tavern_ui.tscn 的 BrewingPanel 节点区域。
+## 🚨 决策 G3（审查 0856 P0-1）：本面板已从生产 HUD（tavern_ui.tscn）移除，
+## 酿造写入唯一入口为 3D 链路 BrewFlowSystem（炼药锅→倒桶台→窖藏位）。
+## 本脚本仅保留只读展示能力（桶位/库存/下料篮刷新），三大写操作全部冻结为报错桩。
+## 挂载到 brewing_panel.tscn（仅测试/调试场景使用）。
 
 const BD := preload("res://globals/tavern/brewing_data.gd")
 const FS := preload("res://globals/tavern/fermentation_system.gd")
@@ -201,85 +202,26 @@ func _set_buttons_disabled(disabled: bool) -> void:
 	if seal_aging_button: seal_aging_button.disabled = disabled
 
 # ============================================================================
-# 4. 操作：下料 / 开缸 / 陈酿
+# 4. 操作：下料 / 开缸 / 陈酿（决策 G3：已冻结，禁止直接写 FermentationSystem）
 # ============================================================================
 
-## 下料：把 brewing_basket 投入空桶，启动发酵
+## 冻结原因：旧面板直接调用发酵系统的下料接口（start_brewing）绕过 3D 酿造链路
+## （P0-1），且不维护 BrewFlowSystem.active_kegs 导致物理桶与逻辑桶分叉（P0-2）。
+## 以下三个写入口不再触碰任何 FermentationSystem 状态，仅显式报错。
+
 func _on_brew_pressed() -> void:
-	if brewing_basket.is_empty():
-		_set_status(tr("下料篮为空，请先选择材料"))
-		return
-	var fs: Node = _get_fermentation_system()
-	if fs == null:
-		_set_status(tr("发酵系统未加载"))
-		return
-	# 选中的桶位必须为空
-	var target_keg: int = selected_keg_index
-	if target_keg < 0:
-		# 自动找第一个空桶
-		target_keg = _find_empty_keg(fs)
-		if target_keg < 0:
-			_set_status(tr("无空桶可用，请先开缸或扩建"))
-			return
-	# 校验选中桶是否为空
-	if fs.kegs[target_keg].state != FS.KegState.EMPTY:
-		_set_status(tr("桶%d非空，请选择空桶") % (target_keg + 1))
-		return
-	# 扣减库存
-	if not _deduct_inventory(brewing_basket):
-		_set_status(tr("材料库存不足"))
-		return
-	# 启动发酵
-	var keg_index: int = fs.start_brewing(brewing_basket.duplicate(), _get_current_day())
-	if keg_index < 0:
-		_set_status(tr("下料失败"))
-		return
-	brewing_basket.clear()
-	selected_keg_index = keg_index
-	_set_status(tr("已下料至桶%d，发酵中（明日完成）") % (keg_index + 1))
-	brew_started.emit(keg_index)
-	_refresh_all()
-	_refresh_buttons_for_keg(keg_index)
+	_report_frozen_write("下料")
 
-## 开缸取酒：把 READY/AGING/AGED 桶的酒取出
 func _on_open_keg_pressed() -> void:
-	if selected_keg_index < 0:
-		_set_status(tr("请先选择桶位"))
-		return
-	var fs: Node = _get_fermentation_system()
-	if fs == null:
-		_set_status(tr("发酵系统未加载"))
-		return
-	var flavors: Dictionary = fs.open_keg(selected_keg_index)
-	if flavors.is_empty():
-		_set_status(tr("桶%d不可开缸") % (selected_keg_index + 1))
-		return
-	var recipe_id: String = flavors.get("__recipe_id__", "")
-	var msg: String = tr("桶%d开缸完成") % (selected_keg_index + 1)
-	if recipe_id != "":
-		msg += tr("，匹配经典酒谱【%s】") % BD.get_recipe_name(recipe_id)
-	_set_status(msg)
-	keg_opened.emit(selected_keg_index, flavors)
-	_refresh_all()
-	selected_keg_index = -1
-	_refresh_buttons_for_keg(-1)
+	_report_frozen_write("开缸")
 
-## 选择陈酿：把 READY 桶封存转入陈酿
 func _on_seal_aging_pressed() -> void:
-	if selected_keg_index < 0:
-		_set_status(tr("请先选择桶位"))
-		return
-	var fs: Node = _get_fermentation_system()
-	if fs == null:
-		_set_status(tr("发酵系统未加载"))
-		return
-	if not fs.seal_for_aging(selected_keg_index):
-		_set_status(tr("桶%d不可陈酿（仅 READY 状态可封存）") % (selected_keg_index + 1))
-		return
-	_set_status(tr("桶%d已封存陈酿，每日口味 +1，最多 3 天") % (selected_keg_index + 1))
-	keg_sealed.emit(selected_keg_index)
-	_refresh_all()
-	_refresh_buttons_for_keg(selected_keg_index)
+	_report_frozen_write("陈酿")
+
+## 冻结桩：明确报错并提示走 3D 酿造间，绝不写桶位。
+func _report_frozen_write(operation_name: String) -> void:
+	push_error("[BrewingPanel] %s 已被冻结：酿造写入仅允许通过 BrewFlowSystem（3D 酿造间链路），本面板只读展示。" % operation_name)
+	_set_status(tr("酿造操作已迁移至 3D 酿造间：炼药锅投料 → 倒桶台 → 窖藏位开缸"))
 
 # ============================================================================
 # 5. 选择交互

@@ -177,3 +177,38 @@ func test_all_lines_are_chinese_strings() -> void:
 			assert_bool(has_cjk) \
 				.override_failure_message("台词无中文字符: %s" % line) \
 				.is_true()
+
+# ---------------------------------------------------------------------------
+# 2351 审查 P1：营业代际——旧营业的延迟离场回调不得清理新营业登记
+# ---------------------------------------------------------------------------
+
+class MockCustomer:
+	extends Node3D
+	var left := false
+	func leave() -> void:
+		left = true
+
+
+func test_leave_callback_from_previous_service_does_not_clear_new_service() -> void:
+	var spawner: Node = load("res://scenes/tavern/customer_spawner.gd").new()
+	add_child(spawner)
+	spawner.start_service()  # epoch 1
+	var cust: MockCustomer = auto_free(MockCustomer.new())
+	cust.name = "OldCustomer"
+	add_child(cust)
+	spawner._active_customers.append(cust)
+	spawner._occupied_seats[0] = cust
+	spawner._schedule_leave(cust, 0)  # epoch 1 的 3s 离场回调
+	spawner.stop_service()  # epoch 2：清空登记
+	assert_int(spawner._active_customers.size()).is_equal(0)
+	assert_bool(spawner._occupied_seats.is_empty()).is_true()
+	spawner.start_service()  # epoch 3：新一轮营业
+	var cust2: MockCustomer = auto_free(MockCustomer.new())
+	cust2.name = "NewCustomer"
+	add_child(cust2)
+	spawner._active_customers.append(cust2)
+	spawner._occupied_seats[0] = cust2
+	await await_millis(3200)  # 旧回调（epoch 1）到期——不得清理新营业登记
+	assert_object(spawner._occupied_seats.get(0)).is_equal(cust2)
+	assert_int(spawner._active_customers.size()).is_equal(1)
+	spawner.free()

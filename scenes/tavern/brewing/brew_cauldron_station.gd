@@ -27,7 +27,8 @@ var _stack_visuals: Array[Node3D] = []
 var _basket_snapshot: Dictionary = {}
 
 const STACK_VISUAL_CAP := 10
-const POT_TOP_Y := 0.72
+## v4 炼药锅锅口顶 y[58,62]px = 1.9375m；液面浮于锅沿下方。
+const POT_TOP_Y := 1.8
 
 func _ready() -> void:
 	collision_layer = LAYER_SCENE_OBJECT
@@ -53,7 +54,7 @@ func _build_visual() -> void:
 	add_child(ingredient_stack_root)
 
 	steam_particles = VF.make_steam_particles()
-	steam_particles.position = Vector3(0, 1.35, 0)
+	steam_particles.position = Vector3(0, 2.1, 0)
 	add_child(steam_particles)
 
 	fire_particles = VF.make_fire_particles()
@@ -65,7 +66,7 @@ func _build_visual() -> void:
 	add_child(fire_light)
 
 	status_label = VF.make_status_label()
-	status_label.position = Vector3(0, 1.55, 0)
+	status_label.position = Vector3(0, 2.2, 0)
 	add_child(status_label)
 
 

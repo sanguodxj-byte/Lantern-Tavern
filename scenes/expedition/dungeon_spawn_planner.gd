@@ -342,6 +342,8 @@ func _collect_room_floor_cells(layout: DungeonLayout, room: Rect2i, exclude_near
 			var cell := Vector2i(x, y)
 			if _is_pillar_cell(layout, cell):
 				continue
+			if _is_cliff_pit_cell(layout, cell):
+				continue
 			if _is_room_reserved_cell(layout, cell):
 				continue
 			# 与出生格距离 ≥ 2（procedural 的 spawn_pos 距离近似的格距）
@@ -351,6 +353,8 @@ func _collect_room_floor_cells(layout: DungeonLayout, room: Rect2i, exclude_near
 	return cells
 
 func _is_room_reserved_cell(layout: DungeonLayout, cell: Vector2i) -> bool:
+	if _is_cliff_pit_cell(layout, cell):
+		return true
 	for focus in layout.room_focus_specs:
 		if focus.get("cell", Vector2i(-1, -1)) == cell:
 			return true
@@ -368,10 +372,20 @@ func _is_pillar_cell(layout: DungeonLayout, cell: Vector2i) -> bool:
 		and cell.x >= 0 and cell.x < layout.grid[cell.y].size() \
 		and int(layout.grid[cell.y][cell.x]) == 5
 
+func _is_cliff_pit_cell(layout: DungeonLayout, cell: Vector2i) -> bool:
+	if layout == null:
+		return false
+	for composition in layout.room_composition_specs:
+		if String(composition.get("composition_kind", "")) != "cliff":
+			continue
+		if composition.get("pit_cells", composition.get("cliff_cells", [])).has(cell):
+			return true
+	return false
+
 func _pick_room_floor_cell(layout: DungeonLayout, room: Rect2i, preferred: Vector2i,
 		avoid_hazard_clearance: bool = false, occupied: Dictionary = {}) -> Vector2i:
 	if not layout.is_key_cell_missing(preferred) and layout.is_floor_cell(preferred) \
-			and not _is_pillar_cell(layout, preferred) and room.has_point(preferred) \
+			and not _is_pillar_cell(layout, preferred) and not _is_cliff_pit_cell(layout, preferred) and room.has_point(preferred) \
 			and not occupied.has(preferred):
 		if not avoid_hazard_clearance or not _is_hazard_clearance_cell(layout, preferred):
 			return preferred

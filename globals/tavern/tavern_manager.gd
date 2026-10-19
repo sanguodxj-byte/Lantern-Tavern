@@ -76,19 +76,20 @@ func _is_known_material(material_id: String) -> bool:
 	return BREWING_DATA.MATERIALS_DB.has(material_id)
 
 
-## 开发/测试构建：向酒馆仓库补齐全部已登记符文，便于固定法术配方组合测试。
+## 开发/测试构建：向随身背包补齐全部已登记符文，便于固定法术配方组合测试。
+## 设计规则：符文为地牢消耗品（撤离即销毁），不进入酒馆仓库；此补给仅测试用。
 ## 只补足不覆盖已有更多数量；正式非 debug 导出不执行。
-func ensure_debug_all_runes_in_warehouse(amount_per_kind: int = DEBUG_ALL_RUNES_PER_KIND) -> void:
+func ensure_debug_all_runes_in_backpack(amount_per_kind: int = DEBUG_ALL_RUNES_PER_KIND) -> void:
 	if not OS.is_debug_build():
+		return
+	var gs := _get_game_state()
+	if gs == null or not gs.has_method("add_carried_rune"):
 		return
 	var target_amount := maxi(1, amount_per_kind)
 	for raw_id in RUNE_DATA.get_all_rune_ids():
 		var rune_id := String(raw_id)
-		if int(runes_inventory.get(rune_id, 0)) < target_amount:
-			runes_inventory[rune_id] = target_amount
-
-## 已选出身 id（空字符串 = 未选 = 旧存档兼容）
-var selected_origin_id: String = ""
+		if int(gs.carried_runes.get(rune_id, 0)) < target_amount:
+			gs.add_carried_rune(rune_id, target_amount - int(gs.carried_runes.get(rune_id, 0)))
 
 func start_new_game(with_tutorial: bool = true, origin_id: String = "") -> void:
 	# 先通过 SaveManager 重置全部子系统（AttrPanel/GameState/TavernSettlement 等），
@@ -108,7 +109,6 @@ func start_new_game(with_tutorial: bool = true, origin_id: String = "") -> void:
 	last_expedition_return = DEFAULT_EXPEDITION_RETURN.duplicate()
 	missed_tavern_income_nights = 0
 	next_day_expedition_motivation = ""
-	selected_origin_id = origin_id
 	current_phase = Phase.DAY_EXPEDITION if with_tutorial else Phase.NIGHT_TAVERN
 	_apply_origin_to_game_state(origin_id)
 	_go_to_world_space("intro" if with_tutorial else "tavern")
@@ -150,7 +150,8 @@ func _grant_starting_equipment(gs: Node, origin: Dictionary) -> void:
 		gs.add_carried_equipment(starting_shield, 1)
 
 func complete_intro_and_enter_tavern() -> void:
-	tutorial_active = false
+	# tutorial_active 保持 true：intro 结束不结束教程，酒馆内的
+	# TutorialTavernCoordinator（战斗/取名）继续推进，由其收尾置 false。
 	tutorial_completed = true
 	current_phase = Phase.NIGHT_TAVERN
 	_go_to_world_space("tavern")
@@ -172,11 +173,10 @@ func record_expedition_loot(materials_count: int, weapons_count: int, shields_co
 	print("[TavernManager] Expedition loot recorded: %d materials, %d weapons, %d shields" % [materials_count, weapons_count, shields_count])
 	var gs := _get_game_state()
 	if gs != null:
-		# 将随身背包装备、材料、符文归入酒馆仓库，并清空随身背包
+		# 将随身背包装备、材料归入酒馆仓库，并清空随身背包。
+		# 符文为地牢消耗品：撤离时全部销毁，不进入酒馆仓库（仅地牢内获得与使用）。
 		for mat_id in gs.carried_materials.keys():
 			tavern_ledger.add_material(mat_id, int(gs.carried_materials[mat_id]))
-		for rune_id in gs.carried_runes.keys():
-			tavern_ledger.add_rune(rune_id, int(gs.carried_runes[rune_id]))
 		gs.clear_carried_state()
 
 func remove_from_inventory(material_id: String, amount: int = 1) -> bool:
@@ -318,9 +318,13 @@ func deserialize(data: Dictionary) -> void:
 			for mat_id in old_inv.keys():
 				tavern_ledger.add_material(mat_id, int(old_inv[mat_id]))
 		if data.has("runes_inventory") and data["runes_inventory"] is Dictionary:
+			# 旧存档符文仓库字段：符文为地牢消耗品，不进酒馆仓库——
+			# 旧档符文迁移到随身背包（相当于开局补给），保持存档可用。
 			var old_runes: Dictionary = data["runes_inventory"]
-			for rune_id in old_runes.keys():
-				tavern_ledger.add_rune(rune_id, int(old_runes[rune_id]))
+			var gs := _get_game_state()
+			if gs != null and gs.has_method("add_carried_rune"):
+				for rune_id in old_runes.keys():
+					gs.add_carried_rune(String(rune_id), int(old_runes[rune_id]))
 			
 	if data.has("current_brews"):
 		current_brews = (data["current_brews"] as Array).duplicate(true)

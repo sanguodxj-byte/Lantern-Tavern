@@ -58,3 +58,46 @@ func test_directories_are_isolated() -> void:
 	var repo_b := _make_repo()
 	repo_a.save_save("shared_guid", {"materials": {"a": 1}})
 	assert_bool(repo_b.load_save("shared_guid").is_empty()).is_true()
+
+## P1-3（1122 审查）：保存写入 schema 包装，加载解包；三段协议成功后无 .tmp/.bak 残留。
+func test_save_wraps_schema_version_and_cleans_backup_files() -> void:
+	var repo := _make_repo()
+	assert_bool(repo.save_save("player_ver", {"materials": {"gold": 7}})).is_true()
+	var loaded: Dictionary = repo.load_save("player_ver")
+	assert_int(int(loaded["materials"]["gold"])).is_equal(7)
+	assert_bool(FileAccess.file_exists(repo.get_save_dir() + "/player_ver.json")).is_true()
+	assert_bool(FileAccess.file_exists(repo.get_save_dir() + "/player_ver.json.tmp")).is_false()
+	assert_bool(FileAccess.file_exists(repo.get_save_dir() + "/player_ver.json.bak")).is_false()
+
+## P1-3（1122 审查）：未知未来 schema 版本硬拒绝；旧平铺格式向后兼容。
+func test_load_rejects_future_schema_version_and_accepts_legacy() -> void:
+	var repo := _make_repo()
+	DirAccess.make_dir_recursive_absolute(repo.get_save_dir())
+	# 未来版本 → 拒绝（返回 {}）
+	var future := FileAccess.open(repo.get_save_dir() + "/player_future.json", FileAccess.WRITE)
+	future.store_string(JSON.stringify({"schema_version": 999, "state": {"materials": {"gold": 99}}}))
+	future.close()
+	assert_bool(repo.load_save("player_future").is_empty()).is_true()
+	# 旧平铺格式（无 schema_version）→ 兼容读取
+	var legacy := FileAccess.open(repo.get_save_dir() + "/player_legacy.json", FileAccess.WRITE)
+	legacy.store_string(JSON.stringify({"materials": {"gold": 5}}))
+	legacy.close()
+	var loaded: Dictionary = repo.load_save("player_legacy")
+	assert_int(int(loaded["materials"]["gold"])).is_equal(5)
+
+## P1-2（1122 审查）：final 缺失时依次回退 .tmp / .bak 恢复。
+func test_load_falls_back_to_tmp_then_bak() -> void:
+	var repo := _make_repo()
+	DirAccess.make_dir_recursive_absolute(repo.get_save_dir())
+	# 模拟中断点 2：仅 .tmp 存在
+	var tmp := FileAccess.open(repo.get_save_dir() + "/player_rec.json.tmp", FileAccess.WRITE)
+	tmp.store_string(JSON.stringify({"schema_version": 1, "state": {"materials": {"gold": 1}}}))
+	tmp.close()
+	var from_tmp: Dictionary = repo.load_save("player_rec")
+	assert_int(int(from_tmp["materials"]["gold"])).is_equal(1)
+	# 模拟中断点 1：仅 .bak 存在（tmp 也缺失）
+	var bak := FileAccess.open(repo.get_save_dir() + "/player_rec2.json.bak", FileAccess.WRITE)
+	bak.store_string(JSON.stringify({"schema_version": 1, "state": {"materials": {"gold": 2}}}))
+	bak.close()
+	var from_bak: Dictionary = repo.load_save("player_rec2")
+	assert_int(int(from_bak["materials"]["gold"])).is_equal(2)

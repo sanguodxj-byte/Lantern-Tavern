@@ -293,8 +293,14 @@ func test_procedural_dungeon_uses_level0_dungeon_atlas_for_base_terrain() -> voi
 	assert_bool(wall_tested).is_true()
 	assert_bool(floor_tested).is_true()
 
+	# P2-4（1417 审查）：dungeon 挂载于套件节点下，立即 free 会残留 deferred 清理
+	# 节点——queue_free 并等待多帧。注：headless dummy renderer 下该地牢仍会产生
+	# 引擎级 RID 泄漏（"instance_notify_deleted" 警告，pre-existing，非测试代码可修），
+	# 已记录为 CI orphan 允许清单（P2-4）。
 	remove_child(dungeon)
-	dungeon.free()
+	dungeon.queue_free()
+	for i in range(6):
+		await await_idle_frame()
 
 
 func _collect_nodes(node: Node, result: Array[Node]) -> void:

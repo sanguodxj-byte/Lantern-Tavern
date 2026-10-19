@@ -5,6 +5,17 @@ extends GdUnitTestSuite
 const BuffIconScript := preload("res://scenes/ui/buff_icon.gd")
 const ShieldBarScript := preload("res://scenes/ui/shield_bar.gd")
 
+
+## 法术界面可用的 mock 玩家：满足 can_open_spell_interface / 角色面板检查。
+class MockSpellPlayer:
+	extends Node3D
+
+	func can_open_spell_interface() -> bool:
+		return true
+
+	func is_character_panel_visible() -> bool:
+		return false
+
 # ── PixelBar ─────────────────────────────────────────────
 
 func test_pixel_bar_set_values() -> void:
@@ -144,6 +155,31 @@ func test_combat_hud_places_time_above_minimap_and_dark_erosion_below() -> void:
 	hud.queue_free()
 
 
+func test_combat_hud_minimap_content_halved_ui_layout_unchanged() -> void:
+	# 小地图"内容"缩小一倍(map_size 减半)：
+	# 仅地图绘制内容缩小，MinimapContainer 及其上/下面板布局保持原样。
+	var hud: CombatHUD = load("res://scenes/ui/combat_hud.tscn").instantiate()
+	add_child(hud)
+	await await_idle_frame()
+
+	var container := hud.get_node("MinimapContainer") as Control
+	var minimap := hud.get_node("MinimapContainer/Minimap") as CombatMinimap
+	var time_panel := hud.get_node("MinimapContainer/TimePanel") as Panel
+	var erosion_panel := hud.get_node("MinimapContainer/DarkErosionPanel") as Panel
+
+	# 内容缩小一倍
+	assert_int(minimap.map_size).is_equal(110)
+	# 缩小后视野范围扩大一倍（可见世界半径 25m → 50m）
+	assert_float(minimap.world_radius).is_equal(50.0)
+	# UI 布局保持原样（容器仍为大尺寸，未随内容缩小）
+	assert_float(container.size.x).is_greater_equal(200.0)
+	assert_float(container.size.y).is_greater_equal(260.0)
+	assert_bool(time_panel.position.y < minimap.position.y).is_true()
+	assert_bool(erosion_panel.position.y > minimap.position.y).is_true()
+
+	hud.queue_free()
+
+
 func test_combat_hud_updates_time_and_dark_erosion_from_pressure_snapshot() -> void:
 	var hud: CombatHUD = load("res://scenes/ui/combat_hud.tscn").instantiate()
 	add_child(hud)
@@ -156,7 +192,7 @@ func test_combat_hud_updates_time_and_dark_erosion_from_pressure_snapshot() -> v
 	})
 
 	assert_str(hud.time_label.text).is_equal("17:35 / 18:00")
-	assert_str(hud.dark_erosion_label.text).contains("暗蚀 064%")
+	assert_str(hud.dark_erosion_label.text).contains("暗蚀 64%")
 	assert_str(hud.dark_erosion_label.text).contains("撤离")
 
 	hud.queue_free()
@@ -760,4 +796,38 @@ func test_combat_hud_shield_bars_below_buff_container() -> void:
 	# 护盾条的原始布局位置 _base_y 应在主题化 BuffPanel 底部之下。
 	var buff_panel := hud.get_node("BottomLeft/BuffPanel") as Control
 	assert_float(hud.magic_shield_bar._base_y).is_greater_equal(buff_panel.offset_bottom)
+	hud.queue_free()
+
+
+# ── 法术界面：右键切换（按下打开 / 再次按下关闭，释放不关闭）──────────
+
+func _right_click(pressed: bool) -> InputEventMouseButton:
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_RIGHT
+	event.pressed = pressed
+	return event
+
+
+func test_spell_interface_toggles_on_right_click() -> void:
+	var hud: CombatHUD = load("res://scenes/ui/combat_hud.tscn").instantiate()
+	add_child(hud)
+	await await_idle_frame()
+	var mock := MockSpellPlayer.new()
+	add_child(mock)
+	hud._player = mock
+
+	# 首次右键按下：打开
+	hud._input(_right_click(true))
+	assert_bool(hud.is_spell_interface_visible()).is_true()
+	# 松开右键：界面保持打开（toggle 语义，不再按 hold 关闭）
+	hud._input(_right_click(false))
+	assert_bool(hud.is_spell_interface_visible()).is_true()
+	# 再次右键按下：关闭
+	hud._input(_right_click(true))
+	assert_bool(hud.is_spell_interface_visible()).is_false()
+	# 松开右键：保持关闭
+	hud._input(_right_click(false))
+	assert_bool(hud.is_spell_interface_visible()).is_false()
+
+	mock.queue_free()
 	hud.queue_free()

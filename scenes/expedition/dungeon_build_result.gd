@@ -37,6 +37,14 @@ var wall_h_map: Dictionary = {}  # Vector2i cell -> float integer-meter wall_hei
 func is_built() -> bool:
 	return terrain_root != null
 
+## ── 导航容量契约（2109 审查 P1-1 / P1-3） ──
+## 导航源采样是否完整：地板/障碍面片超出容量上限被静默截断时为 false，
+## 人口生成应降级（跳过导航投影）而不是在导航不可达处生成敌人。
+var navigation_complete: bool = true
+## 导航地图是否已同步/烘焙完成（生产窗口烘焙完成后置 true；headless 测试环境保持 false）。
+## Runtime 的出生投影在 ready 前应保留计划并后补重试，而不是永久跳过。
+var navigation_ready: bool = false
+
 ## 清理引用与注册表。
 ## 所有权约定：parent 拥有 root 生命周期；BuildResult 只引用 root，不负责 queue_free。
 ## 调用方应在 parent.queue_free()/free() 后或之前调用 dispose 以断开引用。

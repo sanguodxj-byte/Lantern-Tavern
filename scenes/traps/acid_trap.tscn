@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" path="res://scenes/traps/acid_trap.gd" id="1_eld0c"]
 [ext_resource type="PackedScene" path="res://assets/meshes/traps/traps_acid_trap.glb" id="2_glb"]
-[ext_resource type="AudioStream" uid="uid://ronjbgv5vj8n" path="res://assets/sounds/boil.wav" id="5_k5f3n"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_dhc81"]
 size = Vector3(1, 0.3, 1)
@@ -78,9 +77,3 @@ fixed_fps = 60
 process_material = SubResource("ParticleProcessMaterial_wlsgo")
 draw_pass_1 = SubResource("QuadMesh_rewge")
 
-[node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="."]
-stream = ExtResource("5_k5f3n")
-volume_db = -10.0
-unit_size = 1.0
-autoplay = true
-bus = &"SFX"

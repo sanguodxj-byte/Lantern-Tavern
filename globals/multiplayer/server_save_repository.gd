@@ -14,6 +14,11 @@ extends RefCounted
 const DEFAULT_SAVE_DIR := "user://server_saves"
 ## GUID 白名单：仅 [A-Za-z0-9_-]，最长 128——防路径穿越（/ \\ .. 与空值一律拒绝）。
 const MAX_GUID_LEN := 128
+## 存档 schema 版本（1122 审查 P1-3）：未知未来版本硬拒绝，保证迁移边界可靠。
+const SAVE_VERSION := 1
+const SCHEMA_VERSION_KEY := "schema_version"
+const SAVED_AT_KEY := "saved_at"
+const STATE_KEY := "state"
 
 var _save_dir: String = DEFAULT_SAVE_DIR
 
@@ -44,8 +49,10 @@ static func file_name_for(player_guid: String) -> String:
 		return ""
 	return guid + ".json"
 
-## 加载某身份的服务器权威存档。不存在/非法返回 {}（调用方按默认状态处理）。
-## 原子写窗口期（remove+rename 之间）回退读 .tmp——绝不把半写文件当成功。
+## 加载某身份的权威服务器存档（存在/合法时返回状态字典，否则 {}）。
+## 支持三种来源：final / .tmp / .bak（恢复顺序，1122 审查 P1-2 三段协议）。
+## 新包装格式（{schema_version, saved_at, state}）校验版本：未知未来版本硬拒绝；
+## 旧平铺格式（无 schema_version）向后兼容直接返回（1122 审查 P1-3）。
 func load_save(player_guid: String) -> Dictionary:
 	var fname := file_name_for(player_guid)
 	if fname.is_empty():
@@ -57,7 +64,11 @@ func load_save(player_guid: String) -> Dictionary:
 		if FileAccess.file_exists(tmp_path):
 			path = tmp_path
 		else:
-			return {}
+			var bak_path := _save_dir.path_join(fname + ".bak")
+			if FileAccess.file_exists(bak_path):
+				path = bak_path
+			else:
+				return {}
 	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
 		return {}
@@ -66,27 +77,55 @@ func load_save(player_guid: String) -> Dictionary:
 	var json := JSON.new()
 	if json.parse(text) != OK or not (json.data is Dictionary):
 		return {}
-	return json.data as Dictionary
+	var data := json.data as Dictionary
+	if data.has(SCHEMA_VERSION_KEY):
+		var version := int(data[SCHEMA_VERSION_KEY])
+		if version > SAVE_VERSION:
+			push_warning("[ServerSaveRepository] 存档版本 %d 高于当前支持 %d，拒绝加载（玩家 %s）" % [version, SAVE_VERSION, player_guid])
+			return {}
+		if data.has(STATE_KEY) and data[STATE_KEY] is Dictionary:
+			return data[STATE_KEY] as Dictionary
+		return {}
+	return data
 
-## 保存某身份的服务器权威存档。返回是否成功。
-## 原子写：先写 <guid>.json.tmp 再 rename——同机多进程（listen-server + dedicated server
-## 共享 user://）不会读到半写 JSON（架构检查 2026-08-03）。
+## 保存某身份的权威服务器存档。返回是否成功。
+## 1122 审查 P1-2 三段恢复协议：final → .bak → tmp → final → 成功后删除 .bak——
+## 任何中断点都保留可恢复副本（.tmp 或 .bak），消除"删旧档后 rename 失败"的失档窗口。
+## P1-3：写入时包装 schema_version，供未来迁移边界识别。
 func save_save(player_guid: String, data: Dictionary) -> bool:
 	var fname := file_name_for(player_guid)
 	if fname.is_empty():
 		return false
 	DirAccess.make_dir_recursive_absolute(_save_dir)
 	var tmp_path := _save_dir.path_join(fname + ".tmp")
+	var bak_path := _save_dir.path_join(fname + ".bak")
 	var final_path := _save_dir.path_join(fname)
+	var payload := {
+		SCHEMA_VERSION_KEY: SAVE_VERSION,
+		SAVED_AT_KEY: Time.get_datetime_string_from_system(false, true),
+		STATE_KEY: data,
+	}
 	var f := FileAccess.open(tmp_path, FileAccess.WRITE)
 	if f == null:
 		return false
-	f.store_string(JSON.stringify(data))
+	f.store_string(JSON.stringify(payload))
 	f.close()
+	# 现档降级为 .bak（中断点 1：final 缺失但 .bak 完整）
 	if FileAccess.file_exists(final_path):
-		DirAccess.remove_absolute(final_path)
+		if FileAccess.file_exists(bak_path):
+			DirAccess.remove_absolute(bak_path)
+		var err_bak := DirAccess.rename_absolute(final_path, bak_path)
+		if err_bak != OK:
+			DirAccess.remove_absolute(tmp_path)
+			return false
+	# tmp 提升为 final（中断点 2：.tmp 存在、final 缺失——load 回退 .tmp）
 	var err := DirAccess.rename_absolute(tmp_path, final_path)
-	return err == OK
+	if err != OK:
+		return false
+	# 成功后清理 .bak（中断点 3：final 新档完整、.bak 旧档残留——无害）
+	if FileAccess.file_exists(bak_path):
+		DirAccess.remove_absolute(bak_path)
+	return true
 
 ## 删除某身份的服务器存档（测试清理/主动清档）。
 func delete_save(player_guid: String) -> void:

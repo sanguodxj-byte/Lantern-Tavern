@@ -23,6 +23,7 @@ const VIEW_UP_VECTORS := {
 
 const SCENES := {
 	"brew_cauldron": "res://scenes/props/decor/brew_cauldron.tscn",
+	"brew_ingredient_rack": "res://scenes/props/decor/brew_ingredient_rack.tscn",
 	"barrel": "res://scenes/props/barrel/barrel.tscn",
 	"bucket": "res://scenes/props/decor/bucket.tscn",
 	"chest": "res://scenes/props/chest/chest.tscn",
@@ -112,6 +113,10 @@ func _run() -> void:
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	_viewport.add_child(camera)
 	camera.current = true
+
+	# VoxelProp 的网格由 _ready → rebuild 构建：等一个物理帧让网格节点就绪后再量 bounds。
+	await process_frame
+	await process_frame
 
 	var bounds := _global_bounds(model)
 	if bounds.size.length_squared() <= 0.0001:

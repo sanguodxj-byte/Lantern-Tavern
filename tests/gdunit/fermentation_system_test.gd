@@ -67,6 +67,35 @@ func test_start_brewing_no_recipe_for_custom_combo() -> void:
 	fs.start_brewing(ings, 1)
 	assert_str(fs.kegs[0].recipe_id).is_equal("")
 
+# ---------- 零风味/未知材料拒绝 (P1-1) ----------
+
+func test_start_brewing_rejects_unknown_material() -> void:
+	fs.setup_kegs(1)
+	# 怪物掉落材料未在 MATERIALS_DB 登记风味 → 输入边界必须拒绝
+	var idx: int = fs.start_brewing({"goblin_ear": 1}, 1)
+	assert_int(idx).is_equal(-1)
+	assert_int(fs.kegs[0].state).is_equal(FS.KegState.EMPTY)
+
+func test_start_brewing_rejects_only_unknown_materials() -> void:
+	fs.setup_kegs(1)
+	var idx: int = fs.start_brewing({"goblin_ear": 2, "skeleton_dust": 1}, 1)
+	assert_int(idx).is_equal(-1)
+	assert_int(fs.kegs[0].state).is_equal(FS.KegState.EMPTY)
+
+func test_start_brewing_rejects_mixed_known_unknown() -> void:
+	fs.setup_kegs(1)
+	# 混入一个未知材料 → 整锅拒绝，不得静默跳过
+	var idx: int = fs.start_brewing({"blackberry": 1, "goblin_ear": 1}, 1)
+	assert_int(idx).is_equal(-1)
+	assert_int(fs.kegs[0].state).is_equal(FS.KegState.EMPTY)
+
+func test_start_brewing_rejects_zero_quantity_unknown_only() -> void:
+	fs.setup_kegs(1)
+	# 只有未知材料且数量为 0 也应视为不可酿造（保持空字典输入被拒语义）
+	var idx: int = fs.start_brewing({"goblin_ear": 0}, 1)
+	assert_int(idx).is_equal(-1)
+	assert_int(fs.kegs[0].state).is_equal(FS.KegState.EMPTY)
+
 # ---------- 环境共振 (策划案 11 §点子1) ----------
 
 func test_volcano_resonance_adds_warmth_spicy() -> void:

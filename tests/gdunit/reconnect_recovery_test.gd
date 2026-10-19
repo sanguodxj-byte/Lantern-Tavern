@@ -28,8 +28,12 @@ func _make_server_with_entities() -> Dictionary:
 	var nm := NETWORK_MANAGER.new()
 	nm._ensure_session()
 	nm.session.init_server()
+	# P0-2（2228 审查修复）：服务器存档仓默认落 user://server_saves，跨运行残留存档
+	# 会污染本套件（如 g3.json 恢复旧材料 → baseline≠空 → 结算断言失真）。
+	# 与 session_root_test / remote_spawn_inheritance_test 同约定：每个测试隔离唯一目录。
+	nm.session.server_save_repo.set_save_dir("user://reconnect_recovery_%d" % Time.get_ticks_usec())
 	# 玩家 peer=3，稳定身份 guid=g3。
-	nm._server_handle_spawn(3, {}, "g3")
+	nm._server_handle_spawn(3, "g3")
 	nm.session.set_player_position(3, Vector3(2, 0, 2))
 	# 初始世界实体：一只老鼠(1) 与一个宝箱(2)。这是玩家在线时已同步到的「客户端已知集」。
 	nm.session.set_entity(1, {"kind": "enemy", "label": "rat", "current_life": 8, "position": Vector3(5, 0, 5)})
@@ -139,8 +143,11 @@ func test_settlement_idempotent_across_reconnect_new_peer_id() -> void:
 	var nm := NETWORK_MANAGER.new()
 	nm._ensure_session()
 	nm.session.init_server()
+	# P0-2（2228 审查修复）：隔离存档目录——残留存档会让 spawn 恢复旧材料，
+	# 使「首次净获得=2」的前提不成立（详见 _make_server_with_entities 注释）。
+	nm.session.server_save_repo.set_save_dir("user://reconnect_settle_%d" % Time.get_ticks_usec())
 	# 玩家 peer=3 / guid=g3，地牢中拾取 goblin_tooth×2。
-	nm._server_handle_spawn(3, {}, "g3")
+	nm._server_handle_spawn(3, "g3")
 	var c3 = nm.session.registry.get_context(3)
 	c3.inventory.add_material("goblin_tooth", 2)
 	# 首次结算（在线，peer=3）。

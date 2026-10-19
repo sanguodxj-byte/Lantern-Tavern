@@ -33,8 +33,8 @@ func _ready() -> void:
 	# 重力倍率：投掷武器下坠最大（抛物线最明显）
 	# 家具 0.8，投掷武器 0.55（区别于弩 0.04 / 弓 0.20）
 	var gravity := 0.8
-	if weapon_data != null and weapon_data.glb_mesh:
-		thrown_object = weapon_data.glb_mesh.instantiate()
+	if weapon_data != null and weapon_data.get_glb_mesh() != null:
+		thrown_object = weapon_data.get_glb_mesh().instantiate()
 		throw_movement_speed = weapon_data.throw_movement_speed
 		throw_rotation_speed = weapon_data.throw_rotation_speed
 		gravity = 0.55

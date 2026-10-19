@@ -61,3 +61,35 @@ func test_session_snapshot_idempotent_reapply() -> void:
 	b._apply_session_snapshot(snap)
 	b._apply_session_snapshot(snap)
 	assert_int(b.entity_count()).is_equal(2)
+
+# ---------- B4（0644 审查）：玩家位置快照单一复制通道 ----------
+
+## 记录 apply_snapshot 调用次数的 spy avatar。
+class SpyAvatar:
+	extends Node3D
+	var apply_count := 0
+	func apply_snapshot(_position: Vector3, _yaw: float) -> void:
+		apply_count += 1
+
+## 服务器分支：收到 EVT_PLAYER_SNAPSHOT 只应用到本地 avatar 一次，不再二次广播。
+func test_player_snapshot_server_applies_once_no_second_broadcast() -> void:
+	var b: Node = _make_bridge()
+	b.server_mode_override = 1  # 强制服务器分支
+	var spy: SpyAvatar = auto_free(SpyAvatar.new())
+	b._avatars[2] = spy
+	b._on_event({"event": NP.EVT_PLAYER_SNAPSHOT, "peer_id": 2, "position": Vector3(3, 0, 4), "look_yaw": 1.0})
+	assert_int(spy.apply_count).is_equal(1)
+
+## 客户端分支：事件通道应用恰好一次（原 rpc_snapshot 通道已从生产调用点移除）。
+func test_player_snapshot_client_applies_once() -> void:
+	var b: Node = _make_bridge()
+	b.server_mode_override = 0  # 强制客户端分支
+	var spy: SpyAvatar = auto_free(SpyAvatar.new())
+	b._avatars[3] = spy
+	b._on_event({"event": NP.EVT_PLAYER_SNAPSHOT, "peer_id": 3, "position": Vector3(1, 2, 3), "look_yaw": 0.5})
+	assert_int(spy.apply_count).is_equal(1)
+
+## 禁止模式守卫：生产桥接层不得再有 rpc_snapshot 二次广播调用点（函数保留仅供集成测试）。
+func test_player_snapshot_no_rpc_reread_call_in_production_source() -> void:
+	var source := (load("res://globals/multiplayer/multiplayer_scene_bridge.gd") as GDScript).source_code
+	assert_bool(source.contains("rpc_snapshot.rpc(")).is_false()

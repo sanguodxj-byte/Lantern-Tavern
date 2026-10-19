@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 ## 酒馆 3D 酿酒总装（tavern.tscn Brewing 节点 + TavernBrewingCoordinator）测试：
-## 玩家进入酿酒室/酒窖时，炼药锅站/原料架/倒桶台/窖藏位/手持组件齐备，
+## 玩家进入酿造间/酒窖时，炼药锅站/原料架/倒桶台/窖藏位/手持组件齐备，
 ## 且全部可交互（复用玩家选择射线交互模式）。
 
 var _tm: Node
@@ -28,6 +28,7 @@ func test_tavern_mounts_brewing_coordinator() -> void:
 	assert_object(brewing).is_not_null()
 	assert_bool(brewing.is_in_group("tavern_brewing")).is_true()
 	tavern.queue_free()
+	await await_idle_frame()
 
 func test_coordinator_builds_all_stations() -> void:
 	var tavern := load("res://scenes/tavern/tavern.tscn").instantiate() as Node3D
@@ -40,27 +41,30 @@ func test_coordinator_builds_all_stations() -> void:
 	assert_object(brewing.get_node_or_null("BarrelStation")).is_not_null()
 	assert_object(brewing.get_node_or_null("CellarRack")).is_not_null()
 	tavern.queue_free()
+	await await_idle_frame()
 
-func test_cauldron_and_stations_positioned_in_brewing_room() -> void:
+func test_stations_positioned_in_brew_room() -> void:
 	var tavern := load("res://scenes/tavern/tavern.tscn").instantiate() as Node3D
 	add_child(tavern)
 	await await_idle_frame()
 	await await_idle_frame()
 	var brewing: Node = tavern.get_node_or_null("Brewing")
 	var cauldron: Node3D = brewing.get_node_or_null("BrewCauldron") as Node3D
-	var rack: Node3D = brewing.get_node_or_null("CellarRack") as Node3D
+	var ingredient: Node3D = brewing.get_node_or_null("IngredientSource") as Node3D
 	var barrel: Node3D = brewing.get_node_or_null("BarrelStation") as Node3D
-	# 酿酒室范围：x[-1,3] z[-8.7,-6.25]
-	assert_float(cauldron.global_position.x).is_greater(-1.0)
-	assert_float(cauldron.global_position.x).is_less(3.0)
-	assert_float(cauldron.global_position.z).is_less(-6.25)
-	assert_float(cauldron.global_position.z).is_greater(-8.7)
-	# 酒窖范围：x[-5,3] y≈-3.04 z[-8.7,-3.55]
+	var rack: Node3D = brewing.get_node_or_null("CellarRack") as Node3D
+	# 酿造间范围（酒窖东侧地下房间，已扩建容纳大炼药锅）：x(3.15,8.0) z(-7.74,-3.4) 地板 y=-3.0
+	for station in [cauldron, ingredient, barrel]:
+		assert_float(station.global_position.x).is_greater(3.15)
+		assert_float(station.global_position.x).is_less(8.0)
+		assert_float(station.global_position.z).is_greater(-7.74)
+		assert_float(station.global_position.z).is_less(-3.4)
+		assert_float(station.global_position.y).is_less(-2.0)
+	# 窖藏位仍在酒窖：y<-2.0 z<-6.0
 	assert_float(rack.global_position.y).is_less(-2.0)
 	assert_float(rack.global_position.z).is_less(-6.0)
-	# 倒桶台与炼药锅、原料架同在酿酒室
-	assert_float(barrel.global_position.z).is_less(-6.25)
 	tavern.queue_free()
+	await await_idle_frame()
 
 func test_carry_mounted_on_player() -> void:
 	var tavern := load("res://scenes/tavern/tavern.tscn").instantiate() as Node3D
@@ -76,6 +80,7 @@ func test_carry_mounted_on_player() -> void:
 	var camera: Node = player.get_node_or_null("MainCamera")
 	assert_bool(carry.get_parent() == camera).is_true()
 	tavern.queue_free()
+	await await_idle_frame()
 
 func test_stations_wired_to_carry() -> void:
 	var tavern := load("res://scenes/tavern/tavern.tscn").instantiate() as Node3D
@@ -89,6 +94,7 @@ func test_stations_wired_to_carry() -> void:
 	assert_object(brewing.get_node("BarrelStation").get("carry")).is_not_null()
 	assert_object(brewing.get_node("CellarRack").get("carry")).is_not_null()
 	tavern.queue_free()
+	await await_idle_frame()
 
 func test_customer_spawner_present_and_serving_night_phase() -> void:
 	var tavern := load("res://scenes/tavern/tavern.tscn").instantiate() as Node3D
@@ -99,6 +105,7 @@ func test_customer_spawner_present_and_serving_night_phase() -> void:
 	assert_object(spawner).is_not_null()
 	assert_bool(spawner._is_open).is_true()
 	tavern.queue_free()
+	await await_idle_frame()
 
 func test_brewing_stations_are_interactable_contract() -> void:
 	# 复用玩家 _can_interact_collider 契约：interact() + can_interact() + interaction_name
@@ -129,3 +136,4 @@ func test_cellar_rack_uses_voxel_barrels_and_labels() -> void:
 		assert_object(slot.status_label).is_not_null()
 		assert_bool(String(slot.status_label.text).length() > 0).is_true()
 	tavern.queue_free()
+	await await_idle_frame()

@@ -490,7 +490,7 @@ func _ensure_weapon_slots() -> void:
 func _remount_armor_slot(slot_name: String) -> void:
 	_clear_armor_slot_mounts(slot_name)
 	var data: WeaponData = get_armor_slot_data(slot_name)
-	if data == null or data.glb_mesh == null:
+	if data == null or data.get_glb_mesh() == null:
 		return
 	var placeholders := _armor_placeholders_for_slot(slot_name)
 	if placeholders.is_empty():
@@ -502,7 +502,7 @@ func _remount_armor_slot(slot_name: String) -> void:
 		var side := String(entry.get("side", ""))
 		if placeholder == null or not is_instance_valid(placeholder):
 			continue
-		var inst: Node3D = data.glb_mesh.instantiate() as Node3D
+		var inst: Node3D = data.get_glb_mesh().instantiate() as Node3D
 		if inst == null:
 			continue
 		placeholder.add_child(inst)

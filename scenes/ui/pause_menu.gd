@@ -88,10 +88,16 @@ func resume() -> void:
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 # 不暂停整棵树，只暂停游戏层（层级<128）
+# 1740 审查 P1：记录本次暂停实际修改的节点及其原始 process_mode，
+# 恢复时只还原本次修改集合——暂停前原本 disabled/always 的节点语义不被破坏。
+var _paused_nodes: Dictionary = {}  # Node → 原始 process_mode
+
 func _pause_tree_except_self(paused: bool) -> void:
 	var tree := get_tree()
 	if tree == null:
 		return
+	if paused:
+		_paused_nodes.clear()
 	# 遍历所有节点，暂停非 UI 层
 	var root := tree.root
 	for child in root.get_children():
@@ -111,10 +117,12 @@ func _pause_node_recursive(node: Node, paused: bool, depth: int) -> void:
 	# 对其他节点设置 process_mode
 	if paused:
 		if node.process_mode == PROCESS_MODE_INHERIT or node.process_mode == PROCESS_MODE_ALWAYS:
+			_paused_nodes[node] = node.process_mode
 			node.set_process_mode(PROCESS_MODE_DISABLED)
 	else:
-		if node.process_mode == PROCESS_MODE_DISABLED:
-			node.set_process_mode(PROCESS_MODE_INHERIT)
+		if _paused_nodes.has(node):
+			node.set_process_mode(int(_paused_nodes[node]))
+			_paused_nodes.erase(node)
 	for c in node.get_children():
 		_pause_node_recursive(c, paused, depth + 1)
 

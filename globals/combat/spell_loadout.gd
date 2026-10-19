@@ -5,6 +5,8 @@ const RecipeData := preload("res://globals/combat/spell_recipe_data.gd")
 const RuneData := preload("res://globals/combat/rune_data.gd")
 
 signal slot_changed(slot_index: int, spell: Dictionary)
+## 符文库存快照变化（拾取/消耗/同步时发出），供法术界面刷新右侧符文列表。
+signal inventory_changed
 
 var slot_runes: Array[Array] = []
 var rune_inventory: Dictionary = {}
@@ -27,6 +29,7 @@ func set_rune_inventory(inventory: Dictionary) -> void:
 		if count > 0 and RuneData.has_rune(rune_id):
 			rune_inventory[rune_id] = count
 	_reconcile_with_inventory()
+	inventory_changed.emit()
 
 
 func get_remaining_count(rune_id: String) -> int:

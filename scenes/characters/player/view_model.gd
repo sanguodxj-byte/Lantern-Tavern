@@ -105,6 +105,8 @@ var weapon_holder: Node3D:
 
 var _base_transform := Transform3D.IDENTITY
 var _current_weapon_node: Node3D
+var _weapon_rig_animation_player: AnimationPlayer
+var _weapon_overlay_animation_player: AnimationPlayer
 var _current_weapon_data: WeaponData
 var _current_weapon_animation_variant := "standard"
 var _current_weapon_profile: StringName = &"unarmed"
@@ -582,15 +584,18 @@ func _on_shield_changed(shield_data: Variant) -> void:
 	set_shield(shield_data as Resource)
 
 ## 第一人称盾牌视觉。shield_data 可为 ShieldData 或“盾即武器”的 WeaponData，
-## 二者均暴露 glb_mesh。挂到独立的 ShieldSocket（左手侧），走同一套体素光照与视图渲染层。
+## 二者均暴露 glb 资源（WeaponData 经 get_glb_mesh 惰性解析）。挂到独立的
+## ShieldSocket（左手侧），走同一套体素光照与视图渲染层。
 func set_shield(shield_data: Resource) -> void:
 	clear_shield()
 	_current_shield_data = shield_data
 	if shield_data == null:
 		return
-	if not ("glb_mesh" in shield_data):
-		return
-	var glb: PackedScene = shield_data.get("glb_mesh") as PackedScene
+	var glb: PackedScene = null
+	if shield_data is WeaponData:
+		glb = (shield_data as WeaponData).get_glb_mesh()
+	elif "glb_mesh" in shield_data:
+		glb = shield_data.get("glb_mesh") as PackedScene
 	if glb == null:
 		return
 	_apply_shield_pose()
@@ -638,15 +643,16 @@ func set_weapon(weapon_data: WeaponData) -> void:
 	_apply_weapon_pose_offsets(weapon_data)
 	var profile := resolve_weapon_profile(weapon_data)
 	_apply_weapon_mount_pose(profile)
-	if weapon_data.glb_mesh == null or weapon_data.item_tag == "shield" or weapon_data.weapon_class == "shield":
+	if weapon_data.get_glb_mesh() == null or weapon_data.item_tag == "shield" or weapon_data.weapon_class == "shield":
 		return
-	_current_weapon_node = weapon_data.glb_mesh.instantiate() as Node3D
+	_current_weapon_node = weapon_data.get_glb_mesh().instantiate() as Node3D
 	if _current_weapon_node == null:
 		return
 	_current_weapon_node.scale = Vector3.ONE * _weapon_view_scale(weapon_data)
 	_current_weapon_node.set_meta("visual_only", true)
 	_apply_weapon_asset_orientation()
 	weapon_orientation.add_child(_current_weapon_node)
+	_weapon_rig_animation_player = _find_imported_animation_player(_current_weapon_node)
 	VOXEL_LIGHTING.apply_weapon_tree(_current_weapon_node, weapon_data.material_tier)
 	_set_render_layer_recursive(_current_weapon_node, _active_view_layer)
 	_refresh_weapon_overlay()
@@ -662,6 +668,8 @@ func clear_weapon() -> void:
 	if is_instance_valid(_current_weapon_node):
 		_current_weapon_node.queue_free()
 		_current_weapon_node = null
+	_weapon_rig_animation_player = null
+	_weapon_overlay_animation_player = null
 	if is_instance_valid(_weapon_overlay_node):
 		_weapon_overlay_node.free()
 	_weapon_overlay_node = null
@@ -687,6 +695,7 @@ func _refresh_weapon_overlay() -> void:
 		return
 	_weapon_overlay_node.name = "WeaponOverlayVisual"
 	_weapon_overlay_root.add_child(_weapon_overlay_node)
+	_weapon_overlay_animation_player = _find_imported_animation_player(_weapon_overlay_node)
 	_set_render_layer_recursive(_weapon_overlay_node, VIEW_MODEL_RENDER_LAYER)
 	_apply_first_person_weapon_materials(_weapon_overlay_node)
 
@@ -712,6 +721,14 @@ func _set_render_layer_recursive(node: Node, layer: int) -> void:
 		node.layers = layer
 	for child in node.get_children():
 		_set_render_layer_recursive(child, layer)
+
+func _find_imported_animation_player(root_node: Node) -> AnimationPlayer:
+	if root_node == null:
+		return null
+	if root_node is AnimationPlayer:
+		return root_node as AnimationPlayer
+	return root_node.find_child("AnimationPlayer", true, false) as AnimationPlayer
+
 
 func _material_tier_for(data: Resource) -> String:
 	if data != null and "material_tier" in data:
@@ -824,15 +841,23 @@ func _apply_weapon_asset_orientation() -> void:
 
 func _apply_weapon_pose_offsets(weapon_data: WeaponData) -> void:
 	var profile := resolve_weapon_profile(weapon_data)
+	var params := _first_person_params_for(weapon_data)
+	if params.has("view_position") and params.has("view_rotation"):
+		view_position = _vector3_from_array(params["view_position"])
+		view_rotation_degrees = _vector3_from_array(params["view_rotation"])
+		aim_position = view_position
+		aim_rotation_degrees = view_rotation_degrees
+		_reset_base()
+		return
 	if profile == &"bow":
-		view_position = Vector3(0.20, -0.24, -0.42)
+		view_position = Vector3(0.20, -0.12, -0.42)
 		view_rotation_degrees = Vector3(0.0, 0.0, -6.0)
-		aim_position = Vector3(0.05, -0.14, -0.38)
+		aim_position = Vector3(0.05, -0.06, -0.38)
 		aim_rotation_degrees = Vector3(0.0, 0.0, -2.0)
 	elif profile == &"crossbow":
-		view_position = Vector3(0.20, -0.24, -0.46)
+		view_position = Vector3(0.20, -0.08, -0.46)
 		view_rotation_degrees = Vector3(-6.0, 6.0, 0.0)
-		aim_position = Vector3(0.0, -0.16, -0.40)
+		aim_position = Vector3(0.0, -0.04, -0.40)
 		aim_rotation_degrees = Vector3(-2.0, 0.0, 0.0)
 	else:
 		view_position = DEFAULT_VIEW_POSITION
@@ -1047,11 +1072,57 @@ func _action_length(action_name: StringName) -> float:
 func sample_action(action_name: StringName, normalized_progress: float) -> void:
 	if not equipment_animation_enabled:
 		return
-	# 命中停帧：保持命中瞬间的姿态，暂停本地 ActionPivot 动画采样。
+	# 命中停帧：保持命中瞬间的姿态，暂停本地武器骨骼与兼容 Pivot 采样。
 	# 仅视觉冻结，不暂停 SceneTree / 不延迟服务器伤害 / 不冻结敌人。
 	if _hit_stop_remaining_sec > 0.0:
 		return
+	var imported_sampled := _sample_imported_weapon_rig(action_name, normalized_progress)
+	if imported_sampled:
+		# Blender-authored weapon bone is the sole writer for this action. Keeping
+		# the legacy ActionPivot clip active would double-transform the same weapon.
+		animator.sample_action(resolve_hold_action(), 0.0)
+		return
 	animator.sample_action(action_name, normalized_progress)
+
+func _imported_animation_name(player_node: AnimationPlayer, action_name: StringName) -> StringName:
+	if player_node == null:
+		return &""
+	if player_node.has_animation(action_name):
+		return action_name
+	var global_name := StringName("global/%s" % String(action_name))
+	if player_node.has_animation(global_name):
+		return global_name
+	return &""
+
+
+func _sample_imported_weapon_rig(action_name: StringName, normalized_progress: float) -> bool:
+	var sampled := false
+	for player_node in [_weapon_rig_animation_player, _weapon_overlay_animation_player]:
+		if player_node == null or not is_instance_valid(player_node):
+			continue
+		var imported_name := _imported_animation_name(player_node, action_name)
+		if imported_name.is_empty():
+			continue
+		var animation: Animation = player_node.get_animation(imported_name)
+		player_node.play(imported_name)
+		player_node.seek(clampf(normalized_progress, 0.0, 1.0) * animation.length, true)
+		player_node.pause()
+		sampled = true
+	return sampled
+
+
+func _play_imported_weapon_rig(action_name: StringName, custom_speed: float = 1.0) -> bool:
+	var played := false
+	for player_node in [_weapon_rig_animation_player, _weapon_overlay_animation_player]:
+		if player_node == null or not is_instance_valid(player_node):
+			continue
+		var imported_name := _imported_animation_name(player_node, action_name)
+		if imported_name.is_empty():
+			continue
+		player_node.play(imported_name, -1.0, custom_speed)
+		played = true
+	return played
+
 
 func play_action(action_name: StringName, custom_speed: float = 1.0) -> void:
 	if not equipment_animation_enabled:
@@ -1059,7 +1130,11 @@ func play_action(action_name: StringName, custom_speed: float = 1.0) -> void:
 	_queued_action_generation += 1
 	if _is_release_action(action_name):
 		begin_weapon_release(action_name)
-	animator.play_action(action_name, custom_speed)
+	var imported_played := _play_imported_weapon_rig(action_name, custom_speed)
+	if imported_played:
+		animator.sample_action(resolve_hold_action(), 0.0)
+	else:
+		animator.play_action(action_name, custom_speed)
 	_apply_equipment_recoil_for_action(action_name)
 
 ## Queues a purely visual follow-up without introducing a transform-writing Tween.
@@ -1076,6 +1151,11 @@ func play_action_after(action_name: StringName, delay_sec: float, custom_speed: 
 func stop_action(reset_pose: bool = true) -> void:
 	_queued_action_generation += 1
 	animator.stop_action(reset_pose)
+	for player_node in [_weapon_rig_animation_player, _weapon_overlay_animation_player]:
+		if player_node != null and is_instance_valid(player_node):
+			player_node.stop()
+	if reset_pose and _current_weapon_data != null:
+		_sample_imported_weapon_rig(resolve_hold_action(), 0.0)
 	if reset_pose and is_instance_valid(shield_action_pivot):
 		shield_action_pivot.transform = Transform3D.IDENTITY
 	if reset_pose and is_instance_valid(shield_impact_pivot):

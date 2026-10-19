@@ -30,6 +30,10 @@ func get_value(buff_type: String) -> Variant:
 		return null
 	return _buffs[buff_type].get("value", null)
 
+## 移除指定 buff（P1/A3 修复：服务器权威镜像清盾/清 buff 用；不存在则无操作）。
+func remove(buff_type: String) -> void:
+	_buffs.erase(buff_type)
+
 
 # ============================================================================
 # 战斗属性查询（玩家 buff 专用）

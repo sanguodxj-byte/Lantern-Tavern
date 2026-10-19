@@ -76,16 +76,43 @@ func transition_to_tavern() -> void:
 	load_space(SPACE_TAVERN)
 
 func transition_to_dungeon() -> void:
+	# 1215 C：从酒馆出发 = 新远征，清空上一趟远征的跨层会话状态。
+	if GameState != null and "expedition_session" in GameState:
+		GameState.expedition_session.clear()
 	load_space(SPACE_DUNGEON)
 
 ## 进入当前区域的下一楼层，不触发撤离结算或酒馆结算。
 ## 楼层状态由 GameState 持有，场景重载后由 DungeonRuntime 挂载新的 HUD。
+## 1215 C1/C2：下楼前捕获远征时钟/暗蚀与玩家资源到 ExpeditionSession，跨层连续。
 func transition_to_next_floor() -> void:
 	if current_space != SPACE_DUNGEON:
 		return
+	_capture_expedition_session()
 	if GameState != null and GameState.has_method("advance_dungeon_floor"):
 		GameState.advance_dungeon_floor()
 	load_space(SPACE_DUNGEON)
+
+## 下楼前把当前层的远征压力与玩家资源写入会话（楼梯不重置远征）。
+func _capture_expedition_session() -> void:
+	if GameState == null or not ("expedition_session" in GameState):
+		return
+	var runtime := _find_dungeon_runtime(current_loaded_level)
+	if runtime != null and runtime.has_method("capture_expedition_session"):
+		runtime.capture_expedition_session(GameState.expedition_session)
+
+## 从当前地牢场景树查找 DungeonRuntime 实例（procedural_dungeon._runtime 私有字段或类型查找）。
+func _find_dungeon_runtime(level: Node) -> Node:
+	if level == null:
+		return null
+	if "runtime" in level or "_runtime" in level:
+		var direct = level.get("_runtime") if "_runtime" in level else level.get("runtime")
+		if direct != null:
+			return direct
+	for child in level.get_children():
+		var found := _find_dungeon_runtime(child)
+		if found != null:
+			return found
+	return null
 
 func load_space(space: String) -> void:
 	_clear_overlay()

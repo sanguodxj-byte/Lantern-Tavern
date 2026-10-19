@@ -1,6 +1,8 @@
 class_name SkillDragList
 extends ItemList
 
+const DETAIL_POPUP_SCRIPT := preload("res://scenes/ui/equipment_detail_popup.gd")
+
 @export var drag_source: String = "available_skills"
 
 func _ready() -> void:
@@ -13,9 +15,12 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 	var data: Dictionary = panel.collect_skill_drag_payload(drag_source)
 	if data.is_empty():
 		return null
-	var preview := Label.new()
-	preview.text = tr(String(data.get("id", "Skill")))
-	set_drag_preview(preview)
+	# 拖拽预览优先显示技能图标（列表项图标），避免纯文字展示。
+	var preview_icon: Texture2D = null
+	var selected := get_selected_items()
+	if not selected.is_empty():
+		preview_icon = get_item_icon(selected[0])
+	set_drag_preview(DETAIL_POPUP_SCRIPT.build_drag_preview(preview_icon, tr(String(data.get("id", "Skill")))))
 	return data
 
 # 拖放接口：仅当本列表用作技能槽展示（drag_source == "skill_slots"）时生效。

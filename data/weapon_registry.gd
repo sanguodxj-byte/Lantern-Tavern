@@ -181,9 +181,11 @@ func _register_equipment(entry: Dictionary) -> void:
 
 	weapon_data.impale_local_rotation = stats.get("impale_local_rotation", 0.0)
 
-	var glb_path: String = _glb_paths[id]
-	if not glb_path.is_empty() and ResourceLoader.exists(glb_path):
-		weapon_data.glb_mesh = load(glb_path)
+	# E3 (review 1327 §3): 只登记 GLB 路径，绝不在此预加载 PackedScene。
+	# 全量预加载导致每次启动/测试都加载所有装备 GLB（含 crossbow 外部纹理
+	# invalid-UID 警告）并造成 DummyMesh/DummyMaterial 资源泄漏。
+	# 实际加载延迟到 WeaponData.get_glb_mesh() 首次访问。
+	weapon_data.glb_path = _glb_paths[id]
 
 	_weapons[id] = weapon_data
 	emit_signal("weapon_added", id)
@@ -319,9 +321,10 @@ func resolve_weapon_data(data: WeaponData) -> WeaponData:
 	# 已有 id 的武器（JSON 生成 / 宝箱掉落）无需解析
 	if not String(data.id).is_empty():
 		return data
-	# 无 id 但有 glb_mesh 的旧版 .tres：按 glb 反查注册表
-	if data.glb_mesh != null:
-		var resolved_id := find_id_by_glb(data.glb_mesh)
+	# 无 id 但有 glb_mesh 的旧版 .tres：按 glb 反查注册表（get_glb_mesh 惰性解析，
+	# 对 .tres 直接返回其已加载字段；对带 glb_path 的数据按需加载后再反查）。
+	if data.get_glb_mesh() != null:
+		var resolved_id := find_id_by_glb(data.get_glb_mesh())
 		if not resolved_id.is_empty():
 			var registry_data: WeaponData = get_weapon_data(resolved_id)
 			if registry_data != null:

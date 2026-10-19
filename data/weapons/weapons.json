@@ -14,8 +14,10 @@
 			"name": "Shortsword",
 			"name_zh": "短剑",
 			"first_person": {
-				"view_scale": 0.42,
-				"mount_position": [0.12, 0.02, -0.02],
+				"view_scale": 0.38,
+				"view_position": [0.18, -0.08, -0.58],
+				"view_rotation": [9.0, 3.0, -4.0],
+				"mount_position": [0.10, 0.04, -0.03],
 				"mount_rotation": [-8.0, -12.0, -135.0]
 			},
 			"category": "weapons",
@@ -87,7 +89,9 @@
 			"name": "Greatsword",
 			"name_zh": "双手大剑",
 			"first_person": {
-				"view_scale": 0.32,
+				"view_scale": 0.30,
+				"view_position": [0.12, -0.24, -0.68],
+				"view_rotation": [8.0, 3.0, -4.0],
 				"mount_position": [-0.02, 0.08, -0.01],
 				"mount_rotation": [-14.0, -8.0, -135.0]
 			},
@@ -313,7 +317,9 @@
 			"name": "Spear",
 			"name_zh": "长枪",
 			"first_person": {
-				"view_scale": 0.32,
+				"view_scale": 0.25,
+				"view_position": [0.10, -0.20, -0.76],
+				"view_rotation": [6.0, 2.0, -3.0],
 				"mount_position": [0.04, 0.03, -0.01],
 				"mount_rotation": [-8.0, -4.0, -155.0]
 			},
@@ -459,7 +465,9 @@
 			"name": "Longbow",
 			"name_zh": "长弓",
 			"first_person": {
-				"view_scale": 0.36,
+				"view_scale": 0.30,
+				"view_position": [0.12, 0.26, -0.66],
+				"view_rotation": [0.0, 0.0, -4.0],
 				"mount_position": [0.16, -0.01, -0.02],
 				"mount_rotation": [0.0, 0.0, -90.0]
 			},
@@ -530,7 +538,9 @@
 			"name": "Crossbow",
 			"name_zh": "轻弩",
 			"first_person": {
-				"view_scale": 0.38,
+				"view_scale": 0.30,
+				"view_position": [0.18, -0.10, -0.62],
+				"view_rotation": [-4.0, 5.0, 0.0],
 				"mount_position": [0.14, -0.02, -0.04],
 				"mount_rotation": [-6.0, 6.0, -90.0]
 			},
@@ -601,7 +611,9 @@
 			"name": "Staff",
 			"name_zh": "法杖",
 			"first_person": {
-				"view_scale": 0.34,
+				"view_scale": 0.29,
+				"view_position": [0.12, -0.16, -0.68],
+				"view_rotation": [7.0, 2.0, -4.0],
 				"mount_position": [0.10, 0.03, -0.02],
 				"mount_rotation": [-12.0, -4.0, -148.0]
 			},
@@ -677,7 +689,9 @@
 			"name": "Grimoire",
 			"name_zh": "魔导书",
 			"first_person": {
-				"view_scale": 0.40,
+				"view_scale": 0.42,
+				"view_position": [0.14, -0.14, -0.70],
+				"view_rotation": [4.0, 2.0, -3.0],
 				"mount_position": [0.14, 0.08, -0.04],
 				"mount_rotation": [-2.0, -20.0, -96.0]
 			},
@@ -824,8 +838,8 @@
 			"name": "Sword",
 			"name_zh": "长剑",
 			"first_person": {
-				"view_scale": 0.22,
-				"mount_position": [0.08, 0.06, -0.01],
+				"view_scale": 0.18,
+				"mount_position": [0.02, -0.04, -0.04],
 				"mount_rotation": [-10.0, -8.0, -140.0]
 			},
 			"category": "weapons",

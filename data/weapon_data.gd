@@ -17,6 +17,10 @@ extends Resource
 @export var throw_rotation_speed: float = 40.0
 @export var throw_movement_speed: float = 10.0
 @export var glb_mesh: PackedScene
+## GLB 场景资源路径（weapons.json 的 glb_path 键）。启动注册只登记路径，绝不预加载；
+## 首次调用 get_glb_mesh() 时按需加载并把结果缓存回 glb_mesh 字段。
+## 旧版 .tres WeaponData 可能直接持有已加载的 glb_mesh 而无 glb_path，两者兼容。
+@export var glb_path: String = ""
 @export var item_tag: String = ""
 @export var tags: Array[String] = []
 @export var weapon_class: String = ""
@@ -84,6 +88,88 @@ extends Resource
 @export var self_hp_drain_per_hit: int = 0
 ## 低血斩杀伤害倍率（实装）
 @export var low_hp_execute_mult: float = 0.0
+
+# ── 存档序列化（装备实例持久化）──
+# 只序列化运行时可变/实例特有字段；静态定义（glb_mesh、glb_path、伤害骰等）读档时
+# 由 WeaponRegistry 基础模板恢复，避免把 PackedScene 写入 JSON。
+
+## 惰性解析装备的 3D 模型 PackedScene（E3 / review 1327 §3）。
+## 优先返回已加载的 glb_mesh 字段（兼容旧版 .tres 直接持有 PackedScene）；
+## 否则按 glb_path 首次按需加载并缓存回 glb_mesh，同一实例只 load 一次。
+## 路径为空 / 资源不存在 / 加载失败时返回 null，调用方必须空安全处理。
+func get_glb_mesh() -> PackedScene:
+	if glb_mesh != null:
+		return glb_mesh
+	if not glb_path.is_empty() and ResourceLoader.exists(glb_path):
+		glb_mesh = load(glb_path) as PackedScene
+	return glb_mesh
+
+## 序列化为可 JSON 化的字典（存档用）。
+func to_save_dict() -> Dictionary:
+	return {
+		"id": id,
+		"condition": condition,
+		"max_condition": max_condition,
+		"tier_index": tier_index,
+		"tier_name": tier_name,
+		"material_tier": material_tier,
+		"rarity": rarity,
+		"quality_tier": quality_tier,
+		"is_identified": is_identified,
+		"is_cursed": is_cursed,
+		"is_blessed": is_blessed,
+		"affixes": affixes.duplicate(),
+		"damage_mult": damage_mult,
+		"carry_weight_mult": carry_weight_mult,
+		"carry_weight_bonus": carry_weight_bonus,
+		"is_broken": is_broken,
+		"lifesteal_percent": lifesteal_percent,
+		"self_hp_drain_per_hit": self_hp_drain_per_hit,
+		"low_hp_execute_mult": low_hp_execute_mult,
+	}
+
+## 从存档字典恢复实例字段。缺省字段保持 new() 默认值。
+func load_from_save_dict(data: Dictionary) -> void:
+	if data.has("id"):
+		id = String(data["id"])
+	if data.has("condition"):
+		condition = int(data["condition"])
+	if data.has("max_condition"):
+		max_condition = int(data["max_condition"])
+	if data.has("tier_index"):
+		tier_index = int(data["tier_index"])
+	if data.has("tier_name"):
+		tier_name = String(data["tier_name"])
+	if data.has("material_tier"):
+		material_tier = String(data["material_tier"])
+	if data.has("rarity"):
+		rarity = String(data["rarity"])
+	if data.has("quality_tier"):
+		quality_tier = String(data["quality_tier"])
+	if data.has("is_identified"):
+		is_identified = bool(data["is_identified"])
+	if data.has("is_cursed"):
+		is_cursed = bool(data["is_cursed"])
+	if data.has("is_blessed"):
+		is_blessed = bool(data["is_blessed"])
+	if data.has("affixes") and data["affixes"] is Array:
+		affixes = []
+		for a in data["affixes"]:
+			affixes.append(String(a))
+	if data.has("damage_mult"):
+		damage_mult = float(data["damage_mult"])
+	if data.has("carry_weight_mult"):
+		carry_weight_mult = float(data["carry_weight_mult"])
+	if data.has("carry_weight_bonus"):
+		carry_weight_bonus = int(data["carry_weight_bonus"])
+	if data.has("is_broken"):
+		is_broken = bool(data["is_broken"])
+	if data.has("lifesteal_percent"):
+		lifesteal_percent = float(data["lifesteal_percent"])
+	if data.has("self_hp_drain_per_hit"):
+		self_hp_drain_per_hit = int(data["self_hp_drain_per_hit"])
+	if data.has("low_hp_execute_mult"):
+		low_hp_execute_mult = float(data["low_hp_execute_mult"])
 
 ## 获取品质稀有度对应 UI 显示颜色 (ToME4 / Elona 风格)
 func get_rarity_color() -> Color:

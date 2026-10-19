@@ -1,4 +1,6 @@
 extends Node
+
+const Service := preload("res://globals/core/service.gd")
 ## NetworkManager（autoload singleton，按 project.godot 注册名访问；不声明 class_name 避免与 autoload 同名冲突）
 
 ## 联机传输（SceneMultiplayer + ENet）+ 权威编排接入层。
@@ -6,7 +8,8 @@ extends Node
 ## 客户端：RPC 接收服务器事件 → 应用到本地 SessionRoot（仅缓存/插值，不作权威计算）。
 ##
 ## 设计基线见 docs/25-联机总体方案.md §3.2 / §6.2 / §13 / §19。
-## 联机范围仅限地牢（出征）：玩家进入地牢只继承各自单人存档（save_state），见 SessionRoot.handle_spawn_request。
+## 联机范围仅限地牢（出征）：玩家进入地牢只继承各自单人存档（B2：经服务器存档仓按 guid
+## 恢复，见 SessionRoot.handle_spawn_request）。
 
 const NP := preload("res://globals/multiplayer/network_protocol.gd")
 const SessionRootClass := preload("res://globals/multiplayer/session_root.gd")
@@ -96,9 +99,14 @@ func _ensure_session() -> void:
 		add_child(session)
 		# world_revision 闭环：SessionRoot 在权威世界状态变更时经此把 EVT_WORLD_REVISION_CHANGED 下发到所有客户端。
 		session.broadcast_event = _dispatch_world_event
+		# A1（架构审查 P0）：把 SessionRoot.session_event 接线为会话内异步事件的单一出口。
+		# 会话内异步事件（战斗状态/敌人攻击/断线/命令拒绝/升级/法术等）统一经
+		# _buffer_or_dispatch 下发（含节流/RPC）；命令返回路径已下发的事件由
+		# SessionRootClass.is_outbox_event 判重，保证每个逻辑事件恰好下发一次。
+		session.session_event.connect(_route_session_event)
 		# P1-5：把联机 per-peer 玩家解析注入 GameState.resolve_player_node——
 		# 地牢压力/撤离/敌人目标等路径在联机下按 peer 解析，不再默认落到房主/单机玩家。
-		var gs: Node = get_node_or_null("/root/GameState")
+		var gs: Node = Service.game_state()
 		if gs != null and "player_resolver" in gs:
 			gs.player_resolver = func(pid: int) -> Node:
 				if session == null or session.registry == null:
@@ -110,6 +118,40 @@ func _ensure_session() -> void:
 		# P1-1：注入服务器可信存档仓（按 player_guid 持久化权威状态）。
 		# spawn 恢复与出征结算写回经此仓闭环；单测可注入临时目录。
 		session.server_save_repo = ServerSaveRepository.new()
+
+## A1（架构审查 P0）：SessionRoot.session_event 的路由处理器。
+## 仅服务器（权威）侧把会话内异步事件经 _buffer_or_dispatch 下发（含节流/RPC）；
+## 客户端侧本地 session 不持权威，其 session_event（如本地命令拒绝）不参与下发，
+## 与 _dispatch_world_event 的 is_server 守卫保持一致。
+func _route_session_event(event: Dictionary) -> void:
+	if session == null or not session.is_server:
+		return
+	_buffer_or_dispatch(event)
+
+## B1（架构审查 P0）：彻底结束当前会话并释放其全部状态。
+## 解除 GameState.player_resolver（防悬挂闭包引用旧会话）、清空快照/实体缓冲与 tick 累积器、
+## 释放 SessionRoot 并置 null。disconnect_session 调用后，下次 host()/_ensure_session() 会创建
+## 全新 SessionRoot——旧房间的 registry/world_revision/entities/结算账本不再泄漏进下一房间。
+func end_session() -> void:
+	# 仅入树时解除 autoload 注入（headless 单测中 manager 可能未入树，此时无 autoload 可达）。
+	if is_inside_tree():
+		var gs: Node = Service.game_state()
+		if gs != null and "player_resolver" in gs:
+			gs.player_resolver = Callable()
+	_snapshot_buffer.clear()
+	_entity_update_buffer.clear()
+	_snapshot_accum = 0.0
+	_input_tick_accum = 0.0
+	_entity_baseline_accum = 0.0
+	_net_stats.clear()
+	if session != null and is_instance_valid(session):
+		if session.is_inside_tree():
+			# 入树节点用 queue_free：延迟到帧末释放，保留 SessionRoot 的
+			# NOTIFICATION_EXIT_TREE 清理（会话投射物统一回收）。
+			session.queue_free()
+		else:
+			session.free()
+		session = null
 
 ## 服务器主导出：开启 ENet 服务器 + 初始化权威 SessionRoot。
 func host(port: int = DEFAULT_PORT, max_players: int = MAX_PLAYERS) -> Error:
@@ -133,6 +175,9 @@ func host(port: int = DEFAULT_PORT, max_players: int = MAX_PLAYERS) -> Error:
 	last_error = OK
 	_ensure_session()
 	session.init_server()
+	# P1-4（0304 审查）：记录房主 peer_id 供 CMD_EXPEDITION 授权校验
+	# （listen-server 房主=local_peer_id；dedicated 服务器自身不走命令路由）。
+	session.host_peer_id = local_peer_id
 	_register_peer(local_peer_id)
 	lobby_updated.emit()
 	return OK
@@ -165,16 +210,25 @@ func disconnect_session() -> void:
 	if is_instance_valid(multiplayer) and multiplayer.multiplayer_peer != null:
 		multiplayer.multiplayer_peer.close()
 		multiplayer.multiplayer_peer = null
+	# P1-2（0304 审查）：显式断开/连接失败/服务器掉线统一走同一幂等清理。
+	_reset_transport_and_session()
+	last_error = OK
+	lobby_updated.emit()
+
+## P1-2（0304 审查）：三个断开路径收敛的幂等清理——
+## 释放 SessionRoot、解除 GameState.player_resolver、清空快照/实体缓冲与 tick 累积器、
+## 清除 reconnect token/peer、peer 表。连接失败/服务器掉线同样执行，
+## 防止旧房间的 world/entities/save snapshot/token 污染下一次 join。
+func _reset_transport_and_session() -> void:
+	end_session()
 	is_active = false
 	is_host = false
 	local_peer_id = 0
 	session_address = ""
 	session_port = 0
-	last_error = OK
 	reconnect_token = ""
 	reconnect_peer_id = 0
 	peer_contexts.clear()
-	lobby_updated.emit()
 
 # ---------------------------------------------------------------------------
 # Peer 注册表（兼容既有 API）
@@ -227,20 +281,15 @@ func _on_connected_to_server() -> void:
 func _on_connection_failed() -> void:
 	if is_instance_valid(multiplayer) and multiplayer.multiplayer_peer != null:
 		multiplayer.multiplayer_peer = null
-	is_active = false
-	is_host = false
-	local_peer_id = 0
-	session_address = ""
-	session_port = 0
+	# P1-2（0304 审查）：连接失败同样释放 SessionRoot 与缓冲，防旧会话污染下次 join。
+	_reset_transport_and_session()
 	connection_failed.emit()
 
 func _on_server_disconnected() -> void:
-	is_active = false
-	is_host = false
-	local_peer_id = 0
-	session_address = ""
-	session_port = 0
-	peer_contexts.clear()
+	if is_instance_valid(multiplayer) and multiplayer.multiplayer_peer != null:
+		multiplayer.multiplayer_peer = null
+	# P1-2（0304 审查）：服务器掉线同样释放 SessionRoot 与缓冲。
+	_reset_transport_and_session()
 	server_disconnected.emit()
 	lobby_updated.emit()
 
@@ -250,8 +299,11 @@ func _on_server_disconnected() -> void:
 
 ## 服务器处理一次玩家生成请求：创建权威 PlayerContext、签发稳定重连 token、广播 spawned。
 ## 返回 {"ctx":PlayerContext, "token":String, "peer_id":int}；非服务器或失败返回 {"ctx":null,...}。
+## B2（0644 审查 / 决策 G1-A）：权威存档来源唯一化为服务器可信存档仓——SessionRoot 按
+## player_guid 从 server_save_repo 加载（客户端只上送 guid，wire 上不再携带任何存档字典）。
+## save_state 仅由房主本地路径 spawn_self 提供（可选第三参），且仓内记录永远优先于它。
 ## P0-1：重复在线身份被 SessionRoot 拒绝（ctx==null）时向该 peer 下发 EVT_COMMAND_REJECTED。
-func _server_handle_spawn(peer_id: int, save_state: Dictionary = {}, player_guid: String = "") -> Dictionary:
+func _server_handle_spawn(peer_id: int, player_guid: String = "", save_state: Dictionary = {}) -> Dictionary:
 	_ensure_session()
 	if not session.is_server:
 		return {"ctx": null, "token": "", "peer_id": peer_id}
@@ -276,8 +328,13 @@ func _server_handle_command(peer_id: int, command: Dictionary) -> Dictionary:
 	if not session.is_server:
 		return {"success": false, "event": {}, "error_code": NP.ERR_PERMISSION_DENIED}
 	var res: Dictionary = session.on_command(peer_id, command)
+	# A1（架构审查 P0）去重：命令处理器内已经 session_event 单一出口下发的事件
+	# （spell_resolved / progression_* / skill_state_changed / dungeon_layout 等，
+	# 见 SessionRootClass.is_outbox_event）不在返回路径二次下发——否则每个逻辑事件下发两次。
 	if bool(res.get("success", false)) and res.has("event") and not res["event"].is_empty():
-		_buffer_or_dispatch(res["event"])
+		var ev_kind: String = String(res["event"].get("event", res["event"].get("type", "")))
+		if not SessionRootClass.is_outbox_event(ev_kind):
+			_buffer_or_dispatch(res["event"])
 	# 附带事件（如战斗致敌人扣血的 entity_snapshot / 死亡的 entity_despawned / 掉落的 entity_spawned）。
 	if res.has("extra_events"):
 		for ev in (res["extra_events"] as Array):
@@ -323,8 +380,8 @@ func _server_handle_resume(peer_id: int, token: String, player_guid: String = ""
 		"world_revision": session.world.world_revision,
 	}
 	var res: Dictionary = session.on_command(peer_id, command)
-	if bool(res.get("success", false)) and res.has("event") and not res["event"].is_empty():
-		_dispatch_event(res["event"], peer_id)
+	# A1（架构审查 P0）：EVT_SESSION_SNAPSHOT 已由 _handle_resume 经 session_event 单一出口
+	# 下发（_route_session_event → _buffer_or_dispatch），此处不再重复下发。
 	return res
 
 ## 服务器收到心跳：刷新该 peer 最后活跃时间。
@@ -339,7 +396,8 @@ func _server_handle_leave(peer_id: int) -> void:
 	if not session.is_server:
 		return
 	session.handle_peer_left(peer_id)
-	_dispatch_event({"event": NP.EVT_PLAYER_DESPAWNED, "peer_id": peer_id}, peer_id)
+	# A1（架构审查 P0）：despawned 已由 handle_peer_left 经 session_event 单一出口下发，
+	# 不再在此显式二次下发（避免同一逻辑事件下发两次）。
 
 ## 服务器侧断线流程（ENet 掉线 / 心跳超时共用）：进入 GRACE、广播 despawned、房主断线结束房间。
 func _server_on_peer_disconnected(peer_id: int) -> void:
@@ -348,7 +406,8 @@ func _server_on_peer_disconnected(peer_id: int) -> void:
 		return
 	var res: Dictionary = session.handle_peer_disconnected(peer_id, session.current_time)
 	if bool(res.get("was_tracked", false)):
-		_dispatch_event({"event": NP.EVT_PLAYER_DESPAWNED, "peer_id": peer_id}, peer_id)
+		# A1（架构审查 P0）：despawned 已由 handle_peer_disconnected 经 session_event 单一出口
+		# 下发，不再在此显式二次下发（避免同一逻辑事件下发两次）。
 		if session.connection_auth.should_end_room_on_disconnect(peer_id):
 			room_ended.emit()
 
@@ -491,12 +550,13 @@ func _apply_event(event: Dictionary) -> void:
 # 客户端 → 服务器 RPC（意图上送）
 # ---------------------------------------------------------------------------
 
-func send_spawn(_legacy_save_state: Dictionary, player_guid: String) -> void:
+func send_spawn(player_guid: String) -> void:
 	if not is_client():
 		return
 	reconnect_player_guid = player_guid
-	# RPC 参数保留空字典以兼容协议形状；服务器无条件忽略客户端存档数据。
-	rpc_client_spawn.rpc_id(HOST_PEER_ID, local_peer_id, {}, player_guid)
+	# B2（0644 审查 / 决策 G1-A）：客户端只上送稳定身份 guid；权威存档由服务器按 guid 从
+	# 服务器存档仓（ServerSaveRepository）加载——不再携带/转发任何客户端存档字典（wire 无空字典占位）。
+	rpc_client_spawn.rpc_id(HOST_PEER_ID, local_peer_id, player_guid)
 
 func send_command(command: Dictionary) -> void:
 	if not is_client():
@@ -522,22 +582,24 @@ func submit_command(command: Dictionary) -> Dictionary:
 ## 房主为【自身 peer】建立权威 PlayerContext（联机地牢中房主也是玩家）。
 ## 等价于客户端的 send_spawn，但走服务器本地权威路径（不依赖 RPC）。
 ## 返回 {"ctx":PlayerContext, "token":String, "peer_id":int}。
+## B2（0644 审查）：save_state（房主单人存档摘要）仍可由房主提供——经 _server_handle_spawn
+## 转交 SessionRoot，后者按 guid 先查服务器存档仓、仓无记录才回退该摘要（房主本地存档闭环）。
 func spawn_self(save_state: Dictionary = {}, player_guid: String = "") -> Dictionary:
 	_ensure_session()
 	if not session.is_server:
 		return {"ctx": null, "token": "", "peer_id": local_peer_id}
 	reconnect_player_guid = player_guid
-	return _server_handle_spawn(local_peer_id, save_state, player_guid)
+	return _server_handle_spawn(local_peer_id, player_guid, save_state)
 
-## 房主开启出征：服务器决定权威 seed，广播 dungeon_layout 给所有客户端。
-## 客户端据此用相同 seed 确定性重建真实地牢。返回 layout 事件字典。
+## 房主开启出征（1417 审查 P0-1）：统一走 SessionRoot 出征事务
+## （dungeon 布局 + 结算账本重置 + world revision 推进 + 布局事件）。
+## 事件经 session.session_event → _route_session_event 自动广播，此处不再手动 dispatch，
+## 避免与正确入口产生双重广播/双实现路径。返回 {"success", "event", "error_code"}。
 func start_expedition(seed_hint: int = -1) -> Dictionary:
 	_ensure_session()
 	if not session.is_server:
 		return {}
-	var evt: Dictionary = session.dungeon_auth.start_expedition(seed_hint)
-	_dispatch_event(evt, 0)
-	return evt
+	return session.start_expedition_authoritatively(seed_hint)
 
 ## 服务器权威生成一个实体（敌人/宝箱/门/掉落）并广播 entity_spawned 给所有客户端。
 ## data 建议字段：kind/position/current_life/max_life/label（由表现层 multiplayer_entity 消费）。
@@ -618,16 +680,16 @@ func send_leave() -> void:
 # RPC 定义
 # ---------------------------------------------------------------------------
 
-## 客户端 → 服务器：请求生成玩家。客户端自报 save_state 属不可信输入，服务器明确忽略；
-## 权威存档只能由房主本地 spawn_self() 或未来服务器持久化仓库注入。
+## 客户端 → 服务器：请求生成玩家。客户端只上送稳定身份 guid；权威存档由服务器按 guid 从
+## 服务器存档仓加载（B2 / 决策 G1-A）——不携带、不信任客户端存档字典。
 @rpc("any_peer", "call_remote", "reliable")
-func rpc_client_spawn(peer_id: int, _untrusted_save_state: Dictionary, player_guid: String) -> void:
+func rpc_client_spawn(peer_id: int, player_guid: String) -> void:
 	if not is_host:
 		return
 	var sender: int = multiplayer.get_remote_sender_id()
 	if sender != peer_id:
 		return  # 安全：peer 只能为自己生成
-	var res: Dictionary = _server_handle_spawn(peer_id, {}, player_guid)
+	var res: Dictionary = _server_handle_spawn(peer_id, player_guid)
 	if res.get("ctx") != null:
 		rpc_server_spawned.rpc_id(peer_id, peer_id, String(res.get("token", "")))
 

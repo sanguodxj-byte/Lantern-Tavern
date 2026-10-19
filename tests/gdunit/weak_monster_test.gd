@@ -116,7 +116,10 @@ func test_zone_configs_have_normal_monsters() -> void:
 	if spawner.has_method("_load_roster"):
 		spawner.call("_load_roster")
 	var cfg: Dictionary = spawner.get_zone_config(0)
-	assert_array(cfg.types.keys()).contains_exactly(["goblin", "orc_raider"])
+	# TEMP playtest roster: L0 承载全部已验收普通怪物（等权重），弱怪 rat 不入列
+	assert_array(cfg.types.keys()).contains_exactly(
+		["goblin", "skeleton", "slime", "spider", "troll", "orc_raider", "dire_wolf", "drow_blade"]
+	)
 
 func test_zone_configs_have_goblin() -> void:
 	var spawner: Node = Engine.get_main_loop().root.get_node("DungeonSpawner")
@@ -142,7 +145,7 @@ func test_spawner_marks_enemy_rank_and_body_size() -> void:
 	var ds: Node = Engine.get_main_loop().root.get_node("DungeonSpawner")
 	assert_str(ds.get_body_size("rat")).is_empty()
 	assert_str(ds.get_body_size("elite_goblin")).is_equal("medium")
-	assert_str(ds.get_body_size("troll")).is_empty()
+	assert_str(ds.get_body_size("troll")).is_equal("large")  # troll 已验收入列（voxel_troll_64x_rig.glb）
 	assert_str(ds.get_body_size("dragon")).is_equal("huge")
 	assert_bool(ds.is_boss_type("elite_dragon")).is_true()
 	assert_bool(ds.is_boss_type("elite_rock_golem")).is_true()
@@ -184,18 +187,17 @@ func test_dying_state_has_elite_bonus_drop() -> void:
 func test_dying_state_guards_missing_ragdoll_nodes() -> void:
 	var source := _source("res://scenes/characters/enemies/state/enemy_state_dying.gd")
 	assert_bool(source.contains("func _blood_transform")) \
-		.override_failure_message("死亡状态应在缺失头部骨骼时回退到 enemy.global_transform").is_true()
-	assert_bool(source.contains("enemy.skeleton_simulator != null")) \
-		.override_failure_message("死亡状态启动 ragdoll 前应检查 skeleton_simulator 非空").is_true()
-	assert_bool(source.contains("enemy.physical_bone_torso != null and state_data != null")) \
-		.override_failure_message("死亡状态施加冲量前应检查躯干骨骼和 state_data 非空").is_true()
+		.override_failure_message("死亡状态应于缺失头部骨骼时回退到 enemy.global_transform").is_true()
+	# PhysicalBone 已被 VoxelRagdoll 方案淘汰（Enemy._ready 释放），死亡表现统一走体素碎裂
+	assert_bool(source.contains("enemy.voxel_ragdoll != null")) \
+		.override_failure_message("死亡状态启用 ragdoll 前应检查 voxel_ragdoll 非空").is_true()
+	assert_bool(source.contains("state_data != null")) \
+		.override_failure_message("死亡状态施加冲量前应检查 state_data 非空").is_true()
 
 func test_dead_state_guards_missing_ragdoll_nodes() -> void:
 	var source := _source("res://scenes/characters/enemies/state/enemy_state_dead.gd")
-	assert_bool(source.contains("enemy.skeleton_simulator != null")) \
-		.override_failure_message("死亡状态应先判 skeleton_simulator 非空再休眠物理骨骼").is_true()
 	assert_bool(source.contains("enemy.voxel_ragdoll != null")) \
-		.override_failure_message("死亡状态对体素敌人应走 voxel_ragdoll 冻结分支，而非对 null 调 get_children()").is_true()
+		.override_failure_message("死亡状态应先判 voxel_ragdoll 非空再冻结碎裂体").is_true()
 
 func test_dying_state_uses_ragdoll_not_death_animation() -> void:
 	# 死亡时应直接启用布娃娃，不播放 death 动画
@@ -206,6 +208,6 @@ func test_dying_state_uses_ragdoll_not_death_animation() -> void:
 	# 不应有 has_animation("death") 的判断
 	assert_bool(source.contains('has_animation("death")')).is_false() \
 		.override_failure_message("死亡状态不应检查 death 动画是否存在")
-	# 应始终启用 skeleton_simulator
-	assert_bool(source.contains("physical_bones_start_simulation")).is_true() \
-		.override_failure_message("死亡状态应始终启用布娃娃物理模拟")
+	# 应始终启用 VoxelRagdoll（PhysicalBone 方案已被淘汰）
+	assert_bool(source.contains("voxel_ragdoll.activate")) \
+		.override_failure_message("死亡状态应始终启用 voxel_ragdoll 碎裂模拟").is_true()

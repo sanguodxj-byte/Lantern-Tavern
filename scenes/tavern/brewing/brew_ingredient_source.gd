@@ -2,6 +2,8 @@ class_name BrewIngredientSource
 extends StaticBody3D
 ## 原料架（酿酒室）：陈列酒馆仓库可用原料，玩家逐个取用为手持原料。
 ## 由 tavern_brewing_coordinator 放置，随 TavernManager 材料库存刷新。
+## 货架本体使用专属多层原料架体素道具 brew_ingredient_rack（4 柱 3 层，
+## 中架顶 y=22px=0.6875m），槽位与标签高度按货架实际尺寸对齐。
 
 const VF := preload("res://scenes/tavern/brewing/brew_visual_factory.gd")
 const BD := preload("res://globals/tavern/brewing_data.gd")
@@ -22,16 +24,16 @@ func _ready() -> void:
 	if not Engine.is_editor_hint():
 		set_process(false)
 
-## 构建木架本体（复用 bench 体素道具作为货架）。
+## 构建多层原料架本体（专用 brew_ingredient_rack 体素道具，原点即地板面）。
 func _build_shelf_visual() -> void:
-	var bench := VF.make_voxel_prop("bench")
-	bench.scale = Vector3.ONE * 0.85
-	bench.position = Vector3(0, 0.32, 0)
-	add_child(bench)
+	var rack := VF.make_voxel_prop("brew_ingredient_rack")
+	rack.scale = Vector3.ONE
+	rack.position = Vector3(0, 0, 0)
+	add_child(rack)
 
 func _build_status_label() -> void:
 	status_label = VF.make_status_label()
-	status_label.position = Vector3(0, 1.25, 0)
+	status_label.position = Vector3(0, 1.55, 0)
 	status_label.font_size = 24
 	add_child(status_label)
 
@@ -53,7 +55,7 @@ func refresh_slots() -> void:
 		var slot := BrewIngredientSlot.new()
 		slot.name = "Slot_%s" % mat_id
 		var idx: int = slots.size()
-		slot.position = Vector3(-0.42 + idx * 0.17, 0.62, 0.06)
+		slot.position = Vector3(-0.42 + idx * 0.17, 0.72, 0.06)
 		add_child(slot)
 		slot.setup(String(mat_id), self)
 		slots.append(slot)

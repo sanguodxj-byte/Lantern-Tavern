@@ -24,7 +24,7 @@ func _ready() -> void:
 		var ids: Array = wr.get_all_ids()
 		for id in ids:
 			var d = wr.get_weapon_data(id)
-			if d != null and d.get("weapon_class") != "shield" and d.get("glb_mesh") != null:
+			if d != null and d.get("weapon_class") != "shield" and d.get_glb_mesh() != null:
 				wd = d
 				break
 	print("PROBE_WEAPON_DATA=", wd.get("id") if wd != null else "NULL")

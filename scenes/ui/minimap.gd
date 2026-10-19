@@ -20,8 +20,8 @@ extends Control
 const Service := preload("res://globals/core/service.gd")
 ##   - 引用刷新 & 碰撞体缓存每 update_interval 秒执行一次（重量级）
 
-@export var map_size: int = 180          # 小地图像素边长
-@export var world_radius: float = 25.0   # 可见世界半径(米)
+@export var map_size: int = 110          # 小地图像素边长
+@export var world_radius: float = 50.0   # 可见世界半径(米)——内容缩小后视野范围同步扩大
 @export var update_interval: float = 0.3  # 数据刷新间隔(秒)——仅影响引用/缓存
 @export var bg_alpha: float = 0.55
 ## 迷雾探索视野半径（米）：玩家周围此范围内的格子被标记为"当前可见"

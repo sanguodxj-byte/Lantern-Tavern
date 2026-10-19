@@ -42,6 +42,19 @@ func test_has_returns_false_for_missing_buff() -> void:
 	var buffs = CBC.new()
 	assert_bool(buffs.has("nonexistent")).is_false()
 
+func test_remove_erases_buff() -> void:
+	var buffs = CBC.new()
+	buffs.add("test_buff", 5.0, 10)
+	assert_bool(buffs.has("test_buff")).is_true()
+	buffs.remove("test_buff")
+	assert_bool(buffs.has("test_buff")).is_false()
+
+func test_remove_missing_buff_is_noop() -> void:
+	var buffs = CBC.new()
+	buffs.add("other_buff", 3.0, 7)
+	buffs.remove("nonexistent")
+	assert_bool(buffs.has("other_buff")).is_true()
+
 # ============================================================================
 # 2. 战斗属性查询
 # ============================================================================

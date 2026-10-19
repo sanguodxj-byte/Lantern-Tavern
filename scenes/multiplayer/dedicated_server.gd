@@ -87,11 +87,17 @@ func _on_peer_left(peer_id: int) -> void:
 # 出征（首个玩家触发）：服务器权威 seed → 广播 layout → 权威实体
 # ---------------------------------------------------------------------------
 func _start_expedition() -> void:
-	var evt: Dictionary = NetworkManager.start_expedition()
-	if evt.is_empty():
-		push_warning("[DedicatedServer] start_expedition returned empty event")
+	# P0-1（0304 审查）：start_expedition 返回包裹结构 {"success", "event", "error_code"}——
+	# 必须先验证 success 再取 event.seed；旧代码直接对包裹取 seed 恒得 0，导致
+	# 服务器碰撞世界/实体与客户端广播布局分叉（不可见墙、实体坐标错位）。
+	var result: Dictionary = NetworkManager.start_expedition()
+	if result.is_empty() or not bool(result.get("success", false)):
+		push_warning("[DedicatedServer] start_expedition failed: %s" % String(result.get("error_code", "empty")))
 		return
+	var evt: Dictionary = result.get("event", {})
 	_seed = int(evt.get("seed", 0))
+	if _seed == 0:
+		push_warning("[DedicatedServer] expedition started with seed=0 (verify layout broadcast matches)")
 	_controller = DungeonSessionControllerClass.new()
 	_controller.name = "DungeonAuthority"
 	add_child(_controller)

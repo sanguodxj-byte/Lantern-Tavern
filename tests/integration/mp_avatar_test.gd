@@ -92,7 +92,7 @@ func _run_client() -> void:
 	if not connected:
 		_write("client_ok.txt", "FAIL connect (no server on candidate ports)")
 		return
-	NetworkManager.send_spawn({}, "client_guid_001")
+	NetworkManager.send_spawn("client_guid_001")
 	var my_peer: int = NetworkManager.local_peer_id
 	print("[TEST] client my_peer=", my_peer)
 	# 客户端应显示【服务器(peer 1)】的远端 avatar（自己不显示，用真实 Player 控制器）。

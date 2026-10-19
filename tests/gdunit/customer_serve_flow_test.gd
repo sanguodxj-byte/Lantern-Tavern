@@ -65,10 +65,14 @@ func test_serve_entity_routes_by_entity() -> void:
 	assert_str(result["tier"]).is_equal("满意")
 	assert_int(tm.gold).is_equal(_saved_gold + 6)
 
-func test_serve_entity_unknown_returns_empty() -> void:
+func test_serve_entity_unknown_returns_failed_result() -> void:
+	# 0805 审查 P1：失败不再返回空字典，而是结构化 SettlementResult
+	# （committed=false + error_code）。
 	var unknown := Node3D.new()
 	add_child(unknown)
-	assert_bool(spawner.serve_entity(unknown, {}, 0).is_empty()).is_true()
+	var result: Variant = spawner.serve_entity(unknown, {}, 0)
+	assert_bool(result.committed).is_false()
+	assert_str(result.error_code).is_not_empty()
 	unknown.queue_free()
 
 func test_gift_material_credited_to_warehouse() -> void:

@@ -241,6 +241,8 @@ const RACE_PREFERENCES: Dictionary = {
 # ============================================================================
 
 ## 按材料组合加算合成口味。输入 {material_id: count}，返回 {口味: 总强度}
+## 注：本函数为纯计算，未登记材料静默跳过；输入合法性由
+## find_unknown_materials() 在酿造输入边界（add_to_cauldron / start_brewing）把关。
 static func compute_brew_flavors(ingredients: Dictionary) -> Dictionary:
 	var result: Dictionary = {}
 	for mat_id in ingredients:
@@ -252,6 +254,15 @@ static func compute_brew_flavors(ingredients: Dictionary) -> Dictionary:
 			var intensity: int = mat.flavors[flavor_name] * count
 			result[flavor_name] = result.get(flavor_name, 0) + intensity
 	return result
+
+## 输入边界校验（审查 0856 P1-1）：列出组合中所有未在 MATERIALS_DB 登记
+## （零风味贡献）的材料 id。返回空数组表示整组材料可酿造；非空数组表示应整锅拒绝。
+static func find_unknown_materials(ingredients: Dictionary) -> Array:
+	var unknown: Array = []
+	for mat_id in ingredients:
+		if not MATERIALS_DB.has(mat_id):
+			unknown.append(mat_id)
+	return unknown
 
 ## 满意度极简判定（策划案 09 §2）：喜爱口味全达标 && 讨厌口味全为 0
 ## 返回 true=满意/喝爽，false=不满意

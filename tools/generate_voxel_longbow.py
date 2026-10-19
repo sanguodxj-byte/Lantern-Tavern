@@ -2,6 +2,7 @@ from __future__ import annotations
 
 """Generate the dedicated D-profile voxel longbow."""
 
+import math
 import sys
 from pathlib import Path
 
@@ -16,6 +17,10 @@ from voxel_overlap_guard import (  # noqa: E402
     assert_parts_voxel_assembly_valid,
 )
 from voxel_single_model_cli import reject_target_override  # noqa: E402
+from weapon_first_person_rig_lib import (  # noqa: E402
+    export_animated_glb,
+    render_action_review,
+)
 from voxel_weapon_model_lib import (  # noqa: E402
     PX,
     bounds_size_px,
@@ -36,6 +41,7 @@ LENGTH_PX = 61.0
 
 OUT_GLB = ROOT / "assets" / "meshes" / "weapons" / "weapons_voxel_longbow.glb"
 PREVIEW_DIR = ROOT / "reports" / "props_preview"
+ANIMATION_PREVIEW_DIR = ROOT / "reports" / "first_person_animation" / "longbow_blender"
 
 
 def build_longbow() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
@@ -114,13 +120,120 @@ def build_longbow() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
     return root, parts
 
 
+def _build_bow_rig(root: bpy.types.Object, parts: list[bpy.types.Object]) -> bpy.types.Object:
+    """Create a bow-only rig: one root plus an independently drawn string bone."""
+    bpy.ops.object.armature_add(enter_editmode=True, location=(0.0, 0.0, 0.0))
+    armature = bpy.context.object
+    armature.name = "LongbowRig"
+    armature.data.name = "LongbowRigData"
+    edit_bones = armature.data.edit_bones
+    for bone in list(edit_bones):
+        edit_bones.remove(bone)
+    weapon_root = edit_bones.new("WeaponRoot")
+    weapon_root.head = (0.0, 0.0, 15.0 * PX)
+    weapon_root.tail = (0.0, 0.0, -15.0 * PX)
+    string_root = edit_bones.new("StringRoot")
+    string_root.head = (11.0 * PX, 0.0, 10.0 * PX)
+    string_root.tail = (11.0 * PX, 0.0, -10.0 * PX)
+    string_root.parent = weapon_root
+    bpy.ops.object.mode_set(mode="OBJECT")
+    armature.parent = root
+    for part in parts:
+        world_transform = part.matrix_world.copy()
+        part.parent = armature
+        part.parent_type = "BONE"
+        part.parent_bone = "StringRoot" if part.name.startswith("string_") else "WeaponRoot"
+        part.matrix_world = world_transform
+    armature["first_person_only"] = True
+    return armature
+
+
+def _key_bone(armature: bpy.types.Object, bone_name: str, frame: int, position_px, rotation_deg) -> None:
+    bone = armature.pose.bones[bone_name]
+    bone.rotation_mode = "XYZ"
+    bone.location = tuple(value * PX for value in position_px)
+    bone.rotation_euler = tuple(math.radians(value) for value in rotation_deg)
+    bone.keyframe_insert(data_path="location", frame=frame)
+    bone.keyframe_insert(data_path="rotation_euler", frame=frame)
+
+
+def _make_bow_action(armature: bpy.types.Object, name: str, length: int, poses, *, loop: bool = False) -> None:
+    action = bpy.data.actions.new(name=name)
+    armature.animation_data_create()
+    armature.animation_data.action = action
+    for frame, root_position, root_rotation, string_position in poses:
+        _key_bone(armature, "WeaponRoot", frame, root_position, root_rotation)
+        _key_bone(armature, "StringRoot", frame, string_position, (0.0, 0.0, 0.0))
+    curves = list(action.fcurves) if hasattr(action, "fcurves") else []
+    if not curves and hasattr(action, "layers"):
+        for layer in action.layers:
+            for layer_strip in layer.strips:
+                for bag in getattr(layer_strip, "channelbags", []):
+                    curves.extend(list(getattr(bag, "fcurves", [])))
+    for curve in curves:
+        for point in curve.keyframe_points:
+            point.interpolation = "BEZIER"
+            point.handle_left_type = "AUTO_CLAMPED"
+            point.handle_right_type = "AUTO_CLAMPED"
+    if hasattr(action, "frame_range"):
+        action.frame_range = (1, length)
+    if hasattr(action, "use_cyclic"):
+        action.use_cyclic = loop
+    track = armature.animation_data.nla_tracks.new()
+    track.name = name
+    strip = track.strips.new(name, 1, action)
+    strip.name = name
+    strip.action_frame_start = 1
+    strip.action_frame_end = length
+    armature.animation_data.action = None
+
+
+def _author_first_person_actions(armature: bpy.types.Object) -> None:
+    _make_bow_action(armature, "vm_bow_hold", 30, [
+        (1, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+        (15, (0.0, 0.0, -0.12), (0.2, -0.3, 0.15), (0.0, 0.0, 0.0)),
+        (30, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ], loop=True)
+    _make_bow_action(armature, "vm_bow_draw", 30, [
+        (1, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+        (10, (0.2, 0.3, -0.2), (-2.0, 3.0, -5.0), (-1.2, 0.0, 0.0)),
+        (20, (0.4, 0.5, -0.3), (-4.0, 5.0, -8.0), (-2.4, 0.0, 0.0)),
+        (30, (0.5, 0.6, -0.4), (-5.0, 6.0, -10.0), (-3.2, 0.0, 0.0)),
+    ])
+    _make_bow_action(armature, "vm_bow_aim", 18, [
+        (1, (0.5, 0.6, -0.4), (-5.0, 6.0, -10.0), (-3.2, 0.0, 0.0)),
+        (9, (0.5, 0.6, -0.45), (-5.2, 6.2, -10.2), (-3.3, 0.0, 0.0)),
+        (18, (0.5, 0.6, -0.4), (-5.0, 6.0, -10.0), (-3.2, 0.0, 0.0)),
+    ], loop=True)
+    _make_bow_action(armature, "vm_bow_release", 18, [
+        (1, (0.5, 0.6, -0.4), (-5.0, 6.0, -10.0), (-3.2, 0.0, 0.0)),
+        (4, (0.2, 0.2, -0.8), (3.0, -4.0, 7.0), (0.8, 0.0, 0.0)),
+        (7, (-0.2, -0.1, -0.5), (5.0, -7.0, 12.0), (0.2, 0.0, 0.0)),
+        (11, (0.0, 0.0, -0.2), (2.0, -3.0, 5.0), (0.0, 0.0, 0.0)),
+        (18, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ])
+    armature["action_names"] = ["vm_bow_hold", "vm_bow_draw", "vm_bow_aim", "vm_bow_release"]
+
+
 def main() -> None:
     reject_target_override(MODEL_ID)
     reset_scene()
     root, parts = build_longbow()
     assert_parts_no_positive_volume_overlap(parts, label=MODEL_ID)
     assert_parts_voxel_assembly_valid(parts, label=MODEL_ID)
-    export_glb(root, OUT_GLB)
+    armature = _build_bow_rig(root, parts)
+    _author_first_person_actions(armature)
+    render_action_review(
+        root, armature, ANIMATION_PREVIEW_DIR,
+        ((0.14, -0.20, -0.64), (0.0, 0.0, -90.0)),
+        {
+            "00": ("vm_bow_hold", 1), "01": ("vm_bow_draw", 10),
+            "02": ("vm_bow_draw", 20), "03": ("vm_bow_draw", 30),
+            "04": ("vm_bow_aim", 9), "05": ("vm_bow_release", 4),
+            "06": ("vm_bow_release", 7), "07": ("vm_bow_release", 18),
+        },
+    )
+    export_animated_glb(root, OUT_GLB)
     render_true_3d_views(root, MODEL_ID, PREVIEW_DIR)
     dimensions = bounds_size_px(root)
     print(f"Wrote {OUT_GLB}")

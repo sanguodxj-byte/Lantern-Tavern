@@ -102,3 +102,20 @@ func test_csv_key_count() -> void:
 			count += 1
 	csv.close()
 	assert_int(count).is_greater_equal(100)
+
+# ---------- E2（1327 审查）：单一本地化引导 ----------
+
+func test_reload_emits_initialized_and_sets_flag() -> void:
+	var lm = auto_free(load("res://globals/core/localization_manager.gd").new())
+	var flags := {"emitted": false}
+	lm.initialized.connect(func() -> void: flags["emitted"] = true)
+	lm._reload_translations_once()
+	assert_bool(bool(flags["emitted"])).is_true()
+	assert_bool(lm.is_initialized).is_true()
+
+
+func test_initialized_signal_exists() -> void:
+	var script := load("res://globals/core/localization_manager.gd") as GDScript
+	var lm = auto_free(script.new())
+	assert_bool(lm.has_signal("initialized")).is_true()
+	assert_bool(lm.get("is_initialized") != null).is_true()

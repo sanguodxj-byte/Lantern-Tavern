@@ -54,6 +54,51 @@ class BrewingKeg:
 var kegs: Array[BrewingKeg] = []
 var max_kegs: int = 1  # 酒馆 Lv1=1 桶，扩建可加
 
+# ============================================================================
+# 2.1 Keg 聚合不变量（决策 G3 / 审查 0856 P0-2）
+# ============================================================================
+
+## 校验 Keg 聚合不变量：
+##  1) 每个非空 FermentationSystem 桶位必须恰好对应 BrewFlowSystem 中一个已窖藏
+##     ActiveKeg（keg_index 匹配、状态非 EMPTY）；
+##  2) 每个已窖藏 ActiveKeg 的 keg_index 必须指向有效且非空的桶位。
+## 生产写入口唯一（仅 BrewFlowSystem 可写），本函数在每次 3D 门面写操作后由
+## BrewFlowSystem 调用，也供测试直接调用以探测分叉。
+## 返回 true 表示一致；false 表示逻辑桶与物理桶分叉并 push_error 描述。
+func validate_keg_invariant() -> bool:
+	var bfs := _get_brew_flow_system()
+	if bfs == null:
+		# BrewFlowSystem 未加载（纯状态机测试等环境）→ 不构成分叉
+		return true
+	# 方向 1：每个非空桶位 → 恰好一个已窖藏 ActiveKeg
+	for i in range(kegs.size()):
+		if kegs[i].state == KegState.EMPTY:
+			continue
+		var matches: int = 0
+		for keg in bfs.active_kegs:
+			if keg.keg_index == i and keg.state != KegState.EMPTY:
+				matches += 1
+		if matches != 1:
+			push_error("[FermentationSystem] Keg 不变量破坏：桶位 %d 非空，但匹配到 %d 个已窖藏 ActiveKeg（必须恰好 1 个）" % [i, matches])
+			return false
+	# 方向 2：每个已窖藏 token 的 keg_index 必须有效且指向非空桶位
+	for keg in bfs.active_kegs:
+		if keg.keg_index < 0:
+			continue  # 尚未窖藏（倒桶台上等待搬运）
+		if keg.keg_index >= kegs.size():
+			push_error("[FermentationSystem] Keg 不变量破坏：ActiveKeg(token=%d) 的 keg_index=%d 越界（kegs.size()=%d）" % [keg.token, keg.keg_index, kegs.size()])
+			return false
+		if kegs[keg.keg_index].state == KegState.EMPTY:
+			push_error("[FermentationSystem] Keg 不变量破坏：ActiveKeg(token=%d) 指向已清空的桶位 %d" % [keg.token, keg.keg_index])
+			return false
+	return true
+
+func _get_brew_flow_system() -> Node:
+	var tree := get_tree()
+	if tree == null:
+		return null
+	return tree.root.get_node_or_null("BrewFlowSystem")
+
 ## 获取空桶数量
 func free_keg_count() -> int:
 	var count: int = 0
@@ -79,8 +124,14 @@ func expand_kegs(additional: int) -> void:
 # 3. 下料与发酵
 # ============================================================================
 
-## 夜晚下料。返回 keg 索引，-1 表示无空桶。
+## 夜晚下料。返回 keg 索引，-1 表示无空桶或材料非法。
+## 输入边界校验（审查 0856 P1-1）：任何未在 BrewingData.MATERIALS_DB 登记的材料
+## （含怪物掉落等零风味材料）整锅拒绝，不得静默跳过。
 func start_brewing(ingredients: Dictionary, current_day: int) -> int:
+	var unknown: Array = BD.find_unknown_materials(ingredients)
+	if not unknown.is_empty():
+		push_error("[FermentationSystem] 拒绝未知/零风味酿酒材料: %s（整锅未投料）" % str(unknown))
+		return -1
 	for i in range(kegs.size()):
 		var keg: BrewingKeg = kegs[i]
 		if keg.state != KegState.EMPTY:

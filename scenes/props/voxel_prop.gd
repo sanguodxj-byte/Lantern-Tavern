@@ -46,8 +46,22 @@ const PROP_TILE_LAYOUT := {
 		if is_inside_tree():
 			rebuild()
 
+## 可破坏地牢场景物体开关：true 时受击累计伤害，达到 max_hits 后销毁并播放体素碎屑。
+## 非可破坏物体（默认 false）的 try_receive_hit 为无操作。
+@export var destructible := false
+## 击碎所需累计命中伤害（近战挥砍每次传递伤害 1，蓄力/踢击/法术/投掷按各自伤害计算）。
+@export var max_hits := 1
+## 击碎时体素碎屑特效颜色（默认木色；石材道具覆写为石灰色）。
+@export var break_chip_color := Color(0.62, 0.5, 0.36)
+
+## 当前累计受击伤害。
+var current_hits := 0
+## 已销毁标记（防重复销毁）。
+var is_destroyed := false
+
 var _iron_mat: ShaderMaterial
 var _cauldron_iron_mat: ShaderMaterial
+var _cauldron_highlight_mat: ShaderMaterial
 var _wood_mat: ShaderMaterial
 var _wood_dark_mat: ShaderMaterial
 var _wax_mat: ShaderMaterial
@@ -168,6 +182,8 @@ func rebuild() -> void:
 			_build_barrel()
 		"brew_cauldron":
 			_build_brew_cauldron()
+		"brew_ingredient_rack":
+			_build_brew_ingredient_rack()
 		"chest":
 			_build_chest()
 		"large_chest", "boss_chest":
@@ -216,7 +232,8 @@ func _ensure_materials() -> void:
 	_iron_mat = _make_prop_mat("black_iron", 0.76, 0.35)
 	# 炼药锅专用铁材质：降低粗糙度、提高镜面，让圆肚锅体在暖光下呈现
 	# 明确的高光/中间调色阶（视觉质检 P0：与 barrel 木面色阶对齐）
-	_cauldron_iron_mat = _make_prop_mat("black_iron", 0.45, 0.65)
+	_cauldron_iron_mat = _make_prop_mat("black_iron", 0.5, 0.65)
+	_cauldron_highlight_mat = _make_prop_mat("black_iron", 0.95, 0.65)
 	_wax_mat = _make_prop_mat("wax", 0.92, 0.08)
 	_bone_mat = _make_prop_mat("bone", 0.9, 0.08)
 	_stone_mat = _make_prop_mat("cut_stone", 0.95, 0.12)
@@ -388,6 +405,8 @@ func collect_box_bounds() -> Array[Dictionary]:
 			_build_barrel()
 		"brew_cauldron":
 			_build_brew_cauldron()
+		"brew_ingredient_rack":
+			_build_brew_ingredient_rack()
 		"chest":
 			_build_chest()
 		"large_chest", "boss_chest":
@@ -492,8 +511,12 @@ func _build_bucket() -> void:
 	_box("BucketBack", Vector3i(11, 17, 3), Vector3(0, 10, -7), _wood_mat)
 	_box("BucketLeft", Vector3i(3, 17, 17), Vector3(-7, 10, 0), _wood_mat)
 	_box("BucketRight", Vector3i(3, 17, 17), Vector3(7, 10, 0), _wood_mat)
-	_box("IronBandLow", Vector3i(19, 2, 19), Vector3(0, 6, 0), _iron_mat)
-	_box("IronBandHigh", Vector3i(19, 2, 19), Vector3(0, 15, 0), _iron_mat)
+	# 铁箍拆 4 条贴壁板外表面（面接触附着；整框会包围壁板造成正体积重叠而判为分离块）
+	for band_y in [6.0, 15.0]:
+		_box("IronBandFront_%d" % int(band_y), Vector3i(17, 2, 2), Vector3(0, band_y, 9.5), _iron_mat)
+		_box("IronBandBack_%d" % int(band_y), Vector3i(17, 2, 2), Vector3(0, band_y, -9.5), _iron_mat)
+		_box("IronBandLeft_%d" % int(band_y), Vector3i(2, 2, 17), Vector3(-9.5, band_y, 0), _iron_mat)
+		_box("IronBandRight_%d" % int(band_y), Vector3i(2, 2, 17), Vector3(9.5, band_y, 0), _iron_mat)
 
 
 func _build_candles(lit: bool) -> void:
@@ -631,16 +654,18 @@ func _build_crate(size_px: Vector3i) -> void:
 	var cross_off: int = int(size_px.x * 0.25)
 	var band_w: float = size_px.x + 2.0
 	var band_z: int = size_px.z + 2
-	# 上下铁带拆分为 3 段（避开十字条），消除同材质交叉重叠
+	# 上下铁带拆分为 3 段（避开十字条）；铁带移到主体顶/底面之外（Y 面接触），
+	# 左右段内收到主体侧面内（X 面接触十字条），避免与十字条同材质正体积重叠
 	var seg_w: float = band_w * 0.5 - cross_off - 1.5
-	var seg_c: float = band_w * 0.5 - seg_w * 0.5
+	var seg_c: float = size_px.x * 0.5 - seg_w * 0.5
 	var mid_w: float = cross_off * 2.0 - 3.0
-	for y_pos in [size_px.y - 4, 5]:
-		_box("CrateBandLeft_%d" % y_pos, Vector3i(int(seg_w), 3, band_z), Vector3(-seg_c, y_pos, 0), _wood_dark_mat)
-		_box("CrateBandMid_%d" % y_pos, Vector3i(int(mid_w), 3, band_z), Vector3(0, y_pos, 0), _wood_dark_mat)
-		_box("CrateBandRight_%d" % y_pos, Vector3i(int(seg_w), 3, band_z), Vector3(seg_c, y_pos, 0), _wood_dark_mat)
-	_box("CrateCrossA", Vector3i(3, size_px.y + 1, band_z), Vector3(-cross_off, half_y, 0), _wood_dark_mat)
-	_box("CrateCrossB", Vector3i(3, size_px.y + 1, band_z), Vector3(cross_off, half_y, 0), _wood_dark_mat)
+	for y_pos in [size_px.y + 1.5, -1.5]:
+		_box("CrateBandLeft_%d" % int(y_pos), Vector3i(int(seg_w), 3, band_z), Vector3(-seg_c, y_pos, 0), _wood_dark_mat)
+		_box("CrateBandMid_%d" % int(y_pos), Vector3i(int(mid_w), 3, band_z), Vector3(0, y_pos, 0), _wood_dark_mat)
+		_box("CrateBandRight_%d" % int(y_pos), Vector3i(int(seg_w), 3, band_z), Vector3(seg_c, y_pos, 0), _wood_dark_mat)
+	# 十字条移到主体左右侧面之外（X 面接触），不再嵌入主体
+	_box("CrateCrossA", Vector3i(3, size_px.y + 1, band_z), Vector3(-(size_px.x * 0.5 + 1.5), half_y, 0), _wood_dark_mat)
+	_box("CrateCrossB", Vector3i(3, size_px.y + 1, band_z), Vector3(size_px.x * 0.5 + 1.5, half_y, 0), _wood_dark_mat)
 
 
 func _build_barrel() -> void:
@@ -691,36 +716,82 @@ func _barrel_slice(name: String, x_range: Vector2i, y_range: Vector2i, depth_px:
 ## 无正体积重叠；火焰/蒸汽为运行时动态粒子。
 func _build_brew_cauldron() -> void:
 	# 三块小石垫（低矮开放式支撑，中央留空给火焰）
-	_box("CauldronStonePadFrontLeft", Vector3i(6, 2, 6), Vector3(-9, 1, 5), _stone_mat)
-	_box("CauldronStonePadFrontRight", Vector3i(6, 2, 6), Vector3(9, 1, 5), _stone_mat)
-	_box("CauldronStonePadBack", Vector3i(6, 2, 6), Vector3(0, 1, -9), _stone_mat)
-	# 三足鼎立：细铁足立于石垫上
-	_box("CauldronLegFrontLeft", Vector3i(4, 11, 4), Vector3(-9, 7.5, 5), _iron_mat)
-	_box("CauldronLegFrontRight", Vector3i(4, 11, 4), Vector3(9, 7.5, 5), _iron_mat)
-	_box("CauldronLegBack", Vector3i(4, 11, 4), Vector3(0, 7.5, -9), _iron_mat)
+	_box("CauldronStonePadFrontLeft", Vector3i(10, 3, 10), Vector3(-13, 1.5, 6), _stone_mat)
+	_box("CauldronStonePadFrontRight", Vector3i(10, 3, 10), Vector3(13, 1.5, 6), _stone_mat)
+	_box("CauldronStonePadBack", Vector3i(10, 3, 10), Vector3(0, 1.5, -11), _stone_mat)
+	# 三足鼎立：细铁足立于石垫上（足中心 y=13 → y[3,23]，足顶 23 = 锅底底 23）
+	_box("CauldronLegFrontLeft", Vector3i(6, 20, 6), Vector3(-13, 13, 6), _iron_mat)
+	_box("CauldronLegFrontRight", Vector3i(6, 20, 6), Vector3(13, 13, 6), _iron_mat)
+	_box("CauldronLegBack", Vector3i(6, 20, 6), Vector3(0, 13, -11), _iron_mat)
 	# 实心锅底（锅腔地板）
-	_box("CauldronBodyBottom", Vector3i(24, 3, 18), Vector3(0, 14.5, 0), _cauldron_iron_mat)
-	# 空心圆肚：每层四面墙开口方框（下窄→中鼓→上收→锅沿），铁箍层用深色铁
-	_cauldron_frame("CauldronLowerBelly", 30, 22, 4, 18.0, _cauldron_iron_mat)
-	_cauldron_frame("CauldronBandLow", 30, 22, 3, 21.5, _iron_mat)
-	_cauldron_frame("CauldronMidBelly", 36, 28, 5, 25.5, _cauldron_iron_mat)
-	_cauldron_frame("CauldronBandMid", 34, 26, 3, 29.5, _iron_mat)
-	_cauldron_frame("CauldronUpperBelly", 30, 24, 4, 33.0, _cauldron_iron_mat)
-	_cauldron_frame("CauldronRim", 32, 26, 3, 36.5, _cauldron_iron_mat)
-	# 侧耳环：贴锅沿下方外侧（外贴公式：host_half + plate_half）
-	_box("CauldronEarLeft", Vector3i(3, 4, 8), Vector3(16.5, 33, 0), _cauldron_iron_mat)
-	_box("CauldronEarRight", Vector3i(3, 4, 8), Vector3(-16.5, 33, 0), _cauldron_iron_mat)
+	_box("CauldronBodyBottom", Vector3i(26, 3, 20), Vector3(0, 24.5, 0), _cauldron_iron_mat)
+	# v4 大号圆肚：10 层 2px 薄腹，宽度渐增 28→48（下腹逐层鼓胀至最宽 48→束腹铁箍→陡收至 28→宽锅沿 36）
+	_cauldron_frame("CauldronBellyB1", 28, 22, 2, 27.0, _cauldron_iron_mat)
+	_cauldron_frame("CauldronBellyB2", 32, 24, 2, 29.0, _cauldron_iron_mat)
+	_cauldron_frame("CauldronBellyB3", 35, 26, 2, 31.0, _cauldron_iron_mat)
+	_cauldron_frame("CauldronBellyB4", 38, 28, 2, 33.0, _cauldron_iron_mat)
+	_cauldron_frame("CauldronBellyB5", 41, 30, 2, 35.0, _cauldron_iron_mat)
+	_cauldron_frame("CauldronBellyB6", 44, 32, 2, 37.0, _cauldron_iron_mat)
+	_cauldron_frame("CauldronBellyB7", 46, 33, 2, 39.0, _cauldron_iron_mat)
+	_cauldron_frame("CauldronBellyB8", 50, 34, 2, 41.0, _cauldron_iron_mat)
+	_cauldron_frame("CauldronBellyB9", 46, 33, 2, 43.0, _cauldron_iron_mat)
+	_cauldron_frame("CauldronBellyB10", 46, 33, 2, 45.0, _cauldron_iron_mat)
+	# 束腹铁箍（双层亮铁：下腹最宽处收束）
+	_cauldron_frame("CauldronBandLow", 46, 33, 2, 47.0, _iron_mat)
+	_cauldron_frame("CauldronBandMid", 42, 30, 4, 50.0, _cauldron_highlight_mat)
+	# 陡收颈部：38→34→30（宽度差 4 < 2×墙厚 6，侧墙 X 正重叠跨层连接），Y 面接触
+	_cauldron_frame("CauldronNeck1", 38, 28, 2, 53.0, _cauldron_iron_mat)
+	_cauldron_frame("CauldronNeck2", 34, 25, 2, 55.0, _cauldron_iron_mat)
+	_cauldron_frame("CauldronNeck3", 30, 22, 2, 57.0, _cauldron_iron_mat)
+	# 宽锅沿（高光铁）：贴颈部顶面 Y 面接触
+	_cauldron_frame("CauldronRim", 34, 26, 4, 60.0, _cauldron_highlight_mat)
+	# 侧耳环：贴锅沿侧墙外侧 Z 面（耳 z[10,14] 贴侧墙 z=10 面；x[16,24] 与侧墙 x[14,17] 正重叠 1px，
+	#   且在锅沿前墙 x[-15,15] 之外，无正体积重叠）
+	_box("CauldronEarLeft", Vector3i(8, 5, 4), Vector3(-20, 60, 12), _cauldron_highlight_mat)
+	_box("CauldronEarRight", Vector3i(8, 5, 4), Vector3(20, 60, 12), _cauldron_highlight_mat)
+	# 另一对耳环：贴侧墙外侧 -Z 面
+	_box("CauldronEarLeftBack", Vector3i(8, 5, 4), Vector3(-20, 60, -12), _cauldron_highlight_mat)
+	_box("CauldronEarRightBack", Vector3i(8, 5, 4), Vector3(20, 60, -12), _cauldron_highlight_mat)
+	# 外壁铆钉：贴肚壁外侧（B8 侧墙 x[22,25]；铆钉 x[24,25] 与侧墙 X 正重叠 1px，
+	#   Y 贴 B8 顶面 42、Z 与侧墙正重叠 → 2 正 + 1 触）
+	_box("CauldronRivetLeftLow", Vector3i(1, 1, 1), Vector3(-24.5, 42.5, 0.5), _iron_mat)
+	_box("CauldronRivetRightLow", Vector3i(1, 1, 1), Vector3(24.5, 42.5, 0.5), _iron_mat)
+	# 中层铆钉：贴 Neck1 外侧（Neck1 侧墙 x[16,19]；铆钉 x[18,19] 与侧墙 X 正重叠 1px，
+	#   Y 贴 Neck1 顶面 54、Z 与侧墙正重叠）
+	_box("CauldronRivetLeftMid", Vector3i(1, 1, 1), Vector3(-18.5, 54.5, 0.5), _iron_mat)
+	_box("CauldronRivetRightMid", Vector3i(1, 1, 1), Vector3(18.5, 54.5, 0.5), _iron_mat)
 
 
-## 空心方框层：前/后墙（宽-2T，T=5，嵌于左右墙之间）与左/右墙（T × 全深）。
-## 相邻层侧墙在 X 向正重叠（跨层连接），层间 Y 面接触；同层四面角部面接触。
+## 空心方框层：前/后墙（宽-4，T=3）与左/右墙（3 × depth-6）。
+## 前/后墙：中心 z = ±(half_d-1.5)，span z[half_d-3, half_d]（外沿 = 层外边界）；
+##   x-span = width-4（与侧墙 X 正重叠 1px，面接触）。
+## 左/右墙：span z[-(half_d-3), half_d-3]（内缩 3，与前后墙在 z 面接触）。
+## 同层：前墙与左右墙 X 正重叠、Z 面接触 → 2 正 + 1 触，无正体积重叠。
+## 层间：相邻层侧墙 X 正重叠、Y 面接触。
 func _cauldron_frame(prefix: String, width: int, depth: int, height: int, center_y: float, material: Material) -> void:
 	var half_w := float(width) * 0.5
 	var half_d := float(depth) * 0.5
-	_box("%sFront" % prefix, Vector3i(width - 10, height, 3), Vector3(0, center_y, half_d - 1.5), material)
-	_box("%sBack" % prefix, Vector3i(width - 10, height, 3), Vector3(0, center_y, -half_d + 1.5), material)
-	_box("%sLeft" % prefix, Vector3i(5, height, depth), Vector3(-half_w + 2.5, center_y, 0), material)
-	_box("%sRight" % prefix, Vector3i(5, height, depth), Vector3(half_w - 2.5, center_y, 0), material)
+	_box("%sFront" % prefix, Vector3i(width - 4, height, 3), Vector3(0, center_y, half_d - 1.5), material)
+	_box("%sBack" % prefix, Vector3i(width - 4, height, 3), Vector3(0, center_y, -half_d + 1.5), material)
+	_box("%sLeft" % prefix, Vector3i(3, height, depth - 6), Vector3(-half_w + 1.5, center_y, 0), material)
+	_box("%sRight" % prefix, Vector3i(3, height, depth - 6), Vector3(half_w - 1.5, center_y, 0), material)
+
+
+## 多层原料架（prop_kind="brew_ingredient_rack"）：3 层货架，原点即地板面。
+## 尺寸按 1px = 1/32m：
+##   四角立柱 6×54×6（y[0,54]），位于 (±30, ±13)。
+##   搁板 x[-24,24]、z[-10,10]：x/z 端面贴立柱内侧面（柱内壁 x=±27、z=±10），
+##   y 与柱重叠但 x/z 仅面接触 → 1 正轴（y），无正体积重叠（docs/17）。
+func _build_brew_ingredient_rack() -> void:
+	# 四角立柱：y[0,54]
+	for x in [-30, 30]:
+		for z in [-13, 13]:
+			_box("RackPost_%d_%d" % [x, z], Vector3i(6, 54, 6), Vector3(x, 27, z), _wood_dark_mat)
+	# 三层搁板：x 端面与柱 x 内壁正重叠 0.5px（搁板 x[-27.5,27.5] vs 柱内壁 x=27），
+	#   z 端面贴柱 z 内壁（搁板 z[-10,10] 贴柱 z=±10 面）→ 2 正 + 1 触，无正体积重叠
+	_box("RackShelfBottom", Vector3i(55, 3, 20), Vector3(0, 1.5, 0), _wood_mat)
+	_box("RackShelfMid", Vector3i(55, 3, 20), Vector3(0, 27.0, 0), _wood_mat)
+	_box("RackShelfTop", Vector3i(55, 3, 20), Vector3(0, 52.5, 0), _wood_mat)
 
 
 func _build_chest() -> void:
@@ -729,12 +800,14 @@ func _build_chest() -> void:
 	# 铁带移到箱体左右侧面之外（X=±18，箱体外表面 X=±16.5），面接触不穿透，消除跨材质共面重叠
 	_box("IronBandLeft", Vector3i(3, 29, 27), Vector3(-18, 14.5, 0), _iron_mat)
 	_box("IronBandRight", Vector3i(3, 29, 27), Vector3(18, 14.5, 0), _iron_mat)
-	_box("LockPlate", Vector3i(7, 7, 3), Vector3(0, 16, 12), _iron_mat)
+	# 锁板前移到箱体前表面之外（Z 面接触），不再嵌入箱体造成分离块
+	_box("LockPlate", Vector3i(7, 7, 3), Vector3(0, 16, 12.5), _iron_mat)
 
 
 func _build_large_chest() -> void:
 	_box("BossChestPlinth", Vector3i(65, 5, 39), Vector3(0, 2.5, 0), _wood_dark_mat)
-	_box("BossChestBase", Vector3i(61, 22, 35), Vector3(0, 13, 0), _wood_mat)
+	# 内层底座坐落在台座顶面（Y 面接触），不再嵌入台座造成分离块
+	_box("BossChestBase", Vector3i(61, 19, 35), Vector3(0, 15.0, 0), _wood_mat)
 	# 盖子分层 Y 面接触堆叠（全部 _wood_dark_mat）
 	_box("BossChestLidLower", Vector3i(65, 6, 39), Vector3(0, 25, 0), _wood_dark_mat)   # Y=[22,28]
 	_box("BossChestLidMid", Vector3i(57, 6, 35), Vector3(0, 31, 0), _wood_dark_mat)     # Y=[28,34]
@@ -743,12 +816,12 @@ func _build_large_chest() -> void:
 	# 铁角柱（4 根，Y=[5,41]）：自底座顶面 Y=5 起，消除穿透底座造成的跨材质共面重叠
 	for x in [-31, 31]:
 		for z in [-18, 18]:
-			_box("BossIronCorner_%d_%d" % [x, z], Vector3i(5, 36, 5), Vector3(x, 23, z), _iron_mat)
+			_box("BossIronCorner_%d_%d" % [x, z], Vector3i(5, 36, 5), Vector3(x, 23.0, z), _iron_mat)
 	# 铁镶边（缩短 X 避开角柱，Y=[21,25]）
 	_box("BossIronRimFront", Vector3i(57, 4, 3), Vector3(0, 23, 20), _iron_mat)
 	_box("BossIronRimBack", Vector3i(57, 4, 3), Vector3(0, 23, -20), _iron_mat)
-	# 铁盖脊
-	_box("BossIronLidRidge", Vector3i(31, 3, 5), Vector3(0, 41.5, 0), _iron_mat)
+	# 铁盖脊（缩窄至与盖脊同宽，X 正重叠而非嵌入盖脊外缘；坐落在盖脊顶面，Y 面接触）
+	_box("BossIronLidRidge", Vector3i(25, 3, 5), Vector3(0, 43.5, 0), _iron_mat)
 	# 铁绑带（在镶边 Y=[21,25] 处拆分为上下两段，消除同材质交叉重叠）
 	# 下铁带自底座顶面 Y=5 起（不再穿透底座），Y=[5,21]
 	_box("BossIronBandLeftLower", Vector3i(5, 16, 3), Vector3(-16, 13, 20), _iron_mat)
@@ -757,36 +830,35 @@ func _build_large_chest() -> void:
 	_box("BossIronBandRightUpper", Vector3i(5, 11, 3), Vector3(16, 30.5, 20), _iron_mat)
 	# 锁板（镶边下方 Y=[10,21]）
 	_box("BossLockPlate", Vector3i(15, 11, 3), Vector3(0, 15.5, 20), _iron_mat)
-	# 封印
-	_box("BossRewardSeal", Vector3i(7, 7, 1), Vector3(0, 18, 22.5), _cloth_mat)
-	# 侧把手
-	_box("BossSideHandleLeft", Vector3i(7, 5, 13), Vector3(-36, 20, 0), _iron_mat)
-	_box("BossSideHandleRight", Vector3i(7, 5, 13), Vector3(36, 20, 0), _iron_mat)
+	# 封印（贴锁板前表面，Z 面接触）
+	_box("BossRewardSeal", Vector3i(7, 7, 1), Vector3(0, 18, 21.5), _cloth_mat)
+	# 侧把手（内移到与底座侧面 X 面接触，不再悬空分离）
+	_box("BossSideHandleLeft", Vector3i(7, 5, 13), Vector3(-33.5, 20, 0), _iron_mat)
+	_box("BossSideHandleRight", Vector3i(7, 5, 13), Vector3(33.5, 20, 0), _iron_mat)
 	# 人字纹装饰（前移 Z=[21.5,23.5] 避开镶边/绑带/锁板的 Z=[18.5,21.5]；
-	# 缩窄宽度至 6px 避免左右人字纹互相交叉）
+	# 缩窄宽度至 6px 避免左右人字纹互相交叉；中间两枚上移至与盖中层 Y 重叠）
 	for i in range(3):
-		var cy: float = [29.5, 26.5, 19.5][i]
+		var cy: float = [29.5, 22.5, 19.5][i]
 		_box("BossIronChevronA_%d" % i, Vector3i(6, 3, 2), Vector3(-19 + i * 11, cy, 22.5), _iron_mat)
 		_box("BossIronChevronB_%d" % i, Vector3i(6, 3, 2), Vector3(19 - i * 11, cy, 22.5), _iron_mat)
 
 
 func _build_torch() -> void:
-	_box("IronWallSpine", Vector3i(1, 10, 1), Vector3(0, 32, 0), _iron_mat)
-	_box("WallPlateTop", Vector3i(5, 1, 1), Vector3(0, 37.5, 0), _iron_mat)
-	_box("WallPlateBottom", Vector3i(5, 1, 1), Vector3(0, 26.5, 0), _iron_mat)
-	_box("PlateRivetTop", Vector3i(1, 1, 1), Vector3(0, 37.5, -1), _iron_mat)
-	_box("PlateRivetBottom", Vector3i(1, 1, 1), Vector3(0, 26.5, -1), _iron_mat)
-	_box("IronWallSocket", Vector3i(5, 3, 3), Vector3(0, 32, -2), _iron_mat)
-	_box("IronLowerArm", Vector3i(5, 1, 2), Vector3(0, 31, -4.5), _iron_mat)
-	_box("IronUpperArm", Vector3i(5, 1, 2), Vector3(0, 34, -4.5), _iron_mat)
-	_box("TorchHandle", Vector3i(3, 9, 3), Vector3(0, 33.5, -8), _wood_dark_mat)
-	for y in [31, 34]:
-		_box("IronHandleBandFront_%d" % y, Vector3i(3, 1, 1), Vector3(0, y, -10), _iron_mat)
-		_box("IronHandleBandBack_%d" % y, Vector3i(3, 1, 1), Vector3(0, y, -6), _iron_mat)
-		_box("IronHandleBandLeft_%d" % y, Vector3i(1, 1, 3), Vector3(-2, y, -8), _iron_mat)
-		_box("IronHandleBandRight_%d" % y, Vector3i(1, 1, 3), Vector3(2, y, -8), _iron_mat)
-	_box("CupBase", Vector3i(5, 1, 3), Vector3(0, 38.5, -8), _iron_mat)
-	_box("CupLip", Vector3i(7, 1, 5), Vector3(0, 39.5, -8), _iron_mat)
+	# 杆（Z 缩到 2px 使与墙插座 Z 面接触而非重叠；1px 在整数化判定下零宽）
+	_box("IronWallSpine", Vector3i(3, 10, 2), Vector3(0, 32, 0), _iron_mat)
+	# 顶/底墙板加厚，贴杆顶/底面（Y 面接触）
+	_box("WallPlateTop", Vector3i(5, 2, 3), Vector3(0, 38.0, 0), _iron_mat)
+	_box("WallPlateBottom", Vector3i(5, 2, 3), Vector3(0, 26.0, 0), _iron_mat)
+	# 墙插座前移贴杆前表面（Z 面接触），不再嵌入杆
+	_box("IronWallSocket", Vector3i(5, 3, 3), Vector3(0, 32, -2.5), _iron_mat)
+	# 火把杆贴插座前表面（Z 面接触）；托臂/环带/铆钉与插座-杆在 z 空间互斥，已移除
+	_box("TorchHandle", Vector3i(3, 9, 3), Vector3(0, 33.5, -5.5), _wood_dark_mat)
+	# 杯底/杯沿与杆同 z 区，贴杆顶面（Y 面接触）
+	_box("CupBase", Vector3i(5, 1, 3), Vector3(0, 38.5, -5.5), _iron_mat)
+	_box("CupLip", Vector3i(7, 1, 5), Vector3(0, 39.5, -5.5), _iron_mat)
+	# 贴墙小立柱（1px 奇数宽度细节，X 面接触贴杆侧，Z 贴杆/插座面接触）
+	_box("IronWallPostLeft", Vector3i(1, 3, 2), Vector3(-2, 32, 0), _iron_mat)
+	_box("IronWallPostRight", Vector3i(1, 3, 2), Vector3(2, 32, 0), _iron_mat)
 	var light := _light("OmniLight3D", Vector3(0, 41, -8), DUNGEON_TORCH_ENERGY, DUNGEON_TORCH_RANGE)
 	if light == null:
 		return
@@ -1018,6 +1090,57 @@ func _add_collision() -> void:
 	add_child(collision)
 
 
+## 可破坏体素物体受击入口（近战/远程/法术统一经此累计伤害）。
+## 非可破坏物体为无操作。伤害达到 max_hits 后销毁。
+func try_receive_hit(_source: Node = null, damage: int = 1) -> bool:
+	if not destructible or is_destroyed or damage <= 0:
+		return false
+	current_hits += damage
+	if current_hits >= max_hits:
+		destroy()
+	return true
+
+
+## 家具冲撞（蓄力撞飞/踢击投掷体砸中）直接摧毁可破坏物体。
+func try_receive_furniture_impact(_source: Node = null) -> bool:
+	if not destructible or is_destroyed:
+		return false
+	destroy()
+	return true
+
+
+## 销毁：标记 is_destroyed、隐藏体素视觉并排队删除。
+## 幂等（重复调用无副作用）；碎屑特效只播放一次。
+func destroy() -> void:
+	if is_destroyed:
+		return
+	is_destroyed = true
+	_spawn_break_chips()
+	set_deferred("visible", false)
+	queue_free()
+
+
+## 播放体素碎屑特效（少量方块碎片 + 色块）。
+func _spawn_break_chips() -> void:
+	var chips := MeshInstance3D.new()
+	chips.name = "BreakChips"
+	chips.mesh = BoxMesh.new()
+	var chip_mesh := chips.mesh as BoxMesh
+	chip_mesh.size = Vector3(0.09, 0.09, 0.09)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = break_chip_color
+	chips.material_override = mat
+	chips.position = Vector3(0, 0.35, 0)
+	chips.visible = true
+	chips.set_meta("voxel_generated", true)
+	# 碎屑作为独立子节点随本体一起排队删除；仅做视觉反馈，不参与物理。
+	var holder := Node3D.new()
+	holder.name = "BreakChipFx"
+	holder.add_child(chips)
+	holder.set_meta("voxel_generated", true)
+	add_child(holder)
+
+
 func _is_under_rigid_body() -> bool:
 	var node := get_parent()
 	while node != null:
@@ -1092,9 +1215,10 @@ func _build_weapon_rack() -> void:
 	_box("BeamUpper", Vector3i(50, 4, 4), Vector3(0, 40, 0), _wood_mat)
 	
 	# Iron pins for hanging weapons (odd width details: X=1px, Y=1px, Z=3px)
-	_box("PostPinLeft", Vector3i(1, 1, 3), Vector3(-15, 40, 2.5), _iron_mat)
-	_box("PostPinMiddle", Vector3i(1, 1, 3), Vector3(0, 40, 2.5), _iron_mat)
-	_box("PostPinRight", Vector3i(1, 1, 3), Vector3(15, 40, 2.5), _iron_mat)
+	# 挂钩：加宽 X 使与横梁 X 轴正重叠；Z 移到横梁前表面之外（面接触附着）
+	_box("PostPinLeft", Vector3i(3, 1, 2), Vector3(-15, 40, 3.0), _iron_mat)
+	_box("PostPinMiddle", Vector3i(3, 1, 2), Vector3(0, 40, 3.0), _iron_mat)
+	_box("PostPinRight", Vector3i(3, 1, 2), Vector3(15, 40, 3.0), _iron_mat)
 func _spawn_weapons_on_rack() -> void:
 	var tree := Engine.get_main_loop() as SceneTree
 	var registry = tree.root.get_node_or_null("WeaponRegistry") if tree else null
@@ -1127,7 +1251,7 @@ func _spawn_weapons_on_rack() -> void:
 	var name_counters := {}
 	
 	for wdata in weapons_list:
-		if wdata == null or wdata.glb_mesh == null:
+		if wdata == null or wdata.get_glb_mesh() == null:
 			continue
 		var id: String = wdata.id
 		if id.is_empty():

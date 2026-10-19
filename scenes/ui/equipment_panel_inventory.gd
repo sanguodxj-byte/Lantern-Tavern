@@ -33,9 +33,7 @@ static func warehouse_materials() -> Dictionary:
 	return {}
 
 static func warehouse_runes() -> Dictionary:
-	var tm: Node = Service.tavern_manager()
-	if tm != null and "runes_inventory" in tm:
-		return tm.runes_inventory
+	# 设计规则：符文为地牢消耗品，撤离即销毁，不允许出现在酒馆仓库内。
 	return {}
 
 static func materials_for_source(source: String) -> Dictionary:
@@ -65,21 +63,30 @@ static func move_items_between(source_inv: Dictionary, target_inv: Dictionary, i
 	if gs != null and gs.has_method("can_add_carried_space"):
 		capacity = func(total_space: int, _per_item: int) -> bool:
 			return gs.can_add_carried_space(total_space)
-	return InventoryTransferService.move_items_between(source_inv, target_inv, item_ids, target_is_carried, space_per_item, capacity)
+	var moved := InventoryTransferService.move_items_between(source_inv, target_inv, item_ids, target_is_carried, space_per_item, capacity)
+	# 直接改写随身/仓库字典绕过了 add/remove_carried_rune：
+	# 强制同步 SpellLoadout 符文库存，否则法术界面显示陈旧数据（实机"移动后不更新"根因）。
+	if gs != null and gs.has_method("refresh_spell_rune_inventory"):
+		gs.refresh_spell_rune_inventory()
+	return moved
 
 # ── 随身装备/符文操作 ─────────────────────────────────
 
 static func consume_rune(rune_id: String) -> bool:
-	for inventory in [carried_runes(), warehouse_runes()]:
-		var amount := int(inventory.get(rune_id, 0))
-		if amount <= 0:
-			continue
-		if amount > 1:
-			inventory[rune_id] = amount - 1
-		else:
-			inventory.erase(rune_id)
-		return true
-	return false
+	# 符文仅存在于随身背包（地牢消耗品），不从仓库消耗。
+	var inventory := carried_runes()
+	var amount := int(inventory.get(rune_id, 0))
+	if amount <= 0:
+		return false
+	if amount > 1:
+		inventory[rune_id] = amount - 1
+	else:
+		inventory.erase(rune_id)
+	# 消耗同步 SpellLoadout 符文库存
+	var gs: Node = Service.game_state()
+	if gs != null and gs.has_method("refresh_spell_rune_inventory"):
+		gs.refresh_spell_rune_inventory()
+	return true
 
 static func consume_carried_equipment(equipment_id: String) -> bool:
 	var gs: Node = Service.game_state()

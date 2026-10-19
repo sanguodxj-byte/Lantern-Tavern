@@ -12,8 +12,8 @@ const WEAPON_MOUNT_PROFILE := preload("res://globals/visual/weapon_mount_profile
 
 func _ready() -> void:
 	var equiped_object : Node = null
-	if weapon_data and weapon_data.glb_mesh:
-		equiped_object = weapon_data.glb_mesh.instantiate()
+	if weapon_data and weapon_data.get_glb_mesh():
+		equiped_object = weapon_data.get_glb_mesh().instantiate()
 	elif shield_data and shield_data.glb_mesh:
 		equiped_object = shield_data.glb_mesh.instantiate()
 	elif furniture_data and furniture_data.glb_mesh:

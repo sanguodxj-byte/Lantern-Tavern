@@ -51,7 +51,9 @@ func evaluate(candidate: Player, forced: bool = false) -> bool:
 		return true
 
 	var distance := owner.global_position.distance_to(candidate.global_position)
-	if distance > owner.detection_range:
+	var effective_detection_range: float = owner.get_effective_detection_range() \
+		if owner.has_method("get_effective_detection_range") else owner.detection_range
+	if distance > effective_detection_range:
 		if target == candidate and has_last_seen_position and memory_remaining > 0.0:
 			var was_visible := target_visible
 			target_visible = false

@@ -66,6 +66,11 @@ func _process(delta: float) -> void:
 		var nm: Node = get_node_or_null("/root/NetworkManager")
 		if nm != null and nm.is_host:
 			nm.tick(delta)
+		# 房主解锁（2135 遗留）：_ready_to_move 原先只在 client 端设置，
+		# host 端恒 false → 房主玩家在就绪后仍被 78 行冻结。客户端就绪文件
+		# 出现后与 client 对称开启移动阶段（83 行的就绪前冻结仍生效）。
+		if not _ready_to_move and _read("client_ready.txt") != "":
+			_ready_to_move = true
 	_inject_input()
 
 func _inject_input() -> void:
@@ -119,10 +124,11 @@ func _run_host() -> void:
 	_write("server_ready.txt", "ready")
 	# 房主自身也是玩家：建立本地 PlayerContext（peer 1）。
 	NetworkManager.spawn_self({}, "host_guid_001")
-	# 开启出征：服务器选 seed 并广播 dungeon_layout（此时客户端尚未连接，会漏收，
-	# 故在 _on_host_peer_authorized 中对新连接的客户端重播 layout）。
-	var layout_evt: Dictionary = NetworkManager.start_expedition()
-	_seed = int(layout_evt.get("seed", 0))
+	# 开启出征（1417 审查 P0-1）：走 SessionRoot 唯一权威事务——结算账本重置 +
+	# world revision 推进 + 布局事件，与 CMD_EXPEDITION 命令路由共用同一入口。
+	# 客户端尚未连接时事件会漏收，故在 _on_host_peer_authorized 中对新连接客户端重播 layout。
+	var exp_result: Dictionary = NetworkManager.start_expedition()
+	_seed = int(exp_result.get("event", {}).get("seed", 0))
 	# 房主用该 seed 构建真实本地地牢 + 真实 Player。
 	_controller = DungeonSessionController.new()
 	_controller.name = "DungeonSession"
@@ -179,7 +185,7 @@ func _run_client() -> void:
 		return
 	# 监听服务器事件（含 dungeon_layout），拿到 seed 后重建真实地牢。
 	NetworkManager.event_received.connect(_on_client_event)
-	NetworkManager.send_spawn({}, "client_guid_001")
+	NetworkManager.send_spawn("client_guid_001")
 	# 等待：重连 token（spawn 成功）+ 收到 dungeon_layout 并构建完地牢 + 出现 Host 的远端 avatar。
 	var ready := false
 	for i in range(900):
@@ -350,7 +356,7 @@ func _run_client2() -> void:
 		_write("client2_recovery.txt", "FAIL connect (no server on candidate ports)")
 		return
 	NetworkManager.event_received.connect(_on_client2_event)
-	NetworkManager.send_spawn({}, "client2_guid_001")
+	NetworkManager.send_spawn("client2_guid_001")
 	# 晚到恢复：重连 token（spawn 成功）+ 地牢重建 + 既有两端 avatar（房主 peer1 + 先到客户端）。
 	# 注意：client1 的 peer id 是 ENet 动态分配的（非固定 2），故“既有玩家 avatar”须动态查找
 	# （任何既非房主 peer1、也非自身 local_peer_id 的远端 avatar 即视为先到客户端）。

@@ -190,9 +190,9 @@ func test_minotaur_equipment_mounts_only_the_external_axe_on_tree_entry() -> voi
 		assert_object(mounted_data).is_not_null()
 		if mounted_data != null:
 			assert_str(mounted_data.id).is_equal("axe")
-			assert_object(mounted_data.glb_mesh).is_not_null()
-			if mounted_data.glb_mesh != null:
-				assert_str(mounted_data.glb_mesh.resource_path).is_equal(
+			assert_object(mounted_data.get_glb_mesh()).is_not_null()
+			if mounted_data.get_glb_mesh() != null:
+				assert_str(mounted_data.get_glb_mesh().resource_path).is_equal(
 					"res://assets/meshes/weapons/weapons_voxel_axe.glb"
 				)
 	minotaur.queue_free()
@@ -216,9 +216,10 @@ func test_minotaur_enemy_ready_resolves_the_complete_runtime_contract() -> void:
 	assert_object(minotaur.nav_agent).is_instanceof(NavigationAgent3D)
 	assert_object(minotaur.player_detection_area).is_instanceof(Area3D)
 	assert_object(minotaur.weapon_reach_raycast).is_instanceof(RayCast3D)
-	assert_object(minotaur.skeleton_simulator).is_instanceof(PhysicalBoneSimulator3D)
-	assert_object(minotaur.physical_bone_head).is_instanceof(PhysicalBone3D)
-	assert_object(minotaur.physical_bone_torso).is_instanceof(PhysicalBone3D)
+	assert_object(minotaur.skeleton_simulator).is_null()
+	assert_object(minotaur.physical_bone_head).is_null()
+	assert_object(minotaur.physical_bone_torso).is_null()
+	assert_object(minotaur.voxel_ragdoll).is_not_null()
 	assert_bool(minotaur.equipment.has_weapon()).is_true()
 	assert_object(minotaur.equipment.shield_data).is_null()
 	assert_int(minotaur.equipment.weapon_placeholder.get_child_count()).is_equal(1)

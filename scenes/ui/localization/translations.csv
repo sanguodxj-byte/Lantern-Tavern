@@ -378,7 +378,7 @@ Stable,Stable,稳定
 Out of Control,Out of Control,失控
 Evacuate,Evacuate,撤离
 Deepening,Deepening,加深
-Dark Erosion %03d%%  %s,Dark Erosion %03d%%  %s,暗蚀 %03d%%  %s
+Dark Erosion %d%%  %s,Dark Erosion %d%%  %s,暗蚀 %d%%  %s
 Dark Erosion %d - Evacuate Now,Dark Erosion %d - Evacuate Now,暗蚀 %d - 立刻撤离
 Dark Erosion %d - Time to Leave,Dark Erosion %d - Time to Leave,暗蚀 %d - 差不多该撤了
 Dark Erosion %d - Surroundings Stirring,Dark Erosion %d - Surroundings Stirring,暗蚀 %d - 周围开始躁动
@@ -898,8 +898,8 @@ PREFERENCES,PREFERENCES,偏好设置
 LONE LIGHT TAVERN  •  EARLY ACCESS,LONE LIGHT TAVERN  •  EARLY ACCESS,孤灯酒馆  •  抢先体验版
 Spell Weaving,Spell Weaving,法术编织
 Rune List,Rune List,符文列表
-"Hold right mouse to weave spells. Select a spell slot, then add runes in fixed order.","Hold right mouse to weave spells. Select a spell slot, then add runes in fixed order.","按住右键保持法术界面；选择法术槽位后，按固定顺序装配符文。"
-"Keys 1-5 select a spell slot. Click an equipped rune to clear it. Release right mouse to close.","Keys 1-5 select a spell slot. Click an equipped rune to clear it. Release right mouse to close.","数字键 1–5 选择法术槽位；点击已装配符文可清除；松开右键关闭。"
+"Right click to toggle the spell interface. Select a spell slot, then add runes in fixed order.","Right click to toggle the spell interface. Select a spell slot, then add runes in fixed order.","右键点击切换法术界面；选择法术槽位后，按固定顺序装配符文。"
+"Click a spell slot to switch the active spell. Hold left click to cast. Click an equipped rune to clear it. Right click again to close.","Click a spell slot to switch the active spell. Hold left click to cast. Click an equipped rune to clear it. Right click again to close.","点击法术槽位切换当前法术；按住左键蓄力释放。点击已装配符文可清除；再次右键关闭。"
 No available runes in your carried inventory.,No available runes in your carried inventory.,随身库存中没有可用于装配的符文。
 Spell Slot,Spell Slot,法术槽位
 No fixed recipe formed,No fixed recipe formed,未形成固定配方
@@ -1195,3 +1195,9 @@ ASSET INSPECTOR,ASSET INSPECTOR,资产检查器
 升级奖励 · 二选一,Level-Up Reward - Choose One,升级奖励 · 二选一
 符文奖励 · 本级不再提升属性,Rune Reward - No Stat Gain This Level,符文奖励 · 本级不再提升属性
 Camera Impact,Camera Impact,Camera Impact
+"Likes: -","Likes: -","喜欢：-"
+"Dislikes: -","Dislikes: -","讨厌：-"
+"Likes","Likes","喜欢"
+"Dislikes","Dislikes","讨厌"
+"酿造操作已迁移至 3D 酿造间：炼药锅投料 → 倒桶台 → 窖藏位开缸","酿造操作已迁移至 3D 酿造间：炼药锅投料 → 倒桶台 → 窖藏位开缸","酿造操作已迁移至 3D 酿造间：炼药锅投料 → 倒桶台 → 窖藏位开缸"
+"按 TAB 处理升级 ×%d","按 TAB 处理升级 ×%d","按 TAB 处理升级 ×%d"

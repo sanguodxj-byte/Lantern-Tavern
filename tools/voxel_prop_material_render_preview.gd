@@ -33,6 +33,8 @@ const CHARACTER_SCENES := {
 	"minotaur": "res://assets/meshes/characters/voxel_minotaur_72px.glb",
 	"slime": "res://assets/meshes/characters/voxel_slime_24px.glb",
 	"spider": "res://assets/meshes/characters/voxel_spider_30px.glb",
+	"drow_blade": "res://assets/meshes/characters/voxel_drow_blade_48px.glb",
+	"dire_wolf": "res://assets/meshes/characters/voxel_dire_wolf_100px.glb",
 }
 const PREVIEW_SCENES := [
 	{

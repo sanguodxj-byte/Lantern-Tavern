@@ -97,7 +97,7 @@ var WEAPON_TYPE_NAMES: Dictionary = {
 }
 
 func _ready() -> void:
-	add_to_group("character_panel")
+	add_to_group("modal_gameplay_blocker")
 	theme = preload("res://scenes/ui/lantern_theme.tres")
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	return_btn.pressed.connect(_on_return_pressed)
@@ -758,13 +758,13 @@ func _start_gear_drag(meta: Dictionary) -> void:
 		"type": "equipment",
 		"id": String(meta.get("id", "")),
 	}
-	var preview := Label.new()
+	# 拖拽预览必须显示装备图标（禁止纯文字）。
+	var icon: Texture2D = DETAIL_POPUP_SCRIPT.icon_for_equipment_id(String(meta.get("id", "")))
 	var data = meta.get("data", null)
+	var display_name := String(meta.get("id", ""))
 	if data != null and data.has_method("get_full_display_name"):
-		preview.text = String(data.get_full_display_name())
-	else:
-		preview.text = String(meta.get("id", ""))
-	gear_list.force_drag(payload, preview)
+		display_name = String(data.get_full_display_name())
+	gear_list.force_drag(payload, DETAIL_POPUP_SCRIPT.build_drag_preview(icon, display_name))
 
 
 ## drop zone 回调: 判断是否可接收拖放

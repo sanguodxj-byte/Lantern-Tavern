@@ -88,6 +88,8 @@ const ERR_RECONNECT_GUID_NOT_FOUND := "RECONNECT_GUID_NOT_FOUND"
 const ERR_ATTACK_NOT_FACING := "ATTACK_NOT_FACING"
 ## P0-1：在线重复身份（两个 ONLINE peer 使用同一 player_guid）必须拒绝。
 const ERR_DUPLICATE_IDENTITY := "DUPLICATE_IDENTITY"
+## P0-2（1122 审查）：服务器存档持久化失败（磁盘满/权限/rename 失败）。
+const ERR_SAVE_PERSIST_FAILED := "SAVE_PERSIST_FAILED"
 
 ## 是否为合法客户端命令类型
 static func is_valid_command(cmd: String) -> bool:

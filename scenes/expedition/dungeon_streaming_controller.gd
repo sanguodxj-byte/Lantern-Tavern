@@ -142,6 +142,15 @@ func update_streaming(force: bool = false) -> void:
 	var has_forced_hunt := _has_forced_hunt_enemies()
 	if not force and player_chunk == _last_player_chunk \
 			and not has_forced_hunt and not _forced_hunt_refresh_requested:
+		# 2109 审查 P1-2：玩家未跨 chunk 时仍按实时距离重算动态体激活。
+		# 动态体按与玩家的实时距离（24m 物理 / 36m 视觉）激活，若仅在跨 chunk 时
+		# 刷新，同 chunk 内跨越阈值的敌人/掉落会保持旧激活状态直至玩家移动。
+		var reconcile_chunks := {}
+		for chunk in _last_active_physics_chunks.keys():
+			reconcile_chunks[chunk] = true
+		for chunk in _iter_chunks(player_chunk, STREAM_DYNAMIC_VISUAL_CHUNK_RADIUS):
+			reconcile_chunks[chunk] = true
+		_reconcile_dynamic_physics(reconcile_chunks, player_chunk)
 		return
 	_forced_hunt_refresh_requested = false
 	_streaming_refresh_count += 1
@@ -251,6 +260,24 @@ func _update_physics(player_chunk: Vector2i) -> void:
 		reconcile_chunks[chunk] = true
 	for chunk in _iter_chunks(player_chunk, STREAM_DYNAMIC_VISUAL_CHUNK_RADIUS):
 		reconcile_chunks[chunk] = true
+	_reconcile_dynamic_physics(reconcile_chunks, player_chunk)
+	_last_active_physics_chunks = active
+	# 强制追击敌人可能未被注册为 streamed physics（例如迟到的运行时实体），
+	# 但仍必须保持 CharacterBody3D 的 AI 物理处理；这里只遍历事件缓存，不扫全地图。
+	_prune_invalid_forced_hunt_enemies()
+	for enemy_variant in _forced_hunt_enemies.values():
+		var enemy := enemy_variant as CharacterBody3D
+		if enemy == null or not is_instance_valid(enemy):
+			continue
+		_set_physics_body_active(enemy, true)
+		enemy.set_meta("stream_forced_hunt_active", true)
+
+## 按实时位置重算 union 内动态体（敌人/掉落/触发器）的激活状态并归位。
+## 供 _update_physics 与 update_streaming 早退路径共用（2109 审查 P1-2）：
+## 动态体按与玩家的实时距离（24m 物理 / 36m 视觉）激活，玩家未跨 chunk 时
+## 也必须刷新，否则同 chunk 内跨越阈值的动态体会保持旧激活状态直至玩家移动。
+func _reconcile_dynamic_physics(reconcile_chunks: Dictionary, player_chunk: Vector2i) -> void:
+	_prune_invalid_physics_bodies()
 	var rehome_list: Array = []
 	for chunk in reconcile_chunks.keys():
 		var reconcile_bodies: Array = _physics_chunks.get(chunk, [])
@@ -264,16 +291,6 @@ func _update_physics(player_chunk: Vector2i) -> void:
 	# 否则其注册 chunk 一旦离开 union 就再也不会被扫描，激活状态会永久泄漏。
 	for body in rehome_list:
 		_rehome_dynamic_body(body)
-	_last_active_physics_chunks = active
-	# 强制追击敌人可能未被注册为 streamed physics（例如迟到的运行时实体），
-	# 但仍必须保持 CharacterBody3D 的 AI 物理处理；这里只遍历事件缓存，不扫全地图。
-	_prune_invalid_forced_hunt_enemies()
-	for enemy_variant in _forced_hunt_enemies.values():
-		var enemy := enemy_variant as CharacterBody3D
-		if enemy == null or not is_instance_valid(enemy):
-			continue
-		_set_physics_body_active(enemy, true)
-		enemy.set_meta("stream_forced_hunt_active", true)
 
 ## 满暗蚀敌人移动时，玩家所在 chunk 不变也必须刷新其脚下环境碰撞。
 ## 只遍历强制追击缓存，物理注册表规模不会放大这条路径的开销。

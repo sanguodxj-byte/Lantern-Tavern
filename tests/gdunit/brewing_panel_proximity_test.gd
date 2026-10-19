@@ -1,19 +1,19 @@
 extends GdUnitTestSuite
 ## 酒馆经营 HUD 入口测试
-## 验证：tavern_ui.tscn 的 BrewingPanel 默认隐藏，HUD 由吧台交互唤出。
+## 决策 G3（审查 0856 P0-1）：tavern_ui.tscn 已移除 BrewingPanel 节点，
+## 酿造操作全部走 3D 酿造间链路（BrewFlowSystem），HUD 仅展示经营信息。
 
-func test_brewing_panel_default_hidden() -> void:
+func test_brewing_panel_removed_from_tavern_ui() -> void:
 	var inst: Control = load("res://scenes/ui/tavern_ui.tscn").instantiate()
 	add_child(inst)
-	var panel: Control = inst.get_node_or_null("BrewingPanel")
-	assert_object(panel).is_not_null()
-	assert_bool(panel.visible).is_false()
+	# 旧 BrewingPanel 节点已从生产 HUD 移除
+	assert_object(inst.get_node_or_null("BrewingPanel")).is_null()
 	inst.queue_free()
 
-func test_brewing_panel_instance_present() -> void:
+func test_brewing_panel_instance_removed_from_tavern_ui() -> void:
 	var inst: Control = load("res://scenes/ui/tavern_ui.tscn").instantiate()
 	add_child(inst)
-	assert_object(inst.get_node_or_null("BrewingPanel/BrewingPanelInstance")).is_not_null()
+	assert_object(inst.get_node_or_null("BrewingPanel/BrewingPanelInstance")).is_null()
 	inst.queue_free()
 
 func test_bar_interaction_toggles_tavern_hud() -> void:

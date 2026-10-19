@@ -5,13 +5,34 @@ const TAVERN_UI_SCENE := preload("res://scenes/ui/tavern_ui.tscn")
 const EQUIPMENT_SCENE := preload("res://scenes/ui/tavern_equipment_panel.tscn")
 const COMBAT_HUD_SCENE := preload("res://scenes/ui/combat_hud.tscn")
 const EXPEDITION_HUD_SCENE := preload("res://scenes/ui/expedition_hud.tscn")
+const ORIGIN_SELECT_SCRIPT := preload("res://scenes/ui/origin_select_ui.gd")
+const ZONE_SELECT_SCENE := preload("res://scenes/ui/zone_select.tscn")
 const ATTR_PANEL_SCRIPT := preload("res://globals/combat/attr_panel.gd")
 const GAME_STATE_SCRIPT := preload("res://globals/core/game_state.gd")
 const DETAIL_POPUP_SCRIPT := preload("res://scenes/ui/equipment_detail_popup.gd")
+
 const CAPTURE_DIR := "res://reports/ui_audit"
 const CAPTURE_PREFIX := "after"
 
 var _original_window_size := Vector2i.ZERO
+
+
+## 蓄力指示验证用 mock 玩家：带 crosshair 所需方法与蓄力进度
+class CaptureChargeCaster:
+	extends RefCounted
+	var selected_slot := 0
+
+
+class CaptureChargePlayer:
+	extends Node3D
+	var weapon_charge_ratio := 0.0
+	var caster := CaptureChargeCaster.new()
+	func is_active_spell_focus_weapon() -> bool:
+		return true
+	func is_active_weapon_ranged() -> bool:
+		return false
+	func is_active_weapon_crossbow() -> bool:
+		return false
 
 
 func before() -> void:
@@ -37,6 +58,8 @@ func test_capture_current_project_ui() -> void:
 	await _capture_equipment(true)
 	await _capture_combat_hud()
 	await _capture_level_up_panel()
+	await _capture_origin_select()
+	await _capture_zone_select()
 
 
 func _capture_main_menu() -> void:
@@ -93,7 +116,7 @@ func _capture_combat_hud() -> void:
 	var backdrop := MAIN_MENU_SCENE.instantiate() as Control
 	stage.add_child(backdrop)
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for hidden_path in ["SidePanel", "Subtitle", "VersionLabel", "Title"]:
+	for hidden_path in ["SidePanel", "SidePanel/MenuVBox/Subtitle", "VersionLabel", "SidePanel/MenuVBox/Title"]:
 		(backdrop.get_node(hidden_path) as Control).visible = false
 
 	var combat_hud := COMBAT_HUD_SCENE.instantiate() as CanvasLayer
@@ -106,6 +129,22 @@ func _capture_combat_hud() -> void:
 	stage.add_child(expedition_hud)
 	expedition_hud.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	await _wait_frames(12)
+
+	# 蓄力指示验证：装配火球术（满蓄主题红），准心显示白色蓄力环
+	var gs: Node = get_tree().root.get_node_or_null("GameState")
+	if gs != null and "spell_loadout" in gs:
+		gs.spell_loadout.set_rune_inventory({"ember": 1, "force": 1, "launch": 1})
+		gs.spell_loadout.set_rune(0, 0, "ember")
+		gs.spell_loadout.set_rune(0, 1, "force")
+		gs.spell_loadout.set_rune(0, 2, "launch")
+	var crosshair := combat_hud.get_node_or_null("Crosshair")
+	if crosshair != null:
+		var charge_player := CaptureChargePlayer.new()
+		charge_player.name = "ChargePlayer"
+		charge_player.weapon_charge_ratio = 0.6
+		add_child(charge_player)
+		crosshair._player = charge_player
+		crosshair.queue_redraw()
 
 	combat_hud.hp_bar.set_values(78, 100)
 	combat_hud.mp_bar.set_values(42, 70)
@@ -130,6 +169,10 @@ func _capture_combat_hud() -> void:
 	for x in range(7):
 		for y in range(7):
 			combat_hud.minimap.mark_cell_explored(x, y)
+	# 测试环境没有有效 level：若 _refresh_references 在捕获窗口内触发，
+	# 会 reset_fog() 并把注入的地图数据清空（_has_grid=false），导致截图空白。
+	# 放大 update_interval 使捕获期间不触发刷新，保证截图展示注入的地形。
+	combat_hud.minimap.update_interval = 1000.0
 
 	expedition_hud.update_player_hp(78, 100)
 	expedition_hud.collected_materials = {"glowcap": 2, "ore": 3}
@@ -147,7 +190,7 @@ func _capture_level_up_panel() -> void:
 	var backdrop := MAIN_MENU_SCENE.instantiate() as Control
 	stage.add_child(backdrop)
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for hidden_path in ["SidePanel", "Subtitle", "VersionLabel", "Title"]:
+	for hidden_path in ["SidePanel", "SidePanel/MenuVBox/Subtitle", "VersionLabel", "SidePanel/MenuVBox/Title"]:
 		(backdrop.get_node(hidden_path) as Control).visible = false
 	var combat_hud := COMBAT_HUD_SCENE.instantiate() as CanvasLayer
 	add_child(combat_hud)
@@ -178,6 +221,37 @@ func _capture_level_up_panel() -> void:
 	game_state.free()
 
 
+func _capture_origin_select() -> void:
+	var stage := _create_stage(Color(0.028, 0.029, 0.032, 1.0))
+	var origin_ui := ORIGIN_SELECT_SCRIPT.new() as Control
+	stage.add_child(origin_ui)
+	origin_ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	await _wait_frames(12)
+	# 选中第一张卡片：显示选中高亮（金边）并启用确认按钮
+	if not origin_ui._card_buttons.is_empty():
+		origin_ui._on_origin_card_selected(String(origin_ui._card_buttons[0]["id"]))
+	await _wait_frames(4)
+	_save_viewport("origin_select")
+	await _remove_capture_node(stage)
+
+
+func _capture_zone_select() -> void:
+	var stage := _create_stage(Color(0.012, 0.010, 0.014, 1.0))
+	var zone_ui := ZONE_SELECT_SCENE.instantiate() as Control
+	stage.add_child(zone_ui)
+	zone_ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	await _wait_frames(12)
+	# 选中第一个区域：显示地图热点选中态与区域信息面板
+	var zone_manager: Node = get_tree().root.get_node_or_null("ZoneManager")
+	if zone_manager != null and zone_manager.has_method("all_zones"):
+		var zones: Array = zone_manager.all_zones()
+		if not zones.is_empty():
+			zone_ui._on_zone_pressed(int(zones[0]))
+	await _wait_frames(4)
+	_save_viewport("zone_select")
+	await _remove_capture_node(stage)
+
+
 func _seed_equipment_panel(panel: Control) -> void:
 	var gear_list := panel.get_node("%GearList") as ItemList
 	gear_list.clear()
@@ -197,8 +271,10 @@ func _seed_equipment_panel(panel: Control) -> void:
 		var icon := load(String(fixture[1])) as Texture2D
 		if String(fixture[0]) == "灵魂宝石":
 			icon = DETAIL_POPUP_SCRIPT.icon_for_material("soul_gem")
-		var index := gear_list.add_item("\n", icon)
-		gear_list.set_item_metadata(index, {"amount": int(fixture[2]), "type": "fixture", "id": String(fixture[0]), "_inventory_label": String(fixture[0])})
+		# 与真实路径一致：原生图标置空，由 InventoryDragList 网格层
+		# （_draw_fixed_grid_icons）从 _inventory_icon metadata 绘制。
+		var index := gear_list.add_item("\n", null)
+		gear_list.set_item_metadata(index, {"amount": int(fixture[2]), "type": "fixture", "id": String(fixture[0]), "_inventory_label": String(fixture[0]), "_inventory_icon": icon})
 		gear_list.set_item_tooltip(index, String(fixture[0]))
 	gear_list.select(0)
 	panel.call("_on_gear_item_selected", 0)

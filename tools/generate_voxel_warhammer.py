@@ -16,6 +16,12 @@ from voxel_overlap_guard import (  # noqa: E402
     assert_parts_voxel_assembly_valid,
 )
 from voxel_single_model_cli import reject_target_override  # noqa: E402
+from weapon_first_person_rig_lib import (  # noqa: E402
+    build_weapon_rig,
+    export_animated_glb,
+    make_action,
+    render_action_review,
+)
 from voxel_weapon_model_lib import (  # noqa: E402
     PX,
     bounds_size_px,
@@ -36,6 +42,7 @@ LENGTH_PX = 47.0
 
 OUT_GLB = ROOT / "assets" / "meshes" / "weapons" / "weapons_voxel_warhammer.glb"
 PREVIEW_DIR = ROOT / "reports" / "props_preview"
+ANIMATION_PREVIEW_DIR = ROOT / "reports" / "first_person_animation" / "warhammer_blender"
 
 
 def build_warhammer() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
@@ -103,13 +110,63 @@ def build_warhammer() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
     return root, parts
 
 
+def _author_first_person_actions(armature: bpy.types.Object) -> None:
+    make_action(armature, "vm_warhammer_hold", 1, 38, [
+        (1, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+        (19, (0.0, 0.0, -0.14), (0.25, -0.35, 0.2)),
+        (38, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ], loop=True)
+    make_action(armature, "vm_melee_charge", 39, 76, [
+        (39, (-0.8, 0.5, -0.7), (6.0, -8.0, 13.0)),
+        (50, (0.0, 1.0, -0.2), (-7.0, 9.0, -16.0)),
+        (64, (1.1, 1.6, 0.2), (-15.0, 19.0, -31.0)),
+        (76, (1.6, 2.0, 0.5), (-20.0, 25.0, -41.0)),
+    ])
+    make_action(armature, "vm_warhammer_attack", 77, 102, [
+        (77, (0.6, 1.0, 0.0), (-11.0, 14.0, -25.0)),
+        (81, (0.8, 1.2, 0.2), (-16.0, 20.0, -33.0)),
+        (86, (-0.7, 0.5, -1.1), (11.0, -15.0, 27.0)),
+        (91, (-2.0, -0.6, -2.5), (24.0, -36.0, 62.0)),
+        (96, (-1.3, -0.8, -1.8), (17.0, -27.0, 48.0)),
+        (100, (-0.4, -0.2, -0.6), (7.0, -10.0, 18.0)),
+        (102, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ])
+    make_action(armature, "vm_warhammer_guard", 103, 122, [
+        (103, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+        (110, (-1.1, 1.2, -0.7), (-10.0, 18.0, 33.0)),
+        (122, (-1.1, 1.2, -0.7), (-10.0, 18.0, 33.0)),
+    ])
+    armature["action_names"] = [
+        "vm_warhammer_hold", "vm_melee_charge",
+        "vm_warhammer_attack", "vm_warhammer_guard",
+    ]
+
+
 def main() -> None:
     reject_target_override(MODEL_ID)
     reset_scene()
     root, parts = build_warhammer()
     assert_parts_no_positive_volume_overlap(parts, label=MODEL_ID)
     assert_parts_voxel_assembly_valid(parts, label=MODEL_ID)
-    export_glb(root, OUT_GLB)
+    armature = build_weapon_rig(root, parts, "WarhammerRig", 13.0, -15.0)
+    _author_first_person_actions(armature)
+    render_action_review(
+        root,
+        armature,
+        ANIMATION_PREVIEW_DIR,
+        ((0.04, -0.26, -0.68), (10.0, 12.0, -112.0)),
+        {
+            "00": ("vm_warhammer_hold", 1),
+            "01": ("vm_melee_charge", 26),
+            "02": ("vm_warhammer_attack", 5),
+            "03": ("vm_warhammer_attack", 10),
+            "04": ("vm_warhammer_attack", 15),
+            "05": ("vm_warhammer_attack", 20),
+            "06": ("vm_warhammer_attack", 26),
+            "07": ("vm_warhammer_guard", 12),
+        },
+    )
+    export_animated_glb(root, OUT_GLB)
     render_true_3d_views(root, MODEL_ID, PREVIEW_DIR)
     dimensions = bounds_size_px(root)
     print(f"Wrote {OUT_GLB}")

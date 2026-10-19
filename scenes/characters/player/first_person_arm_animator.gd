@@ -130,17 +130,19 @@ func _charge_pose(profile: StringName) -> Dictionary:
 
 func _guard_pose(profile: StringName) -> Dictionary:
 	var pose := _hold_pose(profile)
+	# 注意：Godot 4 Dictionary.merge 默认 overwrite=false，已存在的骨骼键（如
+	# UpperArm.R）不会被覆盖，导致格挡姿态退化为握持姿态。必须显式传入 true。
 	match profile:
-		&"unarmed": pose.merge(_pose({"UpperArm.R": Vector3(-48, -22, 38), "LowerArm.R": Vector3(-58, 18, 0), "UpperArm.L": Vector3(-48, 22, -38), "LowerArm.L": Vector3(-58, -18, 0)}))
-		&"dagger": pose.merge(_pose({"UpperArm.R": Vector3(-26, 18, 52), "LowerArm.R": Vector3(-32, 0, 0)}))
-		&"greatsword": pose.merge(_pose({"UpperArm.R": Vector3(-78, -8, 38), "LowerArm.R": Vector3(-48, 0, 0), "UpperArm.L": Vector3(-78, 8, -38), "LowerArm.L": Vector3(-48, 0, 0)}))
-		&"axe": pose.merge(_pose({"UpperArm.R": Vector3(-86, -18, 52), "LowerArm.R": Vector3(-42, 0, 0), "UpperArm.L": Vector3(-64, 18, -48), "LowerArm.L": Vector3(-50, 0, 0)}))
-		&"warhammer": pose.merge(_pose({"UpperArm.R": Vector3(-96, 4, 44), "LowerArm.R": Vector3(-34, 0, 0), "UpperArm.L": Vector3(-72, -4, -42), "LowerArm.L": Vector3(-52, 0, 0)}))
-		&"spear": pose.merge(_pose({"UpperArm.R": Vector3(-46, -16, 10), "LowerArm.R": Vector3(-78, 0, 0), "UpperArm.L": Vector3(-42, 14, -14), "LowerArm.L": Vector3(-62, 0, 0)}))
-		&"bow": pose.merge(_pose({"UpperArm.R": Vector3(-40, -12, 22), "LowerArm.R": Vector3(-62, 0, 0), "UpperArm.L": Vector3(-54, 10, -24), "LowerArm.L": Vector3(-68, 0, 0)}))
-		&"crossbow": pose.merge(_pose({"UpperArm.R": Vector3(-36, 0, 28), "LowerArm.R": Vector3(-50, 0, 0), "UpperArm.L": Vector3(-54, 8, -22), "LowerArm.L": Vector3(-64, 0, 0)}))
-		&"shield": pose.merge(_pose({"UpperArm.L": Vector3(-60, -24, -54), "LowerArm.L": Vector3(-78, 0, 0)}))
-		_: pose.merge(_pose({"UpperArm.R": Vector3(-54, -12, 32), "LowerArm.R": Vector3(-64, 0, 0)}))
+		&"unarmed": pose.merge(_pose({"UpperArm.R": Vector3(-48, -22, 38), "LowerArm.R": Vector3(-58, 18, 0), "UpperArm.L": Vector3(-48, 22, -38), "LowerArm.L": Vector3(-58, -18, 0)}), true)
+		&"dagger": pose.merge(_pose({"UpperArm.R": Vector3(-26, 18, 52), "LowerArm.R": Vector3(-32, 0, 0)}), true)
+		&"greatsword": pose.merge(_pose({"UpperArm.R": Vector3(-78, -8, 38), "LowerArm.R": Vector3(-48, 0, 0), "UpperArm.L": Vector3(-78, 8, -38), "LowerArm.L": Vector3(-48, 0, 0)}), true)
+		&"axe": pose.merge(_pose({"UpperArm.R": Vector3(-86, -18, 52), "LowerArm.R": Vector3(-42, 0, 0), "UpperArm.L": Vector3(-64, 18, -48), "LowerArm.L": Vector3(-50, 0, 0)}), true)
+		&"warhammer": pose.merge(_pose({"UpperArm.R": Vector3(-96, 4, 44), "LowerArm.R": Vector3(-34, 0, 0), "UpperArm.L": Vector3(-72, -4, -42), "LowerArm.L": Vector3(-52, 0, 0)}), true)
+		&"spear": pose.merge(_pose({"UpperArm.R": Vector3(-46, -16, 10), "LowerArm.R": Vector3(-78, 0, 0), "UpperArm.L": Vector3(-42, 14, -14), "LowerArm.L": Vector3(-62, 0, 0)}), true)
+		&"bow": pose.merge(_pose({"UpperArm.R": Vector3(-40, -12, 22), "LowerArm.R": Vector3(-62, 0, 0), "UpperArm.L": Vector3(-54, 10, -24), "LowerArm.L": Vector3(-68, 0, 0)}), true)
+		&"crossbow": pose.merge(_pose({"UpperArm.R": Vector3(-36, 0, 28), "LowerArm.R": Vector3(-50, 0, 0), "UpperArm.L": Vector3(-54, 8, -22), "LowerArm.L": Vector3(-64, 0, 0)}), true)
+		&"shield": pose.merge(_pose({"UpperArm.L": Vector3(-60, -24, -54), "LowerArm.L": Vector3(-78, 0, 0)}), true)
+		_: pose.merge(_pose({"UpperArm.R": Vector3(-54, -12, 32), "LowerArm.R": Vector3(-64, 0, 0)}), true)
 	return pose
 
 func _attack_peak(profile: StringName) -> Dictionary:

@@ -48,11 +48,23 @@ var _enemy_spawn_active: bool = false
 var _enemy_spawn_generation: int = 0
 var _enemy_spawn_timer: SceneTreeTimer = null
 var _force_monster_hunt := false
+# 2109 审查 P1-3：出生投影在导航地图 ready 前保持 pending，由分帧生成泵后补重试，
+# 避免敌人以导航面外/障碍内位置出生后永久错过投影。
+var _navigation_snap_pending: bool = false
 
 # Runtime 自有状态（不再写回 _level._private_field）
 var expedition_hud: ExpeditionHUD = null
 var combat_hud: CombatHUD = null
 var exploration_pressure: ExplorationPressure = null
+
+## P0-2（0643 审查）：撤离完成端口——func(player: Node) -> void。
+## 联机装配注入后，on_extraction_requested 改走端口（DungeonSessionController.
+## request_extraction() → 服务器权威 CMD_EXTRACT → extraction_completed 后再离场）；
+## 未注入（单机默认）保持本地 finish_expedition 结算路径。
+var extraction_port: Callable = Callable()
+
+func set_extraction_port(port: Callable) -> void:
+	extraction_port = port
 
 ## 配置：注入 layout + build_result + level + streaming_controller + rendering_cfg。
 ## 显式注入避反向读 _level.streaming_controller/_rendering_cfg（消除浅 Module 反向依赖）。
@@ -87,10 +99,36 @@ func start() -> void:
 	stabilize_lighting()
 	mount_expedition_hud()
 	setup_exploration_pressure()
+	# 跨层连续性（架构审查 1215 C1/C2）：新层恢复同一趟远征的时钟/暗蚀与玩家资源。
+	var session := _get_expedition_session()
+	if session != null and session.get("active") == true:
+		session.restore_pressure_to(exploration_pressure)
+		if spawned_player != null and is_instance_valid(spawned_player):
+			session.restore_player_to(spawned_player)
 	wire_extraction_portal_signal()
 	wire_downstairs_signal()
 	if AudioManager:
 		AudioManager.start_music()
+
+## 取当前激活的远征会话（GameState 持有；无则返回 null）。
+## 修复 9eb30ed 引入的类型错误：ExpeditionSession 是 RefCounted，不能用 Node 注解。
+func _get_expedition_session() -> ExpeditionSession:
+	if GameState == null:
+		return null
+	if "expedition_session" in GameState:
+		return GameState.expedition_session
+	return null
+
+## 下楼前捕获远征压力与玩家资源到会话（架构审查 1215：楼梯切换不清空远征）。
+func capture_expedition_session(session: ExpeditionSession) -> void:
+	if session == null:
+		return
+	if exploration_pressure != null and is_instance_valid(exploration_pressure):
+		session.capture_pressure_from(exploration_pressure)
+	var player_node: Node = GameState.resolve_player_node(0) if GameState != null else null
+	if player_node != null and is_instance_valid(player_node):
+		session.capture_player_from(player_node)
+	session.set("active", true)
 
 func mount_expedition_hud() -> void:
 	if _level == null or not is_instance_valid(_level):
@@ -111,6 +149,8 @@ func mount_expedition_hud() -> void:
 	# （ui.tscn → pause_menu.tscn 的 blur_overlay 后处理 shader）在 GL Compatibility 无头渲染下
 	# 反复创建 shader/viewport，跨多次全场景实例化累积 GPU 资源，最终触发原生崩溃（signal 11），
 	# 使整个测试套件在中途挂起。无头下本就无需玩家 UI，跳过这层重 UI 的挂载。
+	# 防重复挂载：World.tscn owns the shared in-game UI.
+	# 无头/gdUnit/CI 专用环境没有可渲染视图，跳过共享 UI 挂载。
 	if _is_running_under_world() or DisplayServer.get_name() == "headless":
 		return
 	var game_ui = load("res://scenes/ui/ui.tscn")
@@ -218,7 +258,14 @@ func spawn_enemies(spawned_player: Node3D = null) -> void:
 	var spawn_root: Node = build_result.spawn_root if build_result.spawn_root != null else _level
 	# 分帧实例化：先取生成计划（不实例化），再按帧批量生成，避免进场单帧卡顿。
 	_enemy_spawn_plan = spawner.spawn_enemies_from_layout(layout, spawn_root, player_node, true)
-	_snap_enemy_spawn_plan_to_navigation()
+	if build_result != null and not build_result.navigation_complete:
+		# 2109 审查 P1-1：导航源采样被截断，投影会把敌人吸到不可靠位置——
+		# 降级为保留原始生成计划并跳过投影，避免"物理可达、导航不可达"分叉。
+		push_warning("[DungeonRuntime] navigation source truncated; enemy spawn projection degraded")
+		_navigation_snap_pending = false
+	else:
+		# 2109 审查 P1-3：投影在导航地图 ready 前返回 pending，由生成泵后补重试。
+		_navigation_snap_pending = not _snap_enemy_spawn_plan_to_navigation()
 	_enemy_spawn_plan = _reserve_enemy_spawn_plan_footprints(_enemy_spawn_plan)
 	_enemy_spawn_root = spawn_root
 	_enemy_spawn_player = player_node
@@ -237,12 +284,14 @@ func spawn_enemies(spawned_player: Node3D = null) -> void:
 
 ## 将生成计划投影到已烘焙导航面，避免敌人出生在装饰物顶部、碰撞体内部或导航面边界外。
 ## 只接受同一格附近的投影，防止导航异常时把敌人跨房间移动；没有可用导航图则保留原计划。
-func _snap_enemy_spawn_plan_to_navigation() -> void:
+## 返回是否完成投影：false 表示导航地图尚未 ready（调用方应置 _navigation_snap_pending
+## 并在导航 ready 后由分帧生成泵后补重试，2109 审查 P1-3）。
+func _snap_enemy_spawn_plan_to_navigation() -> bool:
 	if _enemy_spawn_plan.is_empty() or _level == null or not is_instance_valid(_level):
-		return
+		return true
 	var map := _get_spawn_navigation_map()
 	if not map.is_valid() or NavigationServer3D.map_get_iteration_id(map) <= 0:
-		return
+		return false
 	var max_horizontal_snap := maxf(layout.tile_size * 1.5, 1.0) if layout != null else 4.5
 	for index in range(_enemy_spawn_plan.size()):
 		var descriptor: Dictionary = _enemy_spawn_plan[index]
@@ -260,6 +309,7 @@ func _snap_enemy_spawn_plan_to_navigation() -> void:
 		# 导航面 y 仅用于烘焙层高度；角色根节点仍以脚底 y=0.5 生成并自然落地。
 		descriptor["pos"] = Vector3(closest.x, 0.5, closest.z)
 		_enemy_spawn_plan[index] = descriptor
+	return true
 
 
 func _reserve_enemy_spawn_plan_footprints(plan: Array) -> Array:
@@ -325,6 +375,12 @@ func _pump_enemy_spawns(generation: int = -1) -> void:
 		return
 	if not _enemy_spawn_active or not is_inside_tree():
 		return
+	# 2109 审查 P1-3：导航地图 ready 后补执行出生投影（首次 spawn_enemies 时
+	# map 未同步会跳过投影，保留原始计划；ready 后这里重试，避免敌人以
+	# 导航面外/障碍内位置出生）。
+	if _navigation_snap_pending:
+		if _snap_enemy_spawn_plan_to_navigation():
+			_navigation_snap_pending = false
 	if _enemy_spawn_index >= _enemy_spawn_plan.size():
 		_enemy_spawn_active = false
 		return
@@ -342,7 +398,14 @@ func spawn_items() -> void:
 		push_warning("[DungeonRuntime] ItemSpawner autoload not found, skipping item placement")
 		return
 	var spawn_root: Node = build_result.spawn_root if build_result.spawn_root != null else _level
-	spawner.spawn_items_from_layout(layout, spawn_root, null, build_result.spawn_footprints)
+	var spawned_items: Array = spawner.spawn_items_from_layout(layout, spawn_root, null, build_result.spawn_footprints)
+	# 2109 审查 P2-1：布局生成的物品挂在 build_result.spawn_root（Node3D），该 root
+	# 不承担 register_streamed_physics_node 转发，ItemSpawner 内部的父节点方法探测
+	# 会静默失效——远处带物理的掉落物永远进不了流式注册表。这里用 runtime 持有的
+	# streaming controller 显式注册返回实例，绕开父节点能力探测。
+	for item_variant in spawned_items:
+		if item_variant is Node:
+			_register_streamed_physics(item_variant)
 	# decor batch 已由 DungeonSceneBuilder.build 在 build 末尾完成
 
 func wire_extraction_portal_signal() -> void:
@@ -442,6 +505,12 @@ func on_extraction_requested(player: Node) -> void:
 	print("[DungeonRuntime] Extraction triggered by player!")
 	if expedition_hud != null and is_instance_valid(expedition_hud):
 		expedition_hud.complete_extraction()
+	# P0-2（0643 审查）：注入撤离端口时改走端口（联机：controller.request_extraction →
+	# CMD_EXTRACT 权威结算 → extraction_completed 离场），不再固定本地直算。
+	# 单机（未注入）保持本地结算路径不变。
+	if extraction_port.is_valid():
+		extraction_port.call(player)
+		return
 	finish_expedition(player, true)
 
 

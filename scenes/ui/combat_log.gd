@@ -154,8 +154,7 @@ func _draw() -> void:
 	var panel_rect := Rect2(0, 0, size.x, size.y)
 	# 半透明背景
 	draw_rect(panel_rect, Color(0.025, 0.026, 0.030, bg_alpha), true)
-	# 像素边框
-	draw_rect(panel_rect, Color(0.72, 0.43, 0.20, 0.92), false, 3)
+	# 左侧状态条（无橙色边框）
 	draw_rect(Rect2(5, 5, 3, size.y - 10), Color(0.64, 0.67, 0.72, 0.9), true)
 
 	if _entries.is_empty():

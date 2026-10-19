@@ -16,6 +16,12 @@ from voxel_overlap_guard import (  # noqa: E402
     assert_parts_voxel_assembly_valid,
 )
 from voxel_single_model_cli import reject_target_override  # noqa: E402
+from weapon_first_person_rig_lib import (  # noqa: E402
+    build_weapon_rig,
+    export_animated_glb,
+    make_action,
+    render_action_review,
+)
 from voxel_weapon_model_lib import (  # noqa: E402
     PX,
     bounds_size_px,
@@ -37,6 +43,7 @@ LENGTH_PX = 49.0
 
 OUT_GLB = ROOT / "assets" / "meshes" / "weapons" / "weapons_voxel_staff.glb"
 PREVIEW_DIR = ROOT / "reports" / "props_preview"
+ANIMATION_PREVIEW_DIR = ROOT / "reports" / "first_person_animation" / "staff_blender"
 
 
 def build_staff() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
@@ -190,13 +197,61 @@ def build_staff() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
     return root, parts
 
 
+def _author_first_person_actions(armature: bpy.types.Object) -> None:
+    make_action(armature, "vm_staff_hold", 1, 34, [
+        (1, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+        (17, (0.0, 0.0, -0.12), (0.2, -0.3, 0.15)),
+        (34, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ], loop=True)
+    # Raise the crystal head into view and spiral inward as energy gathers.
+    make_action(armature, "vm_staff_charge", 1, 30, [
+        (1, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+        (8, (-0.2, 0.2, -0.4), (-3.0, 4.0, -6.0)),
+        (16, (-0.5, 0.5, -0.7), (-6.0, 9.0, -12.0)),
+        (24, (-0.7, 0.8, -0.9), (-8.0, 14.0, -18.0)),
+        (30, (-0.7, 0.8, -0.9), (-8.0, 14.0, -18.0)),
+    ])
+    # A staff cast is a committed forward thrust followed by a visible magical recoil.
+    make_action(armature, "vm_staff_attack", 1, 24, [
+        (1, (-0.7, 0.8, -0.9), (-8.0, 14.0, -18.0)),
+        (4, (-0.4, 0.3, -0.5), (-2.0, 7.0, -8.0)),
+        (7, (0.2, -0.1, -1.8), (7.0, -7.0, 12.0)),
+        (10, (0.7, -0.2, -2.8), (12.0, -13.0, 22.0)),
+        (13, (0.3, 0.1, -1.5), (6.0, -5.0, 10.0)),
+        (18, (-0.1, 0.2, -0.5), (1.0, 2.0, -3.0)),
+        (24, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ])
+    # Wand casting is faster and wrist-led: small wind-up, precise snap, quick settle.
+    make_action(armature, "vm_wand_cast", 1, 18, [
+        (1, (-0.3, 0.4, -0.4), (-3.0, 5.0, -8.0)),
+        (4, (-0.1, 0.2, -0.3), (-1.0, 3.0, -4.0)),
+        (6, (0.4, -0.1, -1.5), (6.0, -9.0, 17.0)),
+        (8, (0.6, -0.2, -2.0), (9.0, -13.0, 23.0)),
+        (11, (0.2, 0.0, -0.9), (4.0, -5.0, 10.0)),
+        (18, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ])
+    armature["action_names"] = ["vm_staff_hold", "vm_staff_charge", "vm_staff_attack", "vm_wand_cast"]
+
+
 def main() -> None:
     reject_target_override(MODEL_ID)
     reset_scene()
     root, parts = build_staff()
     assert_parts_no_positive_volume_overlap(parts, label=MODEL_ID)
     assert_parts_voxel_assembly_valid(parts, label=MODEL_ID)
-    export_glb(root, OUT_GLB)
+    armature = build_weapon_rig(root, parts, "StaffRig", 12.0, -14.0)
+    _author_first_person_actions(armature)
+    render_action_review(
+        root, armature, ANIMATION_PREVIEW_DIR,
+        ((0.12, -0.20, -0.66), (-8.0, -4.0, -148.0)),
+        {
+            "00": ("vm_staff_hold", 1), "01": ("vm_staff_charge", 24),
+            "02": ("vm_staff_attack", 4), "03": ("vm_staff_attack", 10),
+            "04": ("vm_staff_attack", 13), "05": ("vm_staff_attack", 24),
+            "06": ("vm_wand_cast", 8), "07": ("vm_wand_cast", 18),
+        },
+    )
+    export_animated_glb(root, OUT_GLB)
     render_true_3d_views(root, MODEL_ID, PREVIEW_DIR)
     dimensions = bounds_size_px(root)
     print(f"Wrote {OUT_GLB}")

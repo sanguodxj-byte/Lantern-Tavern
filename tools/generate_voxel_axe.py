@@ -16,6 +16,12 @@ from voxel_overlap_guard import (  # noqa: E402
     assert_parts_voxel_assembly_valid,
 )
 from voxel_single_model_cli import reject_target_override  # noqa: E402
+from weapon_first_person_rig_lib import (  # noqa: E402
+    build_weapon_rig,
+    export_animated_glb,
+    make_action,
+    render_action_review,
+)
 from voxel_weapon_model_lib import (  # noqa: E402
     PX,
     bounds_size_px,
@@ -36,6 +42,7 @@ LENGTH_PX = 45.0
 
 OUT_GLB = ROOT / "assets" / "meshes" / "weapons" / "weapons_voxel_axe.glb"
 PREVIEW_DIR = ROOT / "reports" / "props_preview"
+ANIMATION_PREVIEW_DIR = ROOT / "reports" / "first_person_animation" / "axe_blender"
 
 
 def build_axe() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
@@ -112,13 +119,62 @@ def build_axe() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
     return root, parts
 
 
+def _author_first_person_actions(armature: bpy.types.Object) -> None:
+    make_action(armature, "vm_axe_hold", 1, 36, [
+        (1, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+        (18, (0.0, 0.0, -0.16), (0.3, -0.4, 0.25)),
+        (36, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ], loop=True)
+    make_action(armature, "vm_melee_charge", 37, 72, [
+        (37, (-0.7, 0.4, -0.7), (5.0, -7.0, 11.0)),
+        (48, (0.0, 1.0, -0.2), (-6.0, 8.0, -14.0)),
+        (61, (1.0, 1.5, 0.2), (-13.0, 17.0, -28.0)),
+        (72, (1.5, 1.9, 0.5), (-18.0, 23.0, -38.0)),
+    ])
+    make_action(armature, "vm_axe_attack", 73, 96, [
+        (73, (0.7, 1.1, 0.0), (-10.0, 13.0, -24.0)),
+        (77, (0.9, 1.3, 0.2), (-15.0, 18.0, -31.0)),
+        (82, (-0.6, 0.6, -1.2), (10.0, -14.0, 25.0)),
+        (87, (-2.1, -0.5, -2.6), (21.0, -33.0, 58.0)),
+        (91, (-1.3, -0.7, -1.8), (15.0, -24.0, 44.0)),
+        (94, (-0.4, -0.2, -0.6), (6.0, -9.0, 17.0)),
+        (96, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ])
+    make_action(armature, "vm_axe_guard", 97, 116, [
+        (97, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+        (104, (-1.0, 1.1, -0.7), (-9.0, 17.0, 31.0)),
+        (116, (-1.0, 1.1, -0.7), (-9.0, 17.0, 31.0)),
+    ])
+    armature["action_names"] = [
+        "vm_axe_hold", "vm_melee_charge", "vm_axe_attack", "vm_axe_guard",
+    ]
+
+
 def main() -> None:
     reject_target_override(MODEL_ID)
     reset_scene()
     root, parts = build_axe()
     assert_parts_no_positive_volume_overlap(parts, label=MODEL_ID)
     assert_parts_voxel_assembly_valid(parts, label=MODEL_ID)
-    export_glb(root, OUT_GLB)
+    armature = build_weapon_rig(root, parts, "AxeRig", 12.0, -14.0)
+    _author_first_person_actions(armature)
+    render_action_review(
+        root,
+        armature,
+        ANIMATION_PREVIEW_DIR,
+        ((0.04, -0.24, -0.66), (10.0, 8.0, -120.0)),
+        {
+            "00": ("vm_axe_hold", 1),
+            "01": ("vm_melee_charge", 25),
+            "02": ("vm_axe_attack", 5),
+            "03": ("vm_axe_attack", 10),
+            "04": ("vm_axe_attack", 15),
+            "05": ("vm_axe_attack", 19),
+            "06": ("vm_axe_attack", 24),
+            "07": ("vm_axe_guard", 12),
+        },
+    )
+    export_animated_glb(root, OUT_GLB)
     render_true_3d_views(root, MODEL_ID, PREVIEW_DIR)
     dimensions = bounds_size_px(root)
     print(f"Wrote {OUT_GLB}")

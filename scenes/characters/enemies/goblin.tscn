@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://cty2xvbejnvbg"]
 
-[ext_resource type="PackedScene" uid="uid://qnkjy86a0qsq" path="res://assets/meshes/characters/voxel_goblin_32px_rig.glb" id="1_jcgx1"]
+[ext_resource type="PackedScene" uid="uid://dvq5grceauvui" path="res://assets/meshes/characters/voxel_goblin_32px_rig.glb" id="1_jcgx1"]
 [ext_resource type="Script" uid="uid://ba2m0b7xtyxb1" path="res://scenes/characters/enemies/enemy.gd" id="1_lahws"]
 [ext_resource type="PackedScene" uid="uid://dmfg86jn8qjol" path="res://scenes/characters/component/equipment_component.tscn" id="3_ewb0t"]
 [ext_resource type="Resource" uid="uid://bmre07o38bl3s" path="res://data/weapons/shortsword.tres" id="4_lahws"]

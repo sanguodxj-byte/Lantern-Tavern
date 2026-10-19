@@ -78,6 +78,9 @@ var combat_input_enabled := true
 ## Keep the last observed state here so attack preparation and network intent
 ## handling use the same press/hold/release signal.
 var _weapon_action_held: Dictionary = {}
+## 当前武器/法术蓄力进度（0..1），由 PlayerStateAttackPreparing 写入，
+## 供 HUD 准心外环（蓝色蓄力条）显示。
+var weapon_charge_ratio: float = 0.0
 var _weapon_action_pressed: Dictionary = {}
 var _weapon_action_pressed_frame: Dictionary = {}
 
@@ -334,11 +337,8 @@ func _process(delta: float) -> void:
 		camera.fov = lerpf(camera.fov, target_camera_fov, delta * FOV_LERP_SPEED)
 
 func _handle_spell_input() -> void:
-	if Input.is_action_just_pressed("spell_slot_1"): spell_caster.select_slot(0)
-	elif Input.is_action_just_pressed("spell_slot_2"): spell_caster.select_slot(1)
-	elif Input.is_action_just_pressed("spell_slot_3"): spell_caster.select_slot(2)
-	elif Input.is_action_just_pressed("spell_slot_4"): spell_caster.select_slot(3)
-	elif Input.is_action_just_pressed("spell_slot_5"): spell_caster.select_slot(4)
+	# 设计：法术没有切换快捷键——左键蓄力释放的是法术页当前选中的槽位，
+	# 切换槽位必须进入法术页操作（点击槽位按钮）。
 	var spell_ui_open := false
 	var gs := Service.game_state()
 	if gs != null and gs.has_method("is_spell_interface_open"):
@@ -906,7 +906,12 @@ func is_active_spell_focus_weapon() -> bool:
 	if weapon == null:
 		return false
 	var profile := String(PLAYER_ANIMATION_PROFILE.profile_for_weapon(weapon))
-	return profile == "staff" or profile == "grimoire"
+	if profile == "staff" or profile == "grimoire":
+		return true
+	# 与 can_open_spell_interface 的准入一致：
+	# 奥术剑（带机制被动）同样视为合法施法媒介，否则能打开界面
+	# 装配符文却无法施放（"invalid_spell_focus"）。
+	return SPELL_ACCESS_POLICY.can_use_spell_interface(weapon, has_mechanism_passive(ARCANE_SWORD_PASSIVE_ID))
 
 ## 当前武器是否为弩（弩无需拉弓蓄力，点击即射）
 func is_active_weapon_crossbow() -> bool:
@@ -1086,6 +1091,107 @@ func get_combat_evade_bonus() -> float:
 
 func get_combat_speed_multiplier() -> float:
 	return buffs.get_speed_multiplier()
+
+# ============================================================================
+# 服务器权威战斗状态镜像（P1/A3 修复：单点原子入口，只读，不反向写服务器）
+# ============================================================================
+
+## 镜像盾值在服务器模型中是持久吸收量（PlayerContext.shield 无到期时间），
+## 客户端 damage_absorb 表现 buff 用持久时长，直到服务器广播盾归零才清除。
+const MIRROR_SHIELD_DURATION_SEC := INF
+
+## 最近一次已应用的服务器 combat-state revision。revision < 0 表示从未应用
+## （首条事件无条件接受）；此后只接受严格递增 revision（拒绝陈旧/乱序回滚）。
+var _last_combat_state_revision: int = -1
+## 上次镜像的服务器 buff 集合（{buff_id: expiry_ms}），用于调停清除。
+var _mirrored_combat_buffs: Dictionary = {}
+
+## 服务器权威战斗状态镜像——客户端联机只读镜像的唯一原子入口。
+## 由 ClientCommandDriver 在收到 EVT_PLAYER_COMBAT_STATE / 重连会话快照时调用。
+## state 载荷键与 session_root.broadcast_player_combat_state 一致：
+##   current_life / max_life / shield(整数吸收量) / buffs{id:expiry_ms} / spell_mana / spell_max_mana
+## revision 语义：
+##   revision < 0  → 强制重同步（重连/会话快照，无条件覆盖，防脏镜像残留）；
+##   否则仅接受严格递增 revision，拒绝陈旧/乱序包（防回滚）。
+## 返回 true 表示已应用；false 表示被 revision 门禁拒绝（未改任何字段）。
+func apply_authoritative_combat_state(state: Dictionary, revision: int) -> bool:
+	var force_resync := revision < 0
+	if not force_resync and _last_combat_state_revision >= 0 and revision <= _last_combat_state_revision:
+		return false
+	_last_combat_state_revision = 0 if force_resync else revision
+	_apply_authoritative_combat_state_payload(state)
+	return true
+
+func _apply_authoritative_combat_state_payload(state: Dictionary) -> void:
+	var new_max := maxi(1, int(state.get("max_life", 100)))
+	var new_current := clampi(int(state.get("current_life", new_max)), 0, new_max)
+	if health != null and is_instance_valid(health):
+		health.set_max_life(new_max)
+		health.set_current_life(new_current)
+	_apply_authoritative_mana(state)
+	_apply_authoritative_shield(maxi(0, int(state.get("shield", 0))), new_max)
+	_apply_authoritative_buffs(Dictionary(state.get("buffs", {})))
+
+## 解析当前蓝量组件：优先命名子节点 ManaComponent（CombatHUD 注入路径）。
+func _resolve_mana_component() -> Node:
+	if "mana" in self:
+		var direct: Variant = get("mana")
+		if direct != null:
+			return direct
+	return get_node_or_null("ManaComponent")
+
+## 蓝量镜像：spell_mana / spell_max_mana 一并同步（服务器事件携带两者）。
+func _apply_authoritative_mana(state: Dictionary) -> void:
+	var mana_node: Node = _resolve_mana_component()
+	if mana_node == null:
+		return
+	var new_max_mana := maxi(1, int(state.get("spell_max_mana", 100)))
+	var new_current_mana := clampi(int(state.get("spell_mana", new_max_mana)), 0, new_max_mana)
+	if mana_node.has_method("set_max"):
+		mana_node.set_max(new_max_mana)
+	else:
+		mana_node.set("max_mana", new_max_mana)
+	mana_node.set("current_mana", new_current_mana)
+
+## 盾值镜像：整数吸收量 → damage_absorb buff（HUD 护盾条 / 伤害吸收共用标量百分比）。
+## 服务器不携带盾到期时间，故用持久时长；服务器清盾（shield==0）时移除该 buff。
+func _apply_authoritative_shield(shield: int, max_life: int) -> void:
+	if buffs == null:
+		return
+	if shield > 0:
+		var pct := clampf(float(shield) / float(maxi(max_life, 1)) * 100.0, 0.0, 100.0)
+		buffs.add("damage_absorb", MIRROR_SHIELD_DURATION_SEC, pct)
+	elif buffs.has("damage_absorb"):
+		buffs.remove("damage_absorb")
+
+## buff 集合镜像：{buff_id: 绝对过期毫秒}。
+## 清除上次镜像中已不在服务器集合内的 buff；新增/刷新以服务器剩余时间为准（不硬编码）。
+## 本地玩法 buff（def_and_evade_up / slow_and_haste 等）不受影响——只调停服务器追踪的集合。
+func _apply_authoritative_buffs(server_buffs: Dictionary) -> void:
+	if buffs == null:
+		return
+	for buff_id in _mirrored_combat_buffs.keys():
+		if not server_buffs.has(buff_id) and buffs.has(String(buff_id)):
+			buffs.remove(String(buff_id))
+	var now_ms := Time.get_ticks_msec()
+	for buff_id in server_buffs.keys():
+		var expiry: int = int(server_buffs[buff_id])
+		if expiry <= 0:
+			continue
+		var remaining := float(expiry - now_ms) / 1000.0
+		if remaining <= 0.0:
+			if buffs.has(String(buff_id)):
+				buffs.remove(String(buff_id))
+			continue
+		buffs.add(String(buff_id), remaining, _mirror_buff_value(String(buff_id)))
+	_mirrored_combat_buffs = server_buffs.duplicate()
+
+## 服务器 buff 只带过期时间不带数值；镜像沿用现有客户端表现约定：
+## spell_power → {"percent": 20.0}（与 spell_authority.gd 房主直接施加一致）。
+func _mirror_buff_value(buff_id: String) -> Variant:
+	if buff_id == "spell_power":
+		return {"percent": 20.0}
+	return {}
 
 # ============================================================================
 # 近战攻击冷却（仅近战武器；实际逻辑已提取到 PlayerCombatRuntime）
@@ -1318,7 +1424,7 @@ func is_character_panel_visible() -> bool:
 	var scene_tree := get_tree()
 	if scene_tree == null:
 		return false
-	for node in scene_tree.get_nodes_in_group("character_panel"):
+	for node in scene_tree.get_nodes_in_group("modal_gameplay_blocker"):
 		if node.is_inside_tree() and node.visible:
 			return true
 	return false

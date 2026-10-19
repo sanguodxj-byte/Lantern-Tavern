@@ -176,7 +176,7 @@ func test_theme_has_loot_equip_slot_variation() -> void:
 func test_chest_loot_panel_joins_character_panel_group() -> void:
 	var panel: Node = load("res://scenes/ui/chest_loot_panel.tscn").instantiate()
 	add_child(panel)
-	assert_bool(panel.is_in_group("character_panel")).is_true()
+	assert_bool(panel.is_in_group("modal_gameplay_blocker")).is_true()
 	panel.queue_free()
 
 
@@ -421,16 +421,16 @@ func test_panel_take_all_keeps_overflow_loot_when_backpack_full() -> void:
 
 
 func test_panel_close_restores_player_input() -> void:
+	# 1851 审查 P1：输入锁改为快照语义——打开时保存原始标志，关闭时还原快照，
+	# 不再无条件写 true（无条件写会破坏撤离/教程等其他系统的输入锁）。
 	var script := load("res://scenes/ui/chest_loot_panel.gd") as GDScript
 	var source := script.source_code
 	var close_block_start := source.find("func _close()")
 	var close_block := source.substr(close_block_start, 500)
-	assert_bool(close_block.contains("movement_input_enabled = true")) \
-		.override_failure_message("_close 应恢复玩家移动输入").is_true()
-	assert_bool(close_block.contains("interaction_input_enabled = true")) \
-		.override_failure_message("_close 应恢复玩家交互输入").is_true()
-	assert_bool(close_block.contains("combat_input_enabled = true")) \
-		.override_failure_message("_close 应恢复玩家战斗输入").is_true()
+	assert_bool(source.contains("_saved_input_flags")) \
+		.override_failure_message("打开时应保存输入标志快照").is_true()
+	assert_bool(close_block.contains("_saved_input_flags[flag_name]")) \
+		.override_failure_message("_close 应按快照还原玩家输入（而非无条件 true）").is_true()
 	assert_bool(close_block.contains("MOUSE_MODE_CAPTURED")) \
 		.override_failure_message("_close 应恢复鼠标捕获模式").is_true()
 
@@ -848,6 +848,24 @@ func test_panel_sets_up_drop_zones() -> void:
 		.override_failure_message("应为 backpack_list 设置 drop zone").is_true()
 	assert_bool(source.contains('_setup_drop_zone(chest_list')) \
 		.override_failure_message("应为 chest_list 设置 drop zone").is_true()
+
+
+func test_panel_drag_preview_includes_icon() -> void:
+	# 拖拽预览必须显示图标（禁止纯文字展示）。
+	var source := (load("res://scenes/ui/chest_loot_panel.gd") as GDScript).source_code
+	var fn_start := source.find("func _build_drag_preview")
+	var fn_block := source.substr(fn_start, 700)
+	assert_bool(fn_block.contains("icon: Texture2D")) \
+		.override_failure_message("拖拽预览应接收图标参数").is_true()
+	assert_bool(fn_block.contains("TextureRect")) \
+		.override_failure_message("拖拽预览应包含图标 TextureRect").is_true()
+	# 列表拖出时按物品类型取图标
+	var drag_start := source.find("func _start_list_drag")
+	var drag_block := source.substr(drag_start, 1400)
+	assert_bool(drag_block.contains("icon_for_rune")) \
+		.override_failure_message("符文拖出应取符文图标").is_true()
+	assert_bool(drag_block.contains("icon_for_material")) \
+		.override_failure_message("材料拖出应取材料图标").is_true()
 
 
 func test_panel_can_drop_to_equipment_from_backpack() -> void:

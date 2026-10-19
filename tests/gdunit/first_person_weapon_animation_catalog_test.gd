@@ -26,7 +26,12 @@ func test_every_weapon_variant_has_an_animation_editor_scene() -> void:
 			if animation_player != null:
 				assert_bool(animation_player.has_animation(&"vm_idle")).is_true()
 			assert_object(instance.find_child("PlayerVisualModel", true, false)).is_null()
-			assert_object(instance.find_child("Skeleton3D", true, false)).is_null()
+			# Weapon-only rigs are allowed in editor scenes; character geometry and
+			# character-named skeletons remain forbidden.
+			var skeleton := instance.find_child("Skeleton3D", true, false) as Skeleton3D
+			if skeleton != null:
+				assert_int(skeleton.get_bone_count()).is_equal(1)
+				assert_str(String(skeleton.get_bone_name(0))).is_equal("WeaponRoot")
 			assert_object(instance.get_node_or_null("ShieldActionPivot/ShieldImpactPivot/ShieldSocket/ShieldOrientation")).is_not_null()
 
 func test_each_weapon_variant_contains_editable_first_person_action_tracks() -> void:

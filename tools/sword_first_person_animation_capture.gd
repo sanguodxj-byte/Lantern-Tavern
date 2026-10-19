@@ -99,6 +99,11 @@ func _equip_iron_longsword() -> void:
 	weapon.glb_mesh = SWORD_SCENE
 	_view_model.set_weapon(weapon)
 	_view_model.set_weapon_animation_variant("standard")
+	# The focused fixture builds WeaponData directly. Apply production-equivalent
+	# camera framing explicitly so the capture does not rely on autoload lookup.
+	_view_model.view_position = Vector3(0.16, -0.32, -0.64)
+	_view_model.view_rotation_degrees = Vector3(12.0, 4.0, -4.0)
+	_view_model.call("_reset_base")
 
 
 func _capture_phase(phase_name: String) -> void:

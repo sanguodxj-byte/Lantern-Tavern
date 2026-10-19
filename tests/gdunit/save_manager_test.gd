@@ -44,6 +44,14 @@ func test_has_save_false_for_invalid_slot() -> void:
 	assert_bool(_sm.has_save(-1)).is_false()
 	assert_bool(_sm.has_save(99)).is_false()
 
+## P1-2（1122 审查）：三段恢复协议——保存成功后仅 final 存在，无 .tmp/.bak 残留。
+func test_save_three_phase_protocol_cleans_backup() -> void:
+	_sm.delete_save(0)
+	assert_bool(_sm.save_to_slot(0)).is_true()
+	assert_bool(FileAccess.file_exists("user://saves/slot_0.json")).is_true()
+	assert_bool(FileAccess.file_exists("user://saves/slot_0.json.tmp")).is_false()
+	assert_bool(FileAccess.file_exists("user://saves/slot_0.json.bak")).is_false()
+
 # ---------- 存档写入与读取 ----------
 
 func test_save_to_slot_creates_file() -> void:
@@ -64,6 +72,9 @@ func test_load_from_empty_slot_returns_false() -> void:
 	assert_bool(_sm.load_from_slot(1)).is_false()
 
 func test_save_load_roundtrip_tavern_manager() -> void:
+	# 隔离（0805）：清掉其他套件/用例（如顾客声望赠礼随机掷骰）残留的
+	# 共享 TavernManager 库存，否则 add_material 会在旧值上叠加导致断言漂移。
+	_tm.inventory.clear()
 	_tm.day = 12
 	_tm.gold = 750
 	_tm.player_name = "圆桌骑士"
@@ -212,6 +223,39 @@ func test_save_load_roundtrip_zone_manager() -> void:
 	_sm.load_from_slot(0)
 	assert_int(_zm.get_zone()).is_equal(4)
 
+## 端到端：背包词缀实例 + 已装备实例进存档，读档后完整恢复（0804 P0-2）。
+func test_save_load_roundtrip_equipment_instances() -> void:
+	_gs.reset_state()  # 隔离：清掉其他用例遗留在共享 autoload 上的背包状态
+	var w := WeaponData.new()
+	w.id = "shortsword"
+	w.affixes = ["sharp"]
+	w.condition = 345
+	w.tier_index = 2
+	w.material_tier = "steel"
+	w.is_cursed = true
+	assert_bool(_gs.expedition_inventory.add_equipment_instance(w)).is_true()
+	_gs.equipment_loadout.weapon_slots[0] = "shortsword"
+	_gs.equipment_loadout.weapon_instances[0] = w.to_save_dict()
+	assert_bool(_sm.save_to_slot(0)).is_true()
+
+	_gs.reset_state()
+	assert_bool(_gs.expedition_inventory.equipment_instances.is_empty()).is_true()
+	assert_bool(_gs.equipment_loadout.get_weapon_instance(0).is_empty()).is_true()
+
+	assert_bool(_sm.load_from_slot(0)).is_true()
+	assert_int(int(_gs.expedition_inventory.equipment.get("shortsword", 0))).is_equal(1)
+	var inst: WeaponData = _gs.expedition_inventory.get_equipment_instance("shortsword")
+	assert_object(inst).is_not_null()
+	assert_array(inst.affixes).contains("sharp")
+	assert_int(inst.condition).is_equal(345)
+	assert_int(inst.tier_index).is_equal(2)
+	assert_str(inst.material_tier).is_equal("steel")
+	assert_bool(inst.is_cursed).is_true()
+	assert_str(String(_gs.equipment_loadout.weapon_slots[0])).is_equal("shortsword")
+	var w_inst: Dictionary = _gs.equipment_loadout.get_weapon_instance(0)
+	assert_int(int(w_inst.get("condition", 0))).is_equal(345)
+	assert_array(w_inst.get("affixes", [])).contains("sharp")
+
 # ---------- 存档删除 ----------
 
 func test_delete_save_removes_file() -> void:
@@ -343,3 +387,108 @@ func test_reset_all_clears_state() -> void:
 	assert_int(_tm.gold).is_equal(100)
 	assert_int(_ap.get_attr("str")).is_equal(5)
 	assert_int(_gs.carried_weapons).is_equal(0)
+
+# ---------- 原子写（架构审查 0804 P1-2） ----------
+
+func test_save_leaves_no_tmp_file_behind() -> void:
+	_tm.day = 3
+	_tm.gold = 100
+	_tm.player_name = "原子写"
+	_tm.save_name = "原子写"
+	assert_bool(_sm.save_to_slot(0)).is_true()
+	var tmp_path := "user://saves/slot_0.json.tmp"
+	assert_bool(FileAccess.file_exists(tmp_path)).is_false()
+	assert_bool(_sm.has_save(0)).is_true()
+
+
+func test_saved_file_is_valid_json() -> void:
+	assert_bool(_sm.save_to_slot(0)).is_true()
+	var file := FileAccess.open("user://saves/slot_0.json", FileAccess.READ)
+	assert_object(file).is_not_null()
+	var text := file.get_as_text()
+	file.close()
+	var json := JSON.new()
+	assert_int(json.parse(text)).is_equal(OK)
+
+
+func test_load_falls_back_to_tmp_during_replace_window() -> void:
+	# 模拟原子替换窗口期：正式文件缺失但 .tmp 完整 → 读档应成功回退。
+	var tmp_path := "user://saves/slot_0.json.tmp"
+	var formal_path := "user://saves/slot_0.json"
+	if FileAccess.file_exists(formal_path):
+		DirAccess.remove_absolute(formal_path)
+	if FileAccess.file_exists(tmp_path):
+		DirAccess.remove_absolute(tmp_path)
+	_tm.day = 11
+	_tm.gold = 330
+	_tm.player_name = "回退档"
+	_tm.save_name = "回退档"
+	# 直接写 tmp 完整 JSON（模拟保存中断前已完成 tmp 写入）
+	var payload: Dictionary = _sm.serialize_all()
+	payload["version"] = _sm.SAVE_VERSION
+	var file := FileAccess.open(tmp_path, FileAccess.WRITE)
+	assert_object(file).is_not_null()
+	file.store_string(JSON.stringify(payload))
+	file.close()
+
+	_tm.day = 1
+	_tm.gold = 0
+	_tm.player_name = ""
+	assert_bool(_sm.load_from_slot(0)).is_true()
+	assert_int(_tm.day).is_equal(11)
+	assert_int(_tm.gold).is_equal(330)
+	assert_str(_tm.player_name).is_equal("回退档")
+	DirAccess.remove_absolute(tmp_path)
+
+
+func test_delete_save_also_removes_tmp() -> void:
+	assert_bool(_sm.save_to_slot(0)).is_true()
+	var tmp_path := "user://saves/slot_0.json.tmp"
+	var file := FileAccess.open(tmp_path, FileAccess.WRITE)
+	assert_object(file).is_not_null()
+	file.store_string("{}")
+	file.close()
+	assert_bool(_sm.delete_save(0)).is_true()
+	assert_bool(FileAccess.file_exists(tmp_path)).is_false()
+
+## ADR-005：SaveSection 注册协议——注册的 section 参与 serialize/deserialize/reset。
+class StubSection:
+	extends "res://globals/core/state/save_section.gd"
+	var serialize_calls := 0
+	var deserialize_calls := 0
+	var reset_calls := 0
+	func _init() -> void:
+		section_key = "stub_test"
+	func serialize() -> Dictionary:
+		serialize_calls += 1
+		return {"stub": 7}
+	func deserialize(_data: Dictionary) -> void:
+		deserialize_calls += 1
+	func reset() -> void:
+		reset_calls += 1
+
+func test_save_section_registry_invokes_serialize_deserialize_reset() -> void:
+	var stub := StubSection.new()
+	_sm.register_section(stub)
+	_sm.delete_save(0)
+	assert_bool(_sm.save_to_slot(0)).is_true()
+	assert_int(stub.serialize_calls).is_greater(0)
+	_sm.reset_all()
+	assert_int(stub.reset_calls).is_greater(0)
+	assert_bool(_sm.load_from_slot(0)).is_true()
+	assert_int(stub.deserialize_calls).is_greater(0)
+	# 恢复后 stub 值被 section 协议处理（存档 sections 块存在）
+	var json := JSON.new()
+	var f := FileAccess.open("user://saves/slot_0.json", FileAccess.READ)
+	if json.parse(f.get_as_text()) == OK and json.data is Dictionary:
+		var sections: Dictionary = (json.data as Dictionary).get("sections", {})
+		assert_int(int(sections.get("stub_test", {}).get("stub", 0))).is_equal(7)
+
+## ADR-005：ZoneManager 迁移验证——经 sections 协议 roundtrip 恢复选区。
+func test_zone_save_section_roundtrip_via_sections() -> void:
+	_zm.set_zone(4)
+	_sm.delete_save(0)
+	assert_bool(_sm.save_to_slot(0)).is_true()
+	_zm.set_zone(0)
+	assert_bool(_sm.load_from_slot(0)).is_true()
+	assert_int(_zm.get_zone()).is_equal(4)

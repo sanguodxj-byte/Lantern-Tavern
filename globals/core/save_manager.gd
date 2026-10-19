@@ -25,15 +25,44 @@ const SAVE_DIR := "user://saves/"
 const SLOT_COUNT: int = 3
 const SAVE_VERSION: int = 1
 
+const ZoneSaveSectionClass := preload("res://globals/dungeon/zone_save_section.gd")
+
+func _ready() -> void:
+	# ADR-005：组合根注册存档分区（首个迁移领域：ZoneManager）。
+	# 新增持久化领域在此 register_section，不再向 serialize_all 中央列表追加。
+	register_section(ZoneSaveSectionClass.new())
+
 signal save_completed(slot_index: int)
 signal load_completed(slot_index: int)
 signal save_deleted(slot_index: int)
+
+## 当前活动存档槽位（P1-3/0304 审查）：由 load_from_slot/save_to_slot 维护；
+## -1 = 无活动槽位。联机结算等按身份落盘的路径必须使用它，禁止硬编码 0。
+var active_slot: int = -1
+
+## ADR-005：SaveSection 注册表——持久化领域自声明 serialize/deserialize/reset，
+## SaveManager 只编排清单与槽位 IO。未迁移领域保留旧路径，两者并存兼容。
+var _sections: Array = []
+
+## 注册存档分区（ADR-005；组合根/SaveManager._ready 调用；同 key 覆盖）。
+## 参数无类型：SaveSection 为新 class_name，headless 缓存未刷新时静态解析失败。
+func register_section(section) -> void:
+	if section == null or section.section_key.is_empty():
+		push_warning("[SaveManager] 拒绝注册无效存档分区")
+		return
+	for i in range(_sections.size()):
+		if String(_sections[i].section_key) == section.section_key:
+			_sections[i] = section
+			return
+	_sections.append(section)
 
 # ============================================================================
 # 公共 API — 存档槽操作
 # ============================================================================
 
 ## 保存当前游戏状态到指定槽位。成功返回 true。
+## 原子写：先写 `slot_n.json.tmp`，JSON 校验通过后才替换正式文件；
+## 写坏/中断不会破坏既有存档。
 func save_to_slot(slot_index: int) -> bool:
 	if not _is_valid_slot(slot_index):
 		push_warning("[SaveManager] 无效的存档槽位: %d" % slot_index)
@@ -42,35 +71,78 @@ func save_to_slot(slot_index: int) -> bool:
 	var save_data := serialize_all()
 	save_data["slot_index"] = slot_index
 	var path := _slot_path(slot_index)
+	var tmp_path := _slot_tmp_path(slot_index)
 	var json_string := JSON.stringify(save_data, "  ")
-	var file := FileAccess.open(path, FileAccess.WRITE)
+	var file := FileAccess.open(tmp_path, FileAccess.WRITE)
 	if file == null:
-		push_error("[SaveManager] 无法写入存档文件: %s (错误: %s)" % [path, FileAccess.get_open_error()])
+		push_error("[SaveManager] 无法写入存档文件: %s (错误: %s)" % [tmp_path, FileAccess.get_open_error()])
 		return false
 	file.store_string(json_string)
 	file.close()
+	# 校验写出的内容可解析——半截/损坏 JSON 绝不覆盖正式档。
+	var verify := FileAccess.open(tmp_path, FileAccess.READ)
+	if verify == null:
+		push_error("[SaveManager] 无法校验临时存档: %s" % tmp_path)
+		return false
+	var written := verify.get_as_text()
+	verify.close()
+	var json := JSON.new()
+	if json.parse(written) != OK:
+		push_error("[SaveManager] 存档校验失败，保留原存档: %s (行 %d)" % [tmp_path, json.get_error_line()])
+		return false
+	# 替换正式文件（1122 审查 P1-2 三段恢复协议，替代旧的 remove+rename 失档窗口）：
+	#   final → .bak → tmp → final → 成功后删除 .bak。
+	# 任何中断点都保留可恢复副本（.tmp 或 .bak），"删旧档后 rename 失败"不再导致正式档缺失。
+	var bak_path := _slot_bak_path(slot_index)
+	if FileAccess.file_exists(path):
+		if FileAccess.file_exists(bak_path):
+			DirAccess.remove_absolute(bak_path)
+		var err_bak := DirAccess.rename_absolute(path, bak_path)
+		if err_bak != OK:
+			push_error("[SaveManager] 旧档降级 .bak 失败: %s (错误: %d)" % [path, err_bak])
+			DirAccess.remove_absolute(tmp_path)
+			return false
+	var err := DirAccess.rename_absolute(tmp_path, path)
+	if err != OK:
+		push_error("[SaveManager] 存档提升失败: %s (错误: %d)" % [path, err])
+		return false
+	# 成功替换后清理 .bak（残留旧档无害，但保持目录干净）
+	if FileAccess.file_exists(bak_path):
+		DirAccess.remove_absolute(bak_path)
+	active_slot = slot_index
 	save_completed.emit(slot_index)
 	print("[SaveManager] 存档已保存到槽位 %d (%s)" % [slot_index, path])
 	return true
 
 ## 从指定槽位加载游戏状态。成功返回 true。
+## 原子替换窗口期内正式文件缺失时，回退读取 .tmp 完整内容。
 func load_from_slot(slot_index: int) -> bool:
 	if not _is_valid_slot(slot_index):
 		push_warning("[SaveManager] 无效的存档槽位: %d" % slot_index)
 		return false
 	var path := _slot_path(slot_index)
+	var read_path := path
 	if not FileAccess.file_exists(path):
-		push_warning("[SaveManager] 槽位 %d 无存档文件" % slot_index)
-		return false
-	var file := FileAccess.open(path, FileAccess.READ)
+		# 恢复顺序（1122 审查 P1-2）：final → .tmp → .bak
+		var tmp_path := _slot_tmp_path(slot_index)
+		if FileAccess.file_exists(tmp_path):
+			read_path = tmp_path
+		else:
+			var bak_path := _slot_bak_path(slot_index)
+			if FileAccess.file_exists(bak_path):
+				read_path = bak_path
+			else:
+				push_warning("[SaveManager] 槽位 %d 无存档文件" % slot_index)
+				return false
+	var file := FileAccess.open(read_path, FileAccess.READ)
 	if file == null:
-		push_error("[SaveManager] 无法读取存档文件: %s" % path)
+		push_error("[SaveManager] 无法读取存档文件: %s" % read_path)
 		return false
 	var json_string := file.get_as_text()
 	file.close()
 	var json := JSON.new()
 	if json.parse(json_string) != OK:
-		push_error("[SaveManager] 存档文件解析失败: %s (行 %d)" % [path, json.get_error_line()])
+		push_error("[SaveManager] 存档文件解析失败: %s (行 %d)" % [read_path, json.get_error_line()])
 		return false
 	var raw_save_data: Dictionary = json.data
 	var SaveGameAdapterClass := preload("res://globals/core/state/save_game_adapter.gd")
@@ -79,6 +151,7 @@ func load_from_slot(slot_index: int) -> bool:
 		push_warning("[SaveManager] 存档版本不兼容: 槽位 %d" % slot_index)
 		return false
 	deserialize_all(save_data)
+	active_slot = slot_index
 	load_completed.emit(slot_index)
 	print("[SaveManager] 存档已从槽位 %d 加载" % slot_index)
 	return true
@@ -88,15 +161,22 @@ func delete_save(slot_index: int) -> bool:
 	if not _is_valid_slot(slot_index):
 		return false
 	var path := _slot_path(slot_index)
-	if not FileAccess.file_exists(path):
-		return false
-	var err := DirAccess.remove_absolute(path)
-	if err != OK:
-		push_warning("[SaveManager] 删除存档失败: %s (错误: %d)" % [path, err])
-		return false
+	var tmp_path := _slot_tmp_path(slot_index)
+	var removed_any := false
+	if FileAccess.file_exists(path):
+		var err := DirAccess.remove_absolute(path)
+		if err != OK:
+			push_warning("[SaveManager] 删除存档失败: %s (错误: %d)" % [path, err])
+			return false
+		removed_any = true
+	if FileAccess.file_exists(tmp_path):
+		DirAccess.remove_absolute(tmp_path)
+	if active_slot == slot_index:
+		active_slot = -1
 	save_deleted.emit(slot_index)
-	print("[SaveManager] 槽位 %d 存档已删除" % slot_index)
-	return true
+	if removed_any:
+		print("[SaveManager] 槽位 %d 存档已删除" % slot_index)
+	return removed_any
 
 ## 检查指定槽位是否有存档。
 func has_save(slot_index: int) -> bool:
@@ -198,6 +278,12 @@ func serialize_all() -> Dictionary:
 	data["armor_proficiency"] = arp.to_dict() if arp != null else {}
 	var zm := _get_zone_manager()
 	data["selected_zone"] = int(zm.selected_zone) if zm != null else 0
+	# ADR-005：已迁移领域经 sections 注册表序列化（追加，不删除旧路径，保持兼容）
+	if not _sections.is_empty():
+		var sections_out: Dictionary = {}
+		for section in _sections:
+			sections_out[String(section.section_key)] = section.serialize()
+		data["sections"] = sections_out
 	return data
 
 ## 从字典恢复全部游戏状态。
@@ -232,6 +318,13 @@ func deserialize_all(data: Dictionary) -> void:
 	var zm := _get_zone_manager()
 	if zm != null and data.has("selected_zone"):
 		zm.set_zone(int(data["selected_zone"]))
+	# ADR-005：sections 注册表恢复（后于旧路径执行，迁移领域以新协议为准）
+	if data.has("sections") and data["sections"] is Dictionary:
+		var sections_in: Dictionary = data["sections"]
+		for section in _sections:
+			var key := String(section.section_key)
+			if sections_in.has(key) and sections_in[key] is Dictionary:
+				section.deserialize(sections_in[key])
 
 # ============================================================================
 # 重置 — 新游戏时清除全部子系统状态
@@ -266,6 +359,9 @@ func reset_all() -> void:
 	var zm := _get_zone_manager()
 	if zm != null:
 		zm.set_zone(0)
+	# ADR-005：sections 注册表重置
+	for section in _sections:
+		section.reset()
 
 # ============================================================================
 # 内部辅助
@@ -276,6 +372,12 @@ func _is_valid_slot(slot_index: int) -> bool:
 
 func _slot_path(slot_index: int) -> String:
 	return SAVE_DIR + "slot_%d.json" % slot_index
+
+func _slot_tmp_path(slot_index: int) -> String:
+	return SAVE_DIR + "slot_%d.json.tmp" % slot_index
+
+func _slot_bak_path(slot_index: int) -> String:
+	return SAVE_DIR + "slot_%d.json.bak" % slot_index
 
 func _ensure_save_dir() -> void:
 	if not DirAccess.dir_exists_absolute(SAVE_DIR):

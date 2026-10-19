@@ -68,9 +68,10 @@ func host_room(port: int, max_players: int = 8, player_guid: String = "") -> voi
 func start_expedition(seed_hint: int = -1) -> void:
 	if not NetworkManager.is_host:
 		return
-	var evt: Dictionary = NetworkManager.start_expedition(seed_hint)
-	if evt.is_empty():
+	var result: Dictionary = NetworkManager.start_expedition(seed_hint)
+	if result.is_empty() or not bool(result.get("success", false)):
 		return
+	var evt: Dictionary = result.get("event", {})
 	seed_value = int(evt.get("seed", 0))
 	_build_dungeon(seed_value)
 	if controller != null and controller.has_method("spawn_server_entities"):
@@ -94,7 +95,7 @@ func join_room(address: String, port: int, player_guid: String = "") -> void:
 	if NetworkManager.local_peer_id == 0:
 		connection_failed.emit("无法连接到 %s:%d" % [address, port])
 		return
-	NetworkManager.send_spawn({}, player_guid)
+	NetworkManager.send_spawn(player_guid)
 	if not NetworkManager.event_received.is_connected(_on_event):
 		NetworkManager.event_received.connect(_on_event)
 
@@ -122,7 +123,25 @@ func _build_dungeon(seed_value: int) -> void:
 	controller = DungeonSessionControllerClass.new()
 	controller.name = "DungeonSession"
 	add_child(controller)
+	# P0-2（0643 审查）：联机撤离闭环——portal 信号已在 controller.build_and_enter 内
+	# 装配到 request_extraction（CMD_EXTRACT）；服务器结算应用后 extraction_completed
+	# 触发离场（释放地牢与会话，回城）。禁止生产路径再走本地 DungeonRuntime 直算。
+	if not controller.extraction_completed.is_connected(_on_extraction_completed):
+		controller.extraction_completed.connect(_on_extraction_completed)
 	local_player = controller.build_and_enter(seed_value)
+
+## P0-2（0643 审查）：联机撤离完成后的生产离场——结算已由服务器应用并
+## 写回（ServerSaveRepository），此处只负责收尾：释放真实地牢节点并复位状态。
+func _on_extraction_completed(_settlement: Dictionary) -> void:
+	if not is_in_dungeon:
+		return
+	# 释放真实地牢节点（本身是 MultiplayerSession 的子节点），避免泄漏。
+	if controller != null and is_instance_valid(controller):
+		controller.queue_free()
+		controller = null
+	is_in_dungeon = false
+	local_player = null
+	seed_value = 0
 
 # ---------------------------------------------------------------------------
 # 房主：新客户端接入 → 重播 layout / 实体 / 房主 avatar / 完整会话快照
@@ -135,12 +154,26 @@ func _on_peer_authorized(peer_id: int, _ctx) -> void:
 	if nm.has_method("rebroadcast_entities"):
 		nm.rebroadcast_entities()
 	if bridge != null and bridge.has_method("rpc_spawn_avatar"):
-		bridge.rpc_spawn_avatar.rpc(1, Vector3.ZERO)
+		# B3（0644 审查）：房主 avatar 出生位置取服务器权威 live_state 位置，
+		# 不再硬编码 rpc(1, Vector3.ZERO)（世界原点 + 魔法 peer 1）。
+		bridge.rpc_spawn_avatar.rpc(NetworkManager.HOST_PEER_ID, _host_avatar_position(nm.session))
 	if nm.session != null and nm.has_method("rpc_server_event"):
 		var snap_evt := {"event": NP.EVT_SESSION_SNAPSHOT, "peer_id": peer_id,
 			"snapshot": nm.session.build_session_snapshot()}
 		nm.rpc_server_event.rpc_id(peer_id, snap_evt)
 	_emit_room()
+
+## B3（0644 审查）：晚到客户端的房主 avatar 出生位置 = 服务器权威 live_state[HOST_PEER_ID]。
+## session 为 null / 无该 peer 状态 / 无 position 时回退世界原点（不猜测）。
+static func _host_avatar_position(session: Node) -> Vector3:
+	if session == null:
+		return Vector3.ZERO
+	var live_state = session.get("_live_state")
+	if live_state is Dictionary and live_state.has(NetworkManager.HOST_PEER_ID):
+		var host_ls: Dictionary = live_state[NetworkManager.HOST_PEER_ID]
+		if not host_ls.is_empty() and host_ls.has("position"):
+			return host_ls.get("position", Vector3.ZERO)
+	return Vector3.ZERO
 
 func _emit_room() -> void:
 	if NetworkManager.session != null:

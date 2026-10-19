@@ -63,52 +63,60 @@ func test_build_creates_all_roots() -> void:
 		assert_object(root.get_parent()).is_equal(_parent)
 
 
-func test_build_cliff_composition_creates_continuous_top_faces_and_ramp() -> void:
+func test_build_cliff_composition_creates_continuous_pit_bottom_and_walls() -> void:
 	var builder := DungeonSceneBuilder.new()
 	var layout := _make_8x7_floor_layout()
 	var cliff_cells: Array[Vector2i] = [Vector2i(2, 3), Vector2i(3, 3), Vector2i(4, 3), Vector2i(5, 3)]
-	for cell in cliff_cells:
-		layout.floor_elevations[cell.y][cell.x] = 1.5
 	var cliff_edges: Array[Dictionary] = []
 	for cell in cliff_cells:
-		for direction_variant in [Vector2i(0, -1), Vector2i(0, 1)]:
+		for direction_variant in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0)]:
 			var direction: Vector2i = direction_variant
-			cliff_edges.append({"cell": cell, "dir": direction})
+			if not cliff_cells.has(cell + direction):
+				cliff_edges.append({"cell": cell, "dir": direction})
 	layout.room_composition_specs.append({
 		"room_index": 0,
 		"composition_kind": "cliff",
 		"focus_cell": Vector2i(1, 1),
 		"cover_cells": [],
-		"platform_cells": cliff_cells,
 		"cliff_cells": cliff_cells,
+		"pit_cells": cliff_cells,
 		"cliff_edges": cliff_edges,
 		"bridge_cells": [],
-		"ramp_specs": [{"cell": Vector2i(3, 2), "dir": Vector2i(0, 1), "high_cell": Vector2i(3, 3), "feature": "cliff"}],
+		"ramp_specs": [],
 		"boundary_edges": [],
 		"door_transition_cells": [],
 		"enemy_sectors": [],
-		"elevation_m": 1.5,
+		"pit_depth_m": 1.5,
 	})
 	var result := builder.build(layout, _parent)
-	var cliff_top_count := 0
-	var cliff_face_count := 0
+	var pit_bottom_count := 0
+	var pit_wall_count := 0
 	var ramp_count := 0
 	for node in result.decor_root.find_children("*", "MeshInstance3D", true, false):
-		if String(node.name).begins_with("CliffTop_"):
-			cliff_top_count += 1
+		if String(node.name).begins_with("CliffPitBottom_"):
+			pit_bottom_count += 1
 			assert_bool(result.streamed_visual_nodes.has(node)).is_true()
-		elif String(node.name).begins_with("CliffFace_"):
-			cliff_face_count += 1
+			var bottom_mesh := node.mesh as BoxMesh
+			assert_float(node.position.y).is_equal_approx(-1.55, 0.001)
+			assert_float(bottom_mesh.size.y).is_equal_approx(0.1, 0.001)
+		elif String(node.name).begins_with("CliffPitWall_"):
+			pit_wall_count += 1
+			var wall_mesh := node.mesh as BoxMesh
+			var wall_top: float = node.position.y + wall_mesh.size.y * 0.5
+			var wall_bottom: float = node.position.y - wall_mesh.size.y * 0.5
+			assert_float(wall_top).is_equal_approx(0.0, 0.001)
+			assert_float(wall_bottom).is_equal_approx(-1.5, 0.001)
 		elif String(node.name).begins_with("Ramp_"):
 			ramp_count += 1
-	assert_int(cliff_top_count).is_equal(4)
-	assert_int(cliff_face_count).is_greater_equal(4)
-	assert_int(ramp_count).is_equal(1)
-	var cliff_collision_count := 0
+	assert_int(pit_bottom_count).is_equal(4)
+	assert_int(pit_wall_count).is_greater_equal(4)
+	assert_int(ramp_count).is_equal(0)
+	var pit_collision_count := 0
 	for body in result.collision_root.find_children("*", "StaticBody3D", true, false):
-		if String(body.name).begins_with("CliffTop_") or String(body.name).begins_with("CliffFace_"):
-			cliff_collision_count += 1
-	assert_int(cliff_collision_count).is_greater_equal(cliff_top_count)
+		if String(body.name).begins_with("CliffPitBottom_") or String(body.name).begins_with("CliffPitWall_"):
+			pit_collision_count += 1
+			assert_int(body.find_children("*", "CollisionShape3D", true, false).size()).is_equal(1)
+	assert_int(pit_collision_count).is_equal(pit_bottom_count + pit_wall_count)
 	result.dispose()
 
 func test_build_hazard_anchor_instantiates_prefab() -> void:
@@ -594,6 +602,55 @@ func test_closed_door_is_added_to_navigation_obstacle_source() -> void:
 	assert_int(faces.size()).is_equal(36)
 	assert_bool(door.get_node("NavigationLink3D").enabled).is_false()
 	result.doors_root.queue_free()
+
+# ── 2109 审查 P1-1：导航源采样截断必须显式标记，而非静默丢弃 ──
+
+func test_floor_navigation_truncation_marks_incomplete() -> void:
+	# 地板采样超过 MAX_FLOOR_NAV_SAMPLES(2048) 时 navigation_complete 必须置 false，
+	# 调用方据此降级人口生成（避免在导航不可达处生成敌人）。
+	var builder := DungeonSceneBuilder.new()
+	var layout := _make_3x3_floor_layout()
+	var result := DungeonBuildResult.new()
+	for i in range(3000):
+		result.floor_transforms.append(Transform3D(Basis(), Vector3(i * 3.0, 0.0, 0.0)))
+	builder._build_navigation_mesh(layout, result, _parent)
+	assert_bool(result.navigation_complete).is_false()
+	result.dispose()
+
+func test_floor_navigation_within_limit_stays_complete() -> void:
+	var builder := DungeonSceneBuilder.new()
+	var layout := _make_3x3_floor_layout()
+	var result := DungeonBuildResult.new()
+	for i in range(16):
+		result.floor_transforms.append(Transform3D(Basis(), Vector3(i * 3.0, 0.0, 0.0)))
+	builder._build_navigation_mesh(layout, result, _parent)
+	assert_bool(result.navigation_complete).is_true()
+	result.dispose()
+
+func test_obstacle_navigation_truncation_marks_incomplete() -> void:
+	# 障碍面片超过 MAX_OBSTACLE_NAV_SAMPLES(4096) 时 navigation_complete 必须置 false。
+	var builder := DungeonSceneBuilder.new()
+	var layout := _make_3x3_floor_layout()
+	var result := DungeonBuildResult.new()
+	var group := {"size": Vector3(3.0, 3.0, 3.0), "transforms": []}
+	for i in range(5000):
+		group["transforms"].append(Transform3D(Basis(), Vector3(i * 3.0, 0.0, 0.0)))
+	result.wall_transforms_by_height["3,3,3"] = group
+	builder._build_navigation_obstacle_faces(layout, result)
+	assert_bool(result.navigation_complete).is_false()
+	result.dispose()
+
+func test_obstacle_navigation_within_limit_stays_complete() -> void:
+	var builder := DungeonSceneBuilder.new()
+	var layout := _make_3x3_floor_layout()
+	var result := DungeonBuildResult.new()
+	var group := {"size": Vector3(3.0, 3.0, 3.0), "transforms": []}
+	for i in range(16):
+		group["transforms"].append(Transform3D(Basis(), Vector3(i * 3.0, 0.0, 0.0)))
+	result.wall_transforms_by_height["3,3,3"] = group
+	builder._build_navigation_obstacle_faces(layout, result)
+	assert_bool(result.navigation_complete).is_true()
+	result.dispose()
 
 func test_door_creates_navigation_link_on_first_configuration() -> void:
 	var door := DungeonDoor.new()

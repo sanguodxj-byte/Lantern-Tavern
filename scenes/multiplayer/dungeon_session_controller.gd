@@ -20,18 +20,68 @@ const ClientCommandDriver := preload("res://scenes/multiplayer/client_command_dr
 const GameStateClass := preload("res://globals/core/game_state.gd")
 
 signal dungeon_ready(seed_value: int, layout_fingerprint: String)
+## P0-2（0304 审查）：联机撤离完成事件（服务器 EVT_EXTRACTION_RESULT 已由桥接层
+## 应用一次结算后发出），供上层执行离场/回城。
+signal extraction_completed(settlement: Dictionary)
 
 var dungeon_root: Node3D = null
 var local_player: Node = null
 var _seed: int = 0
 var _layout: DungeonLayoutClass = null
 var _player_spawn_pos: Vector3 = Vector3.ZERO
+## 撤离提交驱动（P0-2）：测试可注入 stub；生产默认从本地 Player 查找 ClientCommandDriver。
+var extraction_driver: Node = null
+## 撤离结果已应用标记（防止事件重放导致重复离场）。
+var _extraction_applied: bool = false
+## P0-2（0643 审查）：portal 已装配标记（防止重复连接/重复提交）。
+var _extraction_portal_wired: bool = false
+## P0-2（0643 审查）：portal 撤离已提交标记（portal 信号重复触发只提交一次）。
+var _extraction_requested: bool = false
+
+## P0-2（0643 审查）：生产撤离装配——扫描真实地牢的撤离 portal，把
+## extraction_requested 信号接到权威撤离链（request_extraction → CMD_EXTRACT）。
+## 由 build_and_enter 调用（生产与集成测试同路径）。返回是否已装配。
+func wire_extraction_portal() -> bool:
+	if _extraction_portal_wired:
+		return true
+	if dungeon_root == null:
+		return false
+	var portal := _find_extraction_portal(dungeon_root)
+	if portal == null or not portal.has_signal("extraction_requested"):
+		return false
+	if not portal.extraction_requested.is_connected(_on_portal_extraction_requested):
+		portal.extraction_requested.connect(_on_portal_extraction_requested)
+	_extraction_portal_wired = true
+	return true
+
+## portal 信号处理：只提交一次撤离（防重复触发），走权威 CMD_EXTRACT。
+func _on_portal_extraction_requested(_player: Node) -> void:
+	if _extraction_requested or _extraction_applied:
+		return
+	_extraction_requested = true
+	request_extraction()
+
+## 递归查找携带 extraction meta 的 portal 节点（builder 只在 interaction_root 下
+## instantiate，但递归查找可容忍任意挂载深度，与 DungeonRuntime 的同款扫描一致）。
+func _find_extraction_portal(root: Node) -> Node:
+	if root == null:
+		return null
+	for child in root.get_children():
+		if String(child.get_meta("topdown_kind", "")) == "extraction" and child.has_signal("extraction_requested"):
+			return child
+		var nested := _find_extraction_portal(child)
+		if nested != null:
+			return nested
+	return null
 
 ## 用指定 seed 构建真实地牢并生成本地真实 Player。返回本地 Player 节点。
 func build_and_enter(seed_value: int) -> Node:
 	_seed = seed_value
 	_build_real_dungeon()
 	_spawn_local_player()
+	# P0-2（0643 审查）：生产撤离装配——把真实 portal 的 extraction_requested 接入
+	# 权威撤离链（request_extraction → CMD_EXTRACT），不再让 portal 直走本地结算。
+	wire_extraction_portal()
 	dungeon_ready.emit(_seed, layout_fingerprint())
 	return local_player
 
@@ -181,3 +231,40 @@ func layout_fingerprint() -> String:
 		int(str(_layout.grid).hash()),
 		str(_layout.player_spawn_cell)
 	]
+
+# ============================================================================
+# P0-2（0304 审查）：联机撤离出口——经服务器权威结算事务，禁止本地直算
+# ============================================================================
+
+## 发起联机撤离（P0-2）：经本地 ClientCommandDriver.send_extract() 提交 CMD_EXTRACT，
+## 由服务器权威事务（expedition_service.settle_expedition）计算净获得/幂等账本/
+## ServerSaveRepository 持久化；EVT_EXTRACTION_RESULT 由桥接层应用一次结算后
+## 触发本控制器的 extraction_completed 事件（供上层离场）。绝不本地直算
+## GameState/TavernManager（单机 DungeonRuntime 的本地结算路径与联机分叉）。
+## 返回是否已提交（驱动不存在/未就绪返回 false）。
+func request_extraction() -> bool:
+	var driver := _resolve_extraction_driver()
+	if driver == null or not driver.has_method("send_extract"):
+		return false
+	driver.send_extract()
+	return true
+
+## 结算完成是否已应用（防事件重放重复离场）。
+func is_extraction_applied() -> bool:
+	return _extraction_applied
+
+## 由桥接层在应用结算后调用（或测试直接调用）：标记离场并发出完成事件。
+func notify_extraction_applied(settlement: Dictionary) -> void:
+	if _extraction_applied:
+		return
+	_extraction_applied = true
+	extraction_completed.emit(settlement)
+
+## 解析撤离提交驱动：优先注入的 extraction_driver（测试 stub），
+## 否则从本地 Player 查找 ClientCommandDriver。
+func _resolve_extraction_driver() -> Node:
+	if extraction_driver != null and is_instance_valid(extraction_driver):
+		return extraction_driver
+	if local_player == null or not is_instance_valid(local_player):
+		return null
+	return local_player.get_node_or_null("ClientCommandDriver")

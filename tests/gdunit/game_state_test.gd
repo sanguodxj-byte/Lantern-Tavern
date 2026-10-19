@@ -41,6 +41,40 @@ func test_dungeon_floor_starts_at_l1_and_advances_with_label() -> void:
 	assert_str(gs.get_dungeon_floor_label()).is_equal("L2")
 	gs.free()
 
+# ---------- 重置一致性（架构审查 0804 P1-1） ----------
+
+## reset_state 替换 spell_loadout 后，缓存的 PlayerContext 必须失效——
+## 否则"新 GameState 装配 + 旧 PlayerContext 装配"形成静默状态分叉。
+func test_reset_state_invalidates_cached_player_context() -> void:
+	var gs = load("res://globals/core/game_state.gd").new()
+	var ctx_before = gs.player_context()
+	var loadout_before = gs.spell_loadout
+	assert_object(gs.player_context()).is_equal(ctx_before)
+
+	gs.reset_state()
+
+	assert_bool(gs.spell_loadout != loadout_before).is_true()
+	assert_bool(gs.player_context() != ctx_before).is_true()
+	gs.free()
+
+## reset_state 清空背包实例与已装备实例数据（0804 P0-2 配套）。
+func test_reset_state_clears_equipment_instances() -> void:
+	var gs = load("res://globals/core/game_state.gd").new()
+	var w := WeaponData.new()
+	w.id = "shortsword"
+	w.condition = 100
+	w.affixes = ["sharp"]
+	assert_bool(gs.expedition_inventory.add_equipment_instance(w)).is_true()
+	gs.equipment_loadout.weapon_slots[0] = "shortsword"
+	gs.equipment_loadout.weapon_instances[0] = w.to_save_dict()
+
+	gs.reset_state()
+
+	assert_bool(gs.expedition_inventory.equipment_instances.is_empty()).is_true()
+	assert_str(String(gs.equipment_loadout.weapon_slots[0])).is_equal("")
+	assert_bool(gs.equipment_loadout.get_weapon_instance(0).is_empty()).is_true()
+	gs.free()
+
 func test_dungeon_floor_reset_and_serialization_are_safe() -> void:
 	var gs = load("res://globals/core/game_state.gd").new()
 	gs.set_dungeon_floor(4)

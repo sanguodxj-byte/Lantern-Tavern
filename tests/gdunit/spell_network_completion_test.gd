@@ -6,8 +6,10 @@ func test_protocol_validates_spell_command_and_event() -> void:
 	assert_bool(NP.is_valid_event(NP.EVT_SPELL_RESOLVED)).is_true()
 
 func test_session_spell_handler_uses_per_peer_state_cooldown_and_authority() -> void:
-	var source := (load("res://globals/multiplayer/session_root.gd") as GDScript).source_code
-	var section := source.substr(source.find("func _handle_cast_spell"), 6000)
+	# ADR-003 拆分后：法术事务已迁至 SessionCombatService.handle_cast_spell
+	# （1727 审查 P1-3：旧测试扫描 session_root._handle_cast_spell 已失效）。
+	var source := (load("res://globals/multiplayer/session_combat_service.gd") as GDScript).source_code
+	var section := source.substr(source.find("func handle_cast_spell"), 6000)
 	assert_bool(section.contains("ctx.spell_loadout")).is_true()
 	assert_bool(section.contains("commit_authoritative_cooldown")).is_true()
 	assert_bool(section.contains("spell_auth.execute")).is_true()

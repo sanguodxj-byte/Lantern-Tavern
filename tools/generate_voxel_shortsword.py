@@ -16,6 +16,12 @@ from voxel_overlap_guard import (  # noqa: E402
     assert_parts_voxel_assembly_valid,
 )
 from voxel_single_model_cli import reject_target_override  # noqa: E402
+from weapon_first_person_rig_lib import (  # noqa: E402
+    build_weapon_rig,
+    export_animated_glb,
+    make_action,
+    render_action_review,
+)
 from voxel_weapon_model_lib import (  # noqa: E402
     PX,
     bounds_size_px,
@@ -36,6 +42,7 @@ LENGTH_PX = 33.0
 
 OUT_GLB = ROOT / "assets" / "meshes" / "weapons" / "weapons_voxel_shortsword.glb"
 PREVIEW_DIR = ROOT / "reports" / "props_preview"
+ANIMATION_PREVIEW_DIR = ROOT / "reports" / "first_person_animation" / "shortsword_blender"
 
 
 def build_shortsword() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
@@ -125,13 +132,62 @@ def build_shortsword() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
     return root, parts
 
 
+def _author_first_person_actions(armature: bpy.types.Object) -> None:
+    make_action(armature, "vm_shortsword_hold", 1, 30, [
+        (1, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+        (15, (0.0, 0.0, -0.24), (0.5, -0.7, 0.4)),
+        (30, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ], loop=True)
+    make_action(armature, "vm_melee_charge", 31, 60, [
+        (31, (-0.5, 0.2, -0.7), (3.0, -4.0, 7.0)),
+        (40, (0.0, 0.6, -0.3), (-2.0, 4.0, -8.0)),
+        (52, (0.8, 0.9, 0.0), (-6.0, 9.0, -15.0)),
+        (60, (1.1, 1.1, 0.2), (-8.0, 12.0, -20.0)),
+    ])
+    make_action(armature, "vm_shortsword_thrust", 61, 76, [
+        (61, (1.1, 1.1, 0.2), (-8.0, 12.0, -20.0)),
+        (64, (0.6, 0.8, -0.5), (-5.0, 7.0, -12.0)),
+        (67, (-0.2, 0.2, -1.6), (2.0, -3.0, 6.0)),
+        (70, (0.5, -0.1, -3.0), (8.0, -11.0, 20.0)),
+        (73, (0.2, 0.0, -1.3), (4.0, -6.0, 11.0)),
+        (76, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ])
+    make_action(armature, "vm_shortsword_guard", 77, 93, [
+        (77, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+        (83, (-0.8, 1.0, -0.6), (-7.0, 14.0, 26.0)),
+        (93, (-0.8, 1.0, -0.6), (-7.0, 14.0, 26.0)),
+    ])
+    armature["action_names"] = [
+        "vm_shortsword_hold", "vm_melee_charge",
+        "vm_shortsword_thrust", "vm_shortsword_guard",
+    ]
+
+
 def main() -> None:
     reject_target_override(MODEL_ID)
     reset_scene()
     root, parts = build_shortsword()
     assert_parts_no_positive_volume_overlap(parts, label=MODEL_ID)
     assert_parts_voxel_assembly_valid(parts, label=MODEL_ID)
-    export_glb(root, OUT_GLB)
+    armature = build_weapon_rig(root, parts, "ShortswordRig", 8.0, -8.0)
+    _author_first_person_actions(armature)
+    render_action_review(
+        root,
+        armature,
+        ANIMATION_PREVIEW_DIR,
+        ((0.16, -0.18, -0.56), (10.0, -10.0, -135.0)),
+        {
+            "00": ("vm_shortsword_hold", 1),
+            "01": ("vm_melee_charge", 20),
+            "02": ("vm_shortsword_thrust", 4),
+            "03": ("vm_shortsword_thrust", 7),
+            "04": ("vm_shortsword_thrust", 10),
+            "05": ("vm_shortsword_thrust", 13),
+            "06": ("vm_shortsword_thrust", 16),
+            "07": ("vm_shortsword_guard", 12),
+        },
+    )
+    export_animated_glb(root, OUT_GLB)
     render_true_3d_views(root, MODEL_ID, PREVIEW_DIR)
     dimensions = bounds_size_px(root)
     print(f"Wrote {OUT_GLB}")

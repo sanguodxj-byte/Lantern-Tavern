@@ -23,11 +23,14 @@ const CROSSBOW_MOUNT_BASIS_BASE := Basis(
 ## imported Blender-Z body axis after CROSSBOW_ASSET_BASIS is applied.
 ## Blender's Z axis is imported as Godot Y in this GLB. The raw mesh therefore
 ## arrives as X = limb span, Y = body length, Z = thickness. Remap the
-## imported body +Y onto the mount's +X rear axis, with the limb span staying
-## lateral and the thickness staying vertical.
+## imported body +Y onto the -Z view axis (pointing at the reticle), keep the
+## limb span lateral (+X screen axis) and the thickness vertical (+Y). Combined
+## with the existing mount/action -90° z rotations, the crossbow ends up with
+## its body pointing at view center and its gray arms parallel to the screen
+## horizontal (术语表: 弩身轴/Z 轴).
 const CROSSBOW_ASSET_BASIS := Basis(
-	Vector3(0.0, 0.0, 1.0),
 	Vector3(1.0, 0.0, 0.0),
+	Vector3(0.0, 0.0, -1.0),
 	Vector3(0.0, 1.0, 0.0)
 )
 ## First-person-only camera framing. The dedicated overlay mirrors the

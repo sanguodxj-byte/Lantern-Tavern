@@ -421,3 +421,22 @@ func test_next_day_preserves_legacy_tres_weapon() -> void:
 	assert_int(player_b.equipment.active_weapon_slot).is_equal(0)
 
 	player_b.queue_free()
+
+
+func test_rune_transfer_syncs_spell_loadout() -> void:
+	# 装备面板符文移动直接改写随身/仓库字典，必须同步 SpellLoadout（法术界面数据源）。
+	# move_items_between 为整键移动：ember 整键移入仓库后，随身与法术库存应同步移除。
+	var gs: Node = Engine.get_main_loop().root.get_node("GameState")
+	if gs == null:
+		return
+	gs.add_carried_rune("ember", 1)
+	gs.add_carried_rune("force", 1)
+	var carried: Dictionary = gs.carried_runes
+	var warehouse := {"ember": 0}
+	PANEL_INVENTORY.move_items_between(carried, warehouse, ["ember"], false, 1)
+	# 移动后 SpellLoadout 应同步：ember 已移除，force 保留
+	assert_int(gs.spell_loadout.rune_inventory.get("ember", 0)).is_equal(0)
+	assert_int(gs.spell_loadout.rune_inventory.get("force", 0)).is_equal(1)
+	# 还原
+	gs.carried_runes.clear()
+	gs.refresh_spell_rune_inventory()

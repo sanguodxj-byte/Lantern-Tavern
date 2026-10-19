@@ -12,6 +12,7 @@ func test_passive_lifedrain_mechanic() -> void:
 	attack.attacker_str = 0
 	attack.weapon_damage_dice = {"count": 0, "sides": 0}
 	attack.weapon_damage_flat = 50.0
+	attack.crit_bonus = -5.0  # 抑制随机暴击，保证精确断言确定
 	attack.lifesteal_percent = 10.0 # 汲取被动 10% 吸血
 	
 	var defender := CE.Defender.new()
@@ -27,6 +28,7 @@ func test_passive_weapon_sword_backstab_mechanic() -> void:
 	attack_normal.attacker_str = 0
 	attack_normal.weapon_damage_dice = {"count": 0, "sides": 0}
 	attack_normal.weapon_damage_flat = 100.0
+	attack_normal.crit_bonus = -5.0  # 抑制随机暴击，保证精确断言确定
 	attack_normal.is_backstab = true
 	attack_normal.set("has_sword_backstab_passive", false)
 	
@@ -39,6 +41,7 @@ func test_passive_weapon_sword_backstab_mechanic() -> void:
 	attack_passive.attacker_str = 0
 	attack_passive.weapon_damage_dice = {"count": 0, "sides": 0}
 	attack_passive.weapon_damage_flat = 100.0
+	attack_passive.crit_bonus = -5.0  # 抑制随机暴击，保证精确断言确定
 	attack_passive.is_backstab = true
 	attack_passive.set("has_sword_backstab_passive", true)
 	
@@ -51,6 +54,8 @@ func test_passive_weapon_hammer_skeleton_smash_mechanic() -> void:
 	attack.attacker_str = 0
 	attack.weapon_damage_dice = {"count": 0, "sides": 0}
 	attack.weapon_damage_flat = 100.0
+	# 抑制随机暴击：crit_rate = 5 + per*0.5 - ... + crit_bonus，设 -5 使必不暴击，保证精确伤害断言确定
+	attack.crit_bonus = -5.0
 	attack.set("is_skeleton_target", true)
 	attack.set("has_skeleton_smash_passive", true)
 	
@@ -68,6 +73,8 @@ func test_passive_weapon_axe_wood_chop_mechanic() -> void:
 	attack.attacker_str = 0
 	attack.weapon_damage_dice = {"count": 0, "sides": 0}
 	attack.weapon_damage_flat = 100.0
+	# 抑制随机暴击：crit_rate = 5 + per*0.5 - ... + crit_bonus，设 -5 使必不暴击，保证精确伤害断言确定
+	attack.crit_bonus = -5.0
 	attack.set("is_wooden_structure", true)
 	attack.set("has_wood_chop_passive", true)
 	

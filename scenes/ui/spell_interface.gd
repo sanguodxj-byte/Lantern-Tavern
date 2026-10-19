@@ -5,6 +5,8 @@ const RecipeData := preload("res://globals/combat/spell_recipe_data.gd")
 const SpellGlyphs := preload("res://data/spell_glyphs.gd")
 const SpellLoadoutScript := preload("res://globals/combat/spell_loadout.gd")
 const RuneData := preload("res://globals/combat/rune_data.gd")
+const SpellRuneButtonScript := preload("res://scenes/ui/spell_rune_button.gd")
+const DetailPopupScript := preload("res://scenes/ui/equipment_detail_popup.gd")
 
 signal spell_selected(slot_index: int, spell: Dictionary)
 
@@ -36,6 +38,7 @@ func _ready() -> void:
 		loadout = SpellLoadoutScript.new()
 	build_interface()
 	loadout.slot_changed.connect(_on_loadout_slot_changed)
+	loadout.inventory_changed.connect(_on_loadout_inventory_changed)
 	resized.connect(_apply_responsive_layout)
 	refresh_all()
 	call_deferred("_apply_responsive_layout")
@@ -45,10 +48,13 @@ func _ready() -> void:
 func configure(new_loadout: RefCounted, rune_ids: Array[String] = []) -> void:
 	if loadout != null and loadout.slot_changed.is_connected(_on_loadout_slot_changed):
 		loadout.slot_changed.disconnect(_on_loadout_slot_changed)
+	if loadout != null and loadout.inventory_changed.is_connected(_on_loadout_inventory_changed):
+		loadout.inventory_changed.disconnect(_on_loadout_inventory_changed)
 	loadout = new_loadout if new_loadout != null else SpellLoadoutScript.new()
 	available_runes = rune_ids.duplicate()
 	if is_node_ready():
 		loadout.slot_changed.connect(_on_loadout_slot_changed)
+		loadout.inventory_changed.connect(_on_loadout_inventory_changed)
 		refresh_all()
 
 
@@ -109,7 +115,7 @@ func build_interface() -> void:
 
 	var subtitle := Label.new()
 	_header_desc = subtitle
-	subtitle.text = TranslationServer.translate("Hold right mouse to weave spells. Select a spell slot, then add runes in fixed order.")
+	subtitle.text = TranslationServer.translate("Right click to toggle the spell interface. Select a spell slot, then add runes in fixed order.")
 	subtitle.theme_type_variation = &"MutedLabel"
 	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	title_stack.add_child(subtitle)
@@ -173,7 +179,7 @@ func build_interface() -> void:
 
 	var footer := Label.new()
 	_footer_hint = footer
-	footer.text = TranslationServer.translate("Keys 1-5 select a spell slot. Click an equipped rune to clear it. Release right mouse to close.")
+	footer.text = TranslationServer.translate("Click a spell slot to switch the active spell. Hold left click to cast. Click an equipped rune to clear it. Right click again to close.")
 	footer.theme_type_variation = &"MutedLabel"
 	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	footer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -206,11 +212,14 @@ func _build_spell_row(slot_index: int) -> Control:
 	horizontal.add_child(rune_column)
 	var buttons: Array = []
 	for rune_index in range(RecipeData.RUNES_PER_SPELL):
-		var rune_button := Button.new()
+		var rune_button := SpellRuneButtonScript.new()
 		rune_button.custom_minimum_size = Vector2(152, 22)
 		rune_button.theme_type_variation = &"RuneSlotButton"
-		rune_button.text = _empty_rune_text(rune_index)
-		rune_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		rune_button.text = "-"
+		rune_button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+		rune_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		rune_button.spell_slot_index = slot_index
+		rune_button.rune_index = rune_index
 		rune_button.pressed.connect(_clear_rune.bind(slot_index, rune_index))
 		rune_column.add_child(rune_button)
 		buttons.append(rune_button)
@@ -236,9 +245,10 @@ func _rebuild_rune_list() -> void:
 		var data: Dictionary = RuneData.get_rune(rune_id)
 		if data.is_empty():
 			continue
-		var button := Button.new()
+		var button := SpellRuneButtonScript.new()
 		button.custom_minimum_size = Vector2(0, 46)
 		button.theme_type_variation = &"SpellSlotButton"
+		button.rune_id = rune_id
 		var remaining: int = loadout.get_remaining_count(rune_id) if loadout.has_method("get_remaining_count") else 1
 		button.text = "%s  %s  ×%d" % [
 			String(data.get("runic_name", "")),
@@ -247,6 +257,11 @@ func _rebuild_rune_list() -> void:
 		]
 		button.disabled = remaining <= 0
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		# 符文必须显示图标：与装备面板一致使用同一程序化符文卡面。
+		var rune_icon: Texture2D = DetailPopupScript.icon_for_rune(rune_id)
+		if rune_icon != null:
+			button.icon = rune_icon
+			button.expand_icon = true
 		button.tooltip_text = TranslationServer.translate(String(data.get("description", data.get("desc", ""))))
 		button.pressed.connect(_equip_rune.bind(rune_id))
 		_rune_list.add_child(button)
@@ -258,6 +273,85 @@ func _equip_rune(rune_id: String) -> void:
 		if rune_ids[rune_index].is_empty():
 			loadout.set_rune(_selected_spell_slot, rune_index, rune_id)
 			return
+
+
+# ── 符文拖拽（数据格式与装备面板一致：{"kind":"rune","id":...}）──────────
+
+## 拖拽源：返回符文拖拽载荷 + 图标预览。槽位拖出携带源位置（移动语义）。
+func rune_button_get_drag_data(button: SpellRuneButtonScript) -> Variant:
+	if button.rune_id.is_empty():
+		return null
+	var preview := TextureRect.new()
+	preview.texture = DetailPopupScript.icon_for_rune(button.rune_id)
+	preview.custom_minimum_size = Vector2(48, 48)
+	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	button.set_drag_preview(preview)
+	var payload := {"kind": "rune", "id": button.rune_id, "count": 1}
+	if button.spell_slot_index >= 0:
+		payload["source_slot"] = button.spell_slot_index
+		payload["source_rune_index"] = button.rune_index
+	return payload
+
+
+## 拖放目标：槽位按钮接受符文载荷。
+func rune_button_can_drop(button: SpellRuneButtonScript, data: Variant) -> bool:
+	return _can_equip_drag_rune(button.spell_slot_index, button.rune_index, data)
+
+
+func rune_button_drop(button: SpellRuneButtonScript, data: Variant) -> void:
+	_drop_equip_drag_rune(button.spell_slot_index, button.rune_index, data)
+
+
+## 从拖拽载荷提取符文 id（支持单符文 / 批量符文载荷）。
+func _drag_payload_rune_id(data: Variant) -> String:
+	if typeof(data) != TYPE_DICTIONARY:
+		return ""
+	var kind := String(data.get("kind", ""))
+	if kind != "rune" and kind != "inventory_runes":
+		return ""
+	var rune_id := String(data.get("id", ""))
+	if rune_id.is_empty():
+		var ids: Array = data.get("rune_ids", [])
+		rune_id = String(ids[0]) if not ids.is_empty() else ""
+	return rune_id
+
+
+func _can_equip_drag_rune(slot_index: int, rune_index: int, data: Variant) -> bool:
+	if slot_index < 0 or slot_index >= RecipeData.SPELL_SLOT_COUNT:
+		return false
+	if rune_index < 0 or rune_index >= RecipeData.RUNES_PER_SPELL:
+		return false
+	var rune_id := _drag_payload_rune_id(data)
+	if rune_id.is_empty() or not RuneData.has_rune(rune_id):
+		return false
+	var runes: Array[String] = loadout.get_runes(slot_index)
+	if not runes[rune_index].is_empty():
+		return false
+	# 配方必须从上到下连续：不能在空位之后悬空装配
+	if rune_index > 0 and runes[rune_index - 1].is_empty():
+		return false
+	# 库存限制：槽位间移动（携带 source_slot）不消耗额外库存，跳过检查
+	var is_move := typeof(data) == TYPE_DICTIONARY and int(data.get("source_slot", -1)) >= 0
+	if not is_move and loadout.has_method("get_remaining_count") and loadout.get_remaining_count(rune_id) <= 0:
+		return false
+	return true
+
+
+func _drop_equip_drag_rune(slot_index: int, rune_index: int, data: Variant) -> void:
+	if not _can_equip_drag_rune(slot_index, rune_index, data):
+		return
+	var rune_id := _drag_payload_rune_id(data)
+	# 槽位间移动：先清空源槽位（连带其后的悬空符文），再装配到目标
+	var is_move := typeof(data) == TYPE_DICTIONARY and int(data.get("source_slot", -1)) >= 0
+	if is_move:
+		var source_slot := int(data.get("source_slot", -1))
+		var source_index := int(data.get("source_rune_index", -1))
+		if source_slot >= 0 and source_slot < RecipeData.SPELL_SLOT_COUNT \
+				and source_index >= 0 and source_index < RecipeData.RUNES_PER_SPELL \
+				and (source_slot != slot_index or source_index != rune_index):
+			loadout.set_rune(source_slot, source_index, "")
+	loadout.set_rune(slot_index, rune_index, rune_id)
+	_select_spell_slot(slot_index)
 
 
 func _clear_rune(slot_index: int, rune_index: int) -> void:
@@ -289,6 +383,14 @@ func _on_loadout_slot_changed(slot_index: int, _spell: Dictionary) -> void:
 	_update_status_label()
 
 
+## 符文库存变化（拾取/消耗）：同步可用符文快照并重建右侧列表，
+## 保持与玩家实际持有同步（避免使用 configure 时的过期 available_runes）。
+func _on_loadout_inventory_changed() -> void:
+	if loadout != null and loadout.has_method("get_available_rune_ids"):
+		available_runes = loadout.get_available_rune_ids()
+	_rebuild_rune_list()
+
+
 func _refresh_slot(slot_index: int) -> void:
 	if slot_index < 0 or slot_index >= _spell_buttons.size():
 		return
@@ -300,7 +402,6 @@ func _refresh_slot(slot_index: int) -> void:
 		spell_button.add_theme_color_override("font_color", EMPTY_COLOR)
 	else:
 		spell_button.icon = SpellGlyphs.get_texture(String(spell.get("id", "")), 64)
-		spell_button.icon_max_width = 64
 		spell_button.expand_icon = true
 		spell_button.text = "%s %d  ·  %s\n%s" % [
 			TranslationServer.translate("Spell Slot"),
@@ -311,17 +412,18 @@ func _refresh_slot(slot_index: int) -> void:
 		spell_button.add_theme_color_override("font_color", Color(spell.get("color", Color.WHITE)))
 	var rune_ids: Array[String] = loadout.get_runes(slot_index)
 	for rune_index in range(RecipeData.RUNES_PER_SPELL):
-		var rune_button: Button = _rune_slot_buttons[slot_index][rune_index]
+		var rune_button := _rune_slot_buttons[slot_index][rune_index] as SpellRuneButtonScript
 		var rune_id: String = rune_ids[rune_index]
+		rune_button.rune_id = rune_id
 		if rune_id.is_empty():
-			rune_button.text = _empty_rune_text(rune_index)
+			rune_button.text = "-"
+			rune_button.icon = null
 			rune_button.add_theme_color_override("font_color", EMPTY_COLOR)
 		else:
-			var rune_data: Dictionary = RuneData.get_rune(rune_id)
-			rune_button.text = "%d. %s" % [
-				rune_index + 1,
-				TranslationServer.translate(String(rune_data.get("name", rune_id))),
-			]
+			# 已装备符文必须显示图标（与装备面板一致），空槽显示 "-"。
+			rune_button.text = ""
+			rune_button.icon = DetailPopupScript.icon_for_rune(rune_id)
+			rune_button.expand_icon = true
 			rune_button.add_theme_color_override("font_color", Color(String(RuneData.get_rune_color(rune_id))))
 
 
@@ -370,16 +472,3 @@ func _focus_selected_spell() -> void:
 
 func _selected_slot_text() -> String:
 	return TranslationServer.translate("Editing Spell Slot %d") % (_selected_spell_slot + 1)
-
-
-func _empty_rune_text(rune_index: int) -> String:
-	return "%d. %s" % [rune_index + 1, TranslationServer.translate("Empty Rune")]
-
-
-func _input(event: InputEvent) -> void:
-	if not visible:
-		return
-	if event is InputEventKey and event.pressed and event.keycode >= KEY_1 and event.keycode <= KEY_5:
-		_select_spell_slot(event.keycode - KEY_1)
-		_focus_selected_spell()
-		get_viewport().set_input_as_handled()

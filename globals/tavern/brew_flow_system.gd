@@ -6,6 +6,7 @@ extends Node
 ## 仅保存逻辑状态；3D 视觉由酒馆场景内的 tavern_brewing_coordinator 重建。
 
 const FS := preload("res://globals/tavern/fermentation_system.gd")
+const BD := preload("res://globals/tavern/brewing_data.gd")
 
 # ============================================================================
 # 1. 锅炉状态机（策划案 10：蒸煮阶段）
@@ -43,10 +44,15 @@ var _next_token: int = 0
 
 ## 向锅炉投入一份原料。返回 true 表示投入成功。
 ## 锅炉 READY 时不能投料（必须先取走麦汁）。
+## 输入边界校验（审查 0856 P1-1）：未在 BrewingData.MATERIALS_DB 登记的材料
+## （怪物掉落等零风味材料）拒绝投入，杜绝整锅空口味。
 func add_to_cauldron(material_id: String) -> bool:
 	if material_id.is_empty():
 		return false
 	if cauldron_state == CauldronState.READY:
+		return false
+	if not BD.MATERIALS_DB.has(material_id):
+		push_error("[BrewFlowSystem] 拒绝未知/零风味酿酒材料: %s" % material_id)
 		return false
 	cauldron_basket[material_id] = int(cauldron_basket.get(material_id, 0)) + 1
 	return true
@@ -88,8 +94,12 @@ func can_add_ingredient() -> bool:
 # ============================================================================
 
 ## 倒桶台装满后登记一桶待搬运麦汁桶。返回 token（-1 表示失败）。
+## 输入边界校验（审查 0856 P1-1）：含未知/零风味材料的桶不得登记。
 func register_filled_keg(ingredients: Dictionary) -> int:
 	if ingredients.is_empty():
+		return -1
+	if not BD.find_unknown_materials(ingredients).is_empty():
+		push_error("[BrewFlowSystem] 拒绝登记含未知/零风味材料的酒桶: %s" % str(ingredients))
 		return -1
 	var keg := ActiveKeg.new()
 	keg.token = _next_token
@@ -121,6 +131,7 @@ func place_keg_on_rack(token: int, current_day: int) -> bool:
 		return false
 	keg.keg_index = keg_index
 	keg.state = FS.KegState.FERMENTING
+	_check_keg_invariant()
 	return true
 
 ## 同步一个酒桶的状态到 FermentationSystem（发酵时序推进后由 UI/场景刷新调用）。
@@ -132,6 +143,7 @@ func sync_keg_state(token: int) -> void:
 	if fs == null or keg.keg_index >= fs.kegs.size():
 		return
 	keg.state = fs.kegs[keg.keg_index].state
+	_check_keg_invariant()
 
 ## 开缸取酒：返回口味字典（含 __recipe_id__ 元信息），空字典表示不可开缸。
 ## 成功后该桶从本系统移除（桶位回归 FermentationSystem 的空桶）。
@@ -146,6 +158,7 @@ func open_rack_keg(token: int) -> Dictionary:
 	if flavors.is_empty():
 		return {}
 	active_kegs.erase(keg)
+	_check_keg_invariant()
 	return flavors
 
 ## 查询该桶当前是否可开缸（READY/AGING/AGED）。
@@ -206,3 +219,12 @@ func _get_fermentation_system() -> Node:
 	if tree == null:
 		return null
 	return tree.root.get_node_or_null("FermentationSystem")
+
+## 决策 G3 门面一致性：每次本系统成功改动发酵桶位后校验聚合不变量。
+## 破坏不变量（物理桶与逻辑桶分叉）时 push_error 暴露，供诊断与测试断言。
+func _check_keg_invariant() -> void:
+	var fs := _get_fermentation_system()
+	if fs == null or not fs.has_method("validate_keg_invariant"):
+		return
+	if not fs.validate_keg_invariant():
+		push_error("[BrewFlowSystem] 检测到 Keg 不变量破坏（FermentationSystem 桶位与 active_kegs 分叉）")

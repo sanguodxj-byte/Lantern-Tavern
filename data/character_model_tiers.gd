@@ -34,6 +34,7 @@ const ACCEPTED_IDS: Array[String] = [
 	"slime",
 	"spider",
 	"drow_blade",
+	"dire_wolf",
 ]
 
 ## 图鉴侧栏展示顺序
@@ -64,6 +65,7 @@ const BY_ID: Dictionary = {
 	"player": A,
 	"minotaur": A,
 	"slime": A,
+	"dire_wolf": A,
 	# 本轮视觉审核：B
 	"goblin": B,
 	"plague_doctor": B,

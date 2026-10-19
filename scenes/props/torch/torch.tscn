@@ -1,7 +1,6 @@
 [gd_scene load_steps=12 format=3 uid="uid://ww8hovdjir8v"]
 
 [ext_resource type="Script" path="res://scenes/props/voxel_prop.gd" id="1_voxel"]
-[ext_resource type="AudioStream" uid="uid://d12bv381cywix" path="res://assets/sounds/fire.wav" id="2_fire"]
 [ext_resource type="ShaderMaterial" path="res://materials/fire_flame_particle.tres" id="3_firemat"]
 
 [sub_resource type="Curve" id="Curve_flame_alpha"]
@@ -57,9 +56,3 @@ fixed_fps = 15
 process_material = SubResource("ParticleProcessMaterial_flame")
 draw_pass_1 = SubResource("QuadMesh_flame_particle")
 
-[node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="."]
-position = Vector3(0, 1.25, -0.25)
-stream = ExtResource("2_fire")
-unit_size = 1.0
-autoplay = true
-bus = &"SFX"

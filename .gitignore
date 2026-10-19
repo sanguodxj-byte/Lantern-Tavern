@@ -71,3 +71,6 @@ _dbg_*.gd
 
 .workbuddy/
 
+
+# Agent review captures (screenshots/reports), not source assets
+reports/

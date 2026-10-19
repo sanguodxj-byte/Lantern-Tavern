@@ -2,13 +2,10 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c02cgt5ofgqsl"
+uid="uid://ca4b3gi3k67er"
 path="res://.godot/imported/weapons_voxel_crossbow_crossbow_wine_leather_stitch_albedo.png-cfe5cbef0a0e66a86fa512d8f338e26c.ctex"
 metadata={
 "vram_texture": false
-}
-generator_parameters={
-"md5": "c1393dc030aecfc30791f6fd6bd755e1"
 }
 
 [deps]
@@ -26,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

@@ -44,9 +44,9 @@ func test_pickable_item_ready_safe_with_null_shield_glb_mesh() -> void:
 func test_pickable_item_ready_guards_glb_mesh_in_source() -> void:
 	var script: Resource = load("res://scenes/equipment/pickable_item.gd")
 	var source: String = (script as GDScript).source_code
-	# 验证代码中包含 glb_mesh 空守卫
-	assert_bool(source.find("weapon_data and weapon_data.glb_mesh") != -1) \
-		.override_failure_message("pickable_item.gd 缺少 weapon_data.glb_mesh 空守卫").is_true()
+	# 验证代码中包含 glb_mesh 惰性解析空守卫（get_glb_mesh 首次按需加载）
+	assert_bool(source.find("weapon_data and weapon_data.get_glb_mesh") != -1) \
+		.override_failure_message("pickable_item.gd 缺少 weapon_data.get_glb_mesh 空守卫").is_true()
 	assert_bool(source.find("shield_data and shield_data.glb_mesh") != -1) \
 		.override_failure_message("pickable_item.gd 缺少 shield_data.glb_mesh 空守卫").is_true()
 
@@ -70,8 +70,8 @@ func test_equiped_item_ready_safe_with_null_glb_mesh() -> void:
 func test_equiped_item_ready_guards_glb_mesh_in_source() -> void:
 	var script: Resource = load("res://scenes/equipment/equiped_item.gd")
 	var source: String = (script as GDScript).source_code
-	assert_bool(source.find("weapon_data and weapon_data.glb_mesh") != -1) \
-		.override_failure_message("equiped_item.gd 缺少 weapon_data.glb_mesh 空守卫").is_true()
+	assert_bool(source.find("weapon_data and weapon_data.get_glb_mesh") != -1) \
+		.override_failure_message("equiped_item.gd 缺少 weapon_data.get_glb_mesh 空守卫").is_true()
 	assert_bool(source.find("shield_data and shield_data.glb_mesh") != -1) \
 		.override_failure_message("equiped_item.gd 缺少 shield_data.glb_mesh 空守卫").is_true()
 	assert_bool(source.find("furniture_data and furniture_data.glb_mesh") != -1) \
@@ -97,8 +97,8 @@ func test_thrown_item_ready_safe_with_null_glb_mesh() -> void:
 func test_thrown_item_ready_guards_glb_mesh_in_source() -> void:
 	var script: Resource = load("res://scenes/equipment/thrown_item.gd")
 	var source: String = (script as GDScript).source_code
-	assert_bool(source.find("weapon_data != null and weapon_data.glb_mesh") != -1) \
-		.override_failure_message("thrown_item.gd 缺少 weapon_data.glb_mesh 空守卫").is_true()
+	assert_bool(source.find("weapon_data != null and weapon_data.get_glb_mesh() != null") != -1) \
+		.override_failure_message("thrown_item.gd 缺少 weapon_data.get_glb_mesh 空守卫").is_true()
 	assert_bool(source.find("shield_data != null and shield_data.glb_mesh") != -1) \
 		.override_failure_message("thrown_item.gd 缺少 shield_data.glb_mesh 空守卫").is_true()
 	assert_bool(source.find("furniture_data != null and furniture_data.glb_mesh") != -1) \

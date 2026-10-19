@@ -133,12 +133,19 @@ func test_zone_select_script_exists() -> void:
 
 func test_zone_select_uses_pixel_map_instead_of_text_list() -> void:
 	var scene_source := FileAccess.get_file_as_string("res://scenes/ui/zone_select.tscn")
+	var script_source := FileAccess.get_file_as_string("res://scenes/ui/zone_select.gd")
 	assert_str(scene_source).contains("ZoneMapTexture") \
 		.override_failure_message("区域选择场景必须包含像素区域地图纹理")
 	assert_str(scene_source).contains("ZoneHotspots") \
 		.override_failure_message("区域选择场景必须包含地图选区交互层")
 	assert_str(scene_source).contains("ZoneDetails") \
 		.override_failure_message("区域选择场景必须保留当前选区详情")
+	assert_str(scene_source).contains("zone_map_hotspot_layer.gd") \
+		.override_failure_message("区域选择必须使用地图多边形交互层，而不是文字按钮")
+	assert_bool(not script_source.contains("Button.new()")) \
+		.override_failure_message("地图选区不应再生成文字 Button；点击应来自地图区域交互层").is_true()
+	assert_bool(not script_source.contains("button.text")) \
+		.override_failure_message("地图上不应出现区域文字框").is_true()
 	assert_bool(not scene_source.contains("ZoneList")) \
 		.override_failure_message("区域选择不应继续使用纵向文字列表").is_true()
 	assert_bool(not scene_source.contains("ScrollContainer")) \
@@ -167,6 +174,21 @@ func test_zone_map_asset_has_transparent_cutout_and_pixel_scale() -> void:
 		assert_float(image.get_pixelv(point).a) \
 			.override_failure_message("去绿底后的区域地图四角必须透明: %s" % point) \
 			.is_less(0.05)
+	var semi_transparent_pixels := 0
+	var opaque_green_pixels := 0
+	for y in range(image.get_height()):
+		for x in range(image.get_width()):
+			var pixel := image.get_pixel(x, y)
+			if pixel.a > 0.001 and pixel.a < 0.999:
+				semi_transparent_pixels += 1
+			if pixel.a > 0.999 and pixel.g > 0.97 and pixel.r < 0.05 and pixel.b < 0.05:
+				opaque_green_pixels += 1
+	assert_int(semi_transparent_pixels) \
+		.override_failure_message("区域地图应保持硬边像素 alpha，不应带半透明抗锯齿边缘") \
+		.is_equal(0)
+	assert_int(opaque_green_pixels) \
+		.override_failure_message("区域地图成品不应残留纯绿背景像素") \
+		.is_equal(0)
 
 func test_zone_select_no_invalid_button_alignment_property() -> void:
 	# 回归：Button 在 Godot 4 没有 text_vertical_alignment 属性，
@@ -181,7 +203,7 @@ func test_zone_select_adds_to_character_panel_group() -> void:
 	var root = Engine.get_main_loop().root
 	root.add_child(zone_select)
 	
-	assert_bool(zone_select.is_in_group("character_panel"))\
+	assert_bool(zone_select.is_in_group("modal_gameplay_blocker"))\
 		.override_failure_message("zone_select 节点应该被加入 character_panel 组，以防点击时被 player.gd 异常捕获鼠标")\
 		.is_true()
 		
@@ -196,14 +218,38 @@ func test_zone_select_builds_six_map_hotspots_and_details() -> void:
 	await await_idle_frame()
 
 	var hotspots := zone_select.get_node("%ZoneHotspots") as Control
-	assert_int(hotspots.get_child_count()).is_equal(6)
-	for zone_id in range(6):
-		var hotspot := hotspots.get_node_or_null("ZoneHotspot%d" % zone_id) as Button
-		assert_object(hotspot).is_not_null()
-		assert_int(int(hotspot.get_meta("zone_id", -1))).is_equal(zone_id)
+	assert_int(hotspots.get_child_count()).is_equal(0)
+	assert_bool(hotspots.has_method("get_zone_ids")).is_true()
+	var zone_ids: Array = hotspots.call("get_zone_ids")
+	assert_int(zone_ids.size()).is_equal(6)
 	assert_object(zone_select.get_node_or_null("%ZoneMapTexture")).is_not_null()
 	assert_object(zone_select.get_node_or_null("%ZoneDetails")).is_not_null()
 	assert_bool((zone_select.get_node("%StartBtn") as Button).disabled).is_true()
+	host.queue_free()
+
+func test_zone_select_hotspots_follow_progressive_map_landmarks() -> void:
+	# 地图是连续大陆：入口在西南边缘，其他区域由河流、山口和邻接道路自然分布。
+	var host := Control.new()
+	host.size = Vector2(1920, 1080)
+	add_child(host)
+	var zone_select := load("res://scenes/ui/zone_select.tscn").instantiate() as Control
+	host.add_child(zone_select)
+	await await_idle_frame()
+
+	var hotspots := zone_select.get_node("%ZoneHotspots") as Control
+	var expected := {
+		0: Vector2(0.17, 0.80),
+		1: Vector2(0.25, 0.47),
+		2: Vector2(0.50, 0.18),
+		3: Vector2(0.78, 0.47),
+		4: Vector2(0.81, 0.76),
+		5: Vector2(0.78, 0.16),
+	}
+	for zone_id in expected:
+		var actual: Vector2 = hotspots.call("get_zone_landmark_point", zone_id)
+		assert_float(actual.x).is_equal_approx(expected[zone_id].x, 0.001)
+		assert_float(actual.y).is_equal_approx(expected[zone_id].y, 0.001)
+		assert_int(int(hotspots.call("get_zone_at_normalized", actual))).is_equal(zone_id)
 	host.queue_free()
 
 func test_zone_select_preview_updates_details_without_committing_zone() -> void:
@@ -216,8 +262,12 @@ func test_zone_select_preview_updates_details_without_committing_zone() -> void:
 	host.add_child(zone_select)
 	await await_idle_frame()
 
-	var hotspot := zone_select.get_node("%ZoneHotspots/ZoneHotspot3") as Button
-	hotspot.emit_signal("pressed")
+	var hotspots := zone_select.get_node("%ZoneHotspots") as Control
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	click.position = Vector2(hotspots.size.x * 0.78, hotspots.size.y * 0.47)
+	hotspots.call("_gui_input", click)
 	await await_idle_frame()
 
 	assert_int(zone_select.get_selected_zone()).is_equal(3)

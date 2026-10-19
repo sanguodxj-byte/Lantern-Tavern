@@ -150,6 +150,18 @@ func test_spawn_pump_rejects_stale_generation_and_removed_runtime() -> void:
 	assert_bool(pump.contains("not _enemy_spawn_active")).is_true()
 	assert_bool(pump.contains("not is_inside_tree()")).is_true()
 
+func test_spawn_items_registers_spawned_items_to_streaming() -> void:
+	# 2109 审查 P2-1：布局生成的物品挂在 build_result.spawn_root（Node3D，无
+	# register_streamed_physics_node 转发），ItemSpawner 内部父节点方法探测会静默失效。
+	# spawn_items 必须捕获返回实例并逐个经 _register_streamed_physics 显式注册，
+	# 否则远处带物理的掉落物永远进不了流式注册表。
+	var src := (load("res://scenes/expedition/dungeon_runtime.gd") as GDScript).source_code
+	var spawn_items_block := _extract_func_block(src, "spawn_items")
+	assert_bool(spawn_items_block.contains("var spawned_items: Array = spawner.spawn_items_from_layout")) \
+		.override_failure_message("spawn_items 必须捕获 spawn_items_from_layout 返回的实例数组").is_true()
+	assert_bool(spawn_items_block.contains("_register_streamed_physics(item_variant)")) \
+		.override_failure_message("spawn_items 必须显式注册返回物品到 streaming controller（2109 P2-1）").is_true()
+
 func test_finish_expedition_after_stop_is_noop() -> void:
 	# stop 后 finish_expedition 应被守卫拦住（已 finished）
 	var rt := DungeonRuntime.new()

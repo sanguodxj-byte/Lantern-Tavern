@@ -17,8 +17,9 @@ func test_dungeon_process_advances_network_session_clock() -> void:
 
 func test_client_commands_wait_for_handshake_peer_id() -> void:
 	var script_text := FileAccess.get_file_as_string(NETWORK_MANAGER_PATH)
-	# send_spawn 的存档参数已重命名为 _legacy_save_state（服务器无条件忽略客户端存档数据）。
-	assert_bool(script_text.contains("func send_spawn(_legacy_save_state: Dictionary, player_guid: String) -> void:")).is_true()
+	# B2（0644 审查 / 决策 G1-A）：send_spawn 的存档参数已彻底移除——客户端只上送 guid，
+	# 服务器按 guid 从服务器存档仓加载权威存档（不再有被丢弃的 _legacy_save_state 占位参数）。
+	assert_bool(script_text.contains("func send_spawn(player_guid: String) -> void:")).is_true()
 	assert_bool(script_text.contains("local_peer_id <= 0")).is_true()
 	assert_bool(script_text.contains("local_peer_id <= 0 or reconnect_token == \"\"")).is_true()
 

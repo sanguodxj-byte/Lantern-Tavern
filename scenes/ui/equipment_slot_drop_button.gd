@@ -1,6 +1,8 @@
 class_name EquipmentSlotDropButton
 extends Button
 
+const DETAIL_POPUP_SCRIPT := preload("res://scenes/ui/equipment_detail_popup.gd")
+
 @export var slot_kind: String = "weapon"
 @export var slot_index: int = 0
 @export var armor_slot: String = ""
@@ -16,9 +18,9 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 	var data: Dictionary = panel.collect_equipment_slot_drag_payload(slot_kind, slot_index, armor_slot)
 	if data.is_empty():
 		return null
-	var preview := Label.new()
-	preview.text = "x1"
-	set_drag_preview(preview)
+	# 拖拽预览必须显示装备图标（禁止纯文字）。
+	var icon: Texture2D = DETAIL_POPUP_SCRIPT.icon_for_equipment_id(String(data.get("id", "")))
+	set_drag_preview(DETAIL_POPUP_SCRIPT.build_drag_preview(icon, "x1"))
 	return data
 
 func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:

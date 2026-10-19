@@ -49,3 +49,28 @@ func test_service_all_methods_safe() -> void:
 	for method in methods:
 		var node: Node = method.call()
 		assert_bool(node == null or node is Node).is_true()
+
+# ---------- E1/E4（1327 审查）：补齐的访问器 ----------
+
+func test_new_accessors_exist_and_safe() -> void:
+	# 2026-08-07（0643 审查 P0-1）：SkillData/ActionSkills 已移出 Autoload 面，
+	# Service 不再提供这两个访问器；契约单一来源为 service_access_contract_test.gd。
+	# 此处只断言仍在 Autoload 的访问器必须存在且安全返回。
+	var methods := [
+		Service.ui_navigation,
+		Service.save_manager,
+		Service.performance_budget,
+		Service.multiplayer_session,
+	]
+	for method in methods:
+		var node: Node = method.call()
+		assert_bool(node == null or node is Node).is_true()
+
+
+func test_accessors_resolve_registered_autoloads() -> void:
+	# 真实 autoload 环境下（gdUnit runner 加载完整项目），新访问器应命中注册节点名。
+	assert_object(Service.save_manager()).is_not_null()
+	assert_object(Service.performance_budget()).is_not_null()
+	assert_object(Service.ui_navigation()).is_not_null()
+	assert_str(Service.save_manager().name).is_equal("SaveManager")
+	assert_str(Service.performance_budget().name).is_equal("PerformanceBudget")

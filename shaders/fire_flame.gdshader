@@ -14,6 +14,9 @@ uniform vec3 color_mid : source_color = vec3(1.0, 0.45, 0.1);
 uniform vec3 color_edge : source_color = vec3(0.7, 0.08, 0.02);
 uniform float intensity : hint_range(0.2, 3.0) = 1.6;
 uniform float ember_strength : hint_range(0.0, 1.0) = 0.5;
+// P2-1（08-02 审查）：FBM 层数可配置——桌面默认 4（行为不变），
+// 移动端降档经 RenderingProfile 设置 2（预留通道，未接入前保持默认）。
+uniform int fbm_octaves : hint_range(1, 4) = 4;
 
 // --- 程序化噪声（0 贴图采样，移动端友好）---
 float hash21(vec2 p) {
@@ -33,11 +36,11 @@ float vnoise(vec2 p) {
 	return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 
-// 固定 4 倍频，循环次数常量，移动端安全
+// FBM 层数由 fbm_octaves 控制（P2-1：默认 4 与旧行为一致，移动端可降 2）
 float fbm(vec2 p) {
 	float v = 0.0;
 	float amp = 0.5;
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < fbm_octaves; i++) {
 		v += amp * vnoise(p);
 		p *= 2.0;
 		amp *= 0.5;

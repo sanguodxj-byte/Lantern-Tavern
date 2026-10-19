@@ -13,6 +13,71 @@ func test_registry_loads_all_weapons() -> void:
 	assert_int(ids.size()).is_greater_equal(10)
 
 
+# ══ E3: WeaponRegistry 只登记 GLB 路径，绝不预加载 GLB PackedScene ══
+
+func test_registry_ready_does_not_load_glb_meshes() -> void:
+	# E3 (review 1327 §3): _ready() 注册条目后不得把任何装备 GLB 加载进资源缓存。
+	# 本测试必须在本文件其他测试显式 load 具体 GLB 之前保持通过；
+	# 用启动即缓存的 ResourceLoader.has_cached 判定是否发生过加载。
+	for weapon_id in ["crossbow", "greatsword", "shield"]:
+		var data := WeaponRegistry.get_weapon_data(weapon_id)
+		assert_object(data).is_not_null()
+		if data == null:
+			continue
+		assert_object(data.glb_mesh).is_null() \
+			.override_failure_message("注册完成即加载了 glb_mesh: %s" % weapon_id)
+		var path := WeaponRegistry.get_glb_path(weapon_id)
+		if path.is_empty():
+			continue
+		assert_bool(ResourceLoader.has_cached(path)) \
+			.override_failure_message("注册完成即预加载 GLB 到资源缓存: %s" % path).is_false()
+
+
+func test_registry_weapon_data_carries_glb_path() -> void:
+	var data := WeaponRegistry.get_weapon_data("shortsword")
+	assert_object(data).is_not_null()
+	assert_str(data.glb_path).is_equal(WeaponRegistry.get_glb_path("shortsword"))
+	assert_bool(data.glb_path.ends_with(".glb")).is_true()
+
+
+func test_get_glb_mesh_returns_valid_packed_scene_and_caches() -> void:
+	var data := WeaponRegistry.get_weapon_data("shortsword")
+	assert_object(data).is_not_null()
+	var path := WeaponRegistry.get_glb_path("shortsword")
+	assert_bool(ResourceLoader.exists(path)).is_true()
+	# 首次访问前不得已加载
+	assert_bool(ResourceLoader.has_cached(path)).is_false()
+	var first: PackedScene = data.get_glb_mesh()
+	assert_object(first).is_not_null()
+	assert_object(first).is_instanceof(PackedScene)
+	# 首次访问后应进入资源缓存（load 已发生一次）
+	assert_bool(ResourceLoader.has_cached(path)).is_true()
+	var second: PackedScene = data.get_glb_mesh()
+	assert_object(second).is_same(first)
+
+
+func test_get_glb_mesh_unknown_id_returns_null() -> void:
+	var data := WeaponData.new()
+	data.id = "not_a_real_weapon"
+	data.glb_path = ""
+	assert_object(data.get_glb_mesh()).is_null()
+
+
+func test_get_glb_mesh_missing_path_returns_null() -> void:
+	var data := WeaponData.new()
+	data.glb_path = "res://does/not/exist.glb"
+	assert_object(data.get_glb_mesh()).is_null()
+
+
+func test_get_glb_mesh_returns_preloaded_field_when_path_empty() -> void:
+	# 旧版 .tres WeaponData 直接在 glb_mesh 字段持有已加载的 PackedScene，
+	# get_glb_mesh 应直接返回字段值而不需要 glb_path。
+	var data := WeaponData.new()
+	data.glb_mesh = load(WeaponRegistry.get_glb_path("axe")) as PackedScene
+	assert_object(data.get_glb_mesh()).is_not_null()
+	assert_object(data.get_glb_mesh()).is_instanceof(PackedScene)
+
+
 func test_shortsword_has_glb_and_tiers() -> void:
 	assert_str(WeaponRegistry.get_glb_path("shortsword")).ends_with(".glb")
 	var tiers := WeaponRegistry.get_tiers("shortsword")

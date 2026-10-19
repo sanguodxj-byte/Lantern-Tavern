@@ -113,7 +113,7 @@ func _run_client() -> void:
 		_write("client_ok.txt", "FAIL connect (no dedicated server on port %d)" % _server_port)
 		return
 	NetworkManager.event_received.connect(_on_client_event)
-	NetworkManager.send_spawn({}, "dedsrv_client_guid")
+	NetworkManager.send_spawn("dedsrv_client_guid")
 	# 等待：重连 token + 收到 dungeon_layout 并构建完地牢 + 出现权威实体。
 	var ready := false
 	for i in range(900):

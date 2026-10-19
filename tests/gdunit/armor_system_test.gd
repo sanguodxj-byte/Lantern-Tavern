@@ -608,12 +608,13 @@ func test_resolve_attack_knockback_with_resistance() -> void:
 	assert_float(result.knockback_force).is_equal(5.0)
 
 func test_resolve_attack_proficiency_phys_def_bonus() -> void:
-	# 重甲熟练度 T1: +2 phys_def → 伤害更低
+	# 重甲熟练 T1: +2 phys_def → 伤害更低
 	var attack := DR.AttackInput.new()
 	attack.attacker_str = 10
 	attack.weapon_damage_dice = {"count": 1, "sides": 6}
 	attack.attack_type = "melee"
 	attack.attacker_per = 10
+	attack.crit_bonus = -5.0  # 抑制随机暴击，保证两路比较确定
 	# 无加成
 	var defender_no := DR.Defender.new()
 	defender_no.con = 10
@@ -638,8 +639,9 @@ func test_resolve_attack_proficiency_crit_reduction() -> void:
 	attack.attacker_str = 10
 	attack.weapon_damage_dice = {"count": 1, "sides": 6}
 	attack.attack_type = "melee"
-	attack.attacker_per = 100  # 高 per → 高暴击率
+	attack.attacker_per = 100  # 高 per 高暴击率
 	attack.crit_bonus = 50.0
+	attack.force_crit = true  # 固定暴击，避免 randi_range 使 95% 暴击断言偶发失败
 	var defender := DR.Defender.new()
 	defender.con = 10
 	defender.per = 10
@@ -655,6 +657,7 @@ func test_resolve_attack_proficiency_flanking_reduction() -> void:
 	attack.attacker_str = 10
 	attack.weapon_damage_dice = {"count": 1, "sides": 6}
 	attack.attack_type = "melee"
+	attack.crit_bonus = -5.0  # 抑制随机暴击，保证两路比较确定
 	attack.is_backstab = true
 	var defender_no_red := DR.Defender.new()
 	defender_no_red.con = 10

@@ -15,13 +15,21 @@ class Customer:
 	var liked: Dictionary         # 喜爱口味 {口味: 期望阈值}（含个体微调）
 	var hated: Array              # 讨厌口味 [口味]（含个体微调后的强度记录）
 	var hated_levels: Dictionary  # 讨厌口味的强度阈值 {口味: 容忍上限}（默认 0）
+	## 本次来访载荷（0805 审查 P1）：与长期 profile 分离，仅存在于当次 visit。
 	var carry_type: String        # "iron" 携带亮铁片 / "gear" 携带装备
 	var iron_amount: int          # 亮铁片数 M（gear 类型为 0）
 	var gear_item: Dictionary     # 随身装备（gear 类型才有，{} 表示无）
-	var individual_affinity: int  # 个体好感度
+	var individual_affinity: int  # 个体好感度（长期，随 profile 延续）
 	var is_regular: bool          # 是否为已录入常客名册的熟面孔
+	## 服务事务状态（0805 审查 P0）：WAITING → COMMITTED，幂等闸门。
+	var visit_id: String = ""     # 本次来访唯一 id（事务幂等键）
+	var service_state: String = "WAITING"  # WAITING / COMMITTED
+	var service_result: Variant = null     # 首次提交成功后缓存的 SettlementResult
 	func _init(race: String) -> void:
 		race_id = race
+
+# 来访 id 计数器（0805 审查 P0）：每次 generate_customer 消耗一个唯一 visit_id。
+var _next_visit_id: int = 1
 
 # 种族基准亮铁片数（策划案 12 §5.1）
 const RACE_BASE_IRON: Dictionary = {
@@ -139,10 +147,15 @@ func _get_affix_system() -> Node:
 # ============================================================================
 
 ## 生成一个普通顾客。race_id 为空则按基础概率随机选种族。
+## 每次调用都返回新的 Customer（新的 visit_id 与新的来访钱包）；
+## 抽中常客时只拷贝其长期 profile 字段（姓名/口味/好感），绝不复用名册对象
+## （0805 审查 P1：名册对象是长期身份，不得携带任何单次来访载荷）。
 func generate_customer(race_id: String = "") -> Customer:
 	if race_id == "":
 		race_id = _pick_random_race()
 	var cust := Customer.new(race_id)
+	cust.visit_id = "visit_%d" % _next_visit_id
+	_next_visit_id += 1
 	# 1. 拷贝种族模板
 	var template: Dictionary = BrewingData.RACE_PREFERENCES.get(race_id, {})
 	cust.liked = template.get("liked", {}).duplicate()
@@ -170,10 +183,20 @@ func generate_customer(race_id: String = "") -> Customer:
 			cust.carry_type = "gear"
 			cust.iron_amount = 0
 			cust.gear_item = _pick_random_gear()
-	# 5. 30% 概率从常客名册挑选熟面孔（人类无名册，跳过）
+	# 5. 30% 概率从常客名册挑选熟面孔（人类无名册，跳过）。
+	#    只拷贝 profile 字段到新 visit；钱包/装备按本次来访重新生成，
+	#    不继承名册里任何历史载荷。
 	if race_id != "human" and randf() < 0.3 and regular_customers.get(race_id, []).size() > 0:
 		var pool: Array = regular_customers[race_id]
-		return pool[randi() % pool.size()]
+		var profile: Customer = pool[randi() % pool.size()]
+		cust.liked = profile.liked.duplicate()
+		cust.hated = profile.hated.duplicate()
+		cust.hated_levels = profile.hated_levels.duplicate()
+		cust.real_name = profile.real_name
+		cust.display_name = profile.display_name
+		cust.individual_affinity = profile.individual_affinity
+		cust.is_regular = true
+		return cust
 	cust.is_regular = false
 	cust.individual_affinity = 0
 	return cust
@@ -200,25 +223,50 @@ func _pick_random_name(race_id: String) -> String:
 # ============================================================================
 # 3. 结算决策树（策划案 12 §3 + §4 + §5.2）
 # ============================================================================
+# 0805 架构审查 P1：settle() 拆分为纯计算 quote() + 提交 commit()。
+# quote() 不修改任何全局/顾客状态；commit() 一次性写入好感、声望与常客名册。
+# 服务权威入口（CustomerSpawner）在 quote 与 commit 之间插入奖励接收端预检，
+# 保证一笔服务同成同败。
+# 注意：SettlementResult 保持为本脚本内部类（新文件 class_name 会因
+# headless 全局类缓存未刷新而无法解析，破坏 autoload 加载）。
 
+## 结算结果：既承载纯计算载荷（tier/gold/gear/gift/好感/声望增量），
+## 也承载事务结果（committed / error_code / transaction_id）。
+## 服务链路任何路径都不允许用空字典表示失败——失败必须是
+## SettlementResult.failed(error_code) 产生的结构化结果。
 class SettlementResult:
+	var committed: bool = false          # 事务是否完整提交（同成同败）
+	var error_code: String = ""          # 失败原因（NO_SEAT / INVALID_ENTITY / BACKPACK_FULL ...）
+	var transaction_id: String = ""      # 对应顾客本次来访的 visit_id（幂等键）
 	var gold_gained: int = 0
-	var gear_gained: Dictionary = {}   # 装备盲盒赠予
-	var gift_material: Dictionary = {} # 声望赠礼 {material_id: count}
-	var affinity_delta: int = 0        # 个体好感度变动
-	var reputation_delta: int = 0      # 全局传闻声望变动
-	var tier: String = ""              # 评价档次标签
-	var refused: bool = false          # 是否拒付离席
+	var gear_gained: Dictionary = {}     # 装备盲盒赠予
+	var gift_material: Dictionary = {}   # 声望赠礼 {material_id: count}
+	var affinity_delta: int = 0          # 个体好感度变动
+	var reputation_delta: int = 0        # 全局传闻声望变动
+	var tier: String = ""                # 评价档次标签
+	var refused: bool = false            # 是否拒付离席
+	## 失败结果工厂：统一构造未提交的失败结果。
+	static func failed(error_code: String) -> SettlementResult:
+		var result := SettlementResult.new()
+		result.committed = false
+		result.error_code = error_code
+		return result
 
-## 主结算入口。brew_flavors=酒水口味, menu_price=菜单标价, customer=顾客。
-## 返回 SettlementResult，并自动更新 customer.individual_affinity 与 faction_reputation。
-func settle(brew_flavors: Dictionary, menu_price: int, customer: Customer) -> SettlementResult:
+## 纯计算结算入口：只计算结果，不写任何状态（0805 审查 P1）。
+## brew_flavors=酒水口味, menu_price=菜单标价, customer=顾客。
+## 返回 SettlementResult（transaction_id = customer.visit_id）。
+func quote(brew_flavors: Dictionary, menu_price: int, customer: Customer) -> SettlementResult:
 	var result := SettlementResult.new()
+	result.transaction_id = customer.visit_id
 	if customer.race_id == "human":
 		_settle_human(brew_flavors, menu_price, result)
 	else:
 		_settle_monster(brew_flavors, customer, result)
-	# 后置：个体好感变动 → 势力声望传递（向下取整 10%，负数用 floor）
+	return result
+
+## 提交结算副作用：个体好感 → 势力声望传递（向下取整 10%）→ 常客录入 → 传闻声望。
+## 仅在奖励接收端全部预检通过后由服务权威入口调用（0805 审查 P1）。
+func commit(customer: Customer, result: SettlementResult) -> void:
 	if customer.race_id != "human" and result.affinity_delta != 0:
 		var faction_gain: int = int(floor(result.affinity_delta * 0.1))
 		faction_reputation[customer.race_id] = faction_reputation.get(customer.race_id, 0) + faction_gain
@@ -228,6 +276,19 @@ func settle(brew_flavors: Dictionary, menu_price: int, customer: Customer) -> Se
 	# 全局传闻声望变动
 	if result.reputation_delta != 0:
 		rumor_reputation += result.reputation_delta
+
+## 幂等标记：把本次来访标记为 COMMITTED、结果置 committed=true 并缓存。
+## 任何后续携带同一 visit_id 的请求必须返回该缓存结果，不得再次写状态。
+func mark_committed(customer: Customer, result: SettlementResult) -> void:
+	result.committed = true
+	customer.service_state = "COMMITTED"
+	customer.service_result = result
+
+## 兼容入口：quote + commit 一步完成（旧调用路径，例如无 spawner 的
+## customer_entity.serve 回退）。服务权威入口应改用 quote + 预检 + commit。
+func settle(brew_flavors: Dictionary, menu_price: int, customer: Customer) -> SettlementResult:
+	var result := quote(brew_flavors, menu_price, customer)
+	commit(customer, result)
 	return result
 
 # ---- 人类分支（策划案 12 §4）----
@@ -404,7 +465,9 @@ func get_prestige_tier(race_id: String) -> Dictionary:
 func get_prestige_tier_name(race_id: String) -> String:
 	return TranslationServer.translate(get_prestige_tier(race_id).name)
 
-## 个体好感达到"熟悉"阈值（>=30）即录入常客名册，解锁本名
+## 个体好感达到"熟悉"阈值（>=30）即录入常客名册，解锁本名。
+## 0805 审查 P1：名册只保存长期 profile——入库前剥离本次来访载荷
+## （钱包/装备/事务状态），避免旧来访奖励被当作长期身份跨来访复用。
 func _try_register_regular(cust: Customer) -> void:
 	if cust.is_regular:
 		return
@@ -412,6 +475,13 @@ func _try_register_regular(cust: Customer) -> void:
 		return
 	cust.is_regular = true
 	cust.display_name = cust.real_name  # 解锁本名
+	# 剥离单次来访载荷（长期 profile 不含 visit-scoped 状态）
+	cust.visit_id = ""
+	cust.service_state = "WAITING"
+	cust.service_result = null
+	cust.carry_type = ""
+	cust.iron_amount = 0
+	cust.gear_item = {}
 	var pool: Array = regular_customers[cust.race_id]
 	# 上限替换：好感最低且最久未来店的常客被替换
 	if pool.size() >= REGULAR_MAX_PER_RACE:
@@ -469,13 +539,10 @@ func deserialize(data: Dictionary) -> void:
 			if entry is Dictionary:
 				regular_customers[race_id].append(_customer_from_dict(entry))
 
-## Customer → 可 JSON 化字典。gear_item 的 weapon_data 资源不入档，
-## 读档时通过 id + tier_index 从 WeaponRegistry 重建。
+## Customer → 可 JSON 化字典。
+## 0805 审查 P1：只序列化长期 profile 字段——不落档来访钱包/装备
+## （carry_type/iron_amount/gear_item）与事务状态（visit_id/service_state/result）。
 func _customer_to_dict(cust: Customer) -> Dictionary:
-	var gear: Dictionary = {}
-	for key in cust.gear_item:
-		if key != "weapon_data":
-			gear[key] = cust.gear_item[key]
 	return {
 		"race_id": cust.race_id,
 		"display_name": cust.display_name,
@@ -483,9 +550,6 @@ func _customer_to_dict(cust: Customer) -> Dictionary:
 		"liked": cust.liked.duplicate(),
 		"hated": cust.hated.duplicate(),
 		"hated_levels": cust.hated_levels.duplicate(),
-		"carry_type": cust.carry_type,
-		"iron_amount": cust.iron_amount,
-		"gear_item": gear,
 		"individual_affinity": cust.individual_affinity,
 		"is_regular": cust.is_regular,
 	}
@@ -501,17 +565,12 @@ func _customer_from_dict(data: Dictionary) -> Customer:
 	var hated_levels: Dictionary = data.get("hated_levels", {})
 	for flavor_name in hated_levels:
 		cust.hated_levels[flavor_name] = int(hated_levels[flavor_name])
-	cust.carry_type = String(data.get("carry_type", "iron"))
-	cust.iron_amount = int(data.get("iron_amount", 0))
-	cust.gear_item = data.get("gear_item", {})
-	if not cust.gear_item.is_empty():
-		var wr: Node = _get_weapon_registry()
-		if wr != null:
-			var wd = wr.build_weapon_data_with_tier(
-				String(cust.gear_item.get("id", "")),
-				int(cust.gear_item.get("tier_index", 0)))
-			if wd != null:
-				cust.gear_item["weapon_data"] = wd
+	# 0805 审查 P1：名册是长期 profile；来访钱包/装备一律不恢复。
+	# 旧存档里残留的 carry_type/iron_amount/gear_item 字段被忽略，
+	# 新来访会在 generate_customer 时重新生成载荷。
+	cust.carry_type = "iron"
+	cust.iron_amount = 0
+	cust.gear_item = {}
 	cust.individual_affinity = int(data.get("individual_affinity", 0))
 	cust.is_regular = bool(data.get("is_regular", false))
 	return cust

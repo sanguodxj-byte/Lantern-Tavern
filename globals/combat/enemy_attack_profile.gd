@@ -42,6 +42,13 @@ const BODY_PROFILES := {
 		"hit_end": 1.0,
 		"lunge": 0.0,
 	},
+	"dire_wolf": {
+		"animation": "claw_swipe",   # 恐狼扑咬（蓄势后跃起前扑）
+		"windup": 0.50,
+		"hit_start": 0.40,
+		"hit_end": 0.85,
+		"lunge": 2.4,
+	},
 }
 
 # ============================================================================

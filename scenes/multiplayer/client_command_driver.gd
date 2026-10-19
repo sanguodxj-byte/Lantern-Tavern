@@ -12,6 +12,7 @@ extends Node
 ## 不声明 class_name：避免 headless 类注册 / .uid 同步问题；经 preload 引用。
 
 const NP := preload("res://globals/multiplayer/network_protocol.gd")
+const Service := preload("res://globals/core/service.gd")
 
 ## 真实 Player 控制器（本地玩家，全功能；远端玩家用 avatar）。
 var player: Node = null
@@ -43,7 +44,7 @@ var _heartbeat_accum: float = 0.0
 var _known_server_rev: int = 0
 
 func _ready() -> void:
-	var nm: Node = get_node_or_null("/root/NetworkManager")
+	var nm: Node = Service.network_manager()
 	if nm != null:
 		if nm.has_signal("event_received"):
 			nm.event_received.connect(_on_event)
@@ -62,7 +63,7 @@ func _physics_process(delta: float) -> void:
 	_maybe_send_heartbeat(delta)
 	if player == null or not is_instance_valid(player):
 		return
-	var nm: Node = get_node_or_null("/root/NetworkManager")
+	var nm: Node = Service.network_manager()
 	if nm == null or not nm.is_active:
 		return
 	if not nm.is_client() and not nm.is_host:
@@ -83,7 +84,7 @@ func _maybe_send_heartbeat(delta: float, nm_override: Object = null) -> void:
 	if _heartbeat_accum < HEARTBEAT_INTERVAL:
 		return
 	_heartbeat_accum = 0.0
-	var nm: Object = nm_override if nm_override != null else get_node_or_null("/root/NetworkManager")
+	var nm: Object = nm_override if nm_override != null else Service.network_manager()
 	if nm == null or not nm.is_active or not nm.is_client():
 		return
 	nm.send_heartbeat()
@@ -115,7 +116,7 @@ func _send_input_frame(nm: Node) -> void:
 ## 架构审查 P0-2：客户端只提交意图（手位/蓄力/目标提示），不再提交 attack_type——
 ## 攻击类型/射程/冷却/伤害全部由服务器从权威 loadout 派生（AttackContextFactory）。
 func send_attack(target_hint: int, hand: String = "primary", charge_ratio: float = 1.0) -> void:
-	var nm: Node = get_node_or_null("/root/NetworkManager")
+	var nm: Node = Service.network_manager()
 	if nm == null or not nm.is_active:
 		return
 	if _attack_timer > 0.0:
@@ -136,7 +137,7 @@ func send_attack(target_hint: int, hand: String = "primary", charge_ratio: float
 ## 发起一次交互/拾取（CMD_INTERACT / CMD_PICKUP）。target = 实体 id（服务器权威识别）。
 ## 注意：交互权威读取 target_entity_id（与战斗权威读取 target_hint 不同），此处两者都带齐以兼容。
 func send_interact(target: int = 0) -> void:
-	var nm: Node = get_node_or_null("/root/NetworkManager")
+	var nm: Node = Service.network_manager()
 	if nm == null or not nm.is_active:
 		return
 	_sequence += 1
@@ -150,8 +151,10 @@ func send_interact(target: int = 0) -> void:
 	})
 
 ## 发起一次技能（CMD_SKILL）。技能 id 由服务器校验归属；攻击类型由服务器权威派生。
-func send_skill(skill_id: String) -> void:
-	var nm: Node = get_node_or_null("/root/NetworkManager")
+## P1-1（0304 审查）：携带 target_hint（准星目标实体）——有伤害技能（如踢击）的
+## 服务器伤害分支依赖目标实体 id 做范围校验与结算。
+func send_skill(skill_id: String, target_hint: Variant = null) -> void:
+	var nm: Node = Service.network_manager()
 	if nm == null or not nm.is_active:
 		return
 	_sequence += 1
@@ -161,11 +164,12 @@ func send_skill(skill_id: String) -> void:
 		"world_revision": _server_world_revision(nm),
 		"sequence": _sequence,
 		"skill_id": skill_id,
+		"target_hint": target_hint,
 	})
 
 ## 发起法术施放。客户端只提交槽位/方向提示；服务端必须重解析固定配方与数值。
 func send_cast_spell(slot_index: int, origin: Vector3, direction: Vector3, target_hint: Variant = null) -> void:
-	var nm: Node = get_node_or_null("/root/NetworkManager")
+	var nm: Node = Service.network_manager()
 	if nm == null or not nm.is_active:
 		return
 	_sequence += 1
@@ -183,7 +187,7 @@ func send_cast_spell(slot_index: int, origin: Vector3, direction: Vector3, targe
 ## 发起一次出征结算（CMD_EXTRACT）：服务器计算本次净获得并回传 EVT_EXTRACTION_RESULT，
 ## 由桥接层写回本机玩家各自的单人存档（GameState.expedition_inventory）。
 func send_extract() -> void:
-	var nm: Node = get_node_or_null("/root/NetworkManager")
+	var nm: Node = Service.network_manager()
 	if nm == null or not nm.is_active:
 		return
 	_sequence += 1
@@ -202,7 +206,7 @@ func send_block(active: bool) -> void:
 ## 发起一次升级选择意图（CMD_LEVEL_UP_CHOICE，P1-4 权威闭环）。
 ## 客户端只提交选择；服务器校验 pending 次数/候选后应用，绝不直接修改权威属性。
 func send_level_up_choice(kind: String, attr_key: String = "", rune_id: String = "") -> void:
-	var nm: Node = get_node_or_null("/root/NetworkManager")
+	var nm: Node = Service.network_manager()
 	if nm == null or not nm.is_active:
 		return
 	_sequence += 1
@@ -219,7 +223,7 @@ func send_level_up_choice(kind: String, attr_key: String = "", rune_id: String =
 ## 请求本次升级的符文候选（CMD_LEVEL_UP_RUNE_CANDIDATES）：服务器按 player_guid
 ## 确定性掷出并经 EVT_PROGRESSION_RUNE_CANDIDATES 下发。
 func request_level_up_rune_candidates() -> void:
-	var nm: Node = get_node_or_null("/root/NetworkManager")
+	var nm: Node = Service.network_manager()
 	if nm == null or not nm.is_active:
 		return
 	_sequence += 1
@@ -232,7 +236,7 @@ func request_level_up_rune_candidates() -> void:
 
 ## 发起一次拾取（CMD_PICKUP）。entity_id 为服务器实体 id；0 表示由服务器按玩家位置/朝向推断。
 func send_pickup(entity_id: int) -> void:
-	var nm: Node = get_node_or_null("/root/NetworkManager")
+	var nm: Node = Service.network_manager()
 	if nm == null or not nm.is_active:
 		return
 	_sequence += 1
@@ -247,7 +251,7 @@ func send_pickup(entity_id: int) -> void:
 ## 发起一次投掷（CMD_DROP + throw=true）。协议无独立 CMD_THROW：复用 CMD_DROP 的投掷语义，
 ## 服务器在 Phase 2 依据 throw 标志区分「丢弃」与「投掷」。item_id 为空时投出当前主手武器。
 func send_throw(item_id: String = "") -> void:
-	var nm: Node = get_node_or_null("/root/NetworkManager")
+	var nm: Node = Service.network_manager()
 	if nm == null or not nm.is_active:
 		return
 	_sequence += 1
@@ -264,7 +268,7 @@ func send_throw(item_id: String = "") -> void:
 ## item_id 为目标物品；slot_kind="weapon"/"armor" + slot_index(int)/slot_name(String) 明确表达槽位；
 ## slot_kind 为空时由服务器按物品类别自动判定（武器→武器槽 / 护甲→护甲槽）。
 func send_equip(item_id: String, slot_kind: String = "", slot_index: int = -1, slot_name: String = "") -> void:
-	var nm: Node = get_node_or_null("/root/NetworkManager")
+	var nm: Node = Service.network_manager()
 	if nm == null or not nm.is_active:
 		return
 	_sequence += 1
@@ -281,7 +285,7 @@ func send_equip(item_id: String, slot_kind: String = "", slot_index: int = -1, s
 
 ## 丢弃（CMD_DROP + throw=false）。
 func send_drop(item_id: String, amount: int = 1) -> void:
-	var nm: Node = get_node_or_null("/root/NetworkManager")
+	var nm: Node = Service.network_manager()
 	if nm == null or not nm.is_active:
 		return
 	_sequence += 1
@@ -295,35 +299,16 @@ func send_drop(item_id: String, amount: int = 1) -> void:
 		"throw": false,
 	})
 
-## P0（2331 审查）：把服务器权威战斗状态应用到本机 Player 组件（只读镜像）。
-## health → 生命；mana → 法力；shield → damage_absorb buff（HUD 护盾条读取）；
-## buffs → spell_power buff（法术倍率表现）。
-func _apply_combat_state(current_life: int, max_life: int, shield: int, buffs: Dictionary, mana: int) -> void:
+## P0（2331 审查）/P1（A3 修复）：把服务器权威战斗状态应用到本机 Player（只读镜像）。
+## 唯一入口 Player.apply_authoritative_combat_state(state, revision)：
+##   health → 生命（max+current 原子）；mana → 法力；shield → damage_absorb 表现；
+##   buffs{id:expiry_ms} → 服务器剩余时间镜像；revision 拒绝陈旧/乱序回滚。
+## state 载荷键与 session_root.broadcast_player_combat_state 一致。
+func _apply_combat_state(state: Dictionary, revision: int) -> void:
 	if player == null or not is_instance_valid(player):
 		return
-	if "health" in player and player.health != null:
-		var h = player.health
-		if h.has_method("set_max_life"):
-			h.set_max_life(max_life)
-		if h.has_method("set_current_life"):
-			h.set_current_life(current_life)
-		elif "current_life" in h:
-			h.current_life = current_life
-	if "mana" in player and player.mana != null and "current_mana" in player.mana:
-		player.mana.current_mana = mana
-	if "buffs" in player and player.buffs != null and player.buffs.has_method("add"):
-		# shield → damage_absorb 表现（吸收百分比由 HUD 显示）。
-		var existing_absorb := false
-		for buff_id in buffs.keys():
-			if buff_id == "spell_power" and player.buffs.has_method("add"):
-				player.buffs.add("spell_power", 6.0, {"percent": 20.0})
-			if buff_id == "shield":
-				existing_absorb = true
-		if shield > 0:
-			var pct := clampf(float(shield) / float(maxi(max_life, 1)) * 100.0, 0.0, 100.0)
-			player.buffs.add("damage_absorb", 5.0, {"percent": pct})
-		elif existing_absorb and player.buffs.has_method("remove"):
-			player.buffs.remove("damage_absorb")
+	if player.has_method("apply_authoritative_combat_state"):
+		player.apply_authoritative_combat_state(state, revision)
 
 func _server_world_revision(nm: Node) -> int:
 	if nm != null and nm.is_host:
@@ -351,30 +336,38 @@ func _on_event(event: Dictionary) -> void:
 			_known_server_rev = int(snap["world_revision"])
 		# P0（2331 审查）：重连快照落地本机战斗状态（players 数组含 spell_state.combat_state）。
 		if snap is Dictionary and snap.has("players"):
-			var nm0: Node = get_node_or_null("/root/NetworkManager")
+			var nm0: Node = Service.network_manager()
 			var me := int(nm0.local_peer_id) if nm0 != null else 0
 			for pd in snap["players"]:
 				if pd is Dictionary and int(pd.get("peer_id", 0)) == me and pd.has("spell_state"):
 					var cs: Dictionary = Dictionary(Dictionary(pd["spell_state"]).get("combat_state", {}))
 					if not cs.is_empty():
-						_apply_combat_state(int(cs.get("current_life", 100)), int(cs.get("max_life", 100)),
-							int(cs.get("shield", 0)), Dictionary(cs.get("buffs", {})),
-							int(Dictionary(pd["spell_state"]).get("spell_mana", 100)))
+						# 重连快照：revision < 0 = 强制重同步，无条件覆盖镜像。
+						var spell_state_dict: Dictionary = Dictionary(pd["spell_state"])
+						var snap_state := cs.duplicate()
+						snap_state["spell_mana"] = int(spell_state_dict.get("spell_mana", 100))
+						snap_state["spell_max_mana"] = int(spell_state_dict.get("spell_max_mana", 100))
+						_apply_combat_state(snap_state, -1)
 		return
 	if kind == NP.EVT_PLAYER_COMBAT_STATE:
 		# P0（2331 审查）：权威战斗状态事件——只应用本机玩家，只读镜像（不反向写服务器）。
-		var nm: Node = get_node_or_null("/root/NetworkManager")
+		var nm: Node = Service.network_manager()
 		if nm == null:
 			return
 		if int(event.get("peer_id", 0)) != int(nm.local_peer_id):
 			return
-		_apply_combat_state(int(event.get("current_life", 100)), int(event.get("max_life", 100)),
-			int(event.get("shield", 0)), Dictionary(event.get("buffs", {})),
-			int(event.get("spell_mana", 100)))
+		_apply_combat_state({
+			"current_life": int(event.get("current_life", 100)),
+			"max_life": int(event.get("max_life", 100)),
+			"shield": int(event.get("shield", 0)),
+			"buffs": Dictionary(event.get("buffs", {})),
+			"spell_mana": int(event.get("spell_mana", 100)),
+			"spell_max_mana": int(event.get("spell_max_mana", 100)),
+		}, int(event.get("revision", 0)))
 		return
 	if kind != NP.EVT_PLAYER_SNAPSHOT:
 		return
-	var nm: Node = get_node_or_null("/root/NetworkManager")
+	var nm: Node = Service.network_manager()
 	if nm == null:
 		return
 	if int(event.get("peer_id", 0)) != int(nm.local_peer_id):

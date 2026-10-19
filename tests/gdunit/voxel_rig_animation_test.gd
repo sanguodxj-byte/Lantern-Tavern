@@ -5,7 +5,7 @@ extends GdUnitTestSuite
 const TIERS := preload("res://data/character_model_tiers.gd")
 const VALIDATOR := preload("res://globals/visual/voxel_rig_validator.gd")
 const SPEC_PATH := "res://globals/visual/voxel_animation_spec.gd"
-const CREATURE_IDS := ["dragon", "slime", "spider"]
+const CREATURE_IDS := ["dragon", "slime", "spider", "dire_wolf"]
 const VISUAL_REVIEW_SA_IDS := [
 	"dragon", "rock_golem",
 	"drow_blade", "spider", "orc_raider", "skeleton", "troll", "player",
@@ -15,6 +15,7 @@ const FACING_ROTATIONS := {
 	"dragon": -PI / 2.0,
 	"slime": PI,
 	"spider": PI,
+	"dire_wolf": -PI / 2.0,
 }
 
 var spec: Variant

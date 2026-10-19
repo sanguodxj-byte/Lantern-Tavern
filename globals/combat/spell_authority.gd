@@ -24,6 +24,23 @@ var self_effect_port: Callable = Callable()
 func set_self_effect_port(port: Callable) -> void:
 	self_effect_port = port
 
+## P0-2（2251 审查）：权威安全位移端口——func(caster:Node3D, direction:Vector3, distance:float)
+## -> {moved_distance:float, collided:bool}。SessionRoot 注入后，movement 法术经
+## ServerCharacterMotor 分步碰撞移动（禁止穿墙）；无端口时回退直接位移（headless 纯逻辑）。
+var movement_port: Callable = Callable()
+
+func set_movement_port(port: Callable) -> void:
+	movement_port = port
+
+## P1-4（0643 审查）：权威投射物生成端口——func(projectile_id:String, transform:Transform3D,
+## caster:Node3D, target:Node, skill_data:Dictionary, world:Node) -> Node。
+## SessionRoot 装配注入后不再直接查 /root/ProjectileService（消除绝对 root 依赖，
+## 多会话/嵌入式 host 装配不再脆弱）；无端口且无注入时返回失败（不再猜测全局单例）。
+var projectile_spawn_port: Callable = Callable()
+
+func set_projectile_spawn_port(port: Callable) -> void:
+	projectile_spawn_port = port
+
 ## 权威执行器支持的实施类型集合（架构审查 P0-4）：
 ## 服务端在任何资源 commit（法力/冷却）前用它预检世界执行可行性，
 ## 避免「先扣资源、再因实施不支持而无世界效果」的事务断裂。
@@ -85,9 +102,17 @@ func execute(caster: Node3D, result: Dictionary, world: Node = null, caster_peer
 				return {"ok": false, "reason": "self_effect_target_unavailable"}
 			execution["absorb"] = absorb
 		"movement":
+			# P0-2（2251 审查）：经权威安全位移端口（ServerCharacterMotor 碰撞移动），
+			# 不再直接改位置穿墙；无端口（headless 纯逻辑测试）回退确定性位移。
 			var direction := Vector3(result.get("direction", Vector3.FORWARD))
-			caster.global_position += direction.normalized() * float(plan.get("distance", 5.0))
-			execution["distance"] = float(plan.get("distance", 5.0))
+			var distance := float(plan.get("distance", 5.0))
+			if movement_port.is_valid():
+				var mres: Dictionary = movement_port.call(caster, direction, distance)
+				execution["distance"] = float(mres.get("moved_distance", 0.0))
+				execution["collided"] = bool(mres.get("collided", false))
+			else:
+				caster.global_position += direction.normalized() * distance
+				execution["distance"] = distance
 		"buff":
 			var duration := float(plan.get("duration", 6.0))
 			if self_effect_port.is_valid():
@@ -101,8 +126,8 @@ func execute(caster: Node3D, result: Dictionary, world: Node = null, caster_peer
 			# P1（2331 审查）：伤害必须由 effect_plan 携带（单一真相链），禁止静默默认。
 			if not plan.has("damage"):
 				return {"ok": false, "reason": "missing_effect_value"}
-			var projectile_service := caster.get_node_or_null("/root/ProjectileService")
-			if projectile_service == null or not projectile_service.has_method("spawn"):
+			# P1-4（0643 审查）：投射物生成经注入端口（SessionRoot 装配），不再查 /root。
+			if not projectile_spawn_port.is_valid():
 				return {"ok": false, "reason": "projectile_service_unavailable"}
 			var projectile_id := String(plan.get("projectile_id", "elemental_bolt"))
 			var cast_direction := Vector3(result.get("direction", Vector3.FORWARD)).normalized()
@@ -117,7 +142,7 @@ func execute(caster: Node3D, result: Dictionary, world: Node = null, caster_peer
 				skill_data["damage_port"] = executor.make_outbox_port()
 			# P1（2218 审查）：投射物挂到会话世界容器（world 参数，随会话释放）——
 			# 不再落入全局关卡/场景父节点，避免跨会话共享与错误回收。
-			var spawned = projectile_service.spawn(projectile_id, spawn_transform, caster, null, skill_data, world)
+			var spawned = projectile_spawn_port.call(projectile_id, spawn_transform, caster, null, skill_data, world)
 			if spawned == null:
 				return {"ok": false, "reason": "projectile_spawn_failed"}
 			execution["projectile"] = spawned

@@ -120,7 +120,7 @@ func test_skill_unlock_triggers_on_threshold() -> void:
 	if ap == null:
 		return
 	ap.reset()
-	ap.accumulate_proficiency("one_hand_melee", 3)
+	ap.accumulate_proficiency("sword", 3)  # 实战中武器经 weapon.proficiency_key("sword") 累积
 	for i in range(10):
 		ap.accumulate_attr("str", 100)  # str 15
 	var unlocked: Array = ap.check_skill_unlocks()

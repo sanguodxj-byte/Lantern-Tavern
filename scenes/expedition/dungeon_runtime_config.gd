@@ -71,7 +71,6 @@ const DUNGEON_CONTAINER_CONFIG := {
 const DUNGEON_BATCHED_DECOR_SCENES := {
 	"res://scenes/props/dungeon/decor/bones.tscn": true,
 	"res://scenes/props/dungeon/decor/plank.tscn": true,
-	"res://scenes/props/dungeon/dungeon_crate.tscn": true,
 	"res://scenes/props/dungeon/decor/iron_bar_grate.tscn": true,
 	"res://scenes/props/dungeon/pillar.tscn": true,
 }

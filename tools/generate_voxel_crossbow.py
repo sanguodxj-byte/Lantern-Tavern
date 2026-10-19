@@ -16,6 +16,12 @@ from voxel_overlap_guard import (  # noqa: E402
     assert_parts_voxel_assembly_valid,
 )
 from voxel_single_model_cli import reject_target_override  # noqa: E402
+from weapon_first_person_rig_lib import (  # noqa: E402
+    build_weapon_rig,
+    export_animated_glb,
+    make_action,
+    render_action_review,
+)
 from voxel_weapon_model_lib import (  # noqa: E402
     PX,
     bounds_size_px,
@@ -37,6 +43,7 @@ LENGTH_PX = 33.0
 
 OUT_GLB = ROOT / "assets" / "meshes" / "weapons" / "weapons_voxel_crossbow.glb"
 PREVIEW_DIR = ROOT / "reports" / "props_preview"
+ANIMATION_PREVIEW_DIR = ROOT / "reports" / "first_person_animation" / "crossbow_blender"
 
 
 def build_crossbow() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
@@ -165,13 +172,68 @@ def build_crossbow() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
     return root, parts
 
 
+def _author_first_person_actions(armature: bpy.types.Object) -> None:
+    make_action(armature, "vm_crossbow_hold", 1, 32, [
+        (1, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+        (16, (0.0, 0.0, -0.10), (0.2, -0.3, 0.15)),
+        (32, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ], loop=True)
+    # Bring the stock into the shoulder and settle on the sight line before firing.
+    make_action(armature, "vm_crossbow_ready", 1, 18, [
+        (1, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+        (6, (-0.3, 0.2, -0.2), (-2.0, 3.0, -3.0)),
+        (12, (-0.5, 0.5, -0.5), (-4.0, 5.0, -6.0)),
+        (18, (-0.5, 0.5, -0.5), (-4.0, 5.0, -6.0)),
+    ])
+    # Crossbows kick mostly back and slightly up. The peak is early and recovery is damped.
+    make_action(armature, "vm_crossbow_fire", 1, 18, [
+        (1, (-0.5, 0.5, -0.5), (-4.0, 5.0, -6.0)),
+        (3, (-0.4, 0.0, 0.8), (7.0, -2.0, 2.0)),
+        (5, (-0.6, 0.2, 0.2), (3.0, 2.0, -2.0)),
+        (8, (-0.5, 0.4, -0.3), (-2.0, 4.0, -5.0)),
+        (12, (-0.3, 0.2, -0.2), (-1.0, 2.0, -3.0)),
+        (18, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ])
+    # Lower the bow to expose the rail, cant it for the cocking pull, then present it again.
+    make_action(armature, "vm_crossbow_reload", 1, 36, [
+        (1, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+        (7, (-0.2, -0.8, 0.8), (12.0, 2.0, 8.0)),
+        (14, (-0.7, -1.0, 1.1), (18.0, 8.0, 22.0)),
+        (21, (-1.0, -0.7, 0.5), (12.0, 14.0, 28.0)),
+        (27, (-0.6, -0.2, 0.0), (5.0, 8.0, 12.0)),
+        (32, (-0.3, 0.3, -0.3), (-2.0, 4.0, -5.0)),
+        (36, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ])
+    armature["action_names"] = [
+        "vm_crossbow_hold", "vm_crossbow_ready", "vm_crossbow_fire", "vm_crossbow_reload",
+    ]
+
+
 def main() -> None:
     reject_target_override(MODEL_ID)
     reset_scene()
     root, parts = build_crossbow()
     assert_parts_no_positive_volume_overlap(parts, label=MODEL_ID)
     assert_parts_voxel_assembly_valid(parts, label=MODEL_ID)
-    export_glb(root, OUT_GLB)
+    armature = build_weapon_rig(root, parts, "CrossbowRig", 8.0, -8.0)
+    _author_first_person_actions(armature)
+    render_action_review(
+        root,
+        armature,
+        ANIMATION_PREVIEW_DIR,
+        ((0.16, -0.12, -0.52), (-6.0, 6.0, -90.0)),
+        {
+            "00": ("vm_crossbow_hold", 1),
+            "01": ("vm_crossbow_ready", 12),
+            "02": ("vm_crossbow_fire", 3),
+            "03": ("vm_crossbow_fire", 5),
+            "04": ("vm_crossbow_fire", 8),
+            "05": ("vm_crossbow_fire", 18),
+            "06": ("vm_crossbow_reload", 14),
+            "07": ("vm_crossbow_reload", 27),
+        },
+    )
+    export_animated_glb(root, OUT_GLB)
     render_true_3d_views(root, MODEL_ID, PREVIEW_DIR)
     dimensions = bounds_size_px(root)
     print(f"Wrote {OUT_GLB}")

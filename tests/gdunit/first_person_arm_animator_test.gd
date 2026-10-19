@@ -43,3 +43,24 @@ func test_arm_animator_samples_hold_progress_into_style_charge_pose() -> void:
 	var charged_rotation := skeleton.get_bone_pose_rotation(skeleton.find_bone("UpperArm.R"))
 	assert_bool(ready_rotation != charged_rotation).is_true()
 	skeleton.queue_free()
+
+## 回归测试：格挡姿态必须与握持姿态不同（Dictionary.merge 默认 overwrite=false
+## 会丢弃 guard 覆盖的骨骼键，导致格挡退化为握持 —— 见 _guard_pose 的 merge(..., true)）。
+## 注意：盾牌/部分风格只覆盖单侧手臂，因此必须对比双臂姿态的"整体"是否变化。
+func test_arm_animator_guard_pose_differs_from_hold_pose_for_every_style() -> void:
+	for profile in [&"unarmed", &"sword", &"dagger", &"greatsword", &"axe", &"spear", &"bow", &"crossbow", &"shield"]:
+		var skeleton := Skeleton3D.new()
+		for bone_name in ARM_ANIMATOR.ARM_BONES:
+			skeleton.add_bone(String(bone_name))
+		add_child(skeleton)
+		var animator := ARM_ANIMATOR.new()
+		animator.bind(skeleton)
+		animator.set_weapon_profile(profile)
+		animator.sample_action(StringName("vm_%s_hold" % profile), 0.0)
+		var hold_r := skeleton.get_bone_pose_rotation(skeleton.find_bone("UpperArm.R"))
+		var hold_l := skeleton.get_bone_pose_rotation(skeleton.find_bone("UpperArm.L"))
+		animator.sample_action(StringName("vm_%s_guard" % profile), 0.5)
+		var guard_r := skeleton.get_bone_pose_rotation(skeleton.find_bone("UpperArm.R"))
+		var guard_l := skeleton.get_bone_pose_rotation(skeleton.find_bone("UpperArm.L"))
+		assert_bool(hold_r != guard_r or hold_l != guard_l).is_true()
+		skeleton.queue_free()

@@ -3,18 +3,32 @@
 # 环境无 bash；PowerShell 5.1 的 Start-Process 在本机存在 PATH/Path/path 大小写冲突坑，
 # 故改为经 .cmd 启动器（内部用 start 后台 godot），彻底绕开 Start-Process 的环境字典冲突。
 # 用法：powershell -ExecutionPolicy Bypass -File tools/run_integration_dungeon_test.ps1
+#        [-ProjectPath <project dir>] [-GodotPath <godot exe>]
+#       （CI：由 .github/workflows/ci.yml 传入 checkout 路径与下载的 Godot，见 2026-08-07）
 
-$PROJ = "D:\123\Lantern Tavern"
+param(
+	[string]$ProjectPath = "D:\123\Lantern Tavern",
+	[string]$GodotPath = "D:\123\Godot_v4.7-stable_mono_win64.exe"
+)
+
+$PROJ = $ProjectPath
 $ITDIR = "$PROJ\.tmp_itest_dungeon"
 $SRV_CMD = "$PROJ\tools\dungeon_srv.cmd"
 $CLI_CMD = "$PROJ\tools\dungeon_cli.cmd"
 $CLI2_CMD = "$PROJ\tools\dungeon_cli2.cmd"
 
+# CI-portable 环境（2026-08-07）：.cmd 启动器读这些变量，缺省回退本机默认路径。
+# 各角色 APPDATA 由 .cmd 按 PROJECT_DIR 自行推导（互不共享，规避用户数据争用）。
+$env:GODOT_EXE = $GodotPath
+$env:PROJECT_DIR = $PROJ
+$env:ITEST_DIR = $ITDIR
+
 if (Test-Path $ITDIR) { Remove-Item -Recurse -Force $ITDIR }
 New-Item -ItemType Directory -Force -Path $ITDIR | Out-Null
 
 # 清理残留 Godot 进程（本沙箱 taskkill 常杀不掉，靠独立 APPDATA + 端口重试规避争用）
-taskkill /F /IM "Godot_v4.7-stable_mono_win64.exe" 2>$null
+$godotProcName = [System.IO.Path]::GetFileNameWithoutExtension($GodotPath)
+taskkill /F /IM "$godotProcName.exe" 2>$null
 Start-Sleep -Seconds 3
 
 # ---- 服务器进程（ITEST_ROLE=host）----
@@ -29,7 +43,7 @@ for ($i=0; $i -lt 60; $i++) {
 if (-not $serverReady) {
   Write-Host "SERVER FAILED TO START (no server_ready.txt)"
   Write-Host "--- server.log ---"; Get-Content "$ITDIR/server.log" -Tail 50
-  taskkill /F /IM "Godot_v4.7-stable_mono_win64.exe" 2>$null
+  taskkill /F /IM "$godotProcName.exe" 2>$null
   exit 1
 }
 Write-Host "server ready: $(Get-Content "$ITDIR/server_ready.txt")"
@@ -83,7 +97,9 @@ Write-Host "EXTRACT: $EXT_RES"
 Write-Host "RECOVERY: $REC_RES"
 
 $VERDICT_FILE = "$PROJ\.ittest_dungeon_verdict.txt"
+$passVerdict = $false
 if ($SRV_RES -like "OK*" -and $CLI_RES -like "OK*" -and $SEED_RES -like "*seed_match=True*" -and $MOV_RES -like "OK*" -and $ENT_RES -like "*ent_ok=True*" -and $COM_RES -like "*combat_ok=True*" -and $LOOT_RES -like "*loot_ok=True*" -and $EXT_RES -like "*extract_ok=True*" -and $REC_RES -like "*ok=True*") {
+  $passVerdict = $true
   Write-Host "INTEGRATION DUNGEON TEST: PASS" | Tee-Object -FilePath $VERDICT_FILE
   Add-Content $VERDICT_FILE "server=$SRV_RES client=$CLI_RES dungeon=$SEED_RES move=$MOV_RES entities=$ENT_RES combat=$COM_RES loot=$LOOT_RES extract=$EXT_RES recovery=$REC_RES port_srv=$SP_RES port_cli=$CP_RES"
 } else {
@@ -98,10 +114,12 @@ Copy-Item "$ITDIR/server.log" "$PROJ\.ittest_dungeon_server.log" -Force -ErrorAc
 Copy-Item "$ITDIR/client.log" "$PROJ\.ittest_dungeon_client.log" -Force -ErrorAction SilentlyContinue
 Copy-Item "$ITDIR/client2.log" "$PROJ\.ittest_dungeon_client2.log" -Force -ErrorAction SilentlyContinue
 
-taskkill /F /IM "Godot_v4.7-stable_mono_win64.exe" 2>$null
+taskkill /F /IM "$godotProcName.exe" 2>$null
 
 Remove-Item -Recurse -Force $ITDIR -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force "$PROJ/.tmp_apdata_dungeon_srv" -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force "$PROJ/.tmp_apdata_dungeon_cli" -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force "$PROJ/.tmp_apdata_dungeon_cli2" -ErrorAction SilentlyContinue
-exit 0
+# P0-2（1727 审查）：PASS→0 / FAIL→1（不再无条件 exit 0 假绿）
+if ($passVerdict) { exit 0 } else { exit 1 }
+

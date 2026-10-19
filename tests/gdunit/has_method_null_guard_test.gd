@@ -8,14 +8,14 @@ func test_player_physics_process_guards_null_collider() -> void:
 	# 验证 _physics_process 中 collider.has_method("interact") 前有 null 检查 (line 115)
 	var script: Resource = load("res://scenes/characters/player/player.gd")
 	var source: String = (script as GDScript).source_code
-	assert_bool(source.find("collider != null and not (collider is PickableItem) and collider.has_method") != -1) \
+	assert_bool(source.find("select_collider != null and not (select_collider is PickableItem) and select_collider.has_method") != -1) \
 		.override_failure_message("player.gd _physics_process 缺少 collider null 检查 (line 115)").is_true()
 
 func test_player_check_for_possible_action_guards_null_collider() -> void:
 	# 验证 check_for_possible_action 中 collider.has_method("interact") 前有 null 检查 (line 204)
 	var script: Resource = load("res://scenes/characters/player/player.gd")
 	var source: String = (script as GDScript).source_code
-	assert_bool(source.find("collider != null and collider.has_method") != -1) \
+	assert_bool(source.find("select_collider != null and not _can_interact_collider(select_collider)") != -1) \
 		.override_failure_message("player.gd check_for_possible_action 缺少 collider null 检查 (line 204)").is_true()
 
 # ==================== combat_bridge.gd ====================
@@ -39,7 +39,7 @@ func test_character_panel_ready_guards_null_gamestate() -> void:
 func test_player_state_slashing_guards_null_collider() -> void:
 	var script: Resource = load("res://scenes/characters/player/state/player_state_slashing.gd")
 	var source: String = (script as GDScript).source_code
-	assert_bool(source.find("collider != null and collider.has_method") != -1) \
+	assert_bool(source.find("hitbox != null and is_instance_valid(hitbox)") != -1) \
 		.override_failure_message("player_state_slashing.gd 缺少 collider null 检查").is_true()
 
 # ==================== player_state_grabbing.gd ====================

@@ -34,3 +34,12 @@ func test_player_focus_detection_uses_staff_grimoire_profiles() -> void:
 	var section := source.substr(source.find("func is_active_spell_focus_weapon"), 550)
 	assert_bool(section.contains("staff")).is_true()
 	assert_bool(section.contains("grimoire")).is_true()
+
+
+func test_focus_detection_matches_interface_access() -> void:
+	# 施放门槛必须与界面准入一致：奥术剑（带机制被动）能打开界面装配符文，
+	# 也必须能施放——否则"配好法术却 invalid_spell_focus 无法使用"。
+	var source := (load("res://scenes/characters/player/player.gd") as GDScript).source_code
+	var section := source.substr(source.find("func is_active_spell_focus_weapon"), 800)
+	assert_bool(section.contains("can_use_spell_interface")) \
+		.override_failure_message("is_active_spell_focus_weapon 应复用界面准入（含奥术剑被动）").is_true()

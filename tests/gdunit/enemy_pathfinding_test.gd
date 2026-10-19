@@ -73,8 +73,8 @@ func test_navigation_excludes_hazard_and_cliff_cells_from_walkable_source() -> v
 	layout.room_composition_specs.append({
 		"composition_kind": "cliff",
 		"cliff_cells": cliff_cells,
-		"platform_cells": cliff_cells,
-		"ramp_specs": [{"cell": Vector2i(2, 0), "dir": Vector2i(0, 1)}],
+		"pit_cells": cliff_cells,
+		"pit_depth_m": 1.5,
 	})
 	var builder := DungeonSceneBuilder.new()
 	var excluded_variant: Variant = builder.call("_collect_navigation_excluded_cells", layout)
@@ -84,14 +84,20 @@ func test_navigation_excludes_hazard_and_cliff_cells_from_walkable_source() -> v
 		assert_bool(excluded.has(Vector2i(0, 2))).is_true()
 		for cell in cliff_cells:
 			assert_bool(excluded.has(cell)).is_true()
-		assert_bool(excluded.has(Vector2i(2, 0))).is_true()
 		assert_bool(not excluded.has(Vector2i(5, 2))).is_true()
+	var terrain_result := DungeonBuildResult.new()
+	builder._build_terrain(layout, terrain_result)
+	for transform in terrain_result.floor_transforms:
+		var floor_cell := _world_to_cell(transform.origin, layout)
+		assert_bool(not cliff_cells.has(floor_cell)) \
+			.override_failure_message("导航地板源不能包含悬崖坑洞: %s" % floor_cell).is_true()
 
-func test_navigation_skips_cliff_elevation_links() -> void:
+func test_navigation_skips_cliff_pit_and_keeps_elevation_links() -> void:
 	var layout := _make_layout([[1, 1, 1, 1], [1, 1, 1, 1]])
 	layout.room_composition_specs.append({
 		"composition_kind": "cliff",
-		"ramp_specs": [{"cell": Vector2i(1, 0), "dir": Vector2i(0, 1)}],
+		"pit_cells": [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(1, 1)],
+		"pit_depth_m": 1.5,
 	})
 	layout.room_composition_specs.append({
 		"composition_kind": "elevation",

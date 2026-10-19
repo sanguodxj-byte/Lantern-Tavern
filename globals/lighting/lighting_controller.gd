@@ -1,5 +1,7 @@
 extends Node
 
+const Service := preload("res://globals/core/service.gd")
+
 # 场景光照优化控制器（autoload，全局名 LightingController）。
 # 注意：不声明 class_name，避免与同名 autoload 单例冲突（Godot 会报
 # “Class 'LightingController' hides an autoload singleton” 并导致脚本无法加载）。
@@ -51,7 +53,7 @@ func _ready() -> void:
 	_quality_tier = detect_quality_tier()
 	# P1-4：订阅 PerformanceBudget 动态质量分档——GPU 压力上升时灯光范围/闪烁幅度跟随
 	# 降档（此前只有 3D 分辨率消费者，灯光/阴影/粒子等视觉成本不跟随）。
-	var budget: Node = get_node_or_null("/root/PerformanceBudget")
+	var budget: Node = Service.performance_budget()
 	if budget != null and budget.has_signal("quality_tier_changed"):
 		budget.quality_tier_changed.connect(_on_budget_tier_changed)
 

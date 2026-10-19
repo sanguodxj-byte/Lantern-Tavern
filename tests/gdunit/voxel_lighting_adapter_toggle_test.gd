@@ -294,6 +294,45 @@ func test_revert_tree_handles_null_root() -> void:
 	assert_bool(true).is_true()
 
 
+# ── 2351 审查 P2：缓存 key 必须包含材质身份数据 ──────────────
+
+func test_cache_key_distinguishes_different_albedo_textures() -> void:
+	# 两个 StandardMaterial3D 的 resource_path/resource_name 相同但 albedo_texture 不同
+	# （同一 GLB 导出多份、运行时程序化贴图），缓存 key 必须不同，否则贴图互相串用。
+	var a := StandardMaterial3D.new()
+	a.resource_name = "shared_material"
+	var b := StandardMaterial3D.new()
+	b.resource_name = "shared_material"
+	var tex_a := ImageTexture.create_from_image(Image.create(2, 2, false, Image.FORMAT_RGBA8))
+	var tex_b := ImageTexture.create_from_image(Image.create(2, 2, false, Image.FORMAT_RGBA8))
+	# 无 resource_path 时走 instance_id 兜底：两个不同纹理对象必须产生不同 key。
+	a.albedo_texture = tex_a
+	b.albedo_texture = tex_b
+	var key_a := VOXEL_LIGHTING._cache_key(a, VOXEL_LIGHTING.MODE_DEFAULT)
+	var key_b := VOXEL_LIGHTING._cache_key(b, VOXEL_LIGHTING.MODE_DEFAULT)
+	assert_str(key_a).is_not_equal(key_b) \
+		.override_failure_message("不同 albedo_texture 的缓存 key 必须不同（2351 P2）")
+
+func test_cache_key_same_material_same_texture_is_stable() -> void:
+	# 同一材质 + 同一贴图（相同 instance_id）必须产生相同 key，保证缓存命中率。
+	var source := StandardMaterial3D.new()
+	source.resource_name = "stable_material"
+	source.albedo_texture = ImageTexture.create_from_image(Image.create(2, 2, false, Image.FORMAT_RGBA8))
+	var key_1 := VOXEL_LIGHTING._cache_key(source, VOXEL_LIGHTING.MODE_DEFAULT)
+	var key_2 := VOXEL_LIGHTING._cache_key(source, VOXEL_LIGHTING.MODE_DEFAULT)
+	assert_str(key_1).is_equal(key_2)
+
+func test_cache_key_null_texture_identity_is_none() -> void:
+	# 无贴图的材质 key 使用 "none" 身份，且与有贴图材质不同。
+	var plain := StandardMaterial3D.new()
+	plain.resource_name = "plain_material"
+	var textured := StandardMaterial3D.new()
+	textured.resource_name = "plain_material"
+	textured.albedo_texture = ImageTexture.create_from_image(Image.create(2, 2, false, Image.FORMAT_RGBA8))
+	assert_str(VOXEL_LIGHTING._cache_key(plain, VOXEL_LIGHTING.MODE_DEFAULT)) \
+		.is_not_equal(VOXEL_LIGHTING._cache_key(textured, VOXEL_LIGHTING.MODE_DEFAULT))
+
+
 # ── 开关关闭后 apply_to_tree 跳过后再 revert 无副作用 ─────────
 
 func test_disable_then_revert_is_safe() -> void:

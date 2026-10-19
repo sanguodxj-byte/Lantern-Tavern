@@ -166,7 +166,9 @@ static func _sync_pixel_lighting_flag(material: ShaderMaterial) -> void:
 	var shader := material.shader
 	var path := shader.resource_path
 	var has_flag: bool
-	if _pixel_flag_shader_cache.has(path):
+	# 内存中新建的 Shader 没有 resource_path（""），不能缓存：
+	# 不同 shader 会共用空键，导致带 flag 的 shader 污染不带 flag 的 shader。
+	if not path.is_empty() and _pixel_flag_shader_cache.has(path):
 		has_flag = _pixel_flag_shader_cache[path]
 	else:
 		has_flag = false
@@ -174,7 +176,8 @@ static func _sync_pixel_lighting_flag(material: ShaderMaterial) -> void:
 			if param.get("name", "") == "pixel_lighting_enabled":
 				has_flag = true
 				break
-		_pixel_flag_shader_cache[path] = has_flag
+		if not path.is_empty():
+			_pixel_flag_shader_cache[path] = has_flag
 	if has_flag:
 		material.set_shader_parameter("pixel_lighting_enabled", 1.0 if _pixel_shader_enabled else 0.0)
 
@@ -587,8 +590,20 @@ static func _cache_key(
 	material_tier: String = "",
 ) -> String:
 	var tex_flag := 1 if source.albedo_texture != null else 0
+	# 2351 审查 P2：缓存 key 必须包含材质身份数据。resource_path/resource_name 可能
+	# 相同但 albedo_texture 不同（同一 GLB 导出多份、运行时程序化贴图），仅靠
+	# tex_flag 会让不同材质的贴图互相串用。优先用贴图资源路径，其次 resource_name，
+	# 兜底用 instance_id（非持久化但保证运行时唯一，避免碰撞）。
+	var tex_identity := "none"
+	if source.albedo_texture != null:
+		if source.albedo_texture.resource_path != "":
+			tex_identity = source.albedo_texture.resource_path
+		elif source.albedo_texture.resource_name != "":
+			tex_identity = source.albedo_texture.resource_name
+		else:
+			tex_identity = "inst:%d" % source.albedo_texture.get_instance_id()
 	var path_or_name := source.resource_path if source.resource_path != "" else source.resource_name
-	return "%s|%s|%s|%.3f|%.3f|%.3f|%.3f|%d" % [
+	return "%s|%s|%s|%.3f|%.3f|%.3f|%.3f|%d|%s" % [
 		mode + "|" + material_tier.to_lower(),
 		path_or_name,
 		source.albedo_color.to_html(true),
@@ -597,6 +612,7 @@ static func _cache_key(
 		source.albedo_color.a,
 		source.emission_energy_multiplier if source.emission_enabled else 0.0,
 		tex_flag,
+		tex_identity,
 	]
 
 

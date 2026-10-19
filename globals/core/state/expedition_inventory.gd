@@ -137,11 +137,20 @@ func clear() -> void:
 	equipment_instances.clear()
 
 func to_dict() -> Dictionary:
+	var instances_out: Dictionary = {}
+	for equipment_id in equipment_instances.keys():
+		var list: Array = equipment_instances[equipment_id]
+		var list_out: Array = []
+		for inst in list:
+			if inst is WeaponData:
+				list_out.append((inst as WeaponData).to_save_dict())
+		instances_out[String(equipment_id)] = list_out
 	return {
 		"materials": materials.duplicate(),
 		"runes": runes.duplicate(),
 		"equipment": equipment.duplicate(),
-		"space_limit": space_limit
+		"space_limit": space_limit,
+		"equipment_instances": instances_out,
 	}
 
 func from_dict(data: Dictionary) -> void:
@@ -154,3 +163,15 @@ func from_dict(data: Dictionary) -> void:
 		equipment = data["equipment"].duplicate()
 	if data.has("space_limit") and (data["space_limit"] is int or data["space_limit"] is float):
 		space_limit = int(data["space_limit"])
+	if data.has("equipment_instances") and data["equipment_instances"] is Dictionary:
+		var raw_instances: Dictionary = data["equipment_instances"]
+		for equipment_id in raw_instances.keys():
+			var raw_list: Array = raw_instances[equipment_id]
+			var restored: Array = []
+			for raw in raw_list:
+				if raw is Dictionary:
+					var inst: WeaponData = WeaponData.new()
+					inst.load_from_save_dict(raw)
+					restored.append(inst)
+			if not restored.is_empty():
+				equipment_instances[String(equipment_id)] = restored

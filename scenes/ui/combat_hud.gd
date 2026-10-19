@@ -37,6 +37,7 @@ const Service := preload("res://globals/core/service.gd")
 @onready var experience_bar: ProgressBar = $BottomCenterExperience/ContentRow/ExperienceBar
 @onready var experience_label: Label = $BottomCenterExperience/ContentRow/ExperienceBar/ExperienceLabel
 @onready var level_label: Label = $BottomCenterExperience/ContentRow/LevelLabel
+@onready var pending_level_up_label: Label = $PendingLevelUpLabel
 @onready var level_up_panel: LevelUpPanel = $LevelUpPanel
 
 var _player: Node = null
@@ -115,16 +116,18 @@ func _process(_delta: float) -> void:
 		_update_buffs()
 
 
-## M键切换大地图，ESC关闭大地图
+## M键切换大地图，ESC关闭大地图；右键切换法术界面（按下打开/再次按下关闭）
 func _input(event: InputEvent) -> void:
 	if level_up_panel != null and level_up_panel.visible:
 		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
 		if event.pressed:
-			if try_open_spell_interface():
+			if _spell_interface_open:
 				get_viewport().set_input_as_handled()
-		else:
-			close_spell_interface()
+				close_spell_interface()
+			elif try_open_spell_interface():
+				# 仅在成功打开时拦截：无法打开（无施法媒介等）时右键留给玩家格挡
+				get_viewport().set_input_as_handled()
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_M:
@@ -133,6 +136,7 @@ func _input(event: InputEvent) -> void:
 		elif event.keycode == KEY_ESCAPE and is_large_map_visible():
 			get_viewport().set_input_as_handled()
 			large_map.hide_map()
+			_restore_player_input_after_map()
 
 
 func _setup_spell_interface() -> void:
@@ -203,11 +207,30 @@ func _setup_progression_ui() -> void:
 	var callback := Callable(self, "_on_experience_changed")
 	if not _attr_panel.experience_changed.is_connected(callback):
 		_attr_panel.experience_changed.connect(callback)
+	var pending_cb := Callable(self, "_on_pending_level_choices_changed")
+	if not _attr_panel.level_up_choices_changed.is_connected(pending_cb):
+		_attr_panel.level_up_choices_changed.connect(pending_cb)
 	_update_experience_display(
 		int(_attr_panel.get_level()),
 		int(_attr_panel.level_exp),
 		int(_attr_panel.get_level_upgrade_threshold())
 	)
+	_update_pending_level_up_label(int(_attr_panel.get_pending_level_choices()))
+
+
+## 经验 HUD 上方的"待处理升级"角标：有待处理属性/符文选择时提示按 TAB 唤出。
+func _on_pending_level_choices_changed(pending_count: int) -> void:
+	_update_pending_level_up_label(pending_count)
+
+
+func _update_pending_level_up_label(pending_count: int) -> void:
+	if pending_level_up_label == null:
+		return
+	if pending_count <= 0:
+		pending_level_up_label.visible = false
+		return
+	pending_level_up_label.visible = true
+	pending_level_up_label.text = tr("按 TAB 处理升级 ×%d") % pending_count
 
 
 func _on_experience_changed(level: int, current_exp: int, required_exp: int, gained_exp: int) -> void:
@@ -231,6 +254,33 @@ func toggle_large_map() -> void:
 	if large_map == null or not is_instance_valid(large_map):
 		return
 	large_map.toggle()
+	# 2230 审查 P1-1：大地图为模态——打开时锁玩家移动/交互/战斗输入，关闭时按快照恢复
+	if is_large_map_visible():
+		_lock_player_input_for_map()
+	else:
+		_restore_player_input_after_map()
+
+
+## 2230 审查 P1-1：打开大地图时保存并关闭玩家输入标志（查看全图期间角色不得继续移动/攻击/交互）。
+var _saved_map_input_flags: Dictionary = {}
+
+func _lock_player_input_for_map() -> void:
+	if _player == null or not is_instance_valid(_player):
+		return
+	_saved_map_input_flags = {}
+	for flag_name in ["movement_input_enabled", "interaction_input_enabled", "combat_input_enabled"]:
+		if flag_name in _player:
+			_saved_map_input_flags[flag_name] = bool(_player[flag_name])
+			_player[flag_name] = false
+
+func _restore_player_input_after_map() -> void:
+	if _saved_map_input_flags.is_empty():
+		return
+	if _player != null and is_instance_valid(_player):
+		for flag_name in _saved_map_input_flags.keys():
+			if flag_name in _player:
+				_player[flag_name] = bool(_saved_map_input_flags[flag_name])
+	_saved_map_input_flags.clear()
 
 
 ## 大地图是否可见（供其他系统查询，抑制世界空间 UI 等）
@@ -480,7 +530,7 @@ func _update_pressure_labels(snapshot: Dictionary) -> void:
 		_:
 			suffix = tr("Stable")
 	if dark_erosion_label != null:
-		dark_erosion_label.text = tr("Dark Erosion %03d%%  %s") % [erosion, suffix]
+		dark_erosion_label.text = tr("Dark Erosion %d%%  %s") % [erosion, suffix]
 
 
 ## 切换场景空间时调用（由 World 或 UI 调用）
@@ -493,7 +543,8 @@ func set_world_space(_space: String) -> void:
 ## 经营 HUD 显隐时同步切换战斗 HUD：经营界面打开时整层隐藏，
 ## 既消除战斗 UI 泄露，又让其边角 Control 不再拦截经营面板的鼠标点击。
 func _on_tavern_hud_visibility_changed(is_tavern_hud_visible: bool) -> void:
-	# 经营界面打开时关闭大地图
+	# 经营 HUD 打开时关闭大地图并恢复玩家输入（2230 审查 P1-1）
 	if is_tavern_hud_visible and is_large_map_visible():
 		large_map.hide_map()
+		_restore_player_input_after_map()
 	visible = not is_tavern_hud_visible

@@ -23,7 +23,7 @@ func test_kill_awards_xp_only_to_killer_context() -> void:
 	var ctx1 = s.registry.get_context(1)
 	var ctx2 = s.registry.get_context(2)
 	s.set_entity(7001, {"kind": "enemy", "max_life": 20, "current_life": 20, "position": Vector3.ZERO})
-	var events: Array = s._on_entity_killed(7001, 1)
+	var events: Array = s.combat_service.on_entity_killed(7001, 1)
 	# killer(peer 1) 获得经验；peer 2 不受影响（per-peer 隔离）。
 	assert_int(int(ctx1.attributes.level_exp)).is_equal(PA.compute_kill_reward(20))
 	assert_int(int(ctx2.attributes.level_exp)).is_equal(0)
@@ -40,7 +40,7 @@ func test_elite_and_boss_flags_scale_reward() -> void:
 	_spawn(s, 1, "alpha")
 	var ctx1 = s.registry.get_context(1)
 	s.set_entity(7002, {"kind": "enemy", "max_life": 10, "current_life": 10, "is_boss": true, "position": Vector3.ZERO})
-	s._on_entity_killed(7002, 1)
+	s.combat_service.on_entity_killed(7002, 1)
 	assert_int(int(ctx1.attributes.level_exp)).is_equal(PA.compute_kill_reward(10, false, true))
 
 func test_level_up_choice_applied_by_server_and_broadcast() -> void:
@@ -135,7 +135,7 @@ func test_settlement_carries_authoritative_attributes() -> void:
 	_spawn(s, 1, "alpha")
 	var ctx1 = s.registry.get_context(1)
 	ctx1.attributes.accumulate_level_exp(120)
-	var settlement: Dictionary = s._compute_settlement(1)
+	var settlement: Dictionary = s.expedition_service.compute_settlement(1)
 	assert_bool(settlement.has("attributes")).is_true()
 	assert_int(int((settlement["attributes"] as Dictionary).get("level", 0))).is_equal(2)
 

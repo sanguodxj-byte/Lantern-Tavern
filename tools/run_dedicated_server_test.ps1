@@ -2,18 +2,32 @@
 # 专用服务器进程加载 scenes/multiplayer/dedicated_server.tscn（本身非玩家）；
 # 客户端进程连专用服务器、spawn、验证地牢重建/实体复制/服务器权威移动闭环。
 # 用法：powershell -ExecutionPolicy Bypass -File tools/run_dedicated_server_test.ps1
+#        [-ProjectPath <project dir>] [-GodotPath <godot exe>]
+#       （CI：由 .github/workflows/ci.yml 传入 checkout 路径与下载的 Godot，见 2026-08-07）
 
-$PROJ = "D:\123\Lantern Tavern"
+param(
+	[string]$ProjectPath = "D:\123\Lantern Tavern",
+	[string]$GodotPath = "D:\123\Godot_v4.7-stable_mono_win64.exe"
+)
+
+$PROJ = $ProjectPath
 $ITDIR = "$PROJ\.tmp_itest_dedsrv"
 $SRV_CMD = "$PROJ\tools\dedicated_srv.cmd"
 $CLI_CMD = "$PROJ\tools\dedicated_cli.cmd"
 $PORT = 30021
 
+# CI-portable 环境（2026-08-07）：.cmd 启动器读这些变量，缺省回退本机默认路径。
+# 各角色 APPDATA 由 .cmd 按 PROJECT_DIR 自行推导（互不共享，规避用户数据争用）。
+$env:GODOT_EXE = $GodotPath
+$env:PROJECT_DIR = $PROJ
+$env:ITEST_DIR = $ITDIR
+
 if (Test-Path $ITDIR) { Remove-Item -Recurse -Force $ITDIR }
 New-Item -ItemType Directory -Force -Path $ITDIR | Out-Null
 
 # 清理残留 Godot 进程（靠独立 APPDATA + 固定端口规避争用）
-taskkill /F /IM "Godot_v4.7-stable_mono_win64.exe" 2>$null
+$godotProcName = [System.IO.Path]::GetFileNameWithoutExtension($GodotPath)
+taskkill /F /IM "$godotProcName.exe" 2>$null
 Start-Sleep -Seconds 3
 
 # ---- 专用服务器进程 ----
@@ -29,7 +43,7 @@ for ($i=0; $i -lt 60; $i++) {
 if (-not $serverReady) {
   Write-Host "DEDICATED SERVER FAILED TO START (no ds_ready.txt)"
   Write-Host "--- server.log ---"; Get-Content "$ITDIR/server.log" -Tail 60
-  taskkill /F /IM "Godot_v4.7-stable_mono_win64.exe" 2>$null
+  taskkill /F /IM "$godotProcName.exe" 2>$null
   exit 1
 }
 Write-Host "dedicated server ready: $(Get-Content "$ITDIR/ds_ready.txt")"
@@ -63,7 +77,8 @@ $SERVER_ERR = (Get-Content "$ITDIR/server.log" | Where-Object { $_ -match "SCRIP
 
 $VERDICT_FILE = "$PROJ\.ittest_dedsrv_verdict.txt"
 $pass = ($DS_RES -like "OK*" -and $CLI_RES -like "OK*" -and $DUN_RES -like "*fp_match=True*" -and $ENT_RES -like "*ent_ok=True*" -and $MOV_RES -like "*moved=True*")
-if ($pass -and $SERVER_ERR -eq 0) {
+$passVerdict = ($pass -and $SERVER_ERR -eq 0)
+if ($passVerdict) {
   Write-Host "DEDICATED SERVER TEST: PASS" | Tee-Object -FilePath $VERDICT_FILE
   Add-Content $VERDICT_FILE "ds=$DS_RES seed=$DSSEED client=$CLI_RES dungeon=$DUN_RES entities=$ENT_RES movement=$MOV_RES server_script_errors=$SERVER_ERR"
 } else {
@@ -75,8 +90,10 @@ if ($pass -and $SERVER_ERR -eq 0) {
 Copy-Item "$ITDIR/server.log" "$PROJ\.ittest_dedsrv_server.log" -Force -ErrorAction SilentlyContinue
 Copy-Item "$ITDIR/client.log" "$PROJ\.ittest_dedsrv_client.log" -Force -ErrorAction SilentlyContinue
 
-taskkill /F /IM "Godot_v4.7-stable_mono_win64.exe" 2>$null
+taskkill /F /IM "$godotProcName.exe" 2>$null
 Remove-Item -Recurse -Force $ITDIR -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force "$PROJ/.tmp_apdata_dedsrv_srv" -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force "$PROJ/.tmp_apdata_dedsrv_cli" -ErrorAction SilentlyContinue
-exit 0
+# P0-2（1727 审查）：PASS→0 / FAIL→1（不再无条件 exit 0 假绿）
+if ($passVerdict) { exit 0 } else { exit 1 }
+

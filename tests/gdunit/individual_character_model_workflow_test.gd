@@ -170,7 +170,8 @@ func test_legacy_model_diagnostics_and_orphan_probe_uids_are_removed() -> void:
 
 func test_monster_three_view_capture_is_single_target_and_allowlisted() -> void:
 	var source := FileAccess.get_file_as_string("res://tools/voxel_prop_three_view_capture.gd")
-	var monster_block := _source_between(source, "const MONSTER_SCENES := {", "var _had_error := false")
+	# 只截取 MONSTER_SCENES 块；ARMOR_SCENES 起始行作为结束标记，避免把盔甲/陷阱键算入怪物名单
+	var monster_block := _source_between(source, "const MONSTER_SCENES := {", "const ARMOR_SCENES")
 	var accepted_ids := _accepted_model_ids_sorted()
 	var capture_ids := _quoted_dictionary_keys(monster_block)
 	assert_array(capture_ids) \

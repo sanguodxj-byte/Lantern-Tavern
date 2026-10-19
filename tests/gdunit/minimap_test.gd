@@ -64,10 +64,11 @@ func test_minimap_local_fallback_when_nothing_explored() -> void:
 	# 没有任何已探索格子 → 应退化为玩家中心局部视图，且不报错
 	mm._update_view(player.global_position)
 	assert_float(mm._view_scale).is_equal_approx(mm._scale, 0.001)
-	# 遍历窗口应以玩家所在格(网格 30,30)为中心，半径为 ceil(world_radius/3)+1 = 10
+	# 遍历窗口应以玩家所在格(网格 30,30)为中心，半径为 ceil(world_radius/3)+1：
+	# 内容缩小后 world_radius=50 → ceil(50/3)+1 = 18
 	assert_int(mm._view_cgx).is_equal(30)
 	assert_int(mm._view_cgy).is_equal(30)
-	assert_int(mm._view_cell_r).is_equal(10)
+	assert_int(mm._view_cell_r).is_equal(18)
 
 	mm.free()
 	player.free()

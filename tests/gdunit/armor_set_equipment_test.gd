@@ -160,7 +160,7 @@ func test_weapon_registry_loads_set_pieces_into_armor_slots() -> void:
 
 			assert_int(data.armor_phys_def).is_greater(0)
 
-			assert_object(data.glb_mesh).is_not_null()
+			assert_object(data.get_glb_mesh()).is_not_null()
 
 
 

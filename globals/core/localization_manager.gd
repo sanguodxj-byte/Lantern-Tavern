@@ -2,6 +2,13 @@ extends Node
 
 const TRANSLATIONS_CSV := "res://scenes/ui/localization/translations.csv"
 
+## E2（1327 审查）：本地化引导完成的唯一信号。主菜单等 UI 订阅它刷新文本，
+## 不再各自 new 临时 loader 兜底（单一引导策略）。
+signal initialized
+
+## 是否已完成首次翻译加载。晚订阅者据此判断是否需要等待 initialized。
+var is_initialized: bool = false
+
 func _ready() -> void:
 	# Rebuild once after project bootstrap. Imported CSV resources and the
 	# autoload can otherwise register two Translation objects for one locale.
@@ -16,6 +23,8 @@ func _reload_translations_once() -> void:
 				break
 			TranslationServer.remove_translation(existing)
 	_load_translations()
+	is_initialized = true
+	initialized.emit()
 
 func _load_translations() -> void:
 	if not ResourceLoader.exists(TRANSLATIONS_CSV):

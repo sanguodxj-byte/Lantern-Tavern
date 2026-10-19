@@ -67,3 +67,47 @@ func test_freeze_sleeps_fragments() -> void:
 	ragdoll.clear_fragments()
 	source.queue_free()
 	ragdoll.queue_free()
+
+
+func test_fragments_inherit_source_render_layer_per_mesh() -> void:
+	# 敌人网格位于 ENEMY_RENDER_LAYER(1<<1)：玩家视野补光只照第 1 层地形。
+	# 逐网格碎裂分支的碎片必须继承源网格层，使主相机可见但不受视野灯影响。
+	var source := Node3D.new()
+	var body := _make_box("body", Vector3(0, 0.5, 0))
+	body.layers = 1 << 1
+	source.add_child(body)
+	var head := _make_box("head", Vector3(0, 1.0, 0))
+	head.layers = 1 << 1
+	source.add_child(head)
+	add_child(source)
+	var ragdoll := VOXEL_RAGDOLL.new()
+	add_child(ragdoll)
+	ragdoll.activate(source, Vector3(0, 1, 0), 4.0)
+	var fragments := source.get_parent().find_children("*", "RigidBody3D", true, false)
+	assert_int(fragments.size()).is_equal(2)
+	for f in fragments:
+		var frag_mesh := (f as RigidBody3D).find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D
+		assert_int(frag_mesh.layers).is_equal(1 << 1)
+	ragdoll.clear_fragments()
+	source.queue_free()
+	ragdoll.queue_free()
+
+
+func test_fragments_inherit_source_render_layer_from_grid() -> void:
+	# 单网格（AABB 分块碎裂分支）：碎片同样继承源网格渲染层。
+	var source := Node3D.new()
+	var body := _make_box("solo", Vector3(0, 0.5, 0))
+	body.layers = 1 << 1
+	source.add_child(body)
+	add_child(source)
+	var ragdoll := VOXEL_RAGDOLL.new()
+	add_child(ragdoll)
+	ragdoll.activate(source, Vector3(0, 1, 0), 4.0)
+	var fragments := source.get_parent().find_children("*", "RigidBody3D", true, false)
+	assert_int(fragments.size()).is_greater(0)
+	for f in fragments:
+		var frag_mesh := (f as RigidBody3D).find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D
+		assert_int(frag_mesh.layers).is_equal(1 << 1)
+	ragdoll.clear_fragments()
+	source.queue_free()
+	ragdoll.queue_free()

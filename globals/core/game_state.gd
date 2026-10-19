@@ -32,10 +32,14 @@ var _player_context: PlayerContext = null
 const ExpeditionInventoryClass := preload("res://globals/core/state/expedition_inventory.gd")
 const EquipmentLoadoutClass := preload("res://globals/core/state/equipment_loadout.gd")
 const SpellLoadoutClass := preload("res://globals/combat/spell_loadout.gd")
+const ExpeditionSessionClass := preload("res://globals/expedition/expedition_session.gd")
 
 var expedition_inventory := ExpeditionInventoryClass.new()
 var equipment_loadout := EquipmentLoadoutClass.new()
 var spell_loadout := SpellLoadoutClass.new()
+## 远征会话连续性载体（架构审查 1215）：跨层保留时钟/暗蚀/玩家资源。
+## active=false 表示无进行中的远征（新游戏/酒馆阶段）；下楼时由 World 捕获置 true。
+var expedition_session = ExpeditionSessionClass.new()
 
 var carried_materials: Dictionary:
 	get: return expedition_inventory.materials
@@ -311,16 +315,54 @@ func apply_equipment_to_player(player_node: Node = null) -> void:
 		return
 	for i in range(weapon_slot_ids.size()):
 		var weapon_id := String(weapon_slot_ids[i])
-		var data := WeaponRegistry.get_weapon_data(weapon_id) if not weapon_id.is_empty() else null
+		var data := _build_equipment_data(weapon_id, equipment_loadout.get_weapon_instance(i))
 		if equipment.has_method("configure_weapon_slot"):
 			equipment.configure_weapon_slot(i, data, false)
 	if equipment.has_method("activate_weapon_slot"):
 		equipment.activate_weapon_slot(clampi(active_weapon_slot, 0, weapon_slot_ids.size() - 1))
 	for slot_name in armor_slot_ids.keys():
 		var armor_id := String(armor_slot_ids[slot_name])
-		var armor := WeaponRegistry.get_weapon_data(armor_id) if not armor_id.is_empty() else null
+		var armor := _build_equipment_data(armor_id, equipment_loadout.get_armor_instance(String(slot_name)))
 		if equipment.has_method("configure_armor_slot"):
 			equipment.configure_armor_slot(String(slot_name), armor)
+
+## 按 id 构建装备数据：有存档实例数据时在注册表模板上叠加实例字段（词缀/耐久/阶位），
+## 否则回退注册表模板。返回副本，绝不修改注册表共享资源。
+func _build_equipment_data(equipment_id: String, instance_data: Dictionary) -> WeaponData:
+	if equipment_id.is_empty():
+		return null
+	var base := WeaponRegistry.get_weapon_data(equipment_id)
+	if base == null:
+		return null
+	var data := base.duplicate() as WeaponData
+	if not instance_data.is_empty():
+		data.load_from_save_dict(instance_data)
+	return data
+
+## 从当前玩家装备组件捕获真实实例（词缀/耐久/阶位）写入 equipment_loadout，
+## 供存档序列化。场景中无玩家时保持上次捕获/默认值。
+func _capture_equipped_instances() -> void:
+	if current_player == null or not is_instance_valid(current_player):
+		return
+	var equipment = current_player.get("equipment") if "equipment" in current_player else null
+	if equipment == null:
+		return
+	if "weapon_slots" in equipment:
+		var slots: Array = equipment.weapon_slots
+		for i in range(mini(slots.size(), equipment_loadout.weapon_instances.size())):
+			var w = slots[i]
+			if w != null and w is WeaponData:
+				equipment_loadout.weapon_instances[i] = (w as WeaponData).to_save_dict()
+			else:
+				equipment_loadout.weapon_instances[i] = {}
+	if "armor_slots" in equipment:
+		var a_slots: Dictionary = equipment.armor_slots
+		for slot_name in equipment_loadout.armor_instances.keys():
+			var a = a_slots.get(slot_name, null)
+			if a != null and a is WeaponData:
+				equipment_loadout.armor_instances[String(slot_name)] = (a as WeaponData).to_save_dict()
+			else:
+				equipment_loadout.armor_instances[String(slot_name)] = {}
 
 func _has_saved_equipment_loadout() -> bool:
 	for equipment_id in weapon_slot_ids:
@@ -391,6 +433,7 @@ func damage_random_equipped_item(player_node: Node = null) -> Dictionary:
 
 ## 序列化为字典（供 SaveManager 存档）。
 func serialize() -> Dictionary:
+	_capture_equipped_instances()
 	return {
 		"dungeon_floor": get_dungeon_floor(),
 		"expedition_inventory": expedition_inventory.to_dict(),
@@ -398,6 +441,7 @@ func serialize() -> Dictionary:
 		"spell_loadout": spell_loadout.serialize(),
 		"carried_weapons": carried_weapons,
 		"carried_shields": carried_shields,
+		"expedition_session": expedition_session.to_dict(),
 	}
 
 ## 构建联机出征存档摘要（P0-5/P1-4）：房主/玩家进入联机地牢时经 SessionRoot.handle_spawn_request
@@ -469,6 +513,8 @@ func deserialize(data: Dictionary) -> void:
 		carried_weapons = int(data["carried_weapons"])
 	if data.has("carried_shields"):
 		carried_shields = int(data["carried_shields"])
+	if data.has("expedition_session") and data["expedition_session"] is Dictionary:
+		expedition_session.from_dict(data["expedition_session"])
 
 ## 重置为初始状态
 func reset_state() -> void:
@@ -481,5 +527,12 @@ func reset_state() -> void:
 	equipment_loadout.weapon_slots = ["", "", "", ""]
 	equipment_loadout.armor_slots = {"head": "", "body": "", "hands": "", "feet": ""}
 	equipment_loadout.active_weapon_slot = 0
+	equipment_loadout.weapon_instances = [{}, {}, {}, {}]
+	equipment_loadout.armor_instances = {"head": {}, "body": {}, "hands": {}, "feet": {}}
+	# P1-1（0804）：替换法术装配对象后必须失效缓存的 PlayerContext，
+	# 否则"新 GameState 装配 + 旧 PlayerContext 装配"形成静默状态分叉。
+	_player_context = null
 	spell_loadout = SpellLoadoutClass.new()
 	refresh_spell_rune_inventory()
+	# 1215 C：新游戏/重置清空远征会话（新远征由 World.transition_to_dungeon 另行清空）。
+	expedition_session.clear()

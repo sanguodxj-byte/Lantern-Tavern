@@ -64,6 +64,9 @@ var _is_destroyed: bool = false
 
 ## 存活计时器
 var _lifetime_timer: SceneTreeTimer = null
+## 对象池代际（2351 审查 P0）：每次 _ready（生成/复用）递增；旧 timer 回调携带旧代际，
+## 只有当前代才能执行销毁/归还——防止池复用后旧 lifetime 回调误杀新代投射物。
+var _generation: int = 0
 
 ## 视觉延迟显示剩余时间（秒）。
 ## 投射物从第一人称枪口生成时，箭尾（箭羽）距相机极近（~0.08m），
@@ -84,6 +87,10 @@ func _ready() -> void:
 		push_warning("ProjectileEntity: projectile_data 为空，立即销毁")
 		queue_free()
 		return
+	# 对象池代际（2351 审查 P0）：每次生成/复用递增；旧 SceneTreeTimer 到期时
+	# 携带旧代际，只有当前代才能处理——防止旧 lifetime 回调误杀新代投射物。
+	_generation += 1
+	var generation := _generation
 	# 重置状态（对象池复用时需要）
 	_is_destroyed = false
 	_hit_targets.clear()
@@ -92,6 +99,9 @@ func _ready() -> void:
 	PhysicsSetup.setup_projectile(self)
 	gravity_scale = projectile_data.gravity_scale
 	_pierce_remaining = projectile_data.pierce_count
+	# 对象池复用后显式恢复处理标志（2351 审查 P1：request_ready 不会隐式恢复）
+	set_physics_process(true)
+	set_process(true)
 	# 碰撞形状
 	_build_collision_shape()
 	# 视觉外观（先清理旧视觉，再构建新视觉）
@@ -112,9 +122,9 @@ func _ready() -> void:
 	# 碰撞信号（对象池复用时可能已连接，需检查）
 	if not body_entered.is_connected(_on_body_entered):
 		body_entered.connect(_on_body_entered)
-	# 存活计时
+	# 存活计时（带代际：旧 timer 到期不得影响新代）
 	_lifetime_timer = get_tree().create_timer(projectile_data.lifetime)
-	_lifetime_timer.timeout.connect(_on_lifetime_expired)
+	_lifetime_timer.timeout.connect(func() -> void: _on_lifetime_expired(generation))
 
 ## 清理视觉子节点（对象池复用前调用）
 ## 使用 free() 立即释放，避免 queue_free() 延迟导致复用时新旧视觉并存。
@@ -517,9 +527,8 @@ func _destroy_with_impact() -> void:
 					(fx as Node3D).global_transform = global_transform
 	if projectile_data.impact_burst_type >= 0:
 		REH.spawn_hit_burst(global_position, projectile_data.impact_burst_type, projectile_data.default_color)
-	# 取消计时器
-	if _lifetime_timer != null and _lifetime_timer.timeout.is_connected(_on_lifetime_expired):
-		_lifetime_timer.timeout.disconnect(_on_lifetime_expired)
+	# 取消计时器引用（旧 timer 到期回调经代际检查自动失效；lambda 无法按名断开）
+	_lifetime_timer = null
 	# 停止物理运动
 	linear_velocity = Vector3.ZERO
 	angular_velocity = Vector3.ZERO
@@ -527,8 +536,10 @@ func _destroy_with_impact() -> void:
 	_return_to_pool()
 
 
-## 存活超时
-func _on_lifetime_expired() -> void:
+## 存活超时（带对象池代际：旧代 timer 到期不得误杀新代复用节点）
+func _on_lifetime_expired(generation: int = -1) -> void:
+	if generation >= 0 and generation != _generation:
+		return  # 旧代回调——本节点已被复用为新代投射物
 	if _is_destroyed:
 		return
 	_is_destroyed = true

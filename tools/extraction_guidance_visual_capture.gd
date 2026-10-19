@@ -60,13 +60,14 @@ func _add_environment(viewport: SubViewport) -> void:
 	environment.background_color = Color(0.025, 0.03, 0.04)
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color(0.46, 0.5, 0.58)
-	environment.ambient_light_energy = 0.42
+	# 2026-08-07：0.42 过暗导致验收截图主体不可辨，提亮至 0.7
+	environment.ambient_light_energy = 0.7
 	world_environment.environment = environment
 	viewport.add_child(world_environment)
 
 	var key_light := DirectionalLight3D.new()
 	key_light.light_color = Color(0.72, 0.78, 0.92)
-	key_light.light_energy = 0.8
+	key_light.light_energy = 1.1
 	key_light.light_specular = 0.0
 	key_light.rotation_degrees = Vector3(-52.0, -28.0, 0.0)
 	viewport.add_child(key_light)

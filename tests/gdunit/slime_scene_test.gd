@@ -20,7 +20,7 @@ func test_slime_scene_is_standalone_and_uses_only_its_fixed_rig() -> void:
 	assert_str(source).contains('[node name="Slime" type="CharacterBody3D"]')
 	assert_str(source).contains("res://scenes/characters/enemies/enemy.gd")
 	assert_str(source).contains(RIG_PATH)
-	assert_str(source).contains(CLAW_PATH)
+	# 非人形 body 攻击：不挂载武器（与 enemy_attack_mode_test 的 body 契约一致）
 	assert_int(source.count(".glb")).is_equal(1)
 	assert_str(source.to_lower()).not_contains("goblin")
 	assert_str(source).not_contains('node name="Slime" instance=')
@@ -75,9 +75,7 @@ func test_slime_scene_wires_enemy_components_without_humanoid_weapon_mounts() ->
 	var equipment := slime.get_node_or_null("EquipmentComponent") as EquipmentComponent
 	assert_object(equipment).is_not_null()
 	if equipment != null:
-		assert_object(equipment.weapon_data).is_not_null()
-		if equipment.weapon_data != null:
-			assert_str(equipment.weapon_data.resource_path).is_equal(CLAW_PATH)
+		assert_object(equipment.weapon_data).is_null()
 		assert_object(equipment.shield_data).is_null()
 		assert_object(equipment.weapon_placeholder).is_null()
 		assert_object(equipment.shield_placeholder).is_null()
@@ -132,8 +130,9 @@ func test_slime_natural_claw_attack_needs_no_visible_equipment_child() -> void:
 	add_child(slime)
 	await get_tree().process_frame
 	var equipment := slime.get_node("EquipmentComponent") as EquipmentComponent
-	assert_bool(equipment.has_weapon()).is_true()
-	assert_object(equipment.weapon_data).is_not_null()
+	# 非人形 body 攻击契约：不持武器、不挂可见装备，伤害由攻击模式/身体攻击距离承担
+	assert_bool(equipment.has_weapon()).is_false()
+	assert_object(equipment.weapon_data).is_null()
 	assert_object(equipment.weapon_placeholder).is_null()
 	assert_object(equipment.shield_placeholder).is_null()
 	slime.queue_free()
@@ -154,10 +153,13 @@ func test_slime_enemy_ready_resolves_complete_runtime_contract() -> void:
 	assert_object(slime.equipment).is_instanceof(EquipmentComponent)
 	assert_object(slime.health).is_instanceof(HealthComponent)
 	assert_object(slime.nav_agent).is_instanceof(NavigationAgent3D)
-	assert_object(slime.skeleton_simulator).is_instanceof(PhysicalBoneSimulator3D)
-	assert_object(slime.physical_bone_head).is_instanceof(PhysicalBone3D)
-	assert_object(slime.physical_bone_torso).is_instanceof(PhysicalBone3D)
-	assert_bool(slime.equipment.has_weapon()).is_true()
+	# 物理骨已在 _ready 中被 VoxelRagdoll 方案淘汰（enemy.gd _remove_unused_physical_bones）：
+	# 死亡表现由体素碎裂承担，遗留物理骨不再存在。
+	assert_object(slime.skeleton_simulator).is_null()
+	assert_object(slime.physical_bone_head).is_null()
+	assert_object(slime.physical_bone_torso).is_null()
+	assert_object(slime.voxel_ragdoll).is_not_null()
+	assert_bool(slime.equipment.has_weapon()).is_false()
 	slime.queue_free()
 	await get_tree().process_frame
 

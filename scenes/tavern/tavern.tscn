@@ -340,10 +340,10 @@ size = Vector3(1.5, 0.8987061, 0.3)
 size = Vector3(1.5, 0.8987061, 0.3)
 
 [sub_resource type="BoxMesh" id="BoxMesh_tu3sy"]
-size = Vector3(4, 3, 0.3)
+size = Vector3(4.85, 3, 0.3)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_d65ba"]
-size = Vector3(4, 3, 0.3)
+size = Vector3(4.85, 3, 0.3)
 
 [sub_resource type="BoxMesh" id="BoxMesh_5vn43"]
 size = Vector3(1.25, 3, 0.3)
@@ -406,10 +406,10 @@ size = Vector3(0.3, 3, 5.15)
 size = Vector3(0.3, 3, 5.15)
 
 [sub_resource type="BoxMesh" id="BoxMesh_2yaac"]
-size = Vector3(0.3, 3, 5.15)
+size = Vector3(0.3, 3, 2.15)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_qmx86"]
-size = Vector3(0.3, 3, 5.15)
+size = Vector3(0.3, 3, 2.15)
 
 [sub_resource type="BoxMesh" id="BoxMesh_l18ln"]
 size = Vector3(8, 3, 0.3)
@@ -474,6 +474,33 @@ size = Vector3(2.355, 0.47999987, 0.42)
 [sub_resource type="BoxShape3D" id="BoxShape_dungeon_transition"]
 size = Vector3(1.2, 2, 1.2)
 
+[sub_resource type="BoxMesh" id="BoxMesh_cellbrewfloor"]
+size = Vector3(4.85, 0.08, 4.34)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_cellbrewfloor"]
+size = Vector3(4.85, 0.08, 4.34)
+
+[sub_resource type="BoxMesh" id="BoxMesh_cellbreweast"]
+size = Vector3(0.3, 3, 4.34)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_cellbreweast"]
+size = Vector3(0.3, 3, 4.34)
+
+[sub_resource type="BoxMesh" id="BoxMesh_cellareastnorth"]
+size = Vector3(0.3, 3, 2.1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_cellareastnorth"]
+size = Vector3(0.3, 3, 2.1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_cellardoorlintel"]
+size = Vector3(0.3, 1, 1.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_cellardoorlintel"]
+size = Vector3(0.3, 1, 1.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_winerackzone"]
+size = Vector3(4.6992188, 0.04, 1)
+
 [node name="TavernInterior" type="Node3D" unique_id=1930000628]
 script = ExtResource("1_tavern")
 
@@ -506,6 +533,13 @@ mesh = SubResource("BoxMesh_dlb7h")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.2738647, 3.1, -2.7427979)
 material_override = ExtResource("3_s35y4")
 mesh = SubResource("BoxMesh_dlb7h")
+
+[node name="CeilingBody" type="StaticBody3D" parent="Structure/BuiltStructure"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.2738647, 3.1, -2.7427979)
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Structure/BuiltStructure/CeilingBody"]
+shape = SubResource("BoxShape3D_uhcg5")
 
 [node name="FloorBody" type="StaticBody3D" parent="Structure/BuiltStructure" unique_id=2104929474]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, -0.1, -1.25)
@@ -708,6 +742,13 @@ shape = SubResource("BoxShape3D_h5qwo")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.6503906, 0.018, -6.75)
 material_override = ExtResource("7_8dkxe")
 mesh = SubResource("BoxMesh_unukp")
+
+[node name="WineRackZoneBody" type="StaticBody3D" parent="Structure/BuiltStructure"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.6503906, 0.018, -6.75)
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Structure/BuiltStructure/WineRackZoneBody"]
+shape = SubResource("BoxShape3D_winerackzone")
 
 [node name="BackHallFloor" type="MeshInstance3D" parent="Structure/BuiltStructure" unique_id=157246545]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.25, -0.04, -5.25)
@@ -1238,12 +1279,12 @@ collision_mask = 0
 shape = SubResource("BoxShape3D_8we2t")
 
 [node name="CellarEastWall" type="MeshInstance3D" parent="Structure/BuiltStructure" unique_id=471969475]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.15, -1.54, -6.125)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.15, -1.54, -7.775)
 material_override = ExtResource("4_dlb7h")
 mesh = SubResource("BoxMesh_2yaac")
 
 [node name="CellarEastWallBody" type="StaticBody3D" parent="Structure/BuiltStructure" unique_id=1511071394]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.15, -1.54, -6.125)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.15, -1.54, -7.775)
 collision_mask = 0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Structure/BuiltStructure/CellarEastWallBody" unique_id=145126545]
@@ -1371,6 +1412,78 @@ collision_mask = 0
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Structure/BuiltStructure/CellarStairStep7Body" unique_id=1016676503]
 shape = SubResource("BoxShape3D_oadbs")
 
+[node name="CellarBrewFloor" type="MeshInstance3D" parent="Structure/BuiltStructure"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.575, -3.04, -5.57)
+material_override = ExtResource("3_s35y4")
+mesh = SubResource("BoxMesh_cellbrewfloor")
+
+[node name="CellarBrewFloorBody" type="StaticBody3D" parent="Structure/BuiltStructure"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.575, -3.04, -5.57)
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Structure/BuiltStructure/CellarBrewFloorBody"]
+shape = SubResource("BoxShape3D_cellbrewfloor")
+
+[node name="CellarBrewSouthWall" type="MeshInstance3D" parent="Structure/BuiltStructure"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.575, -1.54, -7.74)
+material_override = ExtResource("4_dlb7h")
+mesh = SubResource("BoxMesh_tu3sy")
+
+[node name="CellarBrewSouthWallBody" type="StaticBody3D" parent="Structure/BuiltStructure"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.575, -1.54, -7.74)
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Structure/BuiltStructure/CellarBrewSouthWallBody"]
+shape = SubResource("BoxShape3D_d65ba")
+
+[node name="CellarBrewNorthWall" type="MeshInstance3D" parent="Structure/BuiltStructure"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.575, -1.54, -3.4)
+material_override = ExtResource("4_dlb7h")
+mesh = SubResource("BoxMesh_tu3sy")
+
+[node name="CellarBrewNorthWallBody" type="StaticBody3D" parent="Structure/BuiltStructure"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.575, -1.54, -3.4)
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Structure/BuiltStructure/CellarBrewNorthWallBody"]
+shape = SubResource("BoxShape3D_d65ba")
+
+[node name="CellarBrewEastWall" type="MeshInstance3D" parent="Structure/BuiltStructure"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.0, -1.54, -5.57)
+material_override = ExtResource("4_dlb7h")
+mesh = SubResource("BoxMesh_cellbreweast")
+
+[node name="CellarBrewEastWallBody" type="StaticBody3D" parent="Structure/BuiltStructure"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.0, -1.54, -5.57)
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Structure/BuiltStructure/CellarBrewEastWallBody"]
+shape = SubResource("BoxShape3D_cellbreweast")
+
+[node name="CellarEastWallNorth" type="MeshInstance3D" parent="Structure/BuiltStructure"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.15, -1.54, -4.45)
+material_override = ExtResource("4_dlb7h")
+mesh = SubResource("BoxMesh_cellareastnorth")
+
+[node name="CellarEastWallNorthBody" type="StaticBody3D" parent="Structure/BuiltStructure"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.15, -1.54, -4.45)
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Structure/BuiltStructure/CellarEastWallNorthBody"]
+shape = SubResource("BoxShape3D_cellareastnorth")
+
+[node name="CellarBrewDoorLintel" type="MeshInstance3D" parent="Structure/BuiltStructure"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.15, -0.54, -6.1)
+material_override = ExtResource("4_dlb7h")
+mesh = SubResource("BoxMesh_cellardoorlintel")
+
+[node name="CellarBrewDoorLintelBody" type="StaticBody3D" parent="Structure/BuiltStructure"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.15, -0.54, -6.1)
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Structure/BuiltStructure/CellarBrewDoorLintelBody"]
+shape = SubResource("BoxShape3D_cellardoorlintel")
+
 [node name="RoomNavigation" type="NavigationRegion3D" parent="." unique_id=1144814454]
 unique_name_in_owner = true
 use_edge_connections = false
@@ -1395,6 +1508,24 @@ transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -4.9
 
 [node name="Torch_SE" parent="Lights" unique_id=1764717478 instance=ExtResource("5_torch")]
 transform = Transform3D(5.9604645e-08, 0, 0.99999994, 0, 1, 0, -0.99999994, 0, 5.9604645e-08, 6.734, 0.8, -2.75)
+
+[node name="Torch_CellarWest" parent="Lights" instance=ExtResource("5_torch")]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -4.97, -2.3990078, -5.5)
+
+[node name="Torch_CellarNorth" parent="Lights" instance=ExtResource("5_torch")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, -2.3990078, -3.5)
+
+[node name="Torch_CellarEast" parent="Lights" instance=ExtResource("5_torch")]
+transform = Transform3D(5.9604645e-08, 0, 0.99999994, 0, 1, 0, -0.99999994, 0, 5.9604645e-08, 2.97, -2.3990078, -6.8)
+
+[node name="Torch_BrewNorth" parent="Lights" instance=ExtResource("5_torch")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.9, -2.3990078, -3.5)
+
+[node name="Torch_BrewEast" parent="Lights" instance=ExtResource("5_torch")]
+transform = Transform3D(5.9604645e-08, 0, 0.99999994, 0, 1, 0, -0.99999994, 0, 5.9604645e-08, 6.95, -2.3990078, -5.2)
+
+[node name="Torch_BrewSouth" parent="Lights" instance=ExtResource("5_torch")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 5.15, -2.3990078, -7.65)
 
 [node name="Chandelier_MainHall" parent="Lights" unique_id=1929484861 instance=ExtResource("31_chandelier")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 0.8)

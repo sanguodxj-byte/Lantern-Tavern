@@ -30,8 +30,8 @@ func _ready() -> void:
 	highlight_material = HIGHLIGHT_MATERIAL.duplicate()
 	highlight_material.emission_enabled = false
 	
-	if weapon_data and weapon_data.glb_mesh:
-		pickable_object = weapon_data.glb_mesh.instantiate()
+	if weapon_data and weapon_data.get_glb_mesh():
+		pickable_object = weapon_data.get_glb_mesh().instantiate()
 	elif shield_data and shield_data.glb_mesh:
 		pickable_object = shield_data.glb_mesh.instantiate()
 	elif material_id != "":

@@ -17,6 +17,8 @@ extends Node
 ##
 ## 不声明 class_name：避免 headless 类注册 / .uid 同步问题；经 preload 引用。
 
+const Service := preload("res://globals/core/service.gd")
+
 const NP := preload("res://globals/multiplayer/network_protocol.gd")
 const NetworkManagerClass := preload("res://globals/core/network_manager.gd")
 const DEFAULT_AVATAR := preload("res://scenes/multiplayer/multiplayer_avatar.tscn")
@@ -143,12 +145,13 @@ func _on_event(event: Dictionary) -> void:
 			var pos: Vector3 = event.get("position", Vector3.ZERO)
 			var yaw: float = float(event.get("look_yaw", 0.0))
 			if _is_server():
-				# 服务器：更新本地可见的远端 avatar，并广播给客户端。
+				# 服务器：只更新本地可见的远端 avatar。
+				# B4（0644 审查）：不再二次 rpc_snapshot 广播——同一快照已由
+				# NetworkManager rpc_server_event_unreliable 通道直达客户端，再广播
+				# 会造成客户端重复应用同一位置事件（双真相/流量翻倍）。
 				var av: Node3D = _avatars.get(pid, null)
 				if av != null and av.has_method("apply_snapshot"):
 					av.apply_snapshot(pos, yaw)
-				if _can_rpc():
-					rpc_snapshot.rpc(pid, pos, yaw)
 			else:
 				# 客户端：直接用快照驱动本地（服务器复制来的）avatar。
 				var av: Node3D = _avatars.get(pid, null)
@@ -182,8 +185,8 @@ func _on_event(event: Dictionary) -> void:
 			if int(event.get("peer_id", -1)) == _local_peer_id() and not bool(event.get("already_settled", false)):
 				_apply_extraction_settlement(event.get("settlement", {}))
 
-## 客户端收到：把某 peer 的权威快照应用到本地 avatar（插值由 avatar 自身完成）。
-## 性能优化：位置快照走 unreliable 通道——丢包可容忍（下一帧自动补上），减少延迟。
+## 遗留通道：仅集成测试（mp_avatar_test.gd）直接调用以模拟服务器下发。
+## 生产复制出口已统一为 NetworkManager 事件协议（B4，0644 审查）——生产代码不再调用本函数。
 @rpc("authority", "call_remote", "unreliable")
 func rpc_snapshot(peer_id: int, position: Vector3, yaw: float) -> void:
 	if _is_server():
@@ -347,7 +350,7 @@ func _local_peer_id() -> int:
 func _apply_extraction_settlement(settlement: Dictionary) -> void:
 	if settlement == null or settlement.is_empty():
 		return
-	var gs: Node = get_node_or_null("/root/GameState")
+	var gs: Node = Service.game_state()
 	if gs == null:
 		return
 	for k in (settlement.get("materials", {}) as Dictionary).keys():
@@ -362,20 +365,35 @@ func _apply_extraction_settlement(settlement: Dictionary) -> void:
 	# P1-4：联机成长（经验/升级/熟练度）随结算写回单人存档属性面板
 	# （服务器权威快照覆盖本地镜像——联机期间本地面板不累积 XP，覆盖即同步）。
 	if settlement.has("attributes") and settlement["attributes"] is Dictionary:
-		var ap: Node = get_node_or_null("/root/AttrPanel")
+		var ap: Node = Service.attr_panel()
 		if ap != null and ap.has_method("deserialize"):
 			ap.deserialize(settlement["attributes"])
-	# 持久化：联机出征结算写入固定槽位 0（垂直切片简化；生产应接当前存档槽位）。
-	var sm: Node = get_node_or_null("/root/SaveManager")
-	if sm != null and sm.has_method("save_to_slot"):
-		sm.save_to_slot(0)
+	# P1-3（0304 审查）：联机结算落盘必须使用活动存档槽位（SaveManager.active_slot，
+	# 由 load/save 维护）——禁止硬编码槽位 0（会覆盖其他角色/使当前槽位不落盘）。
+	# 无活动槽位时显式告警并跳过，绝不静默写 0。
+	var sm: Node = Service.save_manager()
+	if sm == null:
+		return
+	if not sm.has_method("save_to_slot"):
+		return
+	if int(sm.active_slot) < 0:
+		push_warning("[MultiplayerSceneBridge] 联机结算跳过落盘：无活动存档槽位（active_slot=%d）" % int(sm.active_slot))
+		return
+	sm.save_to_slot(int(sm.active_slot))
+	# P1-2（1727 审查）：结算应用与落盘成功后，通知 DungeonSessionController 完成
+	# 离场闭环（extraction_completed 幂等发出一次，供上层切场/回城）。
+	var session: Node = Service.multiplayer_session()
+	if session != null and "controller" in session and session.controller != null \
+			and is_instance_valid(session.controller) \
+			and session.controller.has_method("notify_extraction_applied"):
+		session.controller.notify_extraction_applied(settlement)
 
 ## 取得 NetworkManager 单例（autoload）。未挂载（纯逻辑单测）时返回 null。
 func _local_player_node() -> Node:
-	var session := get_node_or_null("/root/MultiplayerSession")
+	var session: Node = Service.multiplayer_session()
 	if session != null and "local_player" in session:
 		return session.local_player
 	return get_tree().get_first_node_in_group("player")
 
 func _network_manager() -> Node:
-	return get_node_or_null("/root/NetworkManager")
+	return Service.network_manager()

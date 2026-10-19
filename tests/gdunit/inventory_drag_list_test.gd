@@ -79,17 +79,42 @@ func test_mouse_release_stops_box_select() -> void:
 	assert_bool(list._drag_selecting).is_false()
 	list.queue_free()
 
+
+func test_click_on_rune_or_material_item_does_not_start_box_select() -> void:
+	# 符文/材料按下不应启动框选：交给原生拖拽（_get_drag_data），
+	# 避免框选改写选中集导致拖拽载荷错乱（实机"符文拖曳/选中异常"根因）。
+	var list := _create_list()
+	list.size = Vector2(960.0, 600.0)
+	await await_idle_frame()
+	var item_rect: Rect2 = list.get_item_rect(2, true)  # item 2 = material
+	assert_bool(item_rect.size.x > 0.0).is_true()
+	var click := _make_click(item_rect.get_center(), true)
+	list._gui_input(click)
+	assert_bool(list._drag_selecting).is_false() \
+		.override_failure_message("按下符文/材料物品不应启动框选，应走原生拖拽")
+	# 空白区域仍应启动框选（批量多选）
+	list._gui_input(_make_click(Vector2(9999, 9999), true))
+	assert_bool(list._drag_selecting).is_true()
+	list.queue_free()
+
 # ── source code verification ──────────────────────────────────────
 
 func test_source_contains_equipment_check() -> void:
 	var source: String = FileAccess.get_file_as_string(DRAG_LIST_SCRIPT)
 	assert_bool(source.contains("_is_equipment_item_at")).is_true() \
 		.override_failure_message("源码应包含 _is_equipment_item_at 方法")
-	assert_bool(source.contains("not _is_equipment_item_at(idx)")).is_true() \
-		.override_failure_message("源码应在 _gui_input 中抑制装备物品的框选")
+	# 物品（装备/材料/符文）统一走原生拖拽：只有按下空白区域才启动框选
+	assert_bool(source.contains("_drag_selecting = idx < 0")) \
+		.override_failure_message("源码应在按下物品时不启动框选（交给原生拖拽），仅空白区域框选") \
+		.is_true()
+	# 框选时消费事件，抑制原生拖拽与框选竞争
+	assert_bool(source.contains("accept_event()")) \
+		.override_failure_message("框选分支应 accept_event 抑制原生拖拽冲突").is_true()
 	# Old unconditional behavior should be gone
 	assert_bool(source.contains("_drag_selecting = event.pressed")).is_false() \
 		.override_failure_message("不应保留无条件框选旧行为")
+	assert_bool(source.contains("_drag_selecting = not _is_equipment_item_at(idx)")).is_false() \
+		.override_failure_message("不应保留仅装备豁免框选的旧行为（符文/材料会框选与拖拽冲突）")
 
 
 func test_source_contains_pixel_grid_and_custom_name_layer() -> void:
@@ -203,3 +228,47 @@ func test_native_selection_and_focus_frames_are_disabled_for_custom_grid() -> vo
 	assert_bool(source.contains('add_theme_stylebox_override("cursor", empty_style)')).is_true()
 	assert_bool(source.contains('add_theme_stylebox_override("cursor_unfocus", empty_style)')).is_true()
 	list.queue_free()
+
+
+# ── 拖拽预览必须显示图标（禁止纯文字）─────────────────────────────
+
+const DETAIL_POPUP_SCRIPT := preload("res://scenes/ui/equipment_detail_popup.gd")
+
+
+func test_drag_payload_icon_equipment() -> void:
+	var list := _create_list()
+	var icon: Texture2D = list._drag_payload_icon({"kind": "equipment", "id": "sword"})
+	assert_object(icon).is_not_null()
+	list.queue_free()
+
+
+func test_drag_payload_icon_runes() -> void:
+	var list := _create_list()
+	var icon: Texture2D = list._drag_payload_icon({"kind": "inventory_runes", "rune_ids": ["ember"]})
+	assert_object(icon).is_not_null()
+	list.queue_free()
+
+
+func test_drag_payload_icon_materials() -> void:
+	var list := _create_list()
+	var icon: Texture2D = list._drag_payload_icon({"kind": "inventory_materials", "ids": ["wild_glowcap"]})
+	assert_object(icon).is_not_null()
+	list.queue_free()
+
+
+func test_drag_payload_icon_unknown_kind_returns_null() -> void:
+	var list := _create_list()
+	assert_object(list._drag_payload_icon({"kind": "unknown"})).is_null()
+	list.queue_free()
+
+
+func test_build_drag_preview_contains_icon() -> void:
+	# 拖拽预览控件必须包含图标 TextureRect（禁止纯文字预览）。
+	var preview := DETAIL_POPUP_SCRIPT.build_drag_preview(DETAIL_POPUP_SCRIPT.icon_for_rune("ember"), "ember")
+	add_child(preview)
+	await await_idle_frame()
+	var texture_rects := preview.find_children("*", "TextureRect", true, false)
+	assert_int(texture_rects.size()).is_greater(0)
+	if not texture_rects.is_empty():
+		assert_object((texture_rects[0] as TextureRect).texture).is_not_null()
+	preview.queue_free()

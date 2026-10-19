@@ -25,6 +25,13 @@ func test_spell_authority_executes_heal_barrier_and_movement() -> void:
 
 func test_world_effects_produce_structured_requests_not_fake_damage() -> void:
 	var player := FakePlayer.new(); add_child(player); var auth := Authority.new()
+	# P1-4（0643 审查）：projectile 生成改经注入端口；测试装配 stub 端口返回占位节点。
+	auth.set_projectile_spawn_port(func(_id: String, _t: Transform3D, _c: Node3D, _target: Node,
+			_skill: Dictionary, _world: Node) -> Node:
+		var dummy := Node.new()
+		player.add_child(dummy)
+		return dummy
+	)
 	# projectile 用已注册 id + 权威伤害（P1-2：执行器必读 plan.damage，缺则失败）。
 	var plans := {
 		"projectile": {"type": "projectile", "projectile_id": "elemental_bolt", "damage": 10},
@@ -52,4 +59,7 @@ func test_player_has_spell_input_and_caster_boundary() -> void:
 	var source := (load("res://scenes/characters/player/player.gd") as GDScript).source_code
 	assert_bool(source.contains("PLAYER_SPELL_CASTER")).is_true()
 	assert_bool(source.contains("cast_spell")).is_true()
-	assert_bool(source.contains("spell_slot_5")).is_true()
+	# 法术输入重构（预存 WIP）：无 1-5 快捷键切换槽位——左键蓄力释放
+	# 法术页当前选中的槽位，槽位切换必须进入法术页点击。断言新设计契约。
+	assert_bool(source.contains("cast_selected")).is_true()
+	assert_bool(source.contains("is_spell_interface_open")).is_true()

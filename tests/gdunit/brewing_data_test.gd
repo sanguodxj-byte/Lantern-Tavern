@@ -302,3 +302,23 @@ func test_compute_brew_flavors_unknown_material_ignored() -> void:
 func test_compute_brew_flavors_empty_returns_empty() -> void:
 	var result: Dictionary = bd.compute_brew_flavors({})
 	assert_bool(result.is_empty()).is_true()
+
+
+# ---------- find_unknown_materials 输入校验 (P1-1) ----------
+
+func test_find_unknown_materials_empty_for_valid_recipe() -> void:
+	var ings := {"blackberry": 2, "glowshroom": 1, "pixie_dust": 1}
+	assert_bool(BD.find_unknown_materials(ings).is_empty()).is_true()
+
+func test_find_unknown_materials_lists_monster_drop() -> void:
+	var ings := {"goblin_ear": 2, "skeleton_dust": 1}
+	var unknown: Array = BD.find_unknown_materials(ings)
+	assert_int(unknown.size()).is_equal(2)
+	assert_bool("goblin_ear" in unknown).is_true()
+	assert_bool("skeleton_dust" in unknown).is_true()
+
+func test_find_unknown_materials_mixed_marks_only_unknown() -> void:
+	var ings := {"blackberry": 1, "goblin_ear": 1}
+	var unknown: Array = BD.find_unknown_materials(ings)
+	assert_int(unknown.size()).is_equal(1)
+	assert_bool(unknown[0] == "goblin_ear").is_true()

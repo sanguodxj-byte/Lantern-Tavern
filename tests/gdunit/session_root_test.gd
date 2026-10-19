@@ -127,6 +127,36 @@ func test_settlement_writes_back_to_server_save_repo() -> void:
 	assert_int(int(saved["materials"]["goblin_tooth"])) \
 		.override_failure_message("结算必须把当前权威背包写回服务器存档仓").is_equal(2)
 
+## P0-2（1122 审查）：持久化失败 → 返回 SAVE_PERSIST_FAILED，且不消耗幂等机会。
+class FailingSaveRepo:
+	extends "res://globals/multiplayer/server_save_repository.gd"
+	var calls := 0
+	func save_save(_player_guid: String, _data: Dictionary) -> bool:
+		calls += 1
+		return false
+
+func test_extraction_persist_failure_returns_error_and_keeps_idempotency() -> void:
+	var s: SR = auto_free(_make_server())
+	var ctx = s.handle_spawn_request(1, {}, "player_failpersist")
+	ctx.inventory.add_material("goblin_tooth", 2)
+	var failing: FailingSaveRepo = auto_free(FailingSaveRepo.new())
+	s.server_save_repo = failing
+	var r: Dictionary = s.on_command(1, {"type": NP.CMD_EXTRACT,
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
+	assert_bool(bool(r.get("success", false))).is_false()
+	assert_str(String(r.get("error_code", ""))).is_equal(NP.ERR_SAVE_PERSIST_FAILED)
+	# 幂等机会未被消耗：settled 未标记，重试不会命中 already_settled 缓存
+	assert_bool(s.save_auth.is_settled("player_failpersist")).is_false()
+	assert_int(failing.calls).is_equal(1)
+	# 存储恢复后可重试并成功
+	var repo = auto_free(load("res://globals/multiplayer/server_save_repository.gd").new())
+	repo.set_save_dir("user://test_sess_saves_%d" % Time.get_ticks_usec())
+	s.server_save_repo = repo
+	var r2: Dictionary = s.on_command(1, {"type": NP.CMD_EXTRACT,
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 2})
+	assert_bool(bool(r2.get("success", false))).is_true()
+	assert_bool(s.save_auth.is_settled("player_failpersist")).is_true()
+
 # ---------------------------------------------------------------------------
 # 命令入口 / 权限边界
 # ---------------------------------------------------------------------------
@@ -553,7 +583,7 @@ func test_extraction_settlement_returns_net_gain_only() -> void:
 	# 地牢中捡到 2 个 goblin_tooth。
 	ctx.inventory.add_material("goblin_tooth", 2)
 	# 结算：净获得应只有 goblin_tooth=2，不含 baseline 的 rat_tail=5（避免重复累加）。
-	var settle: Dictionary = s._compute_settlement(1)
+	var settle: Dictionary = s.expedition_service.compute_settlement(1)
 	assert_int(int((settle["materials"] as Dictionary).get("goblin_tooth", 0))).is_equal(2)
 	assert_bool((settle["materials"] as Dictionary).has("rat_tail")).is_false()
 
@@ -571,7 +601,7 @@ func test_extraction_handler_emits_result_event() -> void:
 func test_extraction_settlement_zero_when_nothing_gathered() -> void:
 	var s: SR = auto_free(_make_server())
 	s.handle_spawn_request(1)
-	var settle: Dictionary = s._compute_settlement(1)
+	var settle: Dictionary = s.expedition_service.compute_settlement(1)
 	assert_bool((settle["materials"] as Dictionary).is_empty()).is_true()
 	assert_bool((settle["runes"] as Dictionary).is_empty()).is_true()
 	assert_bool((settle["equipment"] as Dictionary).is_empty()).is_true()
@@ -652,19 +682,198 @@ func test_handle_skill_rejects_unowned_skill() -> void:
 func test_handle_skill_accepts_owned_skill() -> void:
 	var s: SR = auto_free(_make_server())
 	var ctx = s.handle_spawn_request(1)
-	# 在服务器权威上下文中绑定技能，再请求释放。
-	ctx.skills.slots[ctx.skills.SLOT_F_ACTION] = "test_fireball"
-	var r: Dictionary = s.on_command(1, {"type": NP.CMD_SKILL, "skill_id": "test_fireball",
+	# 在服务器权威技能运行时中绑定真实技能（1417 审查 P0-2：无定义的占位 id 会被拒绝）。
+	ctx.skills.slots[ctx.skills.SLOT_F_ACTION] = "滑铲"
+	var r: Dictionary = s.on_command(1, {"type": NP.CMD_SKILL, "skill_id": "滑铲",
 		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
 	assert_bool(r["success"]).is_true()
 	assert_str(r["event"]["event"]).is_equal(NP.EVT_SKILL_STATE_CHANGED)
-	assert_str(r["event"]["skill_id"]).is_equal("test_fireball")
+	assert_str(r["event"]["skill_id"]).is_equal("滑铲")
 	assert_int(int(r["event"]["peer_id"])).is_equal(1)
-	# 重复 sequence 应被拒（防重放）。
-	var r2: Dictionary = s.on_command(1, {"type": NP.CMD_SKILL, "skill_id": "test_fireball",
+	# 重复 sequence 应被拒绝（防重放）。
+	var r2: Dictionary = s.on_command(1, {"type": NP.CMD_SKILL, "skill_id": "滑铲",
 		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
 	assert_bool(r2["success"]).is_false()
 	assert_str(r2["error_code"]).is_equal(NP.ERR_INVALID_SEQUENCE)
+
+## P0-2（1417 审查）：技能成功触发提交权威冷却（服务器可断言状态变化）。
+func test_handle_skill_commits_authoritative_cooldown() -> void:
+	var s: SR = auto_free(_make_server())
+	var ctx = s.handle_spawn_request(1)
+	ctx.skills.slots[ctx.skills.SLOT_F_ACTION] = "滑铲"
+	var r: Dictionary = s.on_command(1, {"type": NP.CMD_SKILL, "skill_id": "滑铲",
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
+	assert_bool(r["success"]).is_true()
+	assert_int(int(r["event"].get("cooldown_ms", 0))).is_greater(0)
+	assert_bool(s.skill_auth.is_on_cooldown(1, "滑铲")).is_true()
+	assert_int(s.skill_auth.remaining_cooldown_ms(1, "滑铲")).is_greater(0)
+
+## P0-2（1417 审查）：冷却中重复触发 → ERR_COOLDOWN_ACTIVE，事件只广播一次。
+func test_handle_skill_cooldown_blocks_repeat() -> void:
+	var s: SR = auto_free(_make_server())
+	var ctx = s.handle_spawn_request(1)
+	ctx.skills.slots[ctx.skills.SLOT_F_ACTION] = "滑铲"
+	var events: Array = []
+	s.session_event.connect(func(ev): if String(ev.get("event", "")) == NP.EVT_SKILL_STATE_CHANGED: events.append(ev))
+	assert_bool(bool(s.on_command(1, {"type": NP.CMD_SKILL, "skill_id": "滑铲",
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1}).get("success", false))).is_true()
+	var r2: Dictionary = s.on_command(1, {"type": NP.CMD_SKILL, "skill_id": "滑铲",
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 2})
+	assert_bool(bool(r2.get("success", false))).is_false()
+	assert_str(String(r2.get("error_code", ""))).is_equal(NP.ERR_COOLDOWN_ACTIVE)
+	assert_int(events.size()).is_equal(1)
+
+## P0-2（1417 审查）：已绑定但无权威定义（伪造/占位 id）→ 拒绝，不广播。
+func test_handle_skill_rejects_unknown_definition() -> void:
+	var s: SR = auto_free(_make_server())
+	var ctx = s.handle_spawn_request(1)
+	ctx.skills.slots[ctx.skills.SLOT_F_ACTION] = "test_fireball"
+	var r: Dictionary = s.on_command(1, {"type": NP.CMD_SKILL, "skill_id": "test_fireball",
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
+	assert_bool(bool(r.get("success", false))).is_false()
+	assert_str(String(r.get("error_code", ""))).is_equal(NP.ERR_INVALID_TARGET)
+
+## P0-1（2251 审查）：技能真实效果——范围内目标受到权威伤害（实体生命减少）、
+## 冷却提交、实体更新事件随技能事件广播。
+func test_skill_damage_hits_target_in_range() -> void:
+	var s: SR = auto_free(_make_server())
+	var ctx = s.handle_spawn_request(1)
+	ctx.skills.slots[ctx.skills.SLOT_F_ACTION] = "踢击"
+	s._live_state[1] = {"peer_id": 1, "is_alive": true, "position": Vector3.ZERO, "facing": Vector3(0, 0, -1)}
+	s.set_entity(1001, {"kind": "enemy", "position": Vector3(0.5, 0, 0), "current_life": 50, "max_life": 50, "label": "goblin"})
+	var events: Array = []
+	s.session_event.connect(func(ev): events.append(ev))
+	var r: Dictionary = s.on_command(1, {"type": NP.CMD_SKILL, "skill_id": "踢击", "target_hint": 1001,
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
+	assert_bool(bool(r.get("success", false))).is_true()
+	# 权威伤害：目标生命减少且未死亡
+	var life: int = int(s._entities[1001].get("current_life", 50))
+	assert_int(life).is_less(50)
+	assert_int(life).is_greater_equal(0)
+	assert_int(int(r.get("event", {}).get("effects", {}).get("damage", 0))).is_greater(0)
+	# 冷却已提交 + 实体更新/战斗事件已广播
+	assert_bool(s.skill_auth.is_on_cooldown(1, "踢击")).is_true()
+	var entity_events: Array = events.filter(func(ev): return String(ev.get("event", "")) == NP.EVT_ENTITY_SNAPSHOT or String(ev.get("event", "")) == NP.EVT_COMBAT_RESOLVED)
+	assert_bool(entity_events.size() > 0).is_true()
+
+## P0-1（2251 审查）：超距离目标 → 拒绝且不提交冷却（失败零副作用）。
+func test_skill_damage_rejects_out_of_range() -> void:
+	var s: SR = auto_free(_make_server())
+	var ctx = s.handle_spawn_request(1)
+	ctx.skills.slots[ctx.skills.SLOT_F_ACTION] = "踢击"
+	s._live_state[1] = {"peer_id": 1, "is_alive": true, "position": Vector3.ZERO, "facing": Vector3(0, 0, -1)}
+	s.set_entity(1001, {"kind": "enemy", "position": Vector3(10, 0, 0), "current_life": 50, "max_life": 50, "label": "goblin"})
+	var r: Dictionary = s.on_command(1, {"type": NP.CMD_SKILL, "skill_id": "踢击", "target_hint": 1001,
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
+	assert_bool(bool(r.get("success", false))).is_false()
+	assert_str(String(r.get("error_code", ""))).is_equal(NP.ERR_INVALID_TARGET)
+	assert_bool(s.skill_auth.is_on_cooldown(1, "踢击")).is_false()
+	assert_int(int(s._entities[1001].get("current_life", 50))).is_equal(50)
+
+## P0-1（2251 审查）：位移 + 自buff 技能——live position 权威更新、ctx.buffs 写入。
+func test_skill_movement_dashes_and_applies_buff() -> void:
+	var s: SR = auto_free(_make_server())
+	var ctx = s.handle_spawn_request(1)
+	ctx.skills.slots[ctx.skills.SLOT_F_ACTION] = "滑铲"
+	s._live_state[1] = {"peer_id": 1, "is_alive": true, "position": Vector3.ZERO, "facing": Vector3(0, 0, -1)}
+	var r: Dictionary = s.on_command(1, {"type": NP.CMD_SKILL, "skill_id": "滑铲",
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
+	assert_bool(bool(r.get("success", false))).is_true()
+	# 权威位移：headless 下 live position 沿 facing 前进 range_m(4.0)
+	var pos: Vector3 = s._live_state[1].get("position", Vector3.ZERO)
+	assert_float(pos.z).is_less(-3.0)
+	# 自 buff：滑铲 iframes 0.5s → 写绝对毫秒过期（0643 审查 P1-1）。
+	# 断言行为而非内部值：施放后 buff 必须存在且未过期；过期时刻 ≈ now + 500ms。
+	var iframes_expiry: int = int(ctx.buffs.get("iframes", 0))
+	assert_int(iframes_expiry).is_greater(0)
+	var now_ms: int = Time.get_ticks_msec()
+	assert_int(iframes_expiry).is_greater(now_ms)
+	assert_int(iframes_expiry - now_ms).is_less_equal(600)
+	# 到期后 expire_buffs 必须清除该 buff。
+	var expired: Array = ctx.expire_buffs(iframes_expiry)
+	assert_bool(expired.has("iframes")).is_true()
+	assert_bool(ctx.buffs.has("iframes")).is_false()
+	# 冷却已提交
+	assert_bool(s.skill_auth.is_on_cooldown(1, "滑铲")).is_true()
+
+## P1-1（0304 审查）：被动技能禁止经主动命令触发。
+func test_skill_rejects_passive_as_active() -> void:
+	var s: SR = auto_free(_make_server())
+	var ctx = s.handle_spawn_request(1)
+	ctx.skills.slots[ctx.skills.SLOT_F_ACTION] = "招架反击"
+	var r: Dictionary = s.on_command(1, {"type": NP.CMD_SKILL, "skill_id": "招架反击",
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
+	assert_bool(bool(r.get("success", false))).is_false()
+	assert_str(String(r.get("error_code", ""))).is_equal(NP.ERR_INVALID_TARGET)
+	assert_bool(s.skill_auth.is_on_cooldown(1, "招架反击")).is_false()
+
+## P1-1（0304 审查）：impact 族技能（踢击）的 range_m 只用于目标距离校验，不泛化为位移。
+func test_skill_impact_family_does_not_dash() -> void:
+	var s: SR = auto_free(_make_server())
+	var ctx = s.handle_spawn_request(1)
+	ctx.skills.slots[ctx.skills.SLOT_F_ACTION] = "踢击"
+	s._live_state[1] = {"peer_id": 1, "is_alive": true, "position": Vector3.ZERO, "facing": Vector3(0, 0, -1)}
+	# 给一个范围内的目标，使伤害路径成功（否则 execute 会因无目标整体拒绝）
+	s.set_entity(1001, {"kind": "enemy", "position": Vector3(0.5, 0, 0), "current_life": 50, "max_life": 50, "label": "goblin"})
+	var r: Dictionary = s.on_command(1, {"type": NP.CMD_SKILL, "skill_id": "踢击", "target_hint": 1001,
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
+	assert_bool(bool(r.get("success", false))).is_true()
+	# 位移效果不得出现（impact 族不冲刺）
+	var effects: Dictionary = r.get("event", {}).get("effects", {}) if r.get("event", {}).get("effects") is Dictionary else {}
+	assert_bool(effects.has("dash_m")).is_false()
+	# live position 保持原地
+	var pos: Vector3 = s._live_state[1].get("position", Vector3.ZERO)
+	assert_float(pos.z).is_equal(0.0)
+
+## P0-1（1417 审查）：生产出征入口与 CMD_EXPEDITION 共用同一权威事务——
+## 结算账本重置（旧 run 已结算清空）、world 空间推进、world_revision 递增。
+func test_authoritative_expedition_resets_ledger_and_bumps_world() -> void:
+	var s: SR = auto_free(_make_server())
+	s.handle_spawn_request(1)
+	# 模拟旧 run 已结算的 GUID
+	s.save_auth.mark_settled("player_exp", {"materials": {}})
+	assert_bool(s.save_auth.is_settled("player_exp")).is_true()
+	var rev_before: int = s.world.world_revision
+	var r: Dictionary = s.start_expedition_authoritatively(12345)
+	assert_bool(bool(r.get("success", false))).is_true()
+	# 新 run 结算账本已重置（旧 run 的已结算标记不再生效）
+	assert_bool(s.save_auth.is_settled("player_exp")).is_false()
+	# 结算账本绑定新 layout_revision
+	assert_int(s.save_auth.expedition_revision).is_equal(s.dungeon_auth.layout_revision)
+	# world 空间推进 + 修订递增
+	assert_str(String(s.world.current_space)).is_equal("dungeon")
+	assert_int(s.world.world_revision).is_greater(rev_before)
+
+## P1-1（1727 审查）：含未实现权威效果字段的技能（冲撞：stun/breaks_shield）
+## 整体拒绝——绝不"请求成功+冷却提交但核心效果未发生"的部分成功。
+func test_skill_rejects_unimplemented_effects() -> void:
+	var s: SR = auto_free(_make_server())
+	var ctx = s.handle_spawn_request(1)
+	ctx.skills.slots[ctx.skills.SLOT_F_ACTION] = "冲撞"
+	s._live_state[1] = {"peer_id": 1, "is_alive": true, "position": Vector3.ZERO, "facing": Vector3(0, 0, -1)}
+	var r: Dictionary = s.on_command(1, {"type": NP.CMD_SKILL, "skill_id": "冲撞",
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
+	assert_bool(bool(r.get("success", false))).is_false()
+	assert_str(String(r.get("error_code", ""))).is_equal(NP.ERR_INVALID_TARGET)
+	# 冷却不得提交（失败零副作用）
+	assert_bool(s.skill_auth.is_on_cooldown(1, "冲撞")).is_false()
+
+## P1-1（1727 审查）：已实现字段（knockback_m 目标击退）随伤害生效——目标位置被权威偏移。
+func test_skill_knockback_moves_target() -> void:
+	var s: SR = auto_free(_make_server())
+	var ctx = s.handle_spawn_request(1)
+	ctx.skills.slots[ctx.skills.SLOT_F_ACTION] = "踢击"
+	s._live_state[1] = {"peer_id": 1, "is_alive": true, "position": Vector3.ZERO, "facing": Vector3(0, 0, -1)}
+	s.set_entity(1001, {"kind": "enemy", "position": Vector3(0.5, 0, 0), "current_life": 50, "max_life": 50, "label": "goblin"})
+	var r: Dictionary = s.on_command(1, {"type": NP.CMD_SKILL, "skill_id": "踢击", "target_hint": 1001,
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
+	assert_bool(bool(r.get("success", false))).is_true()
+	# 踢击 knockback_m=3.0：目标沿攻击方向被推离（0.5,0,0 → 3.5,0,0 方向）
+	var pos: Vector3 = s._entities[1001].get("position", Vector3.ZERO)
+	assert_float(pos.x).is_greater(3.0)
+	# 效果事件含击退距离
+	var effects: Dictionary = r.get("event", {}).get("effects", {}) if r.get("event", {}).get("effects") is Dictionary else {}
+	assert_float(float(effects.get("knockback_m", 0.0))).is_greater(0.0)
 
 func test_handle_equip_rejects_item_not_owned() -> void:
 	var s: SR = auto_free(_make_server())
@@ -720,7 +929,7 @@ func _equip_cmd(s: SR, item_id: String, slot_kind: String, slot_index: int = -1,
 ## P0-4：武器 → 武器槽（新协议 slot_kind + slot_index）成功写入。
 func test_handle_equip_accepts_weapon_into_weapon_slot() -> void:
 	var s: SR = auto_free(_make_server())
-	s._equipment_data_source_custom = _stub_equipment_source()
+	s.inventory_service.equipment_data_source_custom = _stub_equipment_source()
 	var ctx = s.handle_spawn_request(1)
 	ctx.inventory.add_equipment("shortsword", 1)
 	var r: Dictionary = s.on_command(1, _equip_cmd(s, "shortsword", "weapon", 0))
@@ -732,7 +941,7 @@ func test_handle_equip_accepts_weapon_into_weapon_slot() -> void:
 ## P0-4：护甲 → 护甲槽（slot_name）成功写入；护甲不能进武器槽。
 func test_handle_equip_accepts_armor_into_armor_slot_rejects_weapon_slot() -> void:
 	var s: SR = auto_free(_make_server())
-	s._equipment_data_source_custom = _stub_equipment_source()
+	s.inventory_service.equipment_data_source_custom = _stub_equipment_source()
 	var ctx = s.handle_spawn_request(1)
 	ctx.inventory.add_equipment("cloth_armor", 1)
 	var ok: Dictionary = s.on_command(1, _equip_cmd(s, "cloth_armor", "armor", -1, "body"))
@@ -746,7 +955,7 @@ func test_handle_equip_accepts_armor_into_armor_slot_rejects_weapon_slot() -> vo
 ## 权威 loadout 不被污染（属性/存档/外观不会因错误部位而改变）。
 func test_handle_equip_rejects_armor_into_wrong_intrinsic_slot() -> void:
 	var s: SR = auto_free(_make_server())
-	s._equipment_data_source_custom = _stub_equipment_source()
+	s.inventory_service.equipment_data_source_custom = _stub_equipment_source()
 	var ctx = s.handle_spawn_request(1)
 	ctx.inventory.add_equipment("leather_cap", 1)
 	var r: Dictionary = s.on_command(1, _equip_cmd(s, "leather_cap", "armor", -1, "body"))
@@ -763,7 +972,7 @@ func test_handle_equip_rejects_armor_into_wrong_intrinsic_slot() -> void:
 ## P0-4：双手武器 ↔ 盾互斥（先装盾再装双手 → 拒绝）。
 func test_handle_equip_two_hand_conflicts_with_shield() -> void:
 	var s: SR = auto_free(_make_server())
-	s._equipment_data_source_custom = _stub_equipment_source()
+	s.inventory_service.equipment_data_source_custom = _stub_equipment_source()
 	var ctx = s.handle_spawn_request(1)
 	ctx.inventory.add_equipment("shield", 1)
 	ctx.inventory.add_equipment("greatsword", 1)
@@ -775,7 +984,7 @@ func test_handle_equip_two_hand_conflicts_with_shield() -> void:
 	assert_str(ctx.loadout.get_weapon_slot(1)).is_equal("")
 	# 反向：已装双手 → 装盾拒绝。
 	var s2: SR = auto_free(_make_server())
-	s2._equipment_data_source_custom = _stub_equipment_source()
+	s2.inventory_service.equipment_data_source_custom = _stub_equipment_source()
 	var ctx2 = s2.handle_spawn_request(1)
 	ctx2.inventory.add_equipment("greatsword", 1)
 	ctx2.inventory.add_equipment("shield", 1)
@@ -851,6 +1060,35 @@ func test_world_revision_bumps_on_expedition() -> void:
 		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
 	assert_int(s.world.world_revision).is_greater(0)
 	assert_str(s.world.current_space).is_equal("dungeon")
+
+## P1-4（0304 审查）：非房主客户端经命令路由发起出征 → PERMISSION_DENIED。
+func test_expedition_requires_host_permission() -> void:
+	var s: SR = auto_free(_make_server())
+	s.handle_spawn_request(1)
+	s.handle_spawn_request(2)
+	s.host_peer_id = 1
+	var r: Dictionary = s.on_command(2, {"type": NP.CMD_EXPEDITION,
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
+	assert_bool(bool(r.get("success", false))).is_false()
+	assert_str(String(r.get("error_code", ""))).is_equal(NP.ERR_PERMISSION_DENIED)
+	# 房主仍可发起
+	var r_host: Dictionary = s.on_command(1, {"type": NP.CMD_EXPEDITION,
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
+	assert_bool(bool(r_host.get("success", false))).is_true()
+
+## P1-4（0304 审查）：已开始的 run 拒绝重复启动（不得重置当前结算账本）。
+func test_expedition_rejects_repeat_start() -> void:
+	var s: SR = auto_free(_make_server())
+	s.handle_spawn_request(1)
+	s.host_peer_id = 1
+	var r1: Dictionary = s.on_command(1, {"type": NP.CMD_EXPEDITION,
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 1})
+	assert_bool(bool(r1.get("success", false))).is_true()
+	assert_bool(s.dungeon_auth.active).is_true()
+	var r2: Dictionary = s.on_command(1, {"type": NP.CMD_EXPEDITION,
+		"protocol_version": 1, "world_revision": s.world.world_revision, "sequence": 2})
+	assert_bool(bool(r2.get("success", false))).is_false()
+	assert_str(String(r2.get("error_code", ""))).is_equal(NP.ERR_INVALID_STATE)
 
 func test_world_revision_bumps_on_entity_spawn_and_despawn() -> void:
 	var s: SR = auto_free(_make_server())

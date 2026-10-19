@@ -25,18 +25,18 @@ func _make_indicator() -> StatIndicator:
 
 
 func test_shield_bar_size_matches_pixel_bar() -> void:
-	# 护盾条应与 HP/MP 像素条同尺寸：320×36
+	# 盾条应与 HP/MP 条同尺寸：320×40（pixel_bar.gd BAR_SIZE 现行值）
 	var shield = SHIELD_BAR_SCRIPT.new()
 	shield._ready()
 	assert_int(int(shield.custom_minimum_size.x)).is_equal(320)
-	assert_int(int(shield.custom_minimum_size.y)).is_equal(36)
+	assert_int(int(shield.custom_minimum_size.y)).is_equal(40)
 	var shield_size: Vector2 = shield.custom_minimum_size
 	shield.free()
 
 	var bar = PIXEL_BAR_SCRIPT.new()
 	bar._ready()
 	assert_int(int(bar.custom_minimum_size.x)).is_equal(320)
-	assert_int(int(bar.custom_minimum_size.y)).is_equal(36)
+	assert_int(int(bar.custom_minimum_size.y)).is_equal(40)
 	assert_int(int(shield_size.x)).is_equal(int(bar.custom_minimum_size.x))
 	assert_int(int(shield_size.y)).is_equal(int(bar.custom_minimum_size.y))
 	bar.free()
@@ -197,10 +197,10 @@ func test_shield_bar_aligns_with_pixel_bar_frame_color() -> void:
 	var pix_frame_b: float = pix.frame_color.b
 	pix.free()
 
-	# PixelBar default (0.72, 0.43, 0.20, 0.96)
-	assert_float(pix_frame_r).is_equal_approx(0.72, 0.01)
-	assert_float(pix_frame_g).is_equal_approx(0.43, 0.01)
-	assert_float(pix_frame_b).is_equal_approx(0.20, 0.01)
+	# PixelBar default FRAME_LIGHT #A06737 = (0.627, 0.404, 0.216)
+	assert_float(pix_frame_r).is_equal_approx(0.627, 0.01)
+	assert_float(pix_frame_g).is_equal_approx(0.404, 0.01)
+	assert_float(pix_frame_b).is_equal_approx(0.216, 0.01)
 
 	# ShieldBar 内部硬编码到与 PixelBar 相同 (验证代码层面一致)
 	var shield = SHIELD_BAR_SCRIPT.new()

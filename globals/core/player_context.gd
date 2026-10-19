@@ -19,6 +19,7 @@ extends RefCounted
 ##
 ## 迁移路径见 docs/24-联机架构迁移.md。
 
+const Service := preload("res://globals/core/service.gd")
 const AttrPanelClass := preload("res://globals/combat/attr_panel.gd")
 const SkillRuntimeClass := preload("res://globals/combat/skill_runtime.gd")
 const ExpeditionInventoryClass := preload("res://globals/core/state/expedition_inventory.gd")
@@ -93,6 +94,16 @@ func expire_buffs(now_ms: int) -> Array:
 			expired.append(buff_id)
 	return expired
 
+## P1-1（0643 审查）：应用一次时长为秒的短时 buff，统一转为绝对毫秒过期时间。
+## 这是 buffs 容器的唯一写入口（业务层禁止直接写秒数）；同 id 续期取较晚过期。
+## 返回写入的绝对过期毫秒（Time.get_ticks_msec 口径，与 expire_buffs 一致）。
+func apply_timed_buff(buff_id: String, duration_sec: float) -> int:
+	var expiry: int = Time.get_ticks_msec() + roundi(duration_sec * 1000.0)
+	var existing: int = int(buffs.get(buff_id, 0))
+	var applied: int = maxi(existing, expiry)
+	buffs[buff_id] = applied
+	return applied
+
 ## 查询法术伤害倍率（spell_power buff 生效时 +20%）。联机权威法术结算读取。
 func spell_power_mult() -> float:
 	if buffs.has("spell_power"):
@@ -127,8 +138,8 @@ func _init(attrs: AttrPanelClass, sk: SkillRuntimeClass, inv: ExpeditionInventor
 	loadout = lo
 	player_node = player
 	player_guid = guid
-	if player != null and player.get_node_or_null("/root/GameState") != null:
-		var gs := player.get_node_or_null("/root/GameState")
+	if player != null and Service.game_state() != null:
+		var gs: Node = Service.game_state()
 		if "spell_loadout" in gs:
 			spell_loadout = gs.spell_loadout
 		if "mana" in player and player.mana != null:

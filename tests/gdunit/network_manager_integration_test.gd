@@ -16,7 +16,8 @@ func _mark_received(_e: Dictionary) -> void:
 func _mark_room_ended() -> void:
 	_room_ended = true
 
-## 服务器生成：创建权威 PlayerContext、签发稳定重连 token、并继承单人存档摘要。
+## 服务器生成：创建权威 PlayerContext、签发稳定重连 token、并从服务器存档仓恢复单人存档。
+## B2（0644 审查 / 决策 G1-A）：远端只上送 guid，服务器按 guid 从仓加载（不再接受客户端存档字典）。
 func test_server_spawn_creates_context_and_token_and_inherits_save() -> void:
 	var nm := NETWORK_MANAGER.new()
 	nm._ensure_session()
@@ -24,13 +25,16 @@ func test_server_spawn_creates_context_and_token_and_inherits_save() -> void:
 	assert_object(nm.session.registry.get_parent()).is_equal(nm.session)
 	assert_object(nm.session.world.get_parent()).is_equal(nm.session)
 	nm.session.init_server()
-	var save_state := {"materials": {"iron": 3}}
-	var res: Dictionary = nm._server_handle_spawn(2, save_state, "guid_2")
+	# 隔离存档仓并播种该 guid 的权威存档（服务器可信来源）。
+	nm.session.server_save_repo.set_save_dir("user://server_saves_inherit_%d" % Time.get_ticks_usec())
+	nm.session.server_save_repo.save_save("guid_2", {"materials": {"iron": 3}})
+	var res: Dictionary = nm._server_handle_spawn(2, "guid_2")
 	assert_object(res["ctx"]).is_not_null()
 	assert_str(res["token"]).is_not_empty()
 	assert_bool(nm.session.registry.has_peer(2)).is_true()
-	# 继承存档：服务器把客户端单人存档摘要应用到联机上下文（地牢继承存档状态）
-	assert_int(nm.session.registry.get_context(2).inventory.materials.get("iron", 0)).is_equal(3)
+	# 继承存档：服务器按 guid 从仓恢复单人存档到联机上下文（地牢继承存档状态）
+	# 注：存档经仓 JSON 往返，数值为 float，须 int() 归一。
+	assert_int(int(nm.session.registry.get_context(2).inventory.materials.get("iron", 0))).is_equal(3)
 	nm.free()
 
 ## 命令路由：服务器权威处理 input_frame，产生 player_snapshot 事件并积分出权威位置。
@@ -38,7 +42,7 @@ func test_server_command_routing_dispatches_event_and_integrates_movement() -> v
 	var nm := NETWORK_MANAGER.new()
 	nm._ensure_session()
 	nm.session.init_server()
-	var res_spawn: Dictionary = nm._server_handle_spawn(2, {}, "g2")
+	var res_spawn: Dictionary = nm._server_handle_spawn(2, "g2")
 	assert_object(res_spawn["ctx"]).is_not_null()
 	nm.event_dispatched.connect(_capture)
 	var cmd := {
@@ -64,7 +68,7 @@ func test_reconnect_restores_online_state_and_sends_snapshot() -> void:
 	var nm := NETWORK_MANAGER.new()
 	nm._ensure_session()
 	nm.session.init_server()
-	nm._server_handle_spawn(3, {}, "g3")
+	nm._server_handle_spawn(3, "g3")
 	var dis: Dictionary = nm.session.handle_peer_disconnected(3, nm.session.current_time)
 	assert_str(nm.session.connection_auth.get_status(3)).is_equal("grace")
 	nm.event_dispatched.connect(_capture)
@@ -84,8 +88,12 @@ func test_reconnect_with_new_peer_id_through_network_manager() -> void:
 	var nm := NETWORK_MANAGER.new()
 	nm._ensure_session()
 	nm.session.init_server()
-	# 旧 peer=3，带稳定 guid 与可见 inventory（模拟出征拾取）。
-	nm._server_handle_spawn(3, {"materials": {"iron_ore": 2}}, "g3")
+	# 隔离服务器存档仓（P1-1 仓优先）：避免 user:// 残留存档覆盖本测试的存档
+	if nm.session.server_save_repo != null:
+		nm.session.server_save_repo.set_save_dir("user://server_saves_reconnect_test")
+	# 旧 peer=3，带稳定 guid 与可见 inventory（模拟出征拾取，经仓播种权威存档）。
+	nm.session.server_save_repo.save_save("g3", {"materials": {"iron_ore": 2}})
+	nm._server_handle_spawn(3, "g3")
 	nm.session.set_player_position(3, Vector3(4, 0, 5))
 	var dis: Dictionary = nm.session.handle_peer_disconnected(3, nm.session.current_time)
 	assert_str(nm.session.connection_auth.get_status(3)).is_equal("grace")
@@ -97,7 +105,7 @@ func test_reconnect_with_new_peer_id_through_network_manager() -> void:
 	# 旧 peer=3 已清空，新 peer=9 接管同一 ctx 与状态（不丢、不串号）。
 	assert_bool(nm.session.registry.has_peer(3)).is_false()
 	assert_bool(nm.session.registry.has_peer(9)).is_true()
-	assert_int(nm.session.registry.get_context(9).inventory.materials.get("iron_ore", 0)).is_equal(2)
+	assert_int(int(nm.session.registry.get_context(9).inventory.materials.get("iron_ore", 0))).is_equal(2)
 	var pos = nm.session._live_state[9]["position"]
 	assert_float(pos.x).is_equal(4.0)
 	assert_float(pos.z).is_equal(5.0)
@@ -114,7 +122,7 @@ func test_expired_grace_token_rejected() -> void:
 	var nm := NETWORK_MANAGER.new()
 	nm._ensure_session()
 	nm.session.init_server()
-	nm._server_handle_spawn(4, {}, "g4")
+	nm._server_handle_spawn(4, "g4")
 	var dis: Dictionary = nm.session.handle_peer_disconnected(4, nm.session.current_time)
 	nm.session.current_time = 100.0  # 远超 GRACE_PERIOD(60s)
 	var res: Dictionary = nm._server_handle_resume(4, dis["token"])
@@ -127,7 +135,7 @@ func test_host_disconnect_ends_room() -> void:
 	var nm := NETWORK_MANAGER.new()
 	nm._ensure_session()
 	nm.session.init_server()
-	nm._server_handle_spawn(1, {}, "host")
+	nm._server_handle_spawn(1, "host")
 	assert_bool(nm.session.connection_auth.should_end_room_on_disconnect(1)).is_true()
 	nm.room_ended.connect(_mark_room_ended)
 	nm._server_on_peer_disconnected(1)
@@ -139,7 +147,7 @@ func test_tick_cleans_expired_grace() -> void:
 	var nm := NETWORK_MANAGER.new()
 	nm._ensure_session()
 	nm.session.init_server()
-	nm._server_handle_spawn(5, {}, "g5")
+	nm._server_handle_spawn(5, "g5")
 	nm.session.handle_peer_disconnected(5, nm.session.current_time)  # t=0 进入 GRACE
 	assert_bool(nm.session.registry.has_peer(5)).is_true()
 	nm.session.current_time = 100.0  # 超过 GRACE_PERIOD
@@ -165,7 +173,7 @@ func test_command_rejected_during_grace() -> void:
 	var nm := NETWORK_MANAGER.new()
 	nm._ensure_session()
 	nm.session.init_server()
-	nm._server_handle_spawn(6, {}, "g6")
+	nm._server_handle_spawn(6, "g6")
 	nm.session.handle_peer_disconnected(6, nm.session.current_time)  # 进入 GRACE
 	var cmd := {
 		"type": NP.CMD_INPUT,

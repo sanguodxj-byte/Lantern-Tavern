@@ -67,8 +67,8 @@ func test_tavern_manager_start_new_game_accepts_origin_id() -> void:
 	
 	# start_new_game 签名应接受 origin_id 参数
 	assert_bool(source.contains("func start_new_game(with_tutorial: bool = true, origin_id: String = \"\")")).is_true()
-	# 应记录并应用出身
-	assert_bool(source.contains("selected_origin_id = origin_id")).is_true()
+	# 出身应通过 AttrPanel.origin_id（唯一持久化权威）记录，TavernManager 不得保留重复写路径
+	assert_bool(source.contains("selected_origin_id = origin_id")).is_false()
 	assert_bool(source.contains("_apply_origin_to_game_state")).is_true()
 
 

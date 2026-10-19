@@ -8,7 +8,7 @@ class_name MainMenu
 @onready var multiplayer_btn: Button = $SidePanel/MenuVBox/MultiplayerBtn
 @onready var lang_btn: Button = $SidePanel/MenuVBox/LangBtn
 @onready var exit_btn: Button = $SidePanel/MenuVBox/ExitBtn
-@onready var subtitle: Label = $Subtitle
+@onready var subtitle: Label = $SidePanel/MenuVBox/Subtitle
 @onready var menu_header: Label = $SidePanel/MenuVBox/MenuHeader
 @onready var menu_hint: Label = $SidePanel/MenuVBox/MenuHint
 @onready var utility_label: Label = $SidePanel/MenuVBox/UtilityLabel
@@ -34,21 +34,26 @@ const MAIN_MENU_COMPACT_HEIGHT := 820.0
 const MAIN_MENU_COMPACT_PANEL_HEIGHT := 684.0
 const MAIN_MENU_REGULAR_PANEL_HEIGHT := 1000.0
 
-const LOCALIZATION_MANAGER_SCRIPT := preload("res://globals/core/localization_manager.gd")
 const Service := preload("res://globals/core/service.gd")
 const UI_ROUTES := preload("res://globals/ui/ui_route_catalog.gd")
 const VOXEL_LIGHTING := preload("res://globals/visual/voxel_lighting_adapter.gd")
 const ORIGIN_SELECT_UI_SCRIPT := preload("res://scenes/ui/origin_select_ui.gd")
-static var fallback_translations_registered := false
+const SAVE_LOAD_PANEL_SCENE := preload("res://scenes/ui/save_load_panel.tscn")
 
 ## 出身选择界面实例（新游戏流程中动态创建）
 var _origin_select_ui: Control
+## 存档/读档面板实例（"继续"按钮动态创建，LOAD 模式）
+var _save_load_panel: Control
 ## 玩家在出身选择界面选定的出身 id，待教程选择确认后传入 start_new_game
 var _pending_origin_id: String = ""
 
 func _ready() -> void:
 	super._ready()
-	_ensure_translations_registered()
+	# E2（1327 审查）：单一本地化引导——主菜单只订阅 initialized 信号刷新文本，
+	# 不再 new 临时 loader 兜底（消除启动时序分叉）。
+	var localization_manager := Service.localization_manager()
+	if localization_manager != null and localization_manager.has_signal("initialized"):
+		localization_manager.initialized.connect(_on_localization_initialized)
 	start_btn.pressed.connect(_on_start_pressed)
 	continue_btn.pressed.connect(_on_continue_pressed)
 	gallery_btn.pressed.connect(_on_gallery_pressed)
@@ -92,11 +97,11 @@ func _update_button_texts() -> void:
 	back_from_tutorial_btn.text = tr("Back").strip_edges()
 	
 	# 根据当前语言动态加载专属的手绘像素画 LOGO 贴图，呈现极致手制大作质感
-	if has_node("Title/LogoTexture"):
+	if has_node("SidePanel/MenuVBox/Title/LogoTexture"):
 		if _is_chinese_locale():
-			$Title/LogoTexture.texture = load("res://assets/textures/ui/title_logo_zh.png")
+			$SidePanel/MenuVBox/Title/LogoTexture.texture = load("res://assets/textures/ui/title_logo_zh.png")
 		else:
-			$Title/LogoTexture.texture = load("res://assets/textures/ui/title_logo_en.png")
+			$SidePanel/MenuVBox/Title/LogoTexture.texture = load("res://assets/textures/ui/title_logo_en.png")
 
 
 func _apply_responsive_layout() -> void:
@@ -105,11 +110,14 @@ func _apply_responsive_layout() -> void:
 	var menu_box := $SidePanel/MenuVBox as VBoxContainer
 	var panel_height := MAIN_MENU_COMPACT_PANEL_HEIGHT if compact else minf(MAIN_MENU_REGULAR_PANEL_HEIGHT, size.y - 72.0)
 	side_panel.offset_top = -panel_height
-	menu_box.offset_top = 20.0 if compact else maxf(36.0, panel_height - 762.0)
+	menu_box.offset_top = 20.0 if compact else 28.0
 	menu_box.add_theme_constant_override("separation", 4 if compact else 8)
 	menu_hint.visible = not compact
 	menu_header.visible = not compact
-	$SidePanel/PanelAccent.offset_top = 20.0 if compact else maxf(34.0, panel_height - 764.0)
+	# 紧凑布局下隐藏标题区，节省面板空间
+	$SidePanel/MenuVBox/Title.visible = not compact
+	$SidePanel/MenuVBox/Subtitle.visible = not compact
+	$SidePanel/PanelAccent.offset_top = 20.0 if compact else 28.0
 	for button in [start_btn, continue_btn, gallery_btn, settings_btn, multiplayer_btn, exit_btn]:
 		button.custom_minimum_size.y = 56.0 if compact else 60.0
 		button.add_theme_font_size_override("font_size", 28 if compact else 32)
@@ -123,16 +131,18 @@ func _play_intro_motion() -> void:
 	$SidePanel.position.x += 28.0
 	
 	# 设置标题缩放 Pivot 到正中心
-	var title_size = $Title.size if $Title.size.x > 0 else Vector2(1080, 112)
-	var subtitle_size = $Subtitle.size if $Subtitle.size.x > 0 else Vector2(1000, 38)
-	$Title.pivot_offset = title_size / 2.0
-	$Subtitle.pivot_offset = subtitle_size / 2.0
+	var title := $SidePanel/MenuVBox/Title
+	var subtitle := $SidePanel/MenuVBox/Subtitle
+	var title_size = title.size if title.size.x > 0 else Vector2(400, 104)
+	var subtitle_size = subtitle.size if subtitle.size.x > 0 else Vector2(400, 30)
+	title.pivot_offset = title_size / 2.0
+	subtitle.pivot_offset = subtitle_size / 2.0
 	
 	# 标题初始状态：透明且偏大
-	$Title.modulate.a = 0.0
-	$Title.scale = Vector2(1.22, 1.22)
-	$Subtitle.modulate.a = 0.0
-	$Subtitle.scale = Vector2(1.15, 1.15)
+	title.modulate.a = 0.0
+	title.scale = Vector2(1.22, 1.22)
+	subtitle.modulate.a = 0.0
+	subtitle.scale = Vector2(1.15, 1.15)
 	
 	var tween := create_tween().set_parallel(true)
 	
@@ -141,17 +151,17 @@ func _play_intro_motion() -> void:
 	tween.tween_property($SidePanel, "position:x", $SidePanel.position.x - 28.0, 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	
 	# 标题砸落淡入动画 (带有 TRANS_BACK 和 EASE_OUT 的弹簧感)
-	tween.tween_property($Title, "modulate:a", 1.0, 0.38)
-	tween.tween_property($Title, "scale", Vector2(1.0, 1.0), 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(title, "modulate:a", 1.0, 0.38)
+	tween.tween_property(title, "scale", Vector2(1.0, 1.0), 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	
 	# 副标题砸落淡入动画
-	tween.tween_property($Subtitle, "modulate:a", 1.0, 0.42).set_delay(0.08)
-	tween.tween_property($Subtitle, "scale", Vector2(1.0, 1.0), 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(0.08)
+	tween.tween_property(subtitle, "modulate:a", 1.0, 0.42).set_delay(0.08)
+	tween.tween_property(subtitle, "scale", Vector2(1.0, 1.0), 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(0.08)
 	
-	# 侧边栏子元素瀑布流淡入+小缩放
+	# 侧边栏子元素瀑布流淡入+小缩放（标题/副标题已有专属动画，跳过避免竞争）
 	var delay := 0.12
 	for child in $SidePanel/MenuVBox.get_children():
-		if child is Control:
+		if child is Control and child != title and child != subtitle:
 			child.modulate.a = 0.0
 			child.scale = Vector2(0.92, 0.92)
 			var child_size = child.size if child.size.x > 0 else Vector2(388, 66)
@@ -165,10 +175,10 @@ func _play_intro_motion() -> void:
 	# 标题只做低幅、慢节奏呼吸，避免持续大幅漂浮影响品牌稳定感。
 	if _title_hover_tween != null and _title_hover_tween.is_valid():
 		_title_hover_tween.kill()
-	var title_base_y: float = float($Title.position.y)
+	var title_base_y: float = float(title.position.y)
 	_title_hover_tween = create_tween().set_loops()
-	_title_hover_tween.tween_property($Title, "position:y", title_base_y + 3.0, 3.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_title_hover_tween.tween_property($Title, "position:y", title_base_y - 3.0, 3.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_title_hover_tween.tween_property(title, "position:y", title_base_y + 3.0, 3.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_title_hover_tween.tween_property(title, "position:y", title_base_y - 3.0, 3.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 func _setup_button_hover_animations() -> void:
 	var buttons: Array[Button] = [
@@ -255,17 +265,9 @@ func _update_continue_state() -> void:
 	continue_btn.disabled = not has_any_save
 	continue_btn.tooltip_text = "" if has_any_save else tr("No saved adventure found.").strip_edges()
 
-func _ensure_translations_registered() -> void:
-	var localization_manager := Service.localization_manager()
-	if localization_manager != null:
-		return
-	if fallback_translations_registered:
-		return
-
-	var fallback_loader: Node = LOCALIZATION_MANAGER_SCRIPT.new()
-	fallback_loader._load_translations()
-	fallback_loader.free()
-	fallback_translations_registered = true
+## E2（1327 审查）：LocalizationManager 引导完成后刷新文本（晚初始化场景）。
+func _on_localization_initialized() -> void:
+	_update_button_texts()
 
 
 func _is_chinese_locale() -> bool:
@@ -370,10 +372,36 @@ func _on_cancel_input() -> void:
 		_on_back_from_tutorial_pressed()
 
 func _on_continue_pressed() -> void:
+	# P0-1（0804）："继续"必须先让玩家选择存档槽位并成功加载，才进入酒馆。
+	# 加载失败（损坏/空槽）停留在面板，绝不直接切场景。
+	_show_save_load_panel(true)
+
+## 创建/显示存档读档面板。load_mode=true 时以 LOAD 模式打开（"继续"流程）。
+func _show_save_load_panel(load_mode: bool) -> void:
+	if _save_load_panel == null:
+		_save_load_panel = SAVE_LOAD_PANEL_SCENE.instantiate()
+		_save_load_panel.name = "SaveLoadPanelOverlay"
+		add_child(_save_load_panel)
+		_save_load_panel.slot_action_completed.connect(_on_save_slot_action)
+		_save_load_panel.back_pressed.connect(_on_save_load_back)
+	_save_load_panel.set_mode(SaveLoadPanel.Mode.LOAD if load_mode else SaveLoadPanel.Mode.SAVE)
+	_save_load_panel.visible = true
+	_save_load_panel.move_to_front()
+	_save_load_panel.refresh()
+
+func _on_save_slot_action(action: String, slot_index: int) -> void:
+	if action != "load":
+		return
+	if _save_load_panel != null:
+		_save_load_panel.visible = false
 	if TavernManager:
 		TavernManager.continue_in_tavern()
 	else:
 		get_tree().change_scene_to_file("res://scenes/world/world.tscn")
+
+func _on_save_load_back() -> void:
+	if _save_load_panel != null:
+		_save_load_panel.visible = false
 
 func _on_gallery_pressed() -> void:
 	request_navigation(UI_ROUTES.GALLERY)

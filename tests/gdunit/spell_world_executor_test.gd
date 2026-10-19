@@ -28,8 +28,10 @@ func test_player_context_owns_per_peer_spell_state() -> void:
 	assert_bool(source.contains("var spell_loadout")).is_true()
 	assert_bool(source.contains("var spell_runtime")).is_true()
 	assert_bool(source.contains("var spell_mana")).is_true()
-	var session_source := (load("res://globals/multiplayer/session_root.gd") as GDScript).source_code
-	var section := session_source.substr(session_source.find("func _handle_cast_spell"), 1800)
+	# ADR-003 拆分后：法术事务迁至 session_combat_service.gd（handle_cast_spell），
+	# 不再检查 session_root.gd 中的 _handle_cast_spell（0643 审查后契约同步）。
+	var session_source := (load("res://globals/multiplayer/session_combat_service.gd") as GDScript).source_code
+	var section := session_source.substr(session_source.find("func handle_cast_spell"), 1800)
 	assert_bool(section.contains("ctx.spell_loadout")).is_true()
 	assert_bool(section.contains("ctx.spell_mana")).is_true()
 	assert_bool(not section.contains("GameState")).is_true()
@@ -114,3 +116,70 @@ func test_port_with_outbox_ignores_empty_events() -> void:
 	assert_bool(bool(r["ok"])).is_true()
 	assert_int(executor.pending_event_count()).is_equal(0)
 	world.queue_free()
+
+# ---------------------------------------------------------------------------
+# 1740 审查 P0：持续伤害（field/summon）统一事务边界
+# ---------------------------------------------------------------------------
+
+func test_field_tick_finds_entity_id_on_ancestor_collider() -> void:
+	# entity_id 设在实体父节点、碰撞体为子节点时，field tick 必须经祖先查找写回权威端口
+	var world := Node3D.new(); add_child(world)
+	var field := Executor.SpellField.new(); world.add_child(field)
+	field.caster = world
+	var parent := Node3D.new(); parent.set_meta("entity_id", 2002); world.add_child(parent)
+	var child := Node3D.new(); parent.add_child(child)
+	var calls: Array = []
+	field.damage_port = func(eid: int, dmg: int, peer: int) -> Dictionary:
+		calls.append([eid, dmg, peer])
+		return {"ok": true, "events": []}
+	var res: Dictionary = field._tick_damage(child, 4)
+	assert_int(calls.size()) \
+		.override_failure_message("碰撞子节点必须经祖先查找命中实体端口").is_equal(1)
+	assert_int(calls[0][0]).is_equal(2002)
+	assert_bool(bool(res["port_called"])).is_true()
+	field.queue_free()
+	parent.queue_free()
+
+
+func test_field_tick_port_rejection_recorded_not_fake_success() -> void:
+	var world := Node3D.new(); add_child(world)
+	var field := Executor.SpellField.new(); world.add_child(field)
+	field.caster = world
+	var target := Node3D.new(); target.set_meta("entity_id", 2003); world.add_child(target)
+	field.damage_port = func(_eid: int, _dmg: int, _peer: int) -> Dictionary:
+		return {"ok": false, "events": []}
+	var res: Dictionary = field._tick_damage(target, 4)
+	assert_bool(bool(res["port_called"])).is_true()
+	assert_bool(bool(res["port_result"]["ok"])).is_false()
+	assert_int(int(res["applied"])).is_equal(4)  # 端口已调用（结果由权威层裁决）
+	field.queue_free()
+	target.queue_free()
+
+
+func test_field_tick_falls_back_to_node_damage_without_port() -> void:
+	var world := Node3D.new(); add_child(world)
+	var field := Executor.SpellField.new(); world.add_child(field)
+	field.caster = world
+	var target := Node3D.new(); target.set_meta("entity_id", 2004); world.add_child(target)
+	# 无端口 → 单机回退（target 无 try_receive_hit/health → applied 0，不崩溃）
+	var res: Dictionary = field._tick_damage(target, 4)
+	assert_bool(bool(res["port_called"])).is_false()
+	field.queue_free()
+	target.queue_free()
+
+
+func test_summon_port_rejection_does_not_crash_and_receives_result() -> void:
+	var world := Node3D.new(); add_child(world)
+	var summon := Executor.SpellSummon.new(); world.add_child(summon)
+	summon.caster = world
+	var calls: Array = []
+	summon.query_targets_port = func(_origin: Vector3, _range: float) -> Array:
+		return [{"entity_id": 3001, "position": Vector3(1, 0, 0)}]
+	summon.damage_port = func(eid: int, dmg: int, peer: int) -> Dictionary:
+		calls.append([eid, dmg, peer])
+		return {"ok": false, "events": []}
+	summon._process(1.1)  # attack_accum 触发一次攻击
+	assert_int(calls.size()).is_equal(1)
+	assert_int(calls[0][0]).is_equal(3001)
+	assert_int(calls[0][1]).is_equal(6)
+	summon.queue_free()

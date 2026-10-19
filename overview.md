@@ -1,16 +1,18 @@
-# 本轮架构审查概览（2026-08-03 13:36）
+# 本轮架构审查概要
 
 ## 已完成
-- 对 Lantern Tavern 当前工作树执行增量只读架构审查。
-- 复核联机法术、装备策略、网络事件出口、测试门禁和渲染质量分档。
-- 输出详细报告：`outputs/architecture_review_2026-08-03-1336.md`。
+- 从当前工作树的源码、`project.godot`、测试与 CI 脚本重新审查 Lantern Tavern。
+- 没有使用旧审查报告或项目记忆形成判断。
+- Godot 4.7 无头编辑器扫描退出码 0。
+- 关键架构测试 8 套件 / 135 用例通过，0 failure、0 orphan；stderr 仍有重复 signal connect 错误。
+- 完整报告：`outputs/architecture_review_from_scratch_2026-08-06-1528.md`。
 
 ## 关键结论
-- 仍有 2 个 P0：联机法术权威状态/projectile/实体事件复制闭环；护甲固有部位校验。
-- 4 个 P1：远端可信存档、性能质量协调器、多人全局玩家回退、专服真实地牢碰撞门禁。
-- 4 个 P2：shader uniform hint、过时源码字符串测试、load_check 误报、巨型混合工作树。
-- Godot 不在 PATH，本轮没有伪造新的测试统计。
-- 三个并行审查代理均因 WorkBuddy 客户端鉴权 403 失败；报告只采用主流程直接证据。
+1. `run_ci.ps1` 在单元测试成功后提前 `exit 0`，真实 ENet 分支永久不可达。
+2. Listen 与 Dedicated 两个真实 ENet runner 在 FAIL 后仍无条件 `exit 0`，无法阻断交付。
+3. 联机技能只兑现伤害、移动、自 buff，数据中的击退、眩晕、抓取等权威语义未闭环。
+4. 联机撤离方法已存在，但生产 multiplayer 场景未发现传送门请求与结算完成的装配调用；现有集成测试直接调用 driver。
+5. 当前量化：294 个生产 GDScript、512 个测试 GDScript、33 个 Autoload、195 个文件/源码内容型测试候选。
 
-## 后续
-优先实现 SessionRoot 的 SpellEffectPort + 持续事件 outbox，再修复护甲固有部位校验，并补行为级/端到端验证。
+## 后续优先级
+先修 CI/runner 退出码并让真实 ENet 门禁真正执行；再补联机撤离生产接线和技能完整效果事务；随后收紧 SessionRoot service 端口、Autoload 生命周期与巨型脚本边界。

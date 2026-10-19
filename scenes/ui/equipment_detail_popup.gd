@@ -341,6 +341,25 @@ static func icon_for_rune(rune_id: String) -> Texture2D:
 		return null
 	return RUNE_GLYPHS.get_texture(rune_id) as Texture2D
 
+
+## 构建拖拽预览：图标 + 可选文字。
+## 项目规则：所有有图标的物品/装备/符文拖拽时必须显示图标，禁止纯文字预览。
+static func build_drag_preview(icon: Texture2D, text: String = "") -> Control:
+	var box := HBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	var texture_rect := TextureRect.new()
+	texture_rect.texture = icon
+	texture_rect.custom_minimum_size = Vector2(48, 48)
+	texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	box.add_child(texture_rect)
+	if not text.is_empty():
+		var label := Label.new()
+		label.text = text
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(label)
+	return box
+
 static func icon_for_rune_word(word_id: String) -> Texture2D:
 	# 符文之语使用独立的华丽圣匣卡面，不复用普通符文样式。
 	if word_id.is_empty():

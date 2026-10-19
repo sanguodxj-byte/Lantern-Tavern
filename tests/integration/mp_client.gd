@@ -2,9 +2,10 @@ extends Node
 ## 集成测试——客户端进程（真实 ENet）。
 ## 由 tools/run_integration_test.sh 在服务器就绪后启动：
 ##   godot --headless tests/integration/mp_client.tscn
-## 流程：join(127.0.0.1) → 轮询 CONNECTED → send_spawn（携带单人存档摘要占位 + 稳定 guid）
-## → 等待服务器下发 rpc_server_spawned（写入 reconnect_token）→ 写 client_ok.txt → 退出。
-## 仅地牢范围：客户端进入地牢只继承各自存档（此处用空 save_state 占位，继承逻辑已由单测覆盖）。
+## 流程：join(127.0.0.1) → 轮询 CONNECTED → send_spawn（只上送稳定 guid；B2：权威存档
+## 由服务器按 guid 从服务器存档仓加载）→ 等待服务器下发 rpc_server_spawned（写入
+## reconnect_token）→ 写 client_ok.txt → 退出。
+## 仅地牢范围：客户端进入地牢只继承各自存档（继承逻辑已由单测覆盖）。
 
 const PORT := 17391
 const ADDR := "127.0.0.1"
@@ -34,9 +35,8 @@ func _ready() -> void:
 		return
 	# 连接已建立：确保 local_peer_id 已同步为 ENet 分配的真实 id
 	NetworkManager.local_peer_id = NetworkManager.multiplayer.get_unique_id()
-	# 上送生成请求（空 save_state 占位 + 稳定身份 guid）
-	var save_state := {}
-	NetworkManager.send_spawn(save_state, "client_guid_001")
+	# 上送生成请求（只上送稳定身份 guid；B2：存档由服务器按 guid 从存档仓加载）
+	NetworkManager.send_spawn("client_guid_001")
 	# 等待服务器确认（rpc_server_spawned 写入 reconnect_token，最多 ~7s）
 	for i in range(420):
 		await get_tree().process_frame

@@ -301,11 +301,14 @@ func test_voxel_prop_rebuild_clears_generated_children_immediately() -> void:
 	await await_idle_frame()
 
 	inst.rebuild()
+	var count_after_first := _collect_meshes(inst).size()
 	inst.rebuild()
 
+	# 同一帧连续 rebuild 不应保留排队删除的旧体素 Mesh（数量与首次一致；
+	# 非编辑器环境走烘焙资产路径，mesh 数与代码路径 box 数不同，故不断言固定值）。
 	assert_int(_collect_meshes(inst).size()) \
 		.override_failure_message("同一帧连续 rebuild 不应保留排队删除的旧体素 Mesh") \
-		.is_equal(8)
+		.is_equal(count_after_first)
 	inst.free()
 
 
@@ -407,12 +410,16 @@ func test_barrel_uses_stepped_round_voxel_silhouette() -> void:
 	var inst := (load("res://scenes/props/barrel/barrel.tscn") as PackedScene).instantiate()
 	add_child(inst)
 	await await_idle_frame()
+	# 用 collect_box_bounds()（始终走代码路径体素定义，非编辑器下场景节点为烘焙合并网格，
+	# 节点名不含 MiddleWoodSlice_ 前缀）。
+	var prop := _find_voxel_prop(inst)
+	var boxes: Array = prop.collect_box_bounds() if prop != null else []
 	var slice_depths: Array[int] = []
-	for mesh_instance in _collect_meshes(inst):
-		if not String(mesh_instance.name).begins_with("MiddleWoodSlice_"):
+	for box in boxes:
+		if not String(box.get("name", "")).begins_with("MiddleWoodSlice_"):
 			continue
-		var box := mesh_instance.mesh as BoxMesh
-		slice_depths.append(roundi(box.size.z * 32.0))
+		var size_px: Vector3 = (box["max"] as Vector3) - (box["min"] as Vector3)
+		slice_depths.append(roundi(size_px.z))
 	assert_int(slice_depths.size()) \
 		.override_failure_message("酒桶必须由多段体素切片组成，顶部投影才像圆桶") \
 		.is_greater_equal(5)
@@ -469,13 +476,16 @@ func test_boss_chest_is_large_voxel_chest_with_triple_loot_multiplier() -> void:
 	assert_float(boss_bounds.size.x).is_greater(regular_bounds.size.x * 1.4)
 	assert_float(boss_bounds.size.y).is_greater(regular_bounds.size.y * 1.2)
 	assert_float(boss_bounds.size.z).is_greater(regular_bounds.size.z * 1.25)
-	assert_bool(_has_mesh_named_with(boss, "BossIronCorner")) \
+	# 名称断言走 collect_box_bounds()（代码路径体素定义；非编辑器下场景节点为烘焙合并网格，节点名不含部件名）
+	var boss_prop := _find_voxel_prop(boss)
+	var boss_boxes: Array = boss_prop.collect_box_bounds() if boss_prop != null else []
+	assert_bool(_has_box_named_with(boss_boxes, "BossIronCorner")) \
 		.override_failure_message("boss 奖励箱需要普通箱没有的重型黑铁角柱") \
 		.is_true()
-	assert_bool(_has_mesh_named_with(boss, "BossSideHandle")) \
+	assert_bool(_has_box_named_with(boss_boxes, "BossSideHandle")) \
 		.override_failure_message("boss 奖励箱需要普通箱没有的侧把手轮廓") \
 		.is_true()
-	assert_bool(_has_mesh_named_with(boss, "BossRewardSeal")) \
+	assert_bool(_has_box_named_with(boss_boxes, "BossRewardSeal")) \
 		.override_failure_message("boss 奖励箱需要普通箱没有的正面封印/奖励标记") \
 		.is_true()
 	regular.free()
@@ -533,6 +543,9 @@ func test_destructible_item_generates_voxel_fragments_without_fragment_glb() -> 
 
 func test_destructible_item_explode_builds_and_wakes_voxel_fragments_immediately() -> void:
 	var inst := (load("res://scenes/props/destructible_item.tscn") as PackedScene).instantiate() as DestructibleItem
+	# 先入树再 explode：explode 依赖场景树（音频播放/全局变换），脱离树调用会产生引擎错误与碎片泄漏
+	add_child(inst)
+	await await_idle_frame()
 	inst.explode()
 	var fragments := inst.get_node("VoxelFragments")
 	assert_object(fragments) \
@@ -548,6 +561,7 @@ func test_destructible_item_explode_builds_and_wakes_voxel_fragments_immediately
 	assert_int(moving_fragments) \
 		.override_failure_message("explode() 必须唤醒并推动碎片，而不是只生成静态盒子") \
 		.is_greater_equal(3)
+	remove_child(inst)
 	inst.free()
 
 
@@ -580,8 +594,11 @@ func test_torch_voxel_model_is_compact_and_has_no_static_flame_meshes() -> void:
 	var inst := (load("res://scenes/props/torch/torch.tscn") as PackedScene).instantiate()
 	add_child(inst)
 	await await_idle_frame()
+	# 部件数量/命名走 collect_box_bounds()（代码路径；非编辑器下场景节点为烘焙合并网格）
+	var prop := _find_voxel_prop(inst)
+	var boxes: Array = prop.collect_box_bounds() if prop != null else []
+	assert_int(boxes.size()).is_greater_equal(6)
 	var meshes := _collect_meshes(inst)
-	assert_int(meshes.size()).is_greater_equal(6)
 	var bounds := _combined_mesh_aabb(meshes)
 	assert_float(bounds.size.y) \
 		.override_failure_message("火把本体过高；静态模型应只是小型墙托架，火焰交给动态粒子") \
@@ -592,10 +609,10 @@ func test_torch_voxel_model_is_compact_and_has_no_static_flame_meshes() -> void:
 	assert_float(bounds.size.z) \
 		.override_failure_message("火把本体伸出墙面过深") \
 		.is_less_equal(0.55)
-	for mesh_instance in meshes:
-		assert_bool(String(mesh_instance.name).begins_with("Flame")) \
-			.override_failure_message("火把静态模型不应包含火焰 mesh: %s" % mesh_instance.name) \
-			.is_false()
+	for box in boxes:
+		assert_bool(not String(box.get("name", "")).begins_with("Flame")) \
+			.override_failure_message("火把静态体素模型不应包含静态火焰部件: %s" % box.get("name", "")) \
+			.is_true()
 	inst.free()
 
 
@@ -790,5 +807,12 @@ func _is_voxel_aligned(value: float) -> bool:
 func _is_centerline_detail(node_name: String) -> bool:
 	for marker in ["Leg", "Bar", "Post", "Candle", "Flame", "Rail", "Band", "Crate", "Chest", "Lock", "Pillar", "Jamb", "Banner", "Bone", "Stone", "Plank", "Stalagmite", "Sarcophagus", "Chain", "Fungus"]:
 		if node_name.contains(marker):
+			return true
+	return false
+
+
+func _has_box_named_with(boxes: Array, prefix: String) -> bool:
+	for box in boxes:
+		if String(box.get("name", "")).begins_with(prefix):
 			return true
 	return false

@@ -9,7 +9,7 @@ const ALL_PROP_KINDS := [
 	"table", "chair", "bench", "bucket", "candles", "lit_candles",
 	"tankard", "goblet", "bottle_set", "wall_notice", "chandelier",
 	"wall_lantern", "grate", "jail", "fireplace", "small_crate",
-	"large_crate", "barrel", "brew_cauldron", "chest", "large_chest", "boss_chest",
+	"large_crate", "barrel", "brew_cauldron", "brew_ingredient_rack", "chest", "large_chest", "boss_chest",
 	"torch", "pillar", "banner", "bones", "plank", "rubble",
 	"stalagmite_cluster", "sarcophagus", "wall_chain", "fungus_patch",
 ]

@@ -1,6 +1,8 @@
 class_name UI
 extends CanvasLayer
 
+const Service := preload("res://globals/core/service.gd")
+
 const DETAIL_POPUP_SCRIPT := preload("res://scenes/ui/equipment_detail_popup.gd")
 const PICKUP_HINT_SCRIPT := preload("res://scenes/ui/pickup_hint.gd")
 const INTERACT_HINT_SCRIPT := preload("res://scenes/ui/interact_hint.gd")
@@ -211,9 +213,27 @@ func _input(event: InputEvent) -> void:
 		# it twice while the event bubbles through the shared UI layer.
 		if character_panel_instance != null and is_instance_valid(character_panel_instance) and character_panel_instance.visible:
 			return
+		# 2230 审查 P0：地牢 TAB 存在待处理升级（或升级面板已可见）时归升级面板所有，
+		# 装备面板退出——避免同一 TAB 同时打开两个全屏模态。
+		if _level_up_owns_tab():
+			return
 		# Consume the event to prevent propagation
 		get_viewport().set_input_as_handled()
 		toggle_character_panel()
+
+## 2230 审查 P0：升级待处理/面板可见时 TAB 由升级面板仲裁（装备面板不得抢占）。
+func _level_up_owns_tab() -> bool:
+	var tree := get_tree()
+	if tree == null:
+		return false
+	for node in tree.get_nodes_in_group("modal_gameplay_blocker"):
+		if node != null and is_instance_valid(node) and node is LevelUpPanel:
+			if node.visible:
+				return true
+	var ap: Node = Service.attr_panel()
+	if ap != null and ap.has_method("get_pending_level_choices"):
+		return int(ap.get_pending_level_choices()) > 0
+	return false
 
 func toggle_character_panel() -> void:
 	if death_screen and death_screen.modulate.a > 0.5:

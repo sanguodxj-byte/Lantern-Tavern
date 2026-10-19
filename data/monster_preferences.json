@@ -77,6 +77,22 @@
         ]
     },
     {
+        "id": "dire_wolf",
+        "name": "恐狼",
+        "voxel_model": "res://assets/meshes/characters/voxel_dire_wolf_100px.glb",
+        "liked_flavors": [
+            "gaminess",
+            "umami"
+        ],
+        "disliked_flavors": [
+            "sweet",
+            "spicy"
+        ],
+        "drops": [
+            "bone_shard"
+        ]
+    },
+    {
         "id": "troll",
         "name": "巨魔",
         "voxel_model": "res://assets/meshes/characters/voxel_troll_64x.glb",

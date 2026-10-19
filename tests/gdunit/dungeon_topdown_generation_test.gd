@@ -33,7 +33,7 @@ const COLOR_PILLAR := Color(0.22, 0.22, 0.24, 1.0)
 const COLOR_PLAYER := Color(0.10, 0.95, 0.25, 1.0)
 const COLOR_ENEMY := Color(0.95, 0.10, 0.10, 1.0)
 const COLOR_PICKABLE := Color(1.0, 0.86, 0.14, 1.0)
-const COLOR_MATERIAL := Color(0.18, 0.80, 0.32, 1.0)
+const COLOR_MATERIAL := Color(0.45, 0.24, 0.92, 1.0)
 const COLOR_CONTAINER := Color(0.95, 0.48, 0.08, 1.0)
 const COLOR_EXTRACTION := Color(0.0, 0.95, 0.85, 1.0)
 const COLOR_STAIRS := Color(1.0, 1.0, 1.0, 1.0)
@@ -43,9 +43,9 @@ const COLOR_ROOM_FOCUS := Color(1.0, 0.55, 0.08, 1.0)
 const COLOR_TAGGED_ITEM := Color(0.05, 0.20, 1.0, 1.0)
 const COLOR_DOOR := Color(0.10, 0.70, 1.0, 1.0)
 const COLOR_PLATFORM := Color(0.26, 0.48, 0.72, 1.0)
-const COLOR_CLIFF_CELL := Color(0.48, 0.28, 0.16, 1.0)
-const COLOR_CLIFF_EDGE := Color(1.0, 0.74, 0.18, 1.0)
-const COLOR_CLIFF_RAMP := Color(0.92, 0.58, 0.12, 1.0)
+const COLOR_CLIFF_CELL := Color(0.18, 0.08, 0.12, 1.0)
+const COLOR_CLIFF_WALL := Color(0.96, 0.42, 0.10, 1.0)
+const COLOR_CLIFF_MARK := Color(0.78, 0.18, 0.08, 1.0)
 const COLOR_RAMP := Color(0.62, 0.42, 0.18, 1.0)
 const COLOR_BRIDGE := Color(0.64, 0.30, 0.12, 1.0)
 const COLOR_BOUNDARY := Color(0.70, 0.70, 0.76, 1.0)
@@ -628,8 +628,11 @@ func test_generated_dungeon_topdown_map_includes_monsters_and_items() -> void:
 	var door_count := _count_markers(markers, "door")
 	var platform_count := _count_markers(markers, "platform")
 	var cliff_count := _count_markers(markers, "cliff")
-	var cliff_edge_count := _count_markers(markers, "cliff_edge")
-	var cliff_ramp_count := _count_markers(markers, "cliff_ramp")
+	var cliff_wall_count := _count_markers(markers, "cliff_wall")
+	var cliff_feature_count := 0
+	for feature in dungeon.layout.terrain_features:
+		if String(feature.get("feature_kind", "")) == "cliff":
+			cliff_feature_count += 1
 	var ramp_count := _count_markers(markers, "ramp")
 	var bridge_count := _count_markers(markers, "bridge")
 	var boundary_count := _count_markers(markers, "boundary")
@@ -670,13 +673,13 @@ func test_generated_dungeon_topdown_map_includes_monsters_and_items() -> void:
 		.override_failure_message("俯视测试图必须标出高台") \
 		.is_greater_equal(1)
 	assert_int(cliff_count) \
-		.override_failure_message("俯视测试图必须逐格标出悬崖高台，不能只显示普通平台色") \
-		.is_greater_equal(4)
-	assert_int(cliff_edge_count) \
-		.override_failure_message("悬崖必须有可审查的连续崖边标记") \
-		.is_greater_equal(1)
-	assert_int(cliff_ramp_count) \
-		.override_failure_message("悬崖必须有一格可辨认的坡道入口") \
+		.override_failure_message("俯视测试图必须逐格标出可坠落悬崖坑洞，不能只显示临边") \
+		.is_greater_equal(cliff_feature_count * 4)
+	assert_int(cliff_feature_count) \
+		.override_failure_message("每张地图至少需要两个悬崖坑洞房间") \
+		.is_greater_equal(2)
+	assert_int(cliff_wall_count) \
+		.override_failure_message("悬崖坑洞必须有可审查的坑壁边界标记") \
 		.is_greater_equal(1)
 	assert_int(ramp_count) \
 		.override_failure_message("俯视测试图必须标出坡道") \
@@ -740,12 +743,22 @@ func test_generated_dungeon_topdown_map_includes_monsters_and_items() -> void:
 	var map_pixel_height := MARGIN * 2 + dungeon.layout.height * CELL_PX
 	assert_int(image.get_height()).is_greater(map_pixel_height)
 	assert_bool(_legend_has_rendered_pixels(image, map_pixel_height)).is_true()
+	assert_bool(_image_contains_color(image, COLOR_CLIFF_CELL)) \
+		.override_failure_message("俯视图必须用深紫色块表示悬崖坑洞底部").is_true()
+	assert_bool(_image_contains_color(image, COLOR_CLIFF_MARK)) \
+		.override_failure_message("俯视图必须用硬边裂纹标出坑洞危险格").is_true()
+	assert_bool(_image_contains_color(image, COLOR_CLIFF_WALL)) \
+		.override_failure_message("俯视图必须用橙色标出独立坑壁边界").is_true()
+	assert_bool(absf(COLOR_PLAYER.g - COLOR_MATERIAL.g) > 0.35) \
+		.override_failure_message("材料标记颜色必须与玩家绿色明显区分").is_true()
+	assert_bool(_image_contains_color(image, COLOR_MATERIAL)) \
+		.override_failure_message("俯视图图例/标记必须包含新的材料颜色").is_true()
 	_ensure_reports_dir()
 	var err := image.save_png(OUTPUT_PATH)
 	assert_int(err) \
 		.override_failure_message("无法保存地牢俯视测试图: %s" % OUTPUT_PATH) \
 		.is_equal(OK)
-	print("[DungeonTopdown] saved=%s enemies=%d items=%d materials=%d hazards=%d terrain=%d focus=%d cliffs=%d cliff_edges=%d cliff_ramps=%d doors=%d extraction=%d stairs=%d markers=%d" % [OUTPUT_PATH, enemy_count, item_count, material_count, hazard_count, terrain_feature_count, room_focus_count, cliff_count, cliff_edge_count, cliff_ramp_count, door_count, extraction_count, stairs_count, markers.size()])
+	print("[DungeonTopdown] saved=%s enemies=%d items=%d materials=%d hazards=%d terrain=%d focus=%d cliff_pit_cells=%d cliff_pit_walls=%d doors=%d extraction=%d stairs=%d markers=%d" % [OUTPUT_PATH, enemy_count, item_count, material_count, hazard_count, terrain_feature_count, room_focus_count, cliff_count, cliff_wall_count, door_count, extraction_count, stairs_count, markers.size()])
 
 
 func _collect_topdown_markers(dungeon: ProceduralDungeon) -> Array[Dictionary]:
@@ -773,34 +786,14 @@ func _append_layout_terrain_markers(dungeon: ProceduralDungeon, markers: Array[D
 				"cell": cell,
 				"name": feature_name,
 				"room_index": room_index,
-				"height_m": float(feature.get("elevation_m", 0.0)),
+				"depth_m": float(feature.get("depth_m", 0.0)),
 			})
 		for edge_value in feature.get("edges", []):
 			var edge: Dictionary = edge_value
 			markers.append({
-				"kind": "cliff_edge",
+				"kind": "cliff_wall",
 				"cell": edge.get("cell", Vector2i(-1, -1)),
 				"dir": edge.get("dir", Vector2i.ZERO),
-				"name": feature_name,
-				"room_index": room_index,
-			})
-		var ramp_cell: Vector2i = feature.get("ramp_cell", Vector2i(-1, -1))
-		if ramp_cell.x >= 0:
-			var ramp_direction := Vector2i.ZERO
-			for spec in dungeon.layout.room_composition_specs:
-				if int(spec.get("room_index", -1)) != room_index:
-					continue
-				for ramp_value in spec.get("ramp_specs", []):
-					var ramp_spec: Dictionary = ramp_value
-					if ramp_spec.get("cell", Vector2i(-1, -1)) == ramp_cell:
-						ramp_direction = ramp_spec.get("dir", Vector2i.ZERO)
-						break
-				if ramp_direction != Vector2i.ZERO:
-					break
-			markers.append({
-				"kind": "cliff_ramp",
-				"cell": ramp_cell,
-				"dir": ramp_direction,
 				"name": feature_name,
 				"room_index": room_index,
 			})
@@ -881,12 +874,14 @@ func _render_topdown_image(grid: Array, heights: Array, markers: Array[Dictionar
 	var image_height := map_pixel_height + LEGEND_HEIGHT
 	var image := Image.create(image_width, image_height, false, Image.FORMAT_RGBA8)
 	image.fill(COLOR_EMPTY)
+	var cliff_cells := _marker_cell_set(markers, "cliff")
 
 	for y in range(grid_height):
 		for x in range(grid_width):
 			var height := float(heights[y][x]) if y < heights.size() and x < heights[y].size() else 3.0
 			var floor_height := float(floor_elevations[y][x]) if y < floor_elevations.size() and x < floor_elevations[y].size() else 0.0
-			_fill_cell(image, Vector2i(x, y), _cell_color(int(grid[y][x]), height, floor_height))
+			var cell := Vector2i(x, y)
+			_fill_cell(image, cell, COLOR_CLIFF_CELL if cliff_cells.has(cell) else _cell_color(int(grid[y][x]), height, floor_height))
 
 	var sorted_markers := markers.duplicate()
 	sorted_markers.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
@@ -896,12 +891,10 @@ func _render_topdown_image(grid: Array, heights: Array, markers: Array[Dictionar
 		var kind := String(marker["kind"])
 		if kind == "door":
 			_draw_door_marker(image, marker["cell"], marker["dir"], _marker_color(kind))
-		elif kind == "cliff_edge":
-			_draw_cliff_edge_marker(image, marker["cell"], marker["dir"], _marker_color(kind))
+		elif kind == "cliff_wall":
+			_draw_cliff_wall_marker(image, marker["cell"], marker["dir"], _marker_color(kind))
 		elif kind == "cliff":
 			_draw_cliff_cell_marker(image, marker["cell"], _marker_color(kind))
-		elif kind == "cliff_ramp":
-			_draw_cliff_ramp_marker(image, marker["cell"], marker["dir"], _marker_color(kind))
 		else:
 			_draw_marker(image, marker["cell"], _marker_color(kind))
 
@@ -912,8 +905,6 @@ func _render_topdown_image(grid: Array, heights: Array, markers: Array[Dictionar
 func _cell_color(cell_type: int, height: float = 3.0, floor_height: float = 0.0) -> Color:
 	var height_t := clampf((height - 3.0) / 2.2, 0.0, 1.0)
 	if floor_height > 0.1:
-		if floor_height >= 1.4:
-			return COLOR_CLIFF_CELL
 		return COLOR_PLATFORM.lerp(Color(0.42, 0.66, 0.86, 1.0), clampf(floor_height / 2.0, 0.0, 1.0))
 	match cell_type:
 		BSP_DungeonGenerator.TileType.EMPTY:
@@ -959,11 +950,9 @@ func _marker_color(kind: String) -> Color:
 		"platform":
 			return COLOR_PLATFORM
 		"cliff":
-			return COLOR_CLIFF_CELL
-		"cliff_edge":
-			return COLOR_CLIFF_EDGE
-		"cliff_ramp":
-			return COLOR_CLIFF_RAMP
+			return COLOR_CLIFF_MARK
+		"cliff_wall":
+			return COLOR_CLIFF_WALL
 		"ramp":
 			return COLOR_RAMP
 		"bridge":
@@ -1011,7 +1000,7 @@ func _draw_door_marker(image: Image, cell: Vector2i, direction: Vector2i, color:
 
 
 func _draw_cliff_cell_marker(image: Image, cell: Vector2i, color: Color) -> void:
-	# 两条硬边对角线让悬崖高台在密集标记下仍可逐格识别，底色仍保留高度语义。
+	# 深色坑底叠加硬边裂纹，明确表示“坑内危险格”，而不是高台表面。
 	var start := Vector2i(MARGIN + cell.x * CELL_PX, MARGIN + cell.y * CELL_PX)
 	for offset in range(1, CELL_PX - 1):
 		var px_a := start.x + offset
@@ -1024,7 +1013,7 @@ func _draw_cliff_cell_marker(image: Image, cell: Vector2i, color: Color) -> void
 			image.set_pixel(px_b, py_b, color)
 
 
-func _draw_cliff_edge_marker(image: Image, cell: Vector2i, direction: Vector2i, color: Color) -> void:
+func _draw_cliff_wall_marker(image: Image, cell: Vector2i, direction: Vector2i, color: Color) -> void:
 	var start := Vector2i(MARGIN + cell.x * CELL_PX, MARGIN + cell.y * CELL_PX)
 	var rect: Rect2i
 	if direction.x != 0:
@@ -1034,23 +1023,6 @@ func _draw_cliff_edge_marker(image: Image, cell: Vector2i, direction: Vector2i, 
 		var boundary_y := start.y + (CELL_PX if direction.y > 0 else 0)
 		rect = Rect2i(start.x, boundary_y - 1, CELL_PX, 3)
 	_fill_rect(image, rect, color)
-
-
-func _draw_cliff_ramp_marker(image: Image, cell: Vector2i, direction: Vector2i, color: Color) -> void:
-	var start := Vector2i(MARGIN + cell.x * CELL_PX, MARGIN + cell.y * CELL_PX)
-	var center := Vector2i(start.x + CELL_PX / 2, start.y + CELL_PX / 2)
-	var step := Vector2i(signi(direction.x), signi(direction.y))
-	if step == Vector2i.ZERO:
-		step = Vector2i(0, 1)
-	for index in range(1, 4):
-		var px := center.x + step.x * index
-		var py := center.y + step.y * index
-		if px >= 0 and py >= 0 and px < image.get_width() and py < image.get_height():
-			image.set_pixel(px, py, color)
-			if step.x == 0 and px + 1 < image.get_width():
-				image.set_pixel(px + 1, py, color)
-			elif step.y == 0 and py + 1 < image.get_height():
-				image.set_pixel(px, py + 1, color)
 
 
 func _draw_legend(image: Image, map_pixel_height: int) -> void:
@@ -1073,8 +1045,8 @@ func _draw_legend(image: Image, map_pixel_height: int) -> void:
 		{"label": "门", "color": COLOR_DOOR},
 		{"label": "门前", "color": COLOR_DOOR_TRANSITION},
 		{"label": "平台", "color": COLOR_PLATFORM},
-		{"label": "悬崖", "color": COLOR_CLIFF_CELL},
-		{"label": "崖边", "color": COLOR_CLIFF_EDGE},
+		{"label": "悬崖坑", "color": COLOR_CLIFF_CELL},
+		{"label": "坑壁", "color": COLOR_CLIFF_WALL},
 		{"label": "坡道", "color": COLOR_RAMP},
 		{"label": "桥", "color": COLOR_BRIDGE},
 		{"label": "边界", "color": COLOR_BOUNDARY},
@@ -1101,6 +1073,8 @@ func _ensure_annotation_bitmaps() -> void:
 	var additions := {
 		"台": ["............", "...######...", ".....#......", ".#########..", ".....#......", "....###.....", "...#####....", "..#######...", "............", "............", "............", "............"],
 		"悬": ["............", ".#..#####...", ".#.#...#....", ".###...#....", ".#.#...#....", ".#..#####...", "....#.......", "...###......", "..#####.....", ".#######....", "............", "............"],
+		"坑": ["............", ".#.......#..", ".#.......#..", ".#########..", ".#.......#..", ".#..###..#..", ".#.#...#.#..", ".#..###..#..", ".#.......#..", ".#########..", "............", "............"],
+		"壁": ["............", ".#.......#..", ".##.....##..", ".#.#...#.#..", ".#..###..#..", ".#.......#..", ".#########..", ".#.......#..", ".#.......#..", ".#.......#..", "............", "............"],
 		"崖": ["............", ".#########..", ".....#......", "....###.....", "...#####....", "..#######...", ".#.......#..", ".#..###..#..", ".#.#...#.#..", ".#########..", "............", "............"],
 		"坡": ["............", ".###...##...", ".#.#..#.....", ".###..####..", ".#...#......", ".#..######..", ".#..#.......", ".#..######..", "............", "............", "............", "............"],
 		"道": ["............", "....#.......", "...###......", ".#########..", "....#.......", "...#####....", "....#.......", ".#########..", "............", "............", "............", "............"],
@@ -1146,6 +1120,17 @@ func _legend_has_rendered_pixels(image: Image, map_pixel_height: int) -> bool:
 	return non_background > 900
 
 
+func _image_contains_color(image: Image, expected: Color) -> bool:
+	for y in range(image.get_height()):
+		for x in range(image.get_width()):
+			var pixel := image.get_pixel(x, y)
+			if absf(pixel.r - expected.r) <= 0.01 \
+					and absf(pixel.g - expected.g) <= 0.01 \
+					and absf(pixel.b - expected.b) <= 0.01:
+				return true
+	return false
+
+
 func _fill_rect(image: Image, rect: Rect2i, color: Color) -> void:
 	for py in range(rect.position.y, rect.position.y + rect.size.y):
 		for px in range(rect.position.x, rect.position.x + rect.size.x):
@@ -1159,6 +1144,14 @@ func _count_markers(markers: Array[Dictionary], kind: String) -> int:
 		if String(marker["kind"]) == kind:
 			count += 1
 	return count
+
+
+func _marker_cell_set(markers: Array[Dictionary], kind: String) -> Dictionary:
+	var cells := {}
+	for marker in markers:
+		if String(marker.get("kind", "")) == kind:
+			cells[marker.get("cell", Vector2i(-1, -1))] = true
+	return cells
 
 
 func _count_item_markers(markers: Array[Dictionary]) -> int:
@@ -1193,12 +1186,10 @@ func _marker_priority(kind: String) -> int:
 			return 56
 		"cliff":
 			return 54
-		"cliff_ramp":
-			return 57
+		"cliff_wall":
+			return 80
 		"platform", "ramp", "bridge", "boundary", "cover":
 			return 56
-		"cliff_edge":
-			return 80
 		"hazard_warning":
 			return 55
 		"door":
@@ -1307,46 +1298,67 @@ func _assert_door_markers_are_room_boundaries(dungeon: ProceduralDungeon, marker
 func _assert_cliff_render_markers(dungeon: ProceduralDungeon, markers: Array[Dictionary]) -> void:
 	var feature_cells := {}
 	var feature_edges := {}
-	var feature_ramps := {}
 	for feature in dungeon.layout.terrain_features:
 		if String(feature.get("feature_kind", "")) != "cliff":
 			continue
 		var room_index := int(feature.get("room_index", -1))
 		var room: Rect2i = dungeon.layout.rooms[room_index]
-		for cell_value in feature.get("cells", []):
+		var pit_cells: Array = feature.get("pit_cells", feature.get("cells", []))
+		assert_int(pit_cells.size()) \
+			.override_failure_message("悬崖必须是至少 4 格连续坑洞").is_greater_equal(4)
+		assert_float(float(feature.get("depth_m", 0.0))) \
+			.override_failure_message("悬崖坑深必须是 1.5m").is_equal_approx(1.5, 0.001)
+		assert_bool(feature.get("ramp_specs", []).is_empty()).is_true()
+		for cell_value in pit_cells:
 			var cell: Vector2i = cell_value
 			feature_cells[cell] = true
 			assert_bool(room.has_point(cell)).is_true()
 			assert_float(dungeon.layout.floor_height_at(cell)) \
-				.override_failure_message("悬崖格高度必须是 1.5m: %s" % cell) \
-				.is_equal_approx(1.5, 0.001)
+				.override_failure_message("悬崖坑洞不能抬高地面: %s" % cell) \
+				.is_equal_approx(0.0, 0.001)
+		assert_bool(_cells_are_four_way_connected(pit_cells)) \
+			.override_failure_message("悬崖坑洞必须四方向连续").is_true()
 		for edge_value in feature.get("edges", []):
 			var edge: Dictionary = edge_value
-			feature_edges[edge.get("cell", Vector2i(-1, -1))] = true
-		var ramp_cell: Vector2i = feature.get("ramp_cell", Vector2i(-1, -1))
-		if ramp_cell.x >= 0:
-			feature_ramps[ramp_cell] = true
+			feature_edges[_cliff_edge_key(edge)] = true
 	var rendered_cells := {}
 	var rendered_edges := {}
-	var rendered_ramps := {}
 	for marker in markers:
 		match String(marker.get("kind", "")):
 			"cliff":
 				rendered_cells[marker.get("cell", Vector2i(-1, -1))] = true
-			"cliff_edge":
-				rendered_edges[marker.get("cell", Vector2i(-1, -1))] = true
-			"cliff_ramp":
-				rendered_ramps[marker.get("cell", Vector2i(-1, -1))] = true
+			"cliff_wall":
+				rendered_edges[_cliff_edge_key(marker)] = true
 	assert_int(rendered_cells.size()).is_equal(feature_cells.size())
 	for cell in feature_cells.keys():
 		assert_bool(rendered_cells.has(cell)) \
 			.override_failure_message("2D 图缺少规划器输出的悬崖格标记: %s" % cell).is_true()
 	for cell in feature_edges.keys():
 		assert_bool(rendered_edges.has(cell)) \
-			.override_failure_message("2D 图缺少规划器输出的崖边标记: %s" % cell).is_true()
-	for cell in feature_ramps.keys():
-		assert_bool(rendered_ramps.has(cell)) \
-			.override_failure_message("2D 图缺少规划器输出的悬崖坡道入口标记: %s" % cell).is_true()
+			.override_failure_message("2D 图缺少规划器输出的坑壁标记: %s" % cell).is_true()
+
+
+func _cliff_edge_key(edge: Dictionary) -> String:
+	return "%s|%s" % [edge.get("cell", Vector2i(-1, -1)), edge.get("dir", Vector2i.ZERO)]
+
+
+func _cells_are_four_way_connected(cells: Array) -> bool:
+	if cells.is_empty():
+		return false
+	var cell_set := {}
+	for value in cells:
+		cell_set[value] = true
+	var start: Vector2i = cells[0]
+	var queue: Array[Vector2i] = [start]
+	var visited := {start: true}
+	while not queue.is_empty():
+		var current: Vector2i = queue.pop_front()
+		for direction in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0)]:
+			var next: Vector2i = current + direction
+			if cell_set.has(next) and not visited.has(next):
+				visited[next] = true
+				queue.append(next)
+	return visited.size() == cell_set.size()
 
 
 func _count_markers_in_room(markers: Array[Dictionary], room: Rect2i, kinds: Array[String]) -> int:

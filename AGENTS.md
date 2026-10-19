@@ -1,5 +1,11 @@
 # AGENTS.md — Lantern Tavern
 
+## 🚨 MANDATORY RULE: Visual Review Prompt Neutrality
+
+**任何视觉审查（图片/截图/渲染结果的审查），给视觉模型/子代理的提示词仅允许要求"详细描述图片内容"（如："请详细描述这张图片的内容"）。除此之外不允许任何额外提示词，绝对禁止在提示词中提及或预期图片内容（禁止告知应显示什么、禁止给出预期数值/姿态/方向/颜色、禁止给出校准目标、禁止暗示期望结果）。** 违反此规则会引入确认偏误（confirmation bias），使视觉模型顺着提示词脑补而非真实观察。视觉审查提示词唯一合法内容 = 要求详细描述 + 图片路径；如需结构化，只允许列"描述维度"（如位置/颜色/朝向/尺寸），不允许给任何期望值或预判结论。结构化维度若包含"应如何/是否达到预期"等措辞，一律禁止。
+
+**🚨 文件名/路径匿名化限制（同属本规则）：视觉审查提示词中的图片路径与文件名不得包含任何能揭示图片内容的有效信息——禁止出现武器名、姿态名、动作名、效果名、角色名、状态名（如 hold/aim/attack/fire/reload/draw/roster_*/角色 id 等描述性词）。审查前必须将待审图片复制/重命名为中性纯序号标识（如 `img_001.png`），放入与内容无关的独立匿名目录（如 `reports/visual_review/`），提示词只允许引用该匿名路径。文件名携带语义（哪怕提示词本身中立）同样会引导视觉模型按名称预期内容，属于确认偏误来源，一律禁止。**
+
 This file provides guidance to Agent (AI coding assistant) when working with this project.
 
 ## Project Overview
@@ -167,6 +173,17 @@ For tavern geometry, material, lighting, and visibility checks, use the existing
 "D:/123/Godot_v4.7-stable_mono_win64.exe" --headless --path "D:/123/Lantern Tavern" res://tools/tavern_material_topdown_capture_scene.tscn
 ```
 
+Real 3D viewport captures (including the underground captures below) require a **non-headless renderer** — in headless mode `get_viewport().get_texture()` returns null, so run them windowed.
+
+For the underground level (酒窖 + 酿造间), use the underground capture tool:
+
+```bash
+# Underground ortho top-down + 3/4 perspective in-game view (windowed, non-headless)
+"D:/123/Godot_v4.7-stable_mono_win64.exe" --path "D:/123/Lantern Tavern" res://tools/tavern_underground_capture_scene.tscn
+```
+
+Saves `reports/tavern_underground_topdown.png` and `reports/tavern_underground_3d.png`. The tool instantiates the tavern, lets the brewing coordinator spawn its stations (炼药锅/原料架/倒桶台/窖藏位), adds capture-only lights, and hides nothing — the underground rooms and equipment are fully visible.
+
 The capture scripts write runtime-only material overrides and hide underground nodes on the instantiated scene. They must never overwrite `scenes/tavern/tavern.tscn`, `Structure/BuiltStructure`, or any hand-authored tavern material. These captures are visual checks only; they are not tavern baking, generation, merging, atlas generation, or bulk rewrite workflows.
 
 ### Agent Inspection Checklist
@@ -271,3 +288,9 @@ Use the five canonical triage labels without project-specific aliases. See `docs
 ### Domain docs
 
 This is a single-context repository; read root `CONTEXT.md` and `docs/adr/` when present. See `docs/agents/domain.md`.
+
+## 🚨 MANDATORY RULE: Visual Review Prompt Neutrality
+
+**任何视觉审查（图片/截图/渲染结果的审查），给视觉模型/子代理的提示词仅允许要求"详细描述图片内容"（如："请详细描述这张图片的内容"）。除此之外不允许任何额外提示词，绝对禁止在提示词中提及或预期图片内容（禁止告知应显示什么、禁止给出预期数值/姿态/方向/颜色、禁止给出校准目标、禁止暗示期望结果）。** 违反此规则会引入确认偏误（confirmation bias），使视觉模型顺着提示词脑补而非真实观察。视觉审查提示词唯一合法内容 = 要求详细描述 + 图片路径；如需结构化，只允许列"描述维度"（如位置/颜色/朝向/尺寸），不允许给任何期望值或预判结论。结构化维度若包含"应如何/是否达到预期"等措辞，一律禁止。
+
+**🚨 文件名/路径匿名化限制（同属本规则）：视觉审查提示词中的图片路径与文件名不得包含任何能揭示图片内容的有效信息——禁止出现武器名、姿态名、动作名、效果名、角色名、状态名（如 hold/aim/attack/fire/reload/draw/roster_*/角色 id 等描述性词）。审查前必须将待审图片复制/重命名为中性纯序号标识（如 `img_001.png`），放入与内容无关的独立匿名目录（如 `reports/visual_review/`），提示词只允许引用该匿名路径。文件名携带语义（哪怕提示词本身中立）同样会引导视觉模型按名称预期内容，属于确认偏误来源，一律禁止。**

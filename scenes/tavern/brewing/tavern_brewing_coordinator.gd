@@ -3,7 +3,7 @@ extends Node3D
 ## 酒馆 3D 酿酒流程总装节点（挂在 tavern.tscn 的 Brewing 节点）。
 ## 职责：
 ##   - 在玩家相机下挂载 BrewPlayerCarry（手持原料/麦汁/盛酒器/扛桶）；
-##   - 在酿酒室放置 炼药锅站/原料架/倒桶台，在酒窖放置窖藏位；
+##   - 在酿造间放置 炼药锅站/原料架/倒桶台，在酒窖放置窖藏位；
 ##   - 场景（每天）重载后按 BrewFlowSystem 恢复炼药锅下料篮与已窖藏酒桶。
 ## 逻辑状态全部走 BrewFlowSystem/FermentationSystem/BrewingData。
 
@@ -48,23 +48,24 @@ func _mount_carry(player: Node) -> void:
 	player.add_child(carry) if player != null else add_child(carry)
 
 func _build_stations(tavern: Node) -> void:
-	# 酿酒室（BreweryFloor: x[-1,3] z[-8.7,-6.25]）
+	# 酿造间（酒窖东侧地下房间：x[3.15,8.0] z[-7.74,-3.4]，地板顶面 y=-3.0；
+	# 已向东扩建 4.85m 以容纳 1.94m 大炼药锅）
 	cauldron = CAULDRON_STATION.new()
 	cauldron.name = "BrewCauldron"
-	cauldron.position = Vector3(0.6, 0, -7.8)
+	cauldron.position = Vector3(4.4, -3.0, -6.9)
 	add_child(cauldron)
 
 	ingredient_source = INGREDIENT_SOURCE.new()
 	ingredient_source.name = "IngredientSource"
-	ingredient_source.position = Vector3(-0.5, 0, -6.6)
+	ingredient_source.position = Vector3(4.4, -3.0, -4.4)
 	add_child(ingredient_source)
 
 	barrel_station = BARREL_STATION.new()
 	barrel_station.name = "BarrelStation"
-	barrel_station.position = Vector3(2.3, 0, -7.6)
+	barrel_station.position = Vector3(6.8, -3.0, -6.6)
 	add_child(barrel_station)
 
-	# 酒窖（CellarFloor: x[-5,3] z[-8.7,-3.55]，地板 y=-3.04）
+	# 酒窖（CellarFloor: x[-5,3] z[-8.7,-3.55]，地板 y=-3.04）— 窖藏位仍在酒窖
 	cellar_rack = CELLAR_RACK.new()
 	cellar_rack.name = "CellarRack"
 	cellar_rack.position = Vector3(2.0, -3.04, -7.2)

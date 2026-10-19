@@ -16,8 +16,9 @@
 │   ├── screenshots/            # 素材自验证预览截图 (.png)
 │   └── fonts/                  # 像素风格字体文件 (例如: IPix.ttf / m5x7.ttf)
 ├── data/                       # 结构化数据
-│   ├── brewing_materials.json  # 30种酿酒素材的数据库
-│   └── brewing_materials.md    # 酿酒素材的可读说明
+│   ├── weapons/weapons.json    # 装备唯一权威来源（1417 审查 P2-2）
+│   ├── skills.json             # 扩展被动技能数据
+│   └── _archive/               # 已废弃数据（brewing_materials.json 等，生产不再消费）
 ├── globals/                    # 全局单例 (Autoloads)
 │   ├── audio_manager.gd        # 音效管理器
 │   ├── game_events.gd          # 全局信号事件中心

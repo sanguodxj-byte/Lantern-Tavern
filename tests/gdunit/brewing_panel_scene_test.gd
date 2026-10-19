@@ -73,12 +73,12 @@ func test_brewing_panel_material_grid_populates() -> void:
 	if tm:
 		tm.materials_inventory = old_inv
 
-func test_tavern_ui_loads_with_brewing_panel_instance() -> void:
+func test_tavern_ui_no_longer_instantiates_brewing_panel() -> void:
 	var scene: PackedScene = load("res://scenes/ui/tavern_ui.tscn")
 	assert_object(scene).is_not_null()
 	var inst: Control = scene.instantiate()
 	add_child(inst)
-	# BrewingPanel 下应有 BrewingPanelInstance
-	var bp_inst: Node = inst.get_node_or_null("BrewingPanel/BrewingPanelInstance")
-	assert_object(bp_inst).is_not_null()
+	# 决策 G3（审查 0856 P0-1）：生产 HUD 已移除 BrewingPanel，酿造走 3D 链路
+	assert_object(inst.get_node_or_null("BrewingPanel")).is_null()
+	assert_object(inst.get_node_or_null("BrewingPanel/BrewingPanelInstance")).is_null()
 	inst.queue_free()

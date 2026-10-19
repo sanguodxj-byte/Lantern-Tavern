@@ -21,6 +21,31 @@ const COL_CD_COOLING := Color(0.32, 0.36, 0.42, 0.55) # 冷却中未恢复段（
 const COL_RELOAD_BRIGHT := Color(1.0, 0.72, 0.18, 0.95)   # 弩装弹已恢复段（亮琥珀）
 const COL_RELOAD_DIM := Color(0.5, 0.36, 0.12, 0.5)       # 弩装弹冷却中段（暗琥珀）
 
+# 蓄力指示（准心外侧）：蓄力中使用白色；法术满蓄时变为对应元素主题色。
+# 弓：白色十字从上下左右淡入延伸；弩：X 字形淡入（替代琥珀装弹环）。
+const CHARGE_RADIUS := 23        # 外环半径（像素）
+const CHARGE_THICK := 4          # 环像素块边长
+const CHARGE_SEGS := 20          # 环分段数
+const COL_CHARGE_READY := Color(1.0, 1.0, 1.0, 0.9)    # 蓄力中已蓄段（白）
+const COL_CHARGE_EMPTY := Color(1.0, 1.0, 1.0, 0.22)   # 蓄力中未蓄段（暗白）
+const COL_CHARGE_ARM := Color(1.0, 1.0, 1.0, 0.85)     # 弓十字/弩X 臂色
+
+## 元素主题色映射（满蓄时法术环变色）：按 imagery/spell_id 分类
+static func spell_theme_color(spell: Dictionary) -> Color:
+	var imagery := String(spell.get("imagery", ""))
+	var spell_id := String(spell.get("id", ""))
+	if "fire" in imagery or "ember" in spell_id or "meteor" in imagery:
+		return Color(0.95, 0.28, 0.20)     # 火焰 → 红
+	if "lightning" in imagery or "thunder" in spell_id or "storm" in imagery:
+		return Color(0.68, 0.38, 1.0)      # 闪电 → 紫
+	if "frost" in imagery or "ice" in imagery or "hima" in spell_id:
+		return Color(0.45, 0.82, 1.0)      # 冰霜 → 冰蓝
+	if "poison" in imagery or "acid" in imagery or "visha" in spell_id:
+		return Color(0.48, 0.95, 0.35)     # 剧毒 → 绿
+	if "barrier" in imagery or "guardian" in spell_id or "sanctuary" in imagery:
+		return Color(0.55, 0.85, 0.75)     # 守护/屏障 → 青
+	return Color(spell.get("color", Color(1.0, 0.82, 0.45)))
+
 ## 命中反馈：复用 COL_TARGETING 变红，短时强制显示（非新 UI 系统）
 const HIT_FLASH_DURATION := 0.16
 const HIT_FLASH_CRIT_DURATION := 0.22
@@ -43,6 +68,12 @@ var _cd_primary_fill: float = 1.0
 var _cd_secondary_fill: float = 1.0
 var _cd_reload_fill: float = 1.0
 var _last_cd_sig: String = "none"
+## 武器/法术蓄力进度（0..1，读取 player.weapon_charge_ratio）
+var _charge_fill: float = 0.0
+## 蓄力指示形态：0=环（法术/近战，白→满蓄主题色） 1=弓白色十字延伸 2=弩X字形淡入
+var _charge_mode: int = 0
+## 满蓄主题色（按当前选中法术元素）
+var _charge_theme: Color = Color.WHITE
 
 ## 命中变红闪烁（复用 COL_TARGETING，非独立 Hitmarker 资产）
 var _hit_timer: float = 0.0
@@ -150,10 +181,29 @@ func _update_cd_state() -> void:
 	_cd_primary_fill = 1.0
 	_cd_secondary_fill = 1.0
 	_cd_reload_fill = 1.0
+	_charge_fill = 0.0
 	if _player == null or not is_instance_valid(_player):
 		_player = _find_player()
 	if _player == null or not is_instance_valid(_player):
 		return
+	# 蓄力进度（法术/弓/近战按住蓄力时 > 0），供准心外侧蓄力指示显示
+	var charge_value: Variant = _player.get("weapon_charge_ratio")
+	var charge_ratio := 0.0
+	if typeof(charge_value) == TYPE_FLOAT or typeof(charge_value) == TYPE_INT:
+		charge_ratio = clampf(float(charge_value), 0.0, 1.0)
+	_charge_fill = charge_ratio
+	_charge_mode = 0
+	_charge_theme = Color.WHITE
+	if charge_ratio > 0.02:
+		if _player.is_active_spell_focus_weapon():
+			_charge_theme = _active_spell_theme()
+		elif _player.is_active_weapon_crossbow():
+			# 弩蓄力（X 字形）是给被动技能的预留项：
+			# 当前 attack_preparing 不写弩的 weapon_charge_ratio（恒 0），
+			# 未来被动写入时在此显示 X 字形；与装弹（琥珀环）互不干扰。
+			_charge_mode = 2
+		elif _player.is_active_weapon_ranged():
+			_charge_mode = 1  # 弓：白色十字延伸
 	# 远程武器（弓/弩）走各自装弹/蓄力逻辑，不显示近战冷却环
 	if "is_active_weapon_ranged" in _player and _player.is_active_weapon_ranged():
 		# 弩装弹中以琥珀色环形提示（与近战绿环同半径，二者互斥不重叠）
@@ -172,8 +222,25 @@ func _update_cd_state() -> void:
 		_cd_mode = 1
 
 
+## 当前选中法术的元素主题色（满蓄时蓄力环变色）
+func _active_spell_theme() -> Color:
+	if _player == null or not ("spell_caster" in _player):
+		return Color.WHITE
+	var gs := Service.game_state()
+	if gs == null or not ("spell_loadout" in gs):
+		return Color.WHITE
+	var slot := int(_player.spell_caster.selected_slot)
+	var spell: Dictionary = gs.spell_loadout.get_spell(slot)
+	if spell.is_empty():
+		return Color.WHITE
+	return spell_theme_color(spell)
+
+
 ## 冷却状态签名（量化到 1/16，避免每帧重绘；就绪/无武器恒为稳定值）
 func _cd_signature() -> String:
+	# 蓄力指示也纳入签名：进度/形态变化时准心需要重绘（mode=0 为环/法术/近战）
+	if _charge_fill > 0.02:
+		return "chg%d_%d" % [_charge_mode, int(_charge_fill * 16.0)]
 	if _cd_mode == 0:
 		return "none"
 	if _cd_mode == 3:
@@ -263,6 +330,17 @@ func _draw() -> void:
 
 ## 绘制冷却指示（像素块环/半扇）。三种互斥模式：1=近战完整环，2=双持半扇，3=弩装弹环
 func _draw_cd(cx: int, cy: int) -> void:
+	# 蓄力指示（准心外侧）：环（法术/近战，白→满蓄主题色）/ 弓十字 / 弩X
+	if _charge_mode == 1 and _charge_fill > 0.02:
+		_draw_charge_cross(cx, cy)
+	elif _charge_mode == 2 and _charge_fill > 0.02:
+		# 弩蓄力（被动技能预留项）：X 字形与装弹琥珀环独立共存
+		_draw_charge_x(cx, cy)
+	elif _charge_fill > 0.02:
+		var full := _charge_fill >= 0.999
+		var ready := _charge_theme if full else COL_CHARGE_READY
+		var empty_col := _charge_theme.darkened(0.45) if full else COL_CHARGE_EMPTY
+		_draw_pixel_arc(cx, cy, CHARGE_RADIUS, CHARGE_THICK, _charge_fill, 0.0, TAU, CHARGE_SEGS, ready, empty_col)
 	if _cd_mode == 1:
 		# 单手/双手：完整环形。就绪(满)时隐藏以保持画面干净
 		if _cd_primary_fill >= 0.999:
@@ -282,6 +360,26 @@ func _draw_cd(cx: int, cy: int) -> void:
 			return
 		_draw_pixel_arc(cx, cy, RING_RADIUS, RING_THICK, _cd_reload_fill, 0.0, TAU, RING_SEGS, COL_RELOAD_BRIGHT, COL_RELOAD_DIM)
 	# _cd_mode == 0：无武器/非冷却状态，不绘制
+
+
+## 弓蓄力：白色十字臂从上下左右淡入延伸（长度随蓄力比例增长到外环半径）
+func _draw_charge_cross(cx: int, cy: int) -> void:
+	var ext := int(round(CHARGE_RADIUS * _charge_fill))
+	draw_rect(Rect2(cx - 1, cy - ext, 2, ext), COL_CHARGE_ARM, true)      # 上
+	draw_rect(Rect2(cx - 1, cy + 1, 2, ext), COL_CHARGE_ARM, true)        # 下
+	draw_rect(Rect2(cx - ext, cy - 1, ext, 2), COL_CHARGE_ARM, true)      # 左
+	draw_rect(Rect2(cx + 1, cy - 1, ext, 2), COL_CHARGE_ARM, true)        # 右
+
+
+## 弩蓄力（被动技能预留项）：白色 X 字形从四角方向淡入（进度 = 蓄力比例）
+func _draw_charge_x(cx: int, cy: int) -> void:
+	var ext := CHARGE_RADIUS * _charge_fill
+	var pts: PackedVector2Array = PackedVector2Array([
+		Vector2(cx - ext, cy - ext), Vector2(cx + ext, cy + ext),  # 主对角线
+		Vector2(cx + ext, cy - ext), Vector2(cx - ext, cy + ext),  # 副对角线
+	])
+	for i in range(0, pts.size(), 2):
+		draw_line(pts[i], pts[i + 1], COL_CHARGE_ARM, 2)
 
 
 ## 以像素块沿圆弧绘制冷却进度：已恢复段亮色，冷却中段暗色

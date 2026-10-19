@@ -35,6 +35,10 @@ func can_interact() -> bool:
 	var state: Variant = entity.get("_state")
 	if state == null or String(state) != "seated":
 		return false
+	# 0805 审查 P0 防御：已提交事务的 visit 一律不可再交互（即使状态位被绕过）
+	var cd: Variant = entity.get("customer_data")
+	if cd != null and cd.service_state == "COMMITTED":
+		return false
 	var carry := _get_carry()
 	return carry != null and carry.is_serving()
 
@@ -53,7 +57,10 @@ func interact(_source_player: Node = null) -> void:
 		result = spawner.call("serve_entity", entity, flavors, price)
 	elif entity != null and entity.has_method("serve"):
 		result = entity.serve(flavors, price)
-	carry.clear()
+	# 0805 审查 P2：盛酒器消费是服务事务的一部分——只有收到 committed == true
+	# 才清空；失败保留原 serving 快照（可重试），不再无条件消耗玩家手持物。
+	if result != null and bool(result.committed):
+		carry.clear()
 
 # ============================================================================
 # 辅助

@@ -254,7 +254,7 @@ func _mount_tavern_hud() -> void:
 	tavern_hud_layer.visible = false
 	# 加入 character_panel 组：visible 时 is_character_panel_visible() 自动返回 true，
 	# player.gd 据此跳过鼠标强制捕获与移动，无需信号/标志耦合。
-	tavern_hud_layer.add_to_group("character_panel")
+	tavern_hud_layer.add_to_group("modal_gameplay_blocker")
 	tavern_hud_layer.add_child(hud)
 	add_child(tavern_hud_layer)
 
@@ -299,7 +299,11 @@ func _mount_expedition_prompt() -> void:
 func _mount_tutorial_flow_if_needed() -> void:
 	if TavernManager == null:
 		return
-	if not TavernManager.tutorial_completed or TavernManager.has_confirmed_character_name:
+	# 挂载门 = 玩家选择了含教程流程（tutorial_active）且尚未完成取名。
+	# 不能用 tutorial_completed 判断：跳过教程（start_new_game(false)）与
+	# "完成 intro 后进酒馆"两个路径的 tutorial_completed 均为 true，
+	# 会导致跳过教程时仍挂载教程弹窗（回归 bug）。
+	if not TavernManager.tutorial_active or TavernManager.has_confirmed_character_name:
 		return
 	var player := get_node_or_null("Player") as Player
 	if player == null:

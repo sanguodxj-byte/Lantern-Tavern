@@ -19,10 +19,10 @@ func test_cauldron_envelope_matches_pixel_table() -> void:
 	for box in boxes:
 		min_v = min_v.min(box["min"])
 		max_v = max_v.max(box["max"])
-	# 尺寸表：x[-18,18] y[0,38] z[-14,14]（像素，中世纪炼药锅）
-	assert_float(max_v.x - min_v.x).is_equal_approx(36.0, 1.0)
-	assert_float(max_v.y - min_v.y).is_equal_approx(38.0, 1.0)
-	assert_float(max_v.z - min_v.z).is_equal_approx(28.0, 1.0)
+	# 尺寸表：x[-25,25]（含铆钉 ±24.5）y[0,62] z[-17,17]（像素，中世纪炼药锅 v4 大号圆肚：15 层薄腹，最高 62px≈1.94m，最宽 48px）
+	assert_float(max_v.x - min_v.x).is_equal_approx(50.0, 1.0)
+	assert_float(max_v.y - min_v.y).is_equal_approx(62.0, 1.0)
+	assert_float(max_v.z - min_v.z).is_equal_approx(34.0, 1.0)
 	inst.free()
 
 func test_cauldron_has_named_silhouette_parts() -> void:
@@ -33,7 +33,7 @@ func test_cauldron_has_named_silhouette_parts() -> void:
 	var names: Array = []
 	for box in boxes:
 		names.append(String(box["name"]))
-	for required in ["CauldronStonePadFrontLeft", "CauldronLegFrontLeft", "CauldronLegBack", "CauldronRimFront", "CauldronMidBellyFront", "CauldronBandLowFront", "CauldronEarLeft"]:
+	for required in ["CauldronStonePadFrontLeft", "CauldronLegFrontLeft", "CauldronLegBack", "CauldronRimFront", "CauldronBellyB8Front", "CauldronBandLowFront", "CauldronEarLeft"]:
 		assert_bool(names.has(required)) \
 			.override_failure_message("炼药锅缺少主形体部件: %s" % required) \
 			.is_true()

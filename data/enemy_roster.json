@@ -99,6 +99,24 @@
       ]
     },
     {
+      "id": "dire_wolf",
+      "name_zh": "恐狼",
+      "rig": "voxel_dire_wolf_100px_rig.glb",
+      "body_size": "medium",
+      "hp": 16,
+      "speed": 3.0,
+      "weapon": "claw",
+      "attack_mode": "body",
+      "has_shield": false,
+      "tier": "normal",
+      "drop": "bone_shard",
+      "color": [
+        0.45,
+        0.39,
+        0.32
+      ]
+    },
+    {
       "id": "troll",
       "name_zh": "巨魔",
       "rig": "voxel_troll_64x_rig.glb",
@@ -716,6 +734,7 @@
         "spider": 10,
         "troll": 10,
         "orc_raider": 10,
+        "dire_wolf": 10,
         "hobgoblin_legionary": 10,
         "bugbear_brute": 10,
         "gnoll_hyena": 10,

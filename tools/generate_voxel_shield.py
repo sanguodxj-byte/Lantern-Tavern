@@ -16,6 +16,12 @@ from voxel_overlap_guard import (  # noqa: E402
     assert_parts_voxel_assembly_valid,
 )
 from voxel_single_model_cli import reject_target_override  # noqa: E402
+from weapon_first_person_rig_lib import (  # noqa: E402
+    build_weapon_rig,
+    export_animated_glb,
+    make_action,
+    render_action_review,
+)
 from voxel_weapon_model_lib import (  # noqa: E402
     PX,
     bounds_size_px,
@@ -38,6 +44,7 @@ MATERIAL_TIERS = ("wood", "iron", "steel", "meteoric", "mithril", "adamantite")
 
 OUT_GLB = ROOT / "assets" / "meshes" / "weapons" / "weapons_voxel_shield.glb"
 PREVIEW_DIR = ROOT / "reports" / "props_preview"
+ANIMATION_PREVIEW_DIR = ROOT / "reports" / "first_person_animation" / "shield_blender"
 
 
 def build_shield() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
@@ -225,13 +232,53 @@ def build_shield() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
     return root, parts
 
 
+def _author_first_person_actions(armature: bpy.types.Object) -> None:
+    make_action(armature, "vm_shield_hold", 1, 34, [
+        (1, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+        (17, (0.0, 0.0, -0.10), (0.2, -0.3, 0.15)),
+        (34, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ], loop=True)
+    # Lift first, then square the face toward the threat and lock the block pose.
+    make_action(armature, "vm_shield_block", 1, 22, [
+        (1, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+        (5, (0.1, 0.3, -0.2), (-2.0, 5.0, -3.0)),
+        (10, (0.4, 0.8, -0.6), (-5.0, 10.0, -7.0)),
+        (15, (0.7, 1.2, -0.8), (-7.0, 14.0, -10.0)),
+        (22, (0.7, 1.2, -0.8), (-7.0, 14.0, -10.0)),
+    ])
+    # Withdraw to load the shoulder, drive the boss forward, rebound on impact, recover low.
+    make_action(armature, "vm_bash_shield", 1, 26, [
+        (1, (0.7, 1.2, -0.8), (-7.0, 14.0, -10.0)),
+        (5, (0.9, 0.6, 0.2), (-3.0, 18.0, -16.0)),
+        (9, (0.4, 0.1, -0.8), (2.0, 5.0, -3.0)),
+        (12, (-0.6, -0.4, -2.5), (8.0, -10.0, 12.0)),
+        (14, (-0.8, -0.5, -2.9), (10.0, -14.0, 16.0)),
+        (17, (-0.2, 0.0, -1.2), (4.0, -4.0, 6.0)),
+        (21, (0.1, 0.3, -0.4), (1.0, 3.0, -2.0)),
+        (26, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ])
+    armature["action_names"] = ["vm_shield_hold", "vm_shield_block", "vm_bash_shield"]
+
+
 def main() -> None:
     reject_target_override(MODEL_ID)
     reset_scene()
     root, parts = build_shield()
     assert_parts_no_positive_volume_overlap(parts, label=MODEL_ID)
     assert_parts_voxel_assembly_valid(parts, label=MODEL_ID)
-    export_glb(root, OUT_GLB)
+    armature = build_weapon_rig(root, parts, "ShieldRig", 10.0, -10.0)
+    _author_first_person_actions(armature)
+    render_action_review(
+        root, armature, ANIMATION_PREVIEW_DIR,
+        ((-0.14, -0.16, -0.60), (-4.0, 18.0, 92.0)),
+        {
+            "00": ("vm_shield_hold", 1), "01": ("vm_shield_block", 10),
+            "02": ("vm_shield_block", 15), "03": ("vm_shield_block", 22),
+            "04": ("vm_bash_shield", 5), "05": ("vm_bash_shield", 12),
+            "06": ("vm_bash_shield", 17), "07": ("vm_bash_shield", 26),
+        },
+    )
+    export_animated_glb(root, OUT_GLB)
     render_true_3d_views(root, MODEL_ID, PREVIEW_DIR)
     dimensions = bounds_size_px(root)
     print(f"Wrote {OUT_GLB}")

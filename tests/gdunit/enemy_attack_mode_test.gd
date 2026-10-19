@@ -5,7 +5,7 @@ extends GdUnitTestSuite
 const HUMANOID_SCENES := [
 	"goblin", "orc_raider", "skeleton", "troll", "minotaur", "drow_blade",
 ]
-const BODY_SCENES := ["slime", "spider", "dragon", "rock_golem"]
+const BODY_SCENES := ["slime", "spider", "dragon", "rock_golem", "dire_wolf"]
 
 func test_humanoid_enemy_prefabs_use_weapon_attack_mode() -> void:
 	for enemy_id in HUMANOID_SCENES:

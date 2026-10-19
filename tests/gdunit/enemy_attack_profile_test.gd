@@ -14,6 +14,7 @@ const BODY_SCENES := {
 	"spider": "res://scenes/characters/enemies/spider.tscn",
 	"dragon": "res://scenes/characters/enemies/dragon.tscn",
 	"rock_golem": "res://scenes/characters/enemies/rock_golem.tscn",
+	"dire_wolf": "res://scenes/characters/enemies/dire_wolf.tscn",
 }
 
 ## 与战斗 rig 同款直接加载（避免实例化敌人场景产生物理/自动播放副作用）
@@ -22,6 +23,7 @@ const BODY_RIGS := {
 	"spider": "res://assets/meshes/characters/voxel_spider_30px_rig.glb",
 	"dragon": "res://assets/meshes/characters/voxel_dragon_256px_rig.glb",
 	"rock_golem": "res://assets/meshes/characters/voxel_rock_golem_80px_rig.glb",
+	"dire_wolf": "res://assets/meshes/characters/voxel_dire_wolf_100px_rig.glb",
 }
 
 # ---------- 非人形招式区分 ----------

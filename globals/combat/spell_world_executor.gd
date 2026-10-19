@@ -197,10 +197,22 @@ class SpellField:
 		for body in get_overlapping_bodies():
 			if body == caster: continue
 			var damage := int(Dictionary(request.get("params", {})).get("damage", 4))
-			if body.has_meta("entity_id") and damage_port.is_valid():
-				damage_port.call(int(body.get_meta("entity_id")), damage, caster_peer)
-			elif body.has_method("try_receive_hit"):
-				body.try_receive_hit(caster, damage)
+			_tick_damage(body, damage)
+
+	## 1740 审查 P0：持续伤害统一走「祖先 entity_id 查找 + 端口一次调用 + 结果检查 + 单机回退」，
+	## 与 ray 的 _apply_damage 语义一致——碰撞子节点（meta 在父实体）也能写回权威端口，
+	## 端口拒绝（ok=false）时不再当作成功命中。
+	func _tick_damage(target: Node, damage: int) -> Dictionary:
+		if target == null or not is_instance_valid(target):
+			return {"applied": 0, "port_called": false, "port_result": {}}
+		var entity_id := SpellWorldExecutor.find_entity_id(target)
+		if entity_id != 0 and damage_port.is_valid():
+			var res: Variant = damage_port.call(entity_id, maxi(damage, 0), caster_peer)
+			return {"applied": maxi(damage, 0), "port_called": true, "port_result": res}
+		if target.has_method("try_receive_hit"):
+			target.try_receive_hit(caster, maxi(damage, 0))
+			return {"applied": maxi(damage, 0), "port_called": false, "port_result": {}}
+		return {"applied": 0, "port_called": false, "port_result": {}}
 
 class SpellSummon:
 	extends Node3D
@@ -233,7 +245,10 @@ class SpellSummon:
 			# 会话权威路径：查实体仓 → damage_port 写回（生产联机敌人）。
 			var target_id := _nearest_enemy_entity_id()
 			if target_id != 0 and damage_port.is_valid():
-				damage_port.call(target_id, damage, caster_peer)
+				var res: Variant = damage_port.call(target_id, damage, caster_peer)
+				# 1740 审查 P0：端口拒绝/目标失效时不得当作成功命中（保持事务边界一致）。
+				if res is Dictionary and not bool(res.get("ok", true)):
+					return
 			return
 		# 单机路径：表现层 "enemies" 组 → 节点直伤。
 		var target := _nearest_enemy_node()

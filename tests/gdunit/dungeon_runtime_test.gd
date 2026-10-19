@@ -111,3 +111,24 @@ func test_start_wires_spawned_player_to_streaming_controller() -> void:
 	rt.queue_free()
 	ctrl.queue_free()
 	world.queue_free()
+
+# ── 2109 审查 P1-3：导航地图未 ready 时出生投影返回 pending，不得破坏生成 ──
+
+func test_spawn_projection_pending_when_navigation_not_ready() -> void:
+	# 无 NavigationRegion3D（headless 测试环境）时 _snap_enemy_spawn_plan_to_navigation
+	# 必须返回 false（pending），而不是静默跳过——由分帧生成泵在导航 ready 后补投影。
+	var rt := DungeonRuntime.new()
+	add_child(rt)
+	var plan: Array = [{"pos": Vector3(1.0, 0.5, 1.0), "enemy_type": "kobold"}]
+	rt.set("_enemy_spawn_plan", plan)
+	var level := Node3D.new()
+	add_child(level)
+	rt.set("_level", level)
+	assert_bool(rt._snap_enemy_spawn_plan_to_navigation()) \
+		.override_failure_message("无导航地图时投影应返回 false（pending 后补）").is_false()
+	# 原始计划必须保留（不做任何投影修改），等待导航 ready 后再补。
+	var pos: Variant = plan[0]["pos"]
+	assert_float(pos.x).is_equal_approx(1.0, 0.0001)
+	assert_float(pos.z).is_equal_approx(1.0, 0.0001)
+	rt.queue_free()
+	level.queue_free()

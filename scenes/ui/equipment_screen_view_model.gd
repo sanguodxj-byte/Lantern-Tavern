@@ -17,7 +17,7 @@ const FILTER_MATERIALS := "materials"
 const FILTER_RUNES := "runes"
 
 const QUALITY_COLORS := {
-	"common": Color(0.62, 0.56, 0.48, 1.0),
+	"common": Color(0.82, 0.74, 0.62, 1.0),
 	"uncommon": Color(0.44, 0.72, 0.58, 1.0),
 	"rare": Color(0.43, 0.63, 0.88, 1.0),
 	"epic": Color(0.78, 0.48, 0.84, 1.0),

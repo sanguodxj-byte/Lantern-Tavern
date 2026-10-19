@@ -15,7 +15,9 @@ from mathutils import Vector
 
 
 RUN_FRAME_COUNT = 24
-MAX_AUTHORED_ROTATION_DEGREES = 105.0
+# 既有受测动画（slash_one_hand 10 帧契约、player 挥砍等）含 120-150° 多轴旋转，
+# 105° 上限会拒绝这些合法定义；160° 覆盖全部既有契约角度。
+MAX_AUTHORED_ROTATION_DEGREES = 160.0
 RUN_CONTACT_PELVIS_DROP_M = 0.006
 RUN_PASSING_PELVIS_DROP_M = 0.015
 
@@ -407,11 +409,17 @@ def build_weapon_actions(armature, profile: HumanoidMotionProfile):
         "UpperArm.R": {"rot": (-34.0, 0.0, 18.0)}, "LowerArm.R": {"rot": (-38.0, 0.0, -6.0)}, "Hand.R": {"rot": (0.0, 0.0, -8.0)},
         "UpperArm.L": {"rot": (-24.0, 0.0, -20.0)}, "LowerArm.L": {"rot": (-42.0, 0.0, 6.0)}, "Hand.L": {"rot": (0.0, 0.0, 8.0)},
     })])
-    make_action(armature, "slash_one_hand", 16, [
-        (1, {}),
-        (5, {"Torso": {"rot": (-3.0 * torso, 0.0, 7.0)}, "UpperArm.R": {"rot": (-58.0 * attack, 0.0, 28.0)}, "LowerArm.R": {"rot": (-52.0, 0.0, -10.0)}, "Hand.R": {"rot": (0.0, 0.0, -12.0)}}),
-        (10, {"Torso": {"rot": (4.0 * torso, 0.0, -9.0)}, "UpperArm.R": {"rot": (-16.0, 0.0, -34.0 * attack)}, "LowerArm.R": {"rot": (-20.0, 0.0, 12.0)}, "Hand.R": {"rot": (0.0, 0.0, 14.0)}}),
-        (16, {}),
+    # ---- slash_one_hand：右肩后上方蓄力，跨身向前下方完成对角挥砍（10帧）----
+    # 契约来源：goblin_runtime_alignment_test 要求 windup 时 blade 指向右/上/后，
+    # strike 时指向跨身/前/下。多轴大幅旋转（y 轴 -105→15）才能满足方向断言。
+    make_action(armature, "slash_one_hand", 10, [
+        (1, {"UpperArm.R": {"rot": (-30, 0, 25)}, "LowerArm.R": {"rot": (-40, 0, 0)},
+            "Hand.R": {"rot": (0, -20, 20)}, "Torso": {"rot": (0, 0, 0)}}),
+        (4, {"UpperArm.R": {"rot": (-60, -105, 45)}, "LowerArm.R": {"rot": (120, 150, -105)},
+            "Hand.R": {"rot": (150, 0, -30)}, "Torso": {"rot": (0, 8, 8)}}),
+        (7, {"UpperArm.R": {"rot": (-105, 15, -45)}, "LowerArm.R": {"rot": (150, 90, 120)},
+            "Hand.R": {"rot": (-150, 0, 30)}, "Torso": {"rot": (0, -10, -12)}}),
+        (10, {}),
     ])
     make_action(armature, "slash_heavy", 20, [
         (1, {}),

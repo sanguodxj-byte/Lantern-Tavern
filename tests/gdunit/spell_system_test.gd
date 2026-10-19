@@ -78,6 +78,151 @@ func test_loadout_reconciles_slots_when_inventory_shrinks() -> void:
 	assert_array(loadout.get_runes(1)).is_equal(["", "", ""])
 
 
+func test_loadout_emits_inventory_changed_on_set_rune_inventory() -> void:
+	# 拾取/消耗符文后 game_state 会重新 set_rune_inventory：
+	# 必须发出 inventory_changed，法术界面才能刷新右侧符文列表。
+	var loadout := SpellLoadoutScript.new()
+	var emitted := {"n": 0}
+	loadout.inventory_changed.connect(func() -> void: emitted["n"] += 1)
+	loadout.set_rune_inventory({"ember": 1, "force": 1})
+	assert_int(emitted["n"]).is_equal(1)
+	loadout.set_rune_inventory({"ember": 1})
+	assert_int(emitted["n"]).is_equal(2)
+
+
+func test_spell_interface_rune_list_refreshes_on_inventory_change() -> void:
+	# 界面打开期间符文库存变化（拾取/消耗）→ 右侧符文列表自动重建，
+	# 数量与实际持有保持一致，无需重新打开界面。
+	var loadout := SpellLoadoutScript.new()
+	loadout.set_rune_inventory({"ember": 1, "force": 1})
+	var ui := SpellInterfaceScene.instantiate()
+	auto_free(ui)
+	add_child(ui)
+	await get_tree().process_frame
+	ui.configure(loadout, loadout.get_available_rune_ids())
+	await get_tree().process_frame
+
+	var buttons: Array = []
+	for child in ui._rune_list.get_children():
+		if child is Button and not child.is_queued_for_deletion():
+			buttons.append(child)
+	assert_int(buttons.size()).is_equal(2)
+	assert_str((buttons[1] as Button).text).contains("×1")
+
+	# 拾取 guardian：库存变化信号 → 列表自动出现新符文
+	loadout.set_rune_inventory({"ember": 1, "force": 2, "guardian": 1})
+	await get_tree().process_frame
+	buttons.clear()
+	for child in ui._rune_list.get_children():
+		if child is Button and not child.is_queued_for_deletion():
+			buttons.append(child)
+	assert_int(buttons.size()).is_equal(3)
+	# 数量同步：force 增加到 2
+	assert_str((buttons[1] as Button).text).contains("×2")
+
+	# 全部消耗：列表变为空提示
+	loadout.set_rune_inventory({})
+	await get_tree().process_frame
+	var has_button := false
+	for child in ui._rune_list.get_children():
+		if child is Button and not child.is_queued_for_deletion():
+			has_button = true
+	assert_bool(has_button).is_false()
+
+
+# ── 技能界面：符文图标 + 拖拽装备（数据格式与装备面板一致）─────────────
+
+func _make_configured_spell_ui() -> Array:
+	var loadout := SpellLoadoutScript.new()
+	loadout.set_rune_inventory({"ember": 2, "force": 1})
+	var ui := SpellInterfaceScene.instantiate()
+	auto_free(ui)
+	add_child(ui)
+	await get_tree().process_frame
+	ui.configure(loadout, loadout.get_available_rune_ids())
+	await get_tree().process_frame
+	return [loadout, ui]
+
+
+func test_spell_interface_rune_list_buttons_show_icons() -> void:
+	# 需求：所有有图标的符文必须显示图标，禁止纯文字展示。
+	var setup: Array = await _make_configured_spell_ui()
+	var ui: Node = setup[1]
+	var shown := 0
+	for child in ui._rune_list.get_children():
+		if child is Button and not child.is_queued_for_deletion():
+			assert_object((child as Button).icon).is_not_null()
+			shown += 1
+	assert_int(shown).is_equal(2)
+
+
+func test_spell_interface_socket_buttons_show_icons_after_equip() -> void:
+	var setup: Array = await _make_configured_spell_ui()
+	var loadout: RefCounted = setup[0]
+	var ui: Node = setup[1]
+	# 空槽显示 "-" 且无图标
+	var socket := ui._rune_slot_buttons[0][0] as Button
+	assert_str(socket.text).is_equal("-")
+	assert_object(socket.icon).is_null()
+	# 装配后：文本清空、显示符文图标
+	assert_bool(loadout.set_rune(0, 0, "ember")).is_true()
+	await get_tree().process_frame
+	assert_str(socket.text).is_equal("")
+	assert_object(socket.icon).is_not_null()
+
+
+func test_spell_interface_socket_accepts_drag_payload() -> void:
+	# 拖拽装备：符文列表（kind=rune 载荷）拖到空槽位 → 装配成功
+	var setup: Array = await _make_configured_spell_ui()
+	var ui: Node = setup[1]
+	var socket: Variant = ui._rune_slot_buttons[0][0]
+	var payload := {"kind": "rune", "id": "ember", "count": 1}
+	assert_bool(ui.rune_button_can_drop(socket, payload)).is_true()
+	ui.rune_button_drop(socket, payload)
+	assert_array(ui.loadout.get_runes(0)).is_equal(["ember", "", ""])
+	# 拖拽后列表数量同步（1 枚 ember 已被占用）
+	for child in ui._rune_list.get_children():
+		if child is Button and not child.is_queued_for_deletion() and (child as Button).text.contains("余烬"):
+			assert_str((child as Button).text).contains("×1")
+
+
+func test_spell_interface_socket_rejects_invalid_drag() -> void:
+	var setup: Array = await _make_configured_spell_ui()
+	var ui: Node = setup[1]
+	var loadout: RefCounted = setup[0]
+	# 目标槽已被占用
+	assert_bool(loadout.set_rune(0, 0, "ember")).is_true()
+	await get_tree().process_frame
+	assert_bool(ui.rune_button_can_drop(ui._rune_slot_buttons[0][0], {"kind": "rune", "id": "force", "count": 1})).is_false()
+	# 悬空装配：第 3 位无前驱符文
+	assert_bool(ui.rune_button_can_drop(ui._rune_slot_buttons[0][2], {"kind": "rune", "id": "force", "count": 1})).is_false()
+	# 库存不足：force 仅 1 枚且已占用后，再拖入第二枚
+	assert_bool(loadout.set_rune(1, 0, "force")).is_true()
+	await get_tree().process_frame
+	assert_bool(ui.rune_button_can_drop(ui._rune_slot_buttons[1][1], {"kind": "rune", "id": "force", "count": 1})).is_false()
+	# 非法载荷
+	assert_bool(ui.rune_button_can_drop(ui._rune_slot_buttons[1][1], {"kind": "skill", "id": "x"})).is_false()
+	# 连续且库存充足的空槽位正确接受（[1][0] 已装 force，[1][1] 空且余 1 枚 ember）
+	assert_bool(ui.rune_button_can_drop(ui._rune_slot_buttons[1][1], {"kind": "rune", "id": "ember", "count": 1})).is_true()
+
+
+func test_spell_interface_socket_move_between_slots() -> void:
+	# 槽位间移动：拖出符文到另一空槽（携带 source_slot），不消耗库存且清空源槽
+	var setup: Array = await _make_configured_spell_ui()
+	var ui: Node = setup[1]
+	var loadout: RefCounted = setup[0]
+	assert_bool(loadout.set_rune(0, 0, "ember")).is_true()
+	assert_bool(loadout.set_rune(1, 0, "ember")).is_true()
+	await get_tree().process_frame
+	# 源槽(0,0) 与目标槽(1,1)：两枚 ember 均已占用，若按"新装备"判断库存不足；
+	# 移动语义（source_slot）应允许。
+	var payload := {"kind": "rune", "id": "ember", "count": 1, "source_slot": 0, "source_rune_index": 0}
+	assert_bool(ui.rune_button_can_drop(ui._rune_slot_buttons[1][1], payload)).is_true()
+	ui.rune_button_drop(ui._rune_slot_buttons[1][1], payload)
+	assert_array(loadout.get_runes(0)).is_equal(["", "", ""])
+	assert_array(loadout.get_runes(1)).is_equal(["ember", "ember", ""])
+
+
 func test_spell_access_policy_accepts_staff_and_grimoire() -> void:
 	var staff := WeaponData.new()
 	staff.id = "staff"

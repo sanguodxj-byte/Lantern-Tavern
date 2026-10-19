@@ -73,7 +73,7 @@ func _fragment_per_mesh(meshes: Array[MeshInstance3D], parent: Node, dir: Vector
 		var mi := meshes[i]
 		if mi.mesh == null:
 			continue
-		var body := _create_fragment_body(mi.mesh, _box_shape_for(mi), _get_material(mi))
+		var body := _create_fragment_body(mi.mesh, _box_shape_for(mi), _get_material(mi), mi.layers)
 		if parent != null:
 			parent.add_child(body)
 		else:
@@ -90,6 +90,7 @@ func _fragment_from_grid(meshes: Array[MeshInstance3D], parent: Node, dir: Vecto
 	# 计算所有网格在世界空间的组合 AABB，并选取最大网格的材质作为碎片材质
 	var combined_aabb := AABB()
 	var best_material: Material = null
+	var best_layers := 1
 	var best_vol := 0.0
 	for m in meshes:
 		var local_aabb := m.get_aabb()
@@ -104,6 +105,7 @@ func _fragment_from_grid(meshes: Array[MeshInstance3D], parent: Node, dir: Vecto
 		if vol > best_vol:
 			best_vol = vol
 			best_material = _get_material(m)
+			best_layers = m.layers
 
 	if combined_aabb.size == Vector3.ZERO:
 		# 无法计算 AABB，退回逐网格碎裂
@@ -150,7 +152,7 @@ func _fragment_from_grid(meshes: Array[MeshInstance3D], parent: Node, dir: Vecto
 				var cx := combined_aabb.position.x + (ix + 0.5) * cell_w
 				var cy := combined_aabb.position.y + (iy + 0.5) * cell_h
 				var cz := combined_aabb.position.z + (iz + 0.5) * cell_d
-				var body := _create_fragment_body(box_mesh, box_shape, best_material)
+				var body := _create_fragment_body(box_mesh, box_shape, best_material, best_layers)
 				if parent != null:
 					parent.add_child(body)
 				else:
@@ -161,7 +163,9 @@ func _fragment_from_grid(meshes: Array[MeshInstance3D], parent: Node, dir: Vecto
 
 
 ## 创建一个碎片刚体：碰撞盒 + 可视网格 + 材质。
-func _create_fragment_body(mesh: Mesh, shape: Shape3D, mat: Material) -> RigidBody3D:
+## render_layers 继承源网格的渲染层：敌人网格位于 ENEMY_RENDER_LAYER(1<<1)，
+## 碎片保持同一层 → 主相机可见，但玩家视野补光（仅照第 1 层地形）不影响死亡体素块。
+func _create_fragment_body(mesh: Mesh, shape: Shape3D, mat: Material, render_layers: int = 1) -> RigidBody3D:
 	var body := RigidBody3D.new()
 	body.set_meta("voxel_ragdoll_fragment", true)
 	# 死亡体素碎片：仅与地面（LAYER_ENVIRONMENT）碰撞，使碎片落到地面停留；
@@ -177,6 +181,7 @@ func _create_fragment_body(mesh: Mesh, shape: Shape3D, mat: Material) -> RigidBo
 	var frag_mesh := MeshInstance3D.new()
 	frag_mesh.mesh = mesh
 	frag_mesh.material_override = mat
+	frag_mesh.layers = render_layers
 	body.add_child(frag_mesh)
 	return body
 

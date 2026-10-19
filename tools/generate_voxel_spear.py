@@ -16,6 +16,12 @@ from voxel_overlap_guard import (  # noqa: E402
     assert_parts_voxel_assembly_valid,
 )
 from voxel_single_model_cli import reject_target_override  # noqa: E402
+from weapon_first_person_rig_lib import (  # noqa: E402
+    build_weapon_rig,
+    export_animated_glb,
+    make_action,
+    render_action_review,
+)
 from voxel_weapon_model_lib import (  # noqa: E402
     PX,
     bounds_size_px,
@@ -36,6 +42,7 @@ LENGTH_PX = 73.0
 
 OUT_GLB = ROOT / "assets" / "meshes" / "weapons" / "weapons_voxel_spear.glb"
 PREVIEW_DIR = ROOT / "reports" / "props_preview"
+ANIMATION_PREVIEW_DIR = ROOT / "reports" / "first_person_animation" / "spear_blender"
 
 
 def build_spear() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
@@ -142,13 +149,62 @@ def build_spear() -> tuple[bpy.types.Object, list[bpy.types.Object]]:
     return root, parts
 
 
+def _author_first_person_actions(armature: bpy.types.Object) -> None:
+    make_action(armature, "vm_spear_hold", 1, 34, [
+        (1, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+        (17, (0.0, 0.0, -0.12), (0.2, -0.3, 0.15)),
+        (34, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ], loop=True)
+    make_action(armature, "vm_melee_charge", 35, 68, [
+        (35, (-0.4, 0.2, -0.7), (3.0, -4.0, 6.0)),
+        (45, (0.1, 0.6, -0.4), (-2.0, 3.0, -5.0)),
+        (57, (0.7, 0.9, -0.1), (-5.0, 7.0, -11.0)),
+        (68, (1.0, 1.1, 0.1), (-7.0, 9.0, -15.0)),
+    ])
+    make_action(armature, "vm_thrust_spear", 69, 86, [
+        (69, (1.0, 1.1, 0.1), (-7.0, 9.0, -15.0)),
+        (72, (0.5, 0.7, -0.7), (-4.0, 5.0, -8.0)),
+        (75, (0.0, 0.2, -2.0), (1.0, -2.0, 4.0)),
+        (78, (0.3, -0.1, -4.2), (5.0, -7.0, 11.0)),
+        (81, (0.2, 0.0, -2.2), (3.0, -4.0, 7.0)),
+        (84, (0.0, 0.0, -0.7), (1.0, -1.0, 2.0)),
+        (86, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+    ])
+    make_action(armature, "vm_spear_guard", 87, 104, [
+        (87, (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+        (93, (-0.7, 0.9, -0.5), (-6.0, 11.0, 20.0)),
+        (104, (-0.7, 0.9, -0.5), (-6.0, 11.0, 20.0)),
+    ])
+    armature["action_names"] = [
+        "vm_spear_hold", "vm_melee_charge", "vm_thrust_spear", "vm_spear_guard",
+    ]
+
+
 def main() -> None:
     reject_target_override(MODEL_ID)
     reset_scene()
     root, parts = build_spear()
     assert_parts_no_positive_volume_overlap(parts, label=MODEL_ID)
     assert_parts_voxel_assembly_valid(parts, label=MODEL_ID)
-    export_glb(root, OUT_GLB)
+    armature = build_weapon_rig(root, parts, "SpearRig", 16.0, -20.0)
+    _author_first_person_actions(armature)
+    render_action_review(
+        root,
+        armature,
+        ANIMATION_PREVIEW_DIR,
+        ((0.05, -0.22, -0.74), (8.0, -4.0, -155.0)),
+        {
+            "00": ("vm_spear_hold", 1),
+            "01": ("vm_melee_charge", 23),
+            "02": ("vm_thrust_spear", 4),
+            "03": ("vm_thrust_spear", 7),
+            "04": ("vm_thrust_spear", 10),
+            "05": ("vm_thrust_spear", 13),
+            "06": ("vm_thrust_spear", 18),
+            "07": ("vm_spear_guard", 11),
+        },
+    )
+    export_animated_glb(root, OUT_GLB)
     render_true_3d_views(root, MODEL_ID, PREVIEW_DIR)
     dimensions = bounds_size_px(root)
     print(f"Wrote {OUT_GLB}")

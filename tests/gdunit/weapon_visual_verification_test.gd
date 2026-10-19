@@ -188,6 +188,9 @@ func _process_model_capture(svp: SubViewport, dungeon: Node3D, spawn_pos: Vector
 		
 	# 清理实例
 	inst.queue_free()
+	# queue_free 延迟到帧末——等待两帧让全部排队删除（含嵌套子节点）落地，避免 orphan 门禁误报
+	await await_idle_frame()
+	await await_idle_frame()
 
 func _find_mesh_instance(node: Node) -> MeshInstance3D:
 	if node is MeshInstance3D:

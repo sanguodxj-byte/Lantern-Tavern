@@ -20,6 +20,7 @@ const SLASH_MOVE_MULT_LIGHT := 1.0
 const HEAVY_SLASH_PROFILES: Array[StringName] = [&"greatsword", &"axe", &"warhammer", &"spear"]
 
 var has_emitted_damage := false
+var has_emitted_blocked_spark := false
 var hitbox: Area3D = null
 var hit_targets: Array[Node] = []
 var time_start_slash := Time.get_ticks_msec()
@@ -56,11 +57,11 @@ func _enter_tree() -> void:
 		heavy_swing_arc_angle_deg = float(heavy_params.get("arc_angle_deg", 0.0))
 		var radius_mult := float(heavy_params.get("radius_mult", 1.0))
 		hitbox = player.prepare_attack_hitbox(
-			PhysicsSetup.LAYER_ENEMY | PhysicsSetup.LAYER_SCENE_OBJECT,
+			PhysicsSetup.LAYER_ENEMY | PhysicsSetup.LAYER_SCENE_OBJECT | PhysicsSetup.LAYER_ENVIRONMENT,
 			radius_mult
 		)
 	else:
-		hitbox = player.prepare_attack_hitbox(PhysicsSetup.LAYER_ENEMY | PhysicsSetup.LAYER_SCENE_OBJECT)
+		hitbox = player.prepare_attack_hitbox(PhysicsSetup.LAYER_ENEMY | PhysicsSetup.LAYER_SCENE_OBJECT | PhysicsSetup.LAYER_ENVIRONMENT)
 	player.animation_player.animation_finished.connect(on_animation_finished)
 
 func _physics_process(delta: float) -> void:
@@ -118,7 +119,9 @@ func _resolve_hitbox_overlaps() -> void:
 		var body := collider as Node
 		if body == null or hit_targets.has(body):
 			continue
-		if not _is_inside_heavy_swing_arc(body):
+		# 环境/墙体是合并碰撞组，其中心可能远离玩家，弧形过滤会错误压制火花，故环境层跳过弧形检查。
+		var is_environment: bool = collider is StaticBody3D and collider.collision_layer & PhysicsSetup.LAYER_ENVIRONMENT != 0
+		if not is_environment and not _is_inside_heavy_swing_arc(body):
 			continue
 		hit_targets.append(body)
 		var enemy := body as Enemy
@@ -129,6 +132,19 @@ func _resolve_hitbox_overlaps() -> void:
 			var cm := _charge_multiplier()
 			body.try_receive_hit(player, int(round(1 * cm)))
 			has_emitted_damage = true
+			# 可破坏物体未被本次命中摧毁时视为“击中硬物”，同样生成一次金属火花。
+			if is_instance_valid(body) and not body.is_queued_for_deletion() and body.get("is_destroyed") != true:
+				_emit_blocked_hit_spark()
+		else:
+			# 无 try_receive_hit 的碰撞体（地形/墙壁等不可破坏物体）生成金属火花。
+			_emit_blocked_hit_spark()
+
+## 本次挥砍命中不可破坏物体时，在挥砍命中点生成一次金属火花（每刀最多一次）。
+func _emit_blocked_hit_spark() -> void:
+	if has_emitted_blocked_spark or hitbox == null or not is_instance_valid(hitbox):
+		return
+	has_emitted_blocked_spark = true
+	FxHelper.create_metal_spark(hitbox.global_position)
 
 func _is_inside_heavy_swing_arc(body: Node) -> bool:
 	if not heavy_swing_enabled or heavy_swing_arc_angle_deg <= 0.0 or not body is Node3D:
@@ -171,6 +187,12 @@ func _resolve_enemy_hit(enemy: Enemy) -> void:
 		result.knockback_force = result.knockback_force * dmg_mult
 	if result.hit:
 		player.equipment.apply_weapon_damage(WEAPON_CONDITION_WEAR)
+		# 1740 审查 P1：真实命中驱动流派运行时（双持连携 / 徒手暴风骤雨层数）。
+		if player.has_method("record_melee_hit"):
+			var hit_hand := "primary"
+			if "weapon_attack_hand" in state_data:
+				hit_hand = String(state_data["weapon_attack_hand"])
+			player.record_melee_hit(hit_hand)
 		# 符文之语伤害倍率与状态效果受击增伤
 		var rune_mult := RWPH.get_outgoing_damage_mult(player, enemy) * SES.get_incoming_damage_mult(enemy)
 		if rune_mult != 1.0:

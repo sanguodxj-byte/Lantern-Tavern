@@ -353,7 +353,7 @@ func test_combat_state_serialize_roundtrip() -> void:
 
 func test_summon_query_targets_finds_authoritative_enemies() -> void:
 	var s: SR = auto_free(_make_server())
-	s._ensure_spell_world_executor()
+	s.combat_service.ensure_spell_world_executor()
 	# 生产联机敌人（实体仓 kind=enemy，未加入 "enemies" 场景组）。
 	s.set_entity(1001, {"kind": "enemy", "current_life": 10, "max_life": 10, "position": Vector3(2.0, 0.0, 0.0)})
 	s.set_entity(1002, {"kind": "enemy", "current_life": 0, "max_life": 10, "position": Vector3(1.0, 0.0, 0.0)})  # 已死
@@ -369,7 +369,7 @@ func test_summon_query_targets_finds_authoritative_enemies() -> void:
 func test_summon_process_attacks_nearest_authoritative_entity() -> void:
 	# 生产接缝：召唤物自动寻敌 → damage_port 写回 → 实体扣血/死亡事件（不依赖表现组）。
 	var s: SR = auto_free(_make_server())
-	s._ensure_spell_world_executor()
+	s.combat_service.ensure_spell_world_executor()
 	s.set_entity(1001, {"kind": "enemy", "current_life": 8, "max_life": 8, "position": Vector3(2.0, 0.0, 0.0)})
 	var ex: Node = s.spell_auth.get_world_executor()
 	# 构造召唤物并直接触发其攻击循环（等效 _process 一个 tick）。
@@ -435,6 +435,9 @@ func test_projectile_spawn_failure_rejects_before_commit() -> void:
 	var s: SR = auto_free(_make_server())
 	_spawn_caster(s)
 	_bind_caster(s)
+	# P1-4（0643 审查）：投射物生成改经注入端口（生产装配），先装配世界执行器
+	# 使端口生效；未装配时直接拒绝 projectile_service_unavailable（不再查 /root）。
+	s.combat_service.ensure_spell_world_executor()
 	var ctx = s.registry.get_context(1)
 	var mana_before: int = ctx.spell_mana
 	# 构造未注册 projectile_id 的 effect_plan（真实 spawn 会返回 null）。
@@ -451,7 +454,7 @@ func test_projected_hit_writes_back_to_entity_registry_via_port() -> void:
 	var s: SR = auto_free(_make_server())
 	_spawn_caster(s)
 	_bind_caster(s)
-	s._ensure_spell_world_executor()
+	s.combat_service.ensure_spell_world_executor()
 	s.set_entity(1001, {"kind": "enemy", "current_life": 15, "max_life": 15})
 	var ex: Node = s.spell_auth.get_world_executor()
 	var target := Node3D.new()
@@ -515,7 +518,7 @@ func test_spell_damage_writeback_kills_entity_and_drops_loot() -> void:
 	# 服务器权威实体（与普通攻击相同的实体仓）。
 	s.set_entity(1001, {"kind": "enemy", "label": "Rat", "current_life": 5, "max_life": 5,
 		"loot_table": {"goblin_tooth": {"kind": "material", "weight": 10, "min": 1, "max": 2}}})
-	var out: Dictionary = s._spell_damage_entity(1001, 5, 1)
+	var out: Dictionary = s.combat_service.spell_damage_entity(1001, 5, 1)
 	assert_bool(out["ok"]).is_true()
 	assert_bool(out["killed"]).is_true()
 	# 死亡 → 实体被移除（despawn 事件）。
@@ -532,7 +535,7 @@ func test_spell_damage_writeback_updates_nonlethal_life() -> void:
 	_spawn_caster(s)
 	_bind_caster(s)
 	s.set_entity(1002, {"kind": "enemy", "current_life": 10, "max_life": 10})
-	var out: Dictionary = s._spell_damage_entity(1002, 3, 1)
+	var out: Dictionary = s.combat_service.spell_damage_entity(1002, 3, 1)
 	assert_bool(out["ok"]).is_true()
 	assert_bool(out["killed"]).is_false()
 	assert_int(int(s._entities[1002]["current_life"])).is_equal(7)
@@ -542,9 +545,9 @@ func test_spell_damage_writeback_rejects_unknown_or_negative() -> void:
 	var s: SR = auto_free(_make_server())
 	_spawn_caster(s)
 	_bind_caster(s)
-	assert_bool(s._spell_damage_entity(9999, 5, 1)["ok"]).is_false()
+	assert_bool(s.combat_service.spell_damage_entity(9999, 5, 1)["ok"]).is_false()
 	s.set_entity(1003, {"kind": "enemy", "current_life": 5, "max_life": 5})
-	assert_bool(s._spell_damage_entity(1003, -1, 1)["ok"]).is_false()
+	assert_bool(s.combat_service.spell_damage_entity(1003, -1, 1)["ok"]).is_false()
 	assert_int(int(s._entities[1003]["current_life"])).is_equal(5)
 
 # ---------------------------------------------------------------------------

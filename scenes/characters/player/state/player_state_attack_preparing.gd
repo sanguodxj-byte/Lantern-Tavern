@@ -7,6 +7,7 @@ const MIN_HOLD_MSEC := 0
 const CROSSBOW_MIN_HOLD_MSEC := 0
 
 func _enter_tree() -> void:
+	player.weapon_charge_ratio = 0.0
 	if player.view_model != null and is_instance_valid(player.view_model) and player.view_model.has_method("begin_weapon_hold"):
 		player.view_model.begin_weapon_hold()
 	if player.is_active_weapon_ranged():
@@ -43,12 +44,14 @@ func _process(_delta: float) -> void:
 			var elapsed := Time.get_ticks_msec() - state_data.weapon_charge_started_msec
 			var charge_ratio := clampf(float(elapsed) / 800.0, 0.0, 1.0)
 			state_data.set_weapon_charge_ratio(charge_ratio)
+			player.weapon_charge_ratio = charge_ratio
 			if player.view_model != null and is_instance_valid(player.view_model) and player.view_model.has_method("update_weapon_hold"):
 				player.view_model.update_weapon_hold(charge_ratio)
 		elif player.is_active_weapon_ranged() and not player.is_active_weapon_crossbow():
 			# 弓：持续按住蓄力期间驱动拉弓进度动画；弩：无需蓄力动画和颤抖
 			var elapsed := Time.get_ticks_msec() - state_data.weapon_charge_started_msec
 			var charge_ratio := clampf(float(elapsed) / 800.0, 0.0, 1.0)
+			player.weapon_charge_ratio = charge_ratio
 			if player.view_model != null and is_instance_valid(player.view_model):
 				if player.view_model.has_method("update_weapon_hold"):
 					player.view_model.update_weapon_hold(charge_ratio)
@@ -60,12 +63,15 @@ func _process(_delta: float) -> void:
 			var elapsed := Time.get_ticks_msec() - state_data.weapon_charge_started_msec
 			var charge_ratio := clampf(float(elapsed) / (player.MELEE_CHARGE_FULL_SEC * 1000.0), 0.0, 1.0)
 			state_data.set_weapon_charge_ratio(charge_ratio)
+			player.weapon_charge_ratio = charge_ratio
 			if player.view_model != null and is_instance_valid(player.view_model):
 				if player.view_model.has_method("update_weapon_hold"):
 					player.view_model.update_weapon_hold(charge_ratio)
 				elif player.view_model.has_method("sample_action"):
 					player.view_model.sample_action(&"vm_melee_charge", charge_ratio)
 		return
+	# 松开：清空 HUD 蓄力指示
+	player.weapon_charge_ratio = 0.0
 	var elapsed := Time.get_ticks_msec() - state_data.weapon_charge_started_msec
 	# 点按和蓄力都在松开时释放；弩/近战均无最低按住时间。
 	var min_hold := CROSSBOW_MIN_HOLD_MSEC if player.is_active_weapon_crossbow() else MIN_HOLD_MSEC

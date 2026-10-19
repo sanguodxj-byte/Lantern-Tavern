@@ -305,10 +305,11 @@ func test_sidebar_title_localization() -> void:
 	get_tree().root.add_child(viewer)
 	
 	# Verify titles are localized if translations are loaded; otherwise fall back to English
-	var has_translation = TranslationServer.translate(" MODEL VIEWER / EDITOR") != " MODEL VIEWER / EDITOR"
+	# 与 model_viewer.gd 使用同一键（无前导空格；CSV 加载器会规整键名）
+	var has_translation = TranslationServer.translate("MODEL VIEWER / EDITOR") != "MODEL VIEWER / EDITOR"
 	if has_translation:
 		assert_str(viewer.sidebar_title.text).contains("模型查看器")
-		assert_str(viewer.inspector_title.text).contains("资源检查器")
+		assert_str(viewer.inspector_title.text).contains("资产检查器")  # CSV 无前导空格键的现行译名
 	else:
 		assert_str(viewer.sidebar_title.text).contains("MODEL VIEWER")
 		assert_str(viewer.inspector_title.text).contains("ASSET INSPECTOR")

@@ -19,6 +19,7 @@ const GRID_LABEL_FONT_SIZE := 18
 const GRID_LABEL_LINE_HEIGHT := 18.0
 const GRID_OVERLAY_SCRIPT := preload("res://scenes/ui/inventory_grid_overlay.gd")
 const VIEW_MODEL := preload("res://scenes/ui/equipment_screen_view_model.gd")
+const DETAIL_POPUP_SCRIPT := preload("res://scenes/ui/equipment_detail_popup.gd")
 const BADGE_SIZE := Vector2(44, 22)
 const BADGE_FONT_SIZE := 16
 const PIXEL_FONT := preload("res://assets/fonts/ark-pixel-12px-proportional-zh_cn.ttf")
@@ -75,9 +76,15 @@ func _gui_input(event: InputEvent) -> void:
 			var idx: int = _item_index_at_position(event.position)
 			if idx >= 0 and not is_selected(idx):
 				select(idx, false)
-			# 装备（武器/防具）通过 Godot 原生拖拽（_get_drag_data）单独拖动到装备槽，
-			# 不启动框选，避免框选矩形与拖拽预览冲突。
-			_drag_selecting = not _is_equipment_item_at(idx)
+			# 物品（装备/材料/符文）统一走 Godot 原生拖拽（_get_drag_data）：
+			# 按下物品不启动框选，避免框选矩形与拖拽预览/载荷竞争
+			# （此前仅装备豁免框选，符文/材料按下会同时触发框选与原生拖拽，
+			#  框选改写选中集导致拖拽载荷错乱、拖曳失效）。
+			# 只有按下空白区域才启动框选（批量多选）；框选时消费事件，
+			# 抑制 Viewport 在同一手势上再启动原生拖拽。
+			_drag_selecting = idx < 0
+			if _drag_selecting:
+				accept_event()
 		else:
 			_drag_selecting = false
 		_queue_overlay_redraw()
@@ -85,6 +92,7 @@ func _gui_input(event: InputEvent) -> void:
 		_drag_current = event.position
 		_select_items_in_rect(_selection_rect())
 		_queue_overlay_redraw()
+		accept_event()
 	elif event is InputEventMouseMotion:
 		_update_hovered_item(event.position)
 
@@ -378,10 +386,34 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 	var data: Dictionary = panel.collect_drag_payload(inventory_source)
 	if data.is_empty():
 		return null
-	var preview := Label.new()
-	preview.text = "x%d" % data.get("count", 0)
-	set_drag_preview(preview)
+	# 拖拽预览必须显示图标（禁止纯文字）：按载荷类型取图标 + 数量。
+	var preview_icon := _drag_payload_icon(data)
+	set_drag_preview(DETAIL_POPUP_SCRIPT.build_drag_preview(preview_icon, "x%d" % data.get("count", 0)))
 	return data
+
+
+## 根据拖拽载荷类型取预览图标（装备/材料/符文）。
+func _drag_payload_icon(data: Dictionary) -> Texture2D:
+	var kind := String(data.get("kind", ""))
+	match kind:
+		"equipment":
+			return DETAIL_POPUP_SCRIPT.icon_for_equipment_id(String(data.get("id", "")))
+		"inventory_runes":
+			var rune_ids: Array = data.get("rune_ids", [])
+			if not rune_ids.is_empty():
+				return DETAIL_POPUP_SCRIPT.icon_for_rune(String(rune_ids[0]))
+		"inventory_materials":
+			var ids: Array = data.get("ids", [])
+			if not ids.is_empty():
+				return DETAIL_POPUP_SCRIPT.icon_for_material(String(ids[0]))
+		"inventory_stacks":
+			var stack_runes: Array = data.get("rune_ids", [])
+			if not stack_runes.is_empty():
+				return DETAIL_POPUP_SCRIPT.icon_for_rune(String(stack_runes[0]))
+			var stack_ids: Array = data.get("ids", [])
+			if not stack_ids.is_empty():
+				return DETAIL_POPUP_SCRIPT.icon_for_material(String(stack_ids[0]))
+	return null
 
 func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
 	var panel: Node = _get_inventory_panel()

@@ -126,7 +126,7 @@ func _ready() -> void:
 	right_tabs.tab_changed.connect(_on_right_tab_changed)
 	_lock_panel_frame_layout()
 	_lock_left_column_layout()
-	add_to_group("character_panel")
+	add_to_group("modal_gameplay_blocker")
 	weapon_slot_buttons = [slot_weapon_1, slot_weapon_2, slot_weapon_3, slot_weapon_4]
 	armor_slot_buttons = {
 		"head": slot_head,
@@ -175,8 +175,8 @@ func _ready() -> void:
 	_refresh_static_texts()
 	if not _is_capture_mode():
 		var tavern_manager := Service.tavern_manager()
-		if tavern_manager != null and tavern_manager.has_method("ensure_debug_all_runes_in_warehouse"):
-			tavern_manager.ensure_debug_all_runes_in_warehouse()
+		if tavern_manager != null and tavern_manager.has_method("ensure_debug_all_runes_in_backpack"):
+			tavern_manager.ensure_debug_all_runes_in_backpack()
 		_refresh_all()
 
 
@@ -682,7 +682,8 @@ func _append_materials_to_list(list: ItemList, inventory: Dictionary, source: St
 		var item_name := _get_material_name(item_id)
 		var material_icon: Texture2D = DETAIL_POPUP_SCRIPT.icon_for_material(item_id)
 		var idx: int = _add_inventory_item(list, material_icon)
-		list.set_item_metadata(idx, {"type": "material", "id": item_id, "source": source, "amount": amount, "quality_tier": "", "_inventory_label": _format_inventory_label(item_name), "_inventory_icon": material_icon})
+		# 与装备/符文格一致的双行结构：第一行名称，第二行类型标签
+		list.set_item_metadata(idx, {"type": "material", "id": item_id, "source": source, "amount": amount, "quality_tier": "", "_inventory_label": _format_inventory_label(item_name) + "\n" + tr("Material"), "_inventory_icon": material_icon})
 		list.set_item_tooltip(idx, "%s x%d" % [_get_material_name(item_id), amount])
 
 func _append_runes_to_list(list: ItemList, inventory: Dictionary, source: String, filter_id: String = "") -> void:
@@ -720,12 +721,8 @@ func _add_inventory_item(list: ItemList, icon: Texture2D) -> int:
 	return idx
 
 func _combined_owned_rune_inventory() -> Dictionary:
-	var combined: Dictionary = {}
-	for inventory in [_get_carried_rune_inventory(), _get_warehouse_rune_inventory()]:
-		for raw_id in inventory.keys():
-			var rune_id := String(raw_id)
-			combined[rune_id] = int(combined.get(rune_id, 0)) + int(inventory[raw_id])
-	return combined
+	# 设计规则：符文为地牢消耗品，仅存在于随身背包，仓库不允许出现符文。
+	return _get_carried_rune_inventory().duplicate()
 
 
 func _format_inventory_label(display_name: String) -> String:
@@ -1795,7 +1792,8 @@ func _get_warehouse_inventory() -> Dictionary:
 	return PanelInventory.warehouse_materials()
 
 func _get_warehouse_rune_inventory() -> Dictionary:
-	return PanelInventory.warehouse_runes()
+	# 设计规则：符文不允许出现在酒馆仓库内。
+	return {}
 
 func _consume_rune_from_inventory(rune_id: String) -> bool:
 	return PanelInventory.consume_rune(rune_id)

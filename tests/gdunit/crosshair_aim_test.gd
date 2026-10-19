@@ -210,3 +210,65 @@ func test_skill_dispatcher_uses_aim_transform() -> void:
 	var source := _source("res://scenes/characters/player/player_skill_dispatcher.gd")
 	# 验证技能投射物也朝准心发射
 	assert_bool(source.contains("get_aim_transform")).is_true()
+
+
+class ChargeMockPlayer:
+	extends Node3D
+	var weapon_charge_ratio: float = 0.6
+	var is_ranged := false
+	var is_crossbow := false
+	var reload_fill := 1.0
+
+	func is_active_spell_focus_weapon() -> bool:
+		return false
+
+	func is_active_weapon_crossbow() -> bool:
+		return is_crossbow
+
+	func is_active_weapon_ranged() -> bool:
+		return is_ranged
+
+	func is_crossbow_reloading() -> bool:
+		return is_crossbow and reload_fill < 0.999
+
+	func get_crossbow_reload_fill() -> float:
+		return reload_fill
+
+
+func test_charge_fill_reads_player_ratio() -> void:
+	# 蓝色蓄力外环：读取 player.weapon_charge_ratio 并纳入重绘签名
+	var crosshair = Crosshair.new()
+	add_child(crosshair)
+	var mock := ChargeMockPlayer.new()
+	add_child(mock)
+	crosshair._player = mock
+	crosshair._update_cd_state()
+	assert_float(crosshair._charge_fill).is_equal_approx(0.6, 0.001)
+	assert_str(crosshair._cd_signature()).contains("chg")
+	# 未蓄力时为 0 且不进蓄力签名
+	mock.weapon_charge_ratio = 0.0
+	crosshair._update_cd_state()
+	assert_float(crosshair._charge_fill).is_equal(0.0)
+	assert_bool(crosshair._cd_signature().contains("chg")).is_false()
+	crosshair.queue_free()
+
+func test_xbow_reload_keeps_amber_ring_not_x() -> void:
+	# 弩装弹：X 字形是蓄力预留项，装弹仍走琥珀环（_cd_mode==3），
+	# 不因装弹而显示 _charge_mode==2 / 驱动 X。
+	var crosshair = Crosshair.new()
+	add_child(crosshair)
+	var mock := ChargeMockPlayer.new()
+	mock.is_ranged = true
+	mock.is_crossbow = true
+	mock.reload_fill = 0.6
+	mock.weapon_charge_ratio = 0.0  # 装弹不蓄力
+	add_child(mock)
+	crosshair._player = mock
+	crosshair._update_cd_state()
+	assert_int(crosshair._cd_mode).is_equal(3)
+	assert_int(crosshair._charge_mode).is_equal(0)
+	assert_float(crosshair._charge_fill).is_equal(0.0)
+	crosshair.queue_free()
+	mock.queue_free()
+
+	mock.queue_free()

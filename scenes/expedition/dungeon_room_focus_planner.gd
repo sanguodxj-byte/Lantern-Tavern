@@ -4,9 +4,12 @@ extends RefCounted
 const RUNTIME_CONFIG := preload("res://scenes/expedition/dungeon_runtime_config.gd")
 const KEY_CELL_LABELS := ["player_spawn_cell", "extraction_cell", "boss_cell", "stairs_cell", "reward_cell"]
 const ELEVATION_HEIGHT_M := 1.0
-const CLIFF_HEIGHT_M := 1.5
+const CLIFF_DEPTH_M := 1.5
 const MIN_CLIFF_LENGTH_CELLS := 4
 const MAX_CLIFF_LENGTH_CELLS := 7
+const MIN_CLIFF_ROOMS := 2
+const MAX_CLIFF_ROOMS := 3
+const CLIFF_THREE_ROOM_THRESHOLD := 12
 const DECOR_SEED_SALT := 0x4D4150
 const BLOCKING_DECOR := ["rubble", "small_crate", "barrel", "ritual_totem", "stalagmite_cluster", "sarcophagus"]
 
@@ -29,6 +32,10 @@ func plan(layout: DungeonLayout) -> void:
 		var composition_kind := _composition_kind_for_room(room_index, special_rooms)
 		var focus_kind := _focus_kind_for_room(layout, room_index, room, composition_kind)
 		var focus_cell := _pick_focus_cell(layout, room, focus_kind)
+		if composition_kind == "cliff":
+			# The pit is a room hazard, so the focus must be selected against the
+			# actual candidate pit instead of being left on the room centre.
+			focus_cell = _pick_cliff_focus_cell(layout, room, focus_cell)
 		var composition := _build_composition(layout, room_index, room, composition_kind, focus_cell)
 		layout.room_composition_specs.append(composition)
 		var theme := _room_theme(layout, room_index)
@@ -164,7 +171,8 @@ func _decor_kinds_for_theme(theme: String, composition_kind: String) -> Array[St
 func _is_environment_cell_allowed(layout: DungeonLayout, cell: Vector2i, focus_cell: Vector2i, composition: Dictionary) -> bool:
 	if not layout.is_floor_cell(cell) or cell == focus_cell:
 		return false
-	if composition.get("cover_cells", []).has(cell) or composition.get("platform_cells", []).has(cell) or composition.get("bridge_cells", []).has(cell):
+	if composition.get("cover_cells", []).has(cell) or composition.get("platform_cells", []).has(cell) \
+			or composition.get("bridge_cells", []).has(cell) or composition.get("cliff_cells", []).has(cell):
 		return false
 	if composition.get("door_transition_cells", []).has(cell):
 		return false
@@ -195,9 +203,9 @@ func _select_special_rooms(layout: DungeonLayout) -> Dictionary:
 	result["hall"] = _largest_available_room(layout, occupied)
 	if int(result["hall"]) >= 0:
 		occupied[int(result["hall"])] = true
-	result["cliff"] = _largest_available_cliff_room(layout, occupied)
-	if int(result["cliff"]) >= 0:
-		occupied[int(result["cliff"])] = true
+	result["cliff"] = _select_cliff_rooms(layout, occupied)
+	for cliff_room in result["cliff"]:
+		occupied[int(cliff_room)] = true
 	result["elevation"] = _available_role_or_room(layout, "stairs", occupied)
 	if int(result["elevation"]) >= 0:
 		occupied[int(result["elevation"])] = true
@@ -209,7 +217,11 @@ func _select_special_rooms(layout: DungeonLayout) -> Dictionary:
 
 func _composition_kind_for_room(room_index: int, special_rooms: Dictionary) -> String:
 	for kind in ["boss", "reward", "cliff", "elevation", "ambush", "trap", "hall"]:
-		if int(special_rooms.get(kind, -1)) == room_index:
+		var selected: Variant = special_rooms.get(kind, -1)
+		if selected is Array:
+			if selected.has(room_index):
+				return kind
+		elif int(selected) == room_index:
 			return kind
 	return "battle"
 
@@ -221,7 +233,7 @@ func _focus_kind_for_room(layout: DungeonLayout, room_index: int, room: Rect2i, 
 	if composition_kind == "elevation":
 		return "stairs_shrine"
 	if composition_kind == "cliff":
-		return "cliff_overlook"
+		return "cliff_pit"
 	if composition_kind == "hall":
 		return "guard_post"
 	if composition_kind == "ambush":
@@ -268,18 +280,12 @@ func _build_composition(layout: DungeonLayout, room_index: int, room: Rect2i, ki
 		for edge_value in cliff.get("edges", []):
 			cliff_edges.append(edge_value)
 		cliff_direction = cliff.get("direction", Vector2i.ZERO)
-		for cliff_cell in cliff_cells:
-			platform_cells.append(cliff_cell)
-		for ramp_value in cliff.get("ramp_specs", []):
-			ramp_specs.append(ramp_value)
-		for cell in cliff_cells:
-			if cell.y >= 0 and cell.y < layout.floor_elevations.size() and cell.x >= 0 and cell.x < layout.floor_elevations[cell.y].size():
-				layout.floor_elevations[cell.y][cell.x] = CLIFF_HEIGHT_M
 	var elevated_cells: Array[Vector2i] = platform_cells + bridge_cells
 	var ramp_cells: Array[Vector2i] = []
 	for ramp_spec in ramp_specs:
 		ramp_cells.append(ramp_spec["cell"])
-	var cover_cells := _pick_cover_cells(layout, room, kind, focus_cell, elevated_cells, ramp_cells)
+	var blocked_composition_cells: Array[Vector2i] = elevated_cells + ramp_cells + cliff_cells
+	var cover_cells := _pick_cover_cells(layout, room, kind, focus_cell, blocked_composition_cells, [])
 	var boundary_edges := _build_boundary_edges(elevated_cells, ramp_cells)
 	var warning_cells := _hazard_cells_in_room(layout, room_index)
 	var composition := {
@@ -294,8 +300,10 @@ func _build_composition(layout: DungeonLayout, room_index: int, room: Rect2i, ki
 		"warning_cells": warning_cells,
 		"door_transition_cells": _find_room_entrance_cells(layout, room),
 		"enemy_sectors": _build_enemy_sectors(layout, room, kind, elevated_cells, focus_cell),
-		"elevation_m": CLIFF_HEIGHT_M if kind == "cliff" and not elevated_cells.is_empty() else (ELEVATION_HEIGHT_M if not elevated_cells.is_empty() else 0.0),
+		"elevation_m": ELEVATION_HEIGHT_M if not elevated_cells.is_empty() else 0.0,
+		"pit_depth_m": CLIFF_DEPTH_M if kind == "cliff" and not cliff_cells.is_empty() else 0.0,
 		"cliff_cells": cliff_cells,
+		"pit_cells": cliff_cells.duplicate(),
 		"cliff_edges": cliff_edges,
 		"cliff_direction": cliff_direction,
 	}
@@ -305,10 +313,10 @@ func _build_composition(layout: DungeonLayout, room_index: int, room: Rect2i, ki
 			"room_index": room_index,
 			"cells": cliff_cells.duplicate(),
 			"edges": cliff_edges.duplicate(true),
+			"pit_cells": cliff_cells.duplicate(),
 			"length_cells": cliff_cells.size(),
 			"direction": cliff_direction,
-			"ramp_cell": ramp_specs[0].get("cell", Vector2i(-1, -1)) if not ramp_specs.is_empty() else Vector2i(-1, -1),
-			"elevation_m": CLIFF_HEIGHT_M,
+			"depth_m": CLIFF_DEPTH_M,
 		})
 	return composition
 
@@ -523,27 +531,88 @@ func _largest_available_room(layout: DungeonLayout, occupied: Dictionary) -> int
 	return best
 
 
-func _largest_available_cliff_room(layout: DungeonLayout, occupied: Dictionary) -> int:
-	var candidates: Array[int] = []
+## 为每张地图选择多个分散的悬崖房间。坑洞仍按房间独立生成，避免把一条
+## 跨房间的视觉线段误当成一个悬崖，也让每个房间继续拥有自己的连通性校验。
+func _select_cliff_rooms(layout: DungeonLayout, occupied: Dictionary) -> Array[int]:
+	var preferred_candidates: Array[int] = []
+	var fallback_candidates: Array[int] = []
+	var protected_roles := {}
+	for role in ["boss", "reward", "stairs", "extraction"]:
+		var role_index := _room_index_for_role(layout, role)
+		if role_index >= 0:
+			protected_roles[role_index] = true
+	var hazard_rooms := {}
+	for anchor in layout.hazard_anchors:
+		var hazard_room_index := int(anchor.get("room_index", -1))
+		if hazard_room_index >= 0:
+			hazard_rooms[hazard_room_index] = true
 	for index in range(layout.rooms.size()):
 		if occupied.has(index) or _is_start_room(layout, layout.rooms[index]):
 			continue
-		candidates.append(index)
+		if protected_roles.has(index):
+			continue
+		if _pick_cliff_feature(layout, layout.rooms[index], Vector2i(-1, -1)).is_empty():
+			continue
+		if hazard_rooms.has(index):
+			fallback_candidates.append(index)
+		else:
+			preferred_candidates.append(index)
+
+	# Keep trap-anchor rooms available whenever the map has enough alternatives. If
+	# the map is unusually small, using one as a cliff is safer than falling back
+	# to a single pit; the later trap selector will choose another free room.
+	var candidates: Array[int] = preferred_candidates.duplicate()
+	var target := MIN_CLIFF_ROOMS
+	if layout.rooms.size() >= CLIFF_THREE_ROOM_THRESHOLD:
+		target = MAX_CLIFF_ROOMS
+	if candidates.size() < target:
+		for fallback_index in fallback_candidates:
+			if candidates.has(fallback_index):
+				continue
+			candidates.append(fallback_index)
+			if candidates.size() >= target:
+				break
+	if candidates.is_empty():
+		return []
+
 	candidates.sort_custom(func(a: int, b: int) -> bool:
 		var area_a := layout.rooms[a].size.x * layout.rooms[a].size.y
 		var area_b := layout.rooms[b].size.x * layout.rooms[b].size.y
+		if area_a == area_b:
+			return a < b
 		return area_a > area_b
 	)
-	for index in candidates:
-		if not _pick_cliff_feature(layout, layout.rooms[index], Vector2i(-1, -1)).is_empty():
-			return index
-	return -1
+	target = mini(target, candidates.size())
+	var selected: Array[int] = [candidates[0]]
+	while selected.size() < target:
+		var best_index := -1
+		var best_score := -1
+		for candidate in candidates:
+			if selected.has(candidate):
+				continue
+			var nearest_distance := 1_000_000
+			for selected_index in selected:
+				nearest_distance = mini(nearest_distance, _room_center_distance(layout.rooms[candidate], layout.rooms[selected_index]))
+			var area := layout.rooms[candidate].size.x * layout.rooms[candidate].size.y
+			var score := nearest_distance * 10_000 + area
+			if score > best_score:
+				best_score = score
+				best_index = candidate
+		if best_index < 0:
+			break
+		selected.append(best_index)
+	return selected
 
 
-## 选择一个房间内部的连续悬崖平台。
-## 候选必须留在房间内部、长度至少 4 格、带一格斜坡，并且把悬崖格从低层
-## 地面拓扑中移除后仍保持全部可走格连通。这样悬崖只改变房间内的垂直层次，
-## 不会把房间入口或主路径切成两个孤岛。
+func _room_center_distance(first: Rect2i, second: Rect2i) -> int:
+	var first_center := first.position + Vector2i(first.size.x / 2, first.size.y / 2)
+	var second_center := second.position + Vector2i(second.size.x / 2, second.size.y / 2)
+	return absi(first_center.x - second_center.x) + absi(first_center.y - second_center.y)
+
+
+## 选择一个房间内部的连续悬崖坑洞。
+## 候选必须留在房间内部、长度至少 4 格，并且把坑洞格从地面拓扑中移除后
+## 仍保持全部可走格连通。坑洞不占用房间焦点、入口或关键点。
 func _pick_cliff_feature(layout: DungeonLayout, room: Rect2i, focus_cell: Vector2i) -> Dictionary:
 	var axes: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1)]
 	if room.size.y > room.size.x:
@@ -584,19 +653,14 @@ func _pick_cliff_feature(layout: DungeonLayout, room: Rect2i, focus_cell: Vector
 					cells.append(cell)
 				if not _cliff_cells_are_allowed(layout, room, cells, focus_cell):
 					continue
-				var ramp := _pick_cliff_ramp(layout, room, cells)
-				if ramp.is_empty():
-					continue
 				if not _cliff_preserves_connectivity(layout, cells):
 					continue
-				var ramp_cells: Array[Vector2i] = [ramp["cell"]]
-				var edges := _build_cliff_edges(layout, cells, ramp_cells)
+				var edges := _build_cliff_edges(layout, cells)
 				if edges.is_empty():
 					continue
 				return {
 					"cells": cells,
 					"edges": edges,
-					"ramp_specs": [ramp],
 					"direction": axis,
 				}
 	return {}
@@ -610,10 +674,10 @@ func _cliff_cells_are_allowed(layout: DungeonLayout, room: Rect2i, cells: Array[
 			return false
 		if int(layout.grid[cell.y][cell.x]) == 5 or _is_cliff_forbidden_cell(layout, cell):
 			return false
-		# The focus may deliberately sit on the overlook platform; it is a room
-		# landmark, not a path blocker, so it is intentionally allowed here.
+		# A pit cannot cover the room focus. The focus is a navigable landmark,
+		# not a visual platform that may float above the hazard.
 		if cell == focus_cell:
-			continue
+			return false
 	return true
 
 
@@ -629,50 +693,46 @@ func _is_cliff_forbidden_cell(layout: DungeonLayout, cell: Vector2i) -> bool:
 	return false
 
 
-func _pick_cliff_ramp(layout: DungeonLayout, room: Rect2i, cliff_cells: Array[Vector2i]) -> Dictionary:
+func _build_cliff_edges(layout: DungeonLayout, cliff_cells: Array[Vector2i]) -> Array[Dictionary]:
 	var cliff_set := {}
 	for cell in cliff_cells:
 		cliff_set[cell] = true
-	var middle := int(cliff_cells.size() / 2)
-	var ordered_indices: Array[int] = []
-	for delta in [0, -1, 1, -2, 2, -3, 3]:
-		var index := middle + int(delta)
-		if index >= 0 and index < cliff_cells.size() and not ordered_indices.has(index):
-			ordered_indices.append(index)
-	for index in ordered_indices:
-		var high_cell: Vector2i = cliff_cells[index]
-		for direction_variant in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]:
-			var direction: Vector2i = direction_variant
-			var low_cell := high_cell + direction
-			if not room.has_point(low_cell) or cliff_set.has(low_cell) or not layout.is_floor_cell(low_cell):
-				continue
-			if int(layout.grid[low_cell.y][low_cell.x]) == 5 or _is_cliff_forbidden_cell(layout, low_cell):
-				continue
-			return {
-				"cell": low_cell,
-				"dir": high_cell - low_cell,
-				"high_cell": high_cell,
-				"feature": "cliff",
-			}
-	return {}
-
-
-func _build_cliff_edges(layout: DungeonLayout, cliff_cells: Array[Vector2i], ramp_cells: Array[Vector2i]) -> Array[Dictionary]:
-	var cliff_set := {}
-	for cell in cliff_cells:
-		cliff_set[cell] = true
-	var ramp_set := {}
-	for cell in ramp_cells:
-		ramp_set[cell] = true
 	var edges: Array[Dictionary] = []
 	for cell in cliff_cells:
 		for direction_variant in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0)]:
 			var direction: Vector2i = direction_variant
 			var neighbor := cell + direction
-			if cliff_set.has(neighbor) or ramp_set.has(neighbor) or not layout.is_floor_cell(neighbor):
+			if cliff_set.has(neighbor) or not layout.is_floor_cell(neighbor):
 				continue
 			edges.append({"cell": cell, "dir": direction})
 	return edges
+
+
+func _pick_cliff_focus_cell(layout: DungeonLayout, room: Rect2i, preferred: Vector2i) -> Vector2i:
+	var candidates: Array[Vector2i] = []
+	if preferred.x >= 0:
+		candidates.append(preferred)
+	var center := room.position + Vector2i(room.size.x / 2, room.size.y / 2)
+	for offset in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+			Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2)]:
+		candidates.append(center + offset)
+	# Small rooms may have no centre-adjacent safe cell. Scan the interior in a
+	# stable order so every valid room still gets a landmark beside the pit.
+	for y in range(room.position.y + 1, room.end.y - 1):
+		for x in range(room.position.x + 1, room.end.x - 1):
+			candidates.append(Vector2i(x, y))
+	var seen_candidates := {}
+	for candidate in candidates:
+		if seen_candidates.has(candidate):
+			continue
+		seen_candidates[candidate] = true
+		if not room.has_point(candidate) or not layout.is_floor_cell(candidate):
+			continue
+		if not _is_focus_cell_allowed(layout, room, candidate, "cliff_pit"):
+			continue
+		if not _pick_cliff_feature(layout, room, candidate).is_empty():
+			return candidate
+	return preferred
 
 
 func _cliff_preserves_connectivity(layout: DungeonLayout, blocked_cells: Array[Vector2i]) -> bool:

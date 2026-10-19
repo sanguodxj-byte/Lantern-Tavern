@@ -4,6 +4,7 @@ extends Control
 const RuneData := preload("res://globals/combat/rune_data.gd")
 const Service := preload("res://globals/core/service.gd")
 const NP := preload("res://globals/multiplayer/network_protocol.gd")
+const DUNGEON_SCRIPT := preload("res://scenes/expedition/procedural_dungeon.gd")
 
 signal reward_chosen(reward_kind: String, reward_id: String)
 
@@ -35,7 +36,7 @@ var _network_candidates: Array = []
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	add_to_group("character_panel")
+	add_to_group("modal_gameplay_blocker")
 	var attribute_buttons := {
 		"str": %StrButton,
 		"dex": %DexButton,
@@ -86,13 +87,31 @@ func refresh() -> void:
 		_hide_panel()
 		return
 	pending_label.text = tr("待处理升级：%d") % pending
-	_show_panel()
-	_sync_player_health()
+	# 升级奖励不再在升级瞬间自动弹出：可累计（待处理队列），
+	# 由玩家在地牢场景按 TAB 主动唤出（open_if_pending）。
+	# 面板已打开时这里继续刷新队列内容（连续结算）。
 	var candidates: Array = _network_candidates if _network_mode() else _attr_panel.pending_rune_candidates
 	if candidates.is_empty():
 		_show_main_choice()
 	else:
 		_show_rune_choice(candidates)
+
+## 玩家主动打开升级奖励面板（地牢内按 TAB 调用）。
+## 存在待处理升级时才显示；返回是否真的打开了面板。
+func open_if_pending() -> bool:
+	var pending := _network_pending if _network_mode() else (int(_attr_panel.get_pending_level_choices()) if _attr_panel != null else 0)
+	if pending <= 0:
+		return false
+	refresh()
+	_show_panel()
+	return true
+
+## 仅在地牢场景内允许 TAB 打开升级奖励（酒馆内 TAB 已被装备面板占用）。
+func _is_in_dungeon() -> bool:
+	if _game_state == null:
+		return false
+	var level: Node = _game_state.get("current_level")
+	return level != null and level.get_script() == DUNGEON_SCRIPT
 
 ## 联机权威成长模式：处于激活的联机会话（房主/客户端）时，面板只显示服务器事件状态、
 ## 只上送选择意图；单机路径保持原样（本地 AttrPanel/GameState）。
@@ -294,8 +313,16 @@ func _focus_first_rune() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if visible and event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+	if not (event is InputEventKey) or not event.pressed or event.echo:
+		return
+	if event.keycode == KEY_TAB:
+		# 地牢内按 TAB：存在待处理升级（属性/符文）时唤出升级奖励面板。
+		# 非地牢场景不拦截 TAB（酒馆内 TAB 由装备面板使用）。
+		if not visible and _is_in_dungeon() and open_if_pending():
+			get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_ESCAPE and visible:
 		get_viewport().set_input_as_handled()
+		_hide_panel()
 
 
 func _exit_tree() -> void:

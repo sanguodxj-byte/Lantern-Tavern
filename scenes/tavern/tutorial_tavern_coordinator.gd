@@ -133,6 +133,7 @@ func _on_name_confirmed(_name_text: String) -> void:
 	GameEvents.tutorial_hint_changed.emit("")
 	if TavernManager != null:
 		TavernManager.tutorial_completed = false
+		TavernManager.tutorial_active = false
 	stage = Stage.COMPLETE
 
 
@@ -150,7 +151,9 @@ func _on_name_cancelled() -> void:
 	GameEvents.tutorial_hint_changed.emit("")
 	if TavernManager != null:
 		TavernManager.tutorial_completed = false
+		TavernManager.tutorial_active = false
 	stage = Stage.COMPLETE
+
 
 func _find_world() -> Node:
 	var node: Node = tavern

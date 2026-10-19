@@ -552,3 +552,42 @@ func _make_dummy_node3d() -> Node3D:
 	var n := Node3D.new()
 	add_child(n)
 	return n
+
+# ============================================================================
+# 9. 对象池代际（2351 审查 P0）：旧 lifetime timer 不得误杀复用后的新代
+# ============================================================================
+
+func test_pool_reuse_old_lifetime_timer_does_not_destroy_new_generation() -> void:
+	var data: Resource = PD.create("gen_test", 10.0, "ranged")
+	data.lifetime = 0.2
+	var proj: Node = preload("res://scenes/equipment/projectile_entity.tscn").instantiate()
+	proj.projectile_data = data
+	add_child(proj)          # 第一代：_ready 创建 timer A（t=200ms 到期）
+	await await_millis(50)   # t=50
+	# 模拟池回收后立即复用：request_ready 在 add_child 前（与 ProjectileService 297→299 行顺序一致）
+	remove_child(proj)
+	proj.request_ready()     # 标记重 ready
+	add_child(proj)          # 入树触发第二代 _ready（新 timer B）；旧 timer A 仍在 SceneTree 计时
+	await await_millis(180)  # t=230：A(200ms) 已到期且被代际拦截；B(250ms) 未到期
+	print("DBG gen=", proj._generation, " destroyed=", proj._is_destroyed, " parent=", proj.get_parent())
+	assert_bool(proj._is_destroyed).is_false()  # 旧代回调不得销毁新代
+	assert_object(proj.get_parent()).is_equal(self)
+	proj.free()
+
+
+func test_pool_reuse_restores_processing_flags() -> void:
+	# 2351 审查 P1：复用后 physics/process 必须显式恢复（request_ready 不会隐式恢复）
+	var data: Resource = PD.create("flag_test", 10.0, "ranged")
+	var proj: Node = preload("res://scenes/equipment/projectile_entity.tscn").instantiate()
+	proj.projectile_data = data
+	add_child(proj)
+	await await_millis(20)
+	proj.set_physics_process(false)
+	proj.set_process(false)
+	remove_child(proj)
+	proj.request_ready()
+	add_child(proj)
+	await await_millis(20)
+	assert_bool(proj.is_physics_processing()).is_true()
+	assert_bool(proj.is_processing()).is_true()
+	proj.free()

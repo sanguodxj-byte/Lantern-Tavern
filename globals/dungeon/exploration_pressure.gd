@@ -134,6 +134,26 @@ func make_snapshot() -> Dictionary:
 		"overtime": is_overtime(),
 	}
 
+## 恢复上一层远征压力状态（架构审查 1215 C1）：楼层切换时新层必须继承
+## 同一趟远征的时钟/暗蚀/门计数与一次性决策标记，而不是从零开始。
+## data 字段对齐 capture_pressure_from 的输出；缺省字段保持默认。
+func import_snapshot(data: Dictionary) -> void:
+	if data.is_empty():
+		return
+	if data.has("elapsed_minutes"):
+		elapsed_minutes = int(data["elapsed_minutes"])
+	if data.has("threat_level"):
+		threat_level = clampf(float(data["threat_level"]), 0.0, MAX_THREAT)
+	if data.has("opened_doors"):
+		opened_doors = int(data["opened_doors"])
+	if data.has("broken_doors"):
+		broken_doors = int(data["broken_doors"])
+	if data.has("_recommendation_sent"):
+		_recommendation_sent = bool(data["_recommendation_sent"])
+	if data.has("_overtime_sent"):
+		_overtime_sent = bool(data["_overtime_sent"])
+	_emit_pressure_changed()
+
 
 func build_extraction_result(voluntary: bool) -> Dictionary:
 	return {

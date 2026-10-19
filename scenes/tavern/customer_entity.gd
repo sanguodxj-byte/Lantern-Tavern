@@ -7,13 +7,17 @@ extends Node3D
 
 var customer_data  # TavernSettlement.Customer 引用
 var seat_marker: Marker3D
-var _state: String = "walking"  # walking / seated / leaving
+var _state: String = "walking"  # walking / seated / served / leaving
 var _chat_label: Label3D
 var _chat_timer: float = 0.0
 ## 生成器引用（spawner 注入，供服务触发器定位座位与结算）
 var spawner: Node = null
 ## 服务触发器（3D 酿酒流程：手持盛酒器时对准顾客交互）
 var serve_trigger: Node = null
+
+## TavernSettlement 脚本常量：用于访问内部类 SettlementResult
+## （新文件 class_name 在 headless 全局类缓存未刷新时无法解析）。
+const TS := preload("res://globals/tavern/tavern_settlement.gd")
 
 # 满意度台词池（策划案 12 §5.2，四档情绪反差强烈）
 const LINES_PERFECT := ["神迹！这股香醇彻底征服了我！不虚此生！"]
@@ -60,7 +64,9 @@ func _process(delta: float) -> void:
 	match _state:
 		"walking":
 			_move_toward_seat(delta)
-		"seated":
+		"seated", "served":
+			# served（0805 审查 P0）：已服务顾客保持落座表现（台词气泡计时），
+			# 但不再满足服务触发器的 can_interact 条件。
 			_chat_timer -= delta
 			if _chat_timer <= 0 and _chat_label.visible:
 				_chat_label.visible = false
@@ -70,13 +76,28 @@ func _process(delta: float) -> void:
 func assign_seat(marker: Marker3D) -> void:
 	seat_marker = marker
 
-func serve(brew_flavors: Dictionary, menu_price: int) -> Variant:
-	# 调用 TavernSettlement 结算并显示对应台词
-	var ts: Node = _get_settlement()
-	if ts == null or customer_data == null:
-		return {}
-	var result = ts.settle(brew_flavors, menu_price, customer_data)
+## 服务提交回调（0805 审查：由权威入口在 commit 成功后调用）：
+## 立即退出可交互态并显示满意度台词。3 秒离场计时只控制表现，不控制交易资格。
+func on_served(result) -> void:
 	_show_reaction_line(result)
+	_state = "served"
+
+func serve(brew_flavors: Dictionary, menu_price: int) -> Variant:
+	# 幂等闸门（0805 审查 P0）：已提交的 visit 返回首次缓存结果。
+	var cd: Variant = customer_data
+	if cd != null and cd.service_state == "COMMITTED":
+		return cd.service_result
+	# 优先走 spawner 权威入口（quote → 预检 → commit → 入账）
+	if spawner != null and is_instance_valid(spawner) and spawner.has_method("serve_entity"):
+		return spawner.serve_entity(self, brew_flavors, menu_price)
+	# 回退（无 spawner 的孤立场景/测试）：兼容旧行为，quote+commit 一步完成。
+	var ts: Node = _get_settlement()
+	if ts == null or cd == null:
+		return TS.SettlementResult.failed("NO_SETTLEMENT")
+	var result = ts.settle(brew_flavors, menu_price, cd)
+	ts.mark_committed(cd, result)
+	_show_reaction_line(result)
+	_state = "served"
 	return result
 
 func show_enter_line() -> void:

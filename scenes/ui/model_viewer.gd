@@ -57,8 +57,8 @@ var asset_database: Dictionary = {}
 const _GLB_SCAN_CONFIG := {
 	"Characters & Monsters": ["res://assets/meshes/characters/"],
 	"Dungeon Structures": [
-		"res://assets/meshes/doors/",
-		"res://assets/meshes/walls/",
+		"res://assets/meshes/props/",
+		"res://assets/meshes/traps/",
 	],
 	"Voxel Materials": ["res://assets/models/materials/"],
 	"Environment": ["res://assets/models/environment/"],
@@ -81,6 +81,7 @@ const _MODEL_NAME_ZH := {
 	"goblin": "哥布林", "rat": "巨鼠", "skeleton": "骷髅兵", "slime": "史莱姆",
 	"troll": "巨魔", "necrolord": "死灵领主", "dragon": "巨龙", "minotaur": "牛头怪",
 	"rock_golem": "岩石魔像", "spider": "蜘蛛", "kobold": "狗头人", "zombie": "僵尸",
+	"dire_wolf": "恐狼",
 	"orc_raider": "兽人掠夺者", "hobgoblin_legionary": "大地精军团士兵",
 	"bugbear_brute": "熊地精暴徒", "gnoll_hyena": "豺狼人鬣狗战士",
 	"lizardfolk_scout": "蜥蜴人斥候", "troglodyte": "穴居人",

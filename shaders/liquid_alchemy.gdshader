@@ -14,6 +14,9 @@ uniform float bubble_speed : hint_range(0.0, 3.0) = 1.2;
 uniform float fresnel_power : hint_range(0.5, 5.0) = 2.5;
 uniform float roughness : hint_range(0.0, 1.0) = 0.18;
 uniform float metallic : hint_range(0.0, 1.0) = 0.0;
+// P2-1（08-02 审查）：FBM 层数可配置——桌面默认 4（行为不变），
+// 移动端降档经 RenderingProfile 设置 2（预留通道，未接入前保持默认）。
+uniform int fbm_octaves : hint_range(1, 4) = 4;
 
 // --- 程序化噪声（无贴图采样，移动端友好）---
 float hash21(vec2 p) {
@@ -33,11 +36,11 @@ float value_noise(vec2 p) {
 	return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 
-// 固定 4 个倍频，循环次数为常量，移动端安全
+// FBM 层数由 fbm_octaves 控制（P2-1：默认 4 与旧行为一致，移动端可降 2）
 float fbm(vec2 p) {
 	float v = 0.0;
 	float amp = 0.5;
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < fbm_octaves; i++) {
 		v += amp * value_noise(p);
 		p *= 2.0;
 		amp *= 0.5;

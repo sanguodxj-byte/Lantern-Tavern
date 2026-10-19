@@ -170,22 +170,31 @@ func test_room_compositions_define_tempo_terrain_and_battle_sectors() -> void:
 		.override_failure_message("非出生房必须有房间构成数据").is_greater_equal(6)
 	var kinds := {}
 	var elevated_cells := 0
+	var pit_cells := 0
 	for spec in layout.room_composition_specs:
 		var composition_kind := String(spec["composition_kind"])
 		kinds[composition_kind] = true
 		assert_bool(spec.has("cover_cells")).is_true()
 		assert_bool(spec.has("enemy_sectors")).is_true()
 		assert_bool((spec["enemy_sectors"] as Array).size() >= 2 or String(spec["composition_kind"]) == "boss").is_true()
-		for cell in spec.get("platform_cells", []):
-			elevated_cells += 1
-			var expected_height := 1.5 if composition_kind == "cliff" else 1.0
-			assert_float(layout.floor_height_at(cell)).is_equal(expected_height)
+		if composition_kind == "cliff":
+			assert_array(spec.get("platform_cells", [])).is_empty()
+			assert_array(spec.get("ramp_specs", [])).is_empty()
+			assert_float(float(spec.get("pit_depth_m", 0.0))).is_equal(1.5)
+			for cell in spec.get("cliff_cells", []):
+				pit_cells += 1
+				assert_float(layout.floor_height_at(cell)).is_equal(0.0)
+		else:
+			for cell in spec.get("platform_cells", []):
+				elevated_cells += 1
+				assert_float(layout.floor_height_at(cell)).is_equal(1.0)
 	assert_bool(kinds.has("boss")).is_true()
 	assert_bool(kinds.has("ambush")).is_true()
 	assert_bool(kinds.has("elevation")).is_true()
 	assert_bool(kinds.has("trap")).is_true()
 	assert_bool(kinds.has("reward")).is_true()
 	assert_int(elevated_cells).is_greater_equal(1)
+	assert_int(pit_cells).is_greater_equal(4)
 
 func test_elevation_composition_has_ramp_bridge_and_closed_boundary() -> void:
 	var config := CONFIG.new()
@@ -210,22 +219,39 @@ func test_cliff_is_room_scoped_contiguous_and_keeps_connectivity() -> void:
 	var layout: DungeonLayout = GENERATOR.new().generate(config)
 	PLANNER.new().plan(layout)
 	var found_cliff := false
+	var cliff_count := 0
+	var cliff_room_indices := {}
 	for spec in layout.room_composition_specs:
 		if String(spec.get("composition_kind", "")) != "cliff":
 			continue
 		found_cliff = true
+		cliff_count += 1
 		var room_index := int(spec["room_index"])
+		assert_bool(not cliff_room_indices.has(room_index)) \
+			.override_failure_message("同一房间不能重复规划悬崖: room=%d" % room_index).is_true()
+		cliff_room_indices[room_index] = true
 		var room: Rect2i = layout.rooms[room_index]
 		var cliff_cells: Array = spec.get("cliff_cells", [])
 		assert_int(cliff_cells.size()).is_greater_equal(4)
-		assert_array(spec.get("ramp_specs", [])).is_not_empty()
+		assert_array(spec.get("platform_cells", [])).is_empty()
+		assert_array(spec.get("ramp_specs", [])).is_empty()
 		assert_array(spec.get("cliff_edges", [])).is_not_empty()
+		assert_float(float(spec.get("pit_depth_m", 0.0))).is_equal(1.5)
 		for index in range(cliff_cells.size()):
 			var cell: Vector2i = cliff_cells[index]
 			assert_bool(room.has_point(cell)).is_true()
 			assert_bool(layout.is_floor_cell(cell)).is_true()
-			assert_float(layout.floor_height_at(cell)).is_equal(1.5)
+			assert_float(layout.floor_height_at(cell)).is_equal(0.0)
+			assert_bool(cell != spec.get("focus_cell", Vector2i(-1, -1))).is_true()
 			assert_bool(not spec.get("door_transition_cells", []).has(cell)).is_true()
+			for label in ["player_spawn_cell", "extraction_cell", "boss_cell", "stairs_cell", "reward_cell"]:
+				var key_cell: Vector2i = layout.get(label)
+				if not layout.is_key_cell_missing(key_cell):
+					assert_bool(cell != key_cell).override_failure_message("坑洞不能覆盖关键点: %s" % cell).is_true()
+			for anchor in layout.hazard_anchors:
+				var hazard_cell: Vector2i = anchor.get("anchor_cell", Vector2i(-1, -1))
+				assert_bool(maxi(absi(cell.x - hazard_cell.x), absi(cell.y - hazard_cell.y)) > 1) \
+					.override_failure_message("坑洞不能贴住危险锚点: %s" % cell).is_true()
 			if index > 0:
 				var previous: Vector2i = cliff_cells[index - 1]
 				assert_int(absi(cell.x - previous.x) + absi(cell.y - previous.y)) \
@@ -233,9 +259,11 @@ func test_cliff_is_room_scoped_contiguous_and_keeps_connectivity() -> void:
 		assert_bool(not layout.is_start_room_cell(cliff_cells[0])).is_true()
 		assert_bool(PLANNER.new()._cliff_preserves_connectivity(layout, cliff_cells)).is_true()
 	assert_bool(found_cliff).override_failure_message("固定种子未生成房间级悬崖").is_true()
+	assert_int(cliff_count) \
+		.override_failure_message("每张地图至少需要两个分散的悬崖坑洞房间").is_greater_equal(2)
 
 
-func test_cliff_terrain_feature_has_one_room_owner_and_matching_length() -> void:
+func test_cliff_terrain_features_have_unique_room_owners_and_matching_lengths() -> void:
 	var config := CONFIG.new()
 	config.seed = 71231
 	var layout: DungeonLayout = GENERATOR.new().generate(config)
@@ -244,15 +272,21 @@ func test_cliff_terrain_feature_has_one_room_owner_and_matching_length() -> void
 	for feature in layout.terrain_features:
 		if String(feature.get("feature_kind", "")) == "cliff":
 			cliff_features.append(feature)
-	assert_int(cliff_features.size()).is_equal(1)
-	var feature: Dictionary = cliff_features[0]
-	var owner_index := int(feature["room_index"])
-	assert_int(int(feature["length_cells"])).is_greater_equal(4)
-	assert_array(feature.get("edges", [])).is_not_empty()
-	for cell in feature["cells"]:
-		var owners := 0
-		for room in layout.rooms:
-			if room.has_point(cell):
-				owners += 1
-		assert_int(owners).is_equal(1)
-		assert_bool((layout.rooms[owner_index] as Rect2i).has_point(cell)).is_true()
+	assert_int(cliff_features.size()).is_greater_equal(2)
+	var owner_indices := {}
+	for feature in cliff_features:
+		var owner_index := int(feature["room_index"])
+		assert_bool(not owner_indices.has(owner_index)) \
+			.override_failure_message("多个悬崖必须属于不同房间: room=%d" % owner_index).is_true()
+		owner_indices[owner_index] = true
+		assert_int(int(feature["length_cells"])).is_greater_equal(4)
+		assert_array(feature.get("edges", [])).is_not_empty()
+		assert_array(feature.get("pit_cells", [])).is_not_empty()
+		assert_float(float(feature.get("depth_m", 0.0))).is_equal(1.5)
+		for cell in feature["cells"]:
+			var owners := 0
+			for room in layout.rooms:
+				if room.has_point(cell):
+					owners += 1
+			assert_int(owners).is_equal(1)
+			assert_bool((layout.rooms[owner_index] as Rect2i).has_point(cell)).is_true()

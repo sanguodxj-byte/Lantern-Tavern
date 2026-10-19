@@ -656,9 +656,14 @@ static func _get_int_prop(obj, prop: String, default_val: int = 0) -> int:
 		return default_val
 	return int(val)
 
-## 清理所有静态状态（测试用）
+## 清理所有静态状态（测试/玩家重置/场景重载共用——2351 审查 P1：先释放节点再清指针）
 static func reset_static_state() -> void:
 	_karma_stacks.clear()
+	if _construct_node != null:
+		if is_instance_valid(_construct_node) and _construct_node.is_inside_tree():
+			_construct_node.get_parent().remove_child(_construct_node)
+		if is_instance_valid(_construct_node):
+			_construct_node.free()
 	_construct_node = null
 	_construct_attack_timer = 0.0
 	_arcane_focus_tick_accum = 0.0
